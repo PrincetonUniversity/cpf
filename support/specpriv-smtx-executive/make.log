@@ -1,0 +1,115 @@
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  control.cpp -c -o obj/control.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  debug.cpp -c -o obj/debug.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  loopevent.cpp -c -o obj/loopevent.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  pcb.cpp -c -o obj/pcb.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  private.cpp -c -o obj/private.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  speculation.cpp -c -o obj/speculation.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  strategy.cpp -c -o obj/strategy.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  sw_queue/sw_queue.cpp -c -o obj/sw_queue/sw_queue.o
+sw_queue/sw_queue.cpp:64: warning: unused parameter 'queue'
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/memops.cpp -c -o obj/smtx/memops.o
+smtx/memops.cpp:17: warning: unused parameter 'value'
+smtx/memops.cpp:36: warning: unused parameter 'value'
+smtx/memops.cpp:54: warning: unused parameter 'value'
+smtx/memops.cpp:72: warning: unused parameter 'value'
+smtx/memops.cpp:90: warning: unused parameter 'value'
+smtx/memops.cpp:123: warning: unused parameter 'value'
+smtx/memops.cpp:139: warning: unused parameter 'value'
+smtx/memops.cpp:157: warning: unused parameter 'value'
+smtx/memops.cpp:175: warning: unused parameter 'value'
+smtx/memops.cpp:193: warning: unused parameter 'value'
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/malloc.cpp -c -o obj/smtx/malloc.o
+smtx/malloc.cpp:91: warning: unused parameter 'stage'
+smtx/malloc.cpp:99: warning: unused parameter 'stage'
+smtx/malloc.cpp:99: warning: unused parameter 'ptr'
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/packet.cpp -c -o obj/smtx/packet.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/smtx.cpp -c -o obj/smtx/smtx.o
+In file included from smtx/smtx.cpp:6:
+include/internals/smtx/procmapsinfo.h: In constructor 'procmaps::ProcMapsInfo::ProcMapsInfo()':
+include/internals/smtx/procmapsinfo.h:66: warning: inlining failed in call to 'procmaps::Region::Region(std::string)': --param max-inline-insns-single limit reached
+include/internals/smtx/procmapsinfo.h:134: warning: called from here
+include/internals/smtx/procmapsinfo.h: In function 'void specpriv_smtx::__specpriv_init()':
+include/internals/smtx/procmapsinfo.h:122: warning: inlining failed in call to 'procmaps::ProcMapsInfo::ProcMapsInfo()': --param max-inline-insns-single limit reached
+smtx/smtx.cpp:35: warning: called from here
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/communicate.cpp -c -o obj/smtx/communicate.o
+g++ -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/units.cpp -c -o obj/smtx/units.o
+ar rcs lib/libsmtx.a obj/control.o obj/debug.o obj/loopevent.o obj/pcb.o obj/private.o obj/speculation.o obj/strategy.o obj/sw_queue/sw_queue.o obj/smtx/memops.o obj/smtx/malloc.o obj/smtx/packet.o obj/smtx/smtx.o obj/smtx/communicate.o obj/smtx/units.o
+g++   -shared obj/control.o obj/debug.o obj/loopevent.o obj/pcb.o obj/private.o obj/speculation.o obj/strategy.o obj/sw_queue/sw_queue.o obj/smtx/memops.o obj/smtx/malloc.o obj/smtx/packet.o obj/smtx/smtx.o obj/smtx/communicate.o obj/smtx/units.o -o lib/libsmtx.so
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  control.cpp -c -emit-llvm -o obj/control.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  debug.cpp -c -emit-llvm -o obj/debug.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  loopevent.cpp -c -emit-llvm -o obj/loopevent.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  pcb.cpp -c -emit-llvm -o obj/pcb.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  private.cpp -c -emit-llvm -o obj/private.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  speculation.cpp -c -emit-llvm -o obj/speculation.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  strategy.cpp -c -emit-llvm -o obj/strategy.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  sw_queue/sw_queue.cpp -c -emit-llvm -o obj/sw_queue/sw_queue.bc
+sw_queue/sw_queue.cpp:64:32: warning: unused parameter 'queue' [-Wunused-parameter]
+void __sw_queue_flush(queue_t* queue)
+                               ^
+1 warning generated.
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/memops.cpp -c -emit-llvm -o obj/smtx/memops.bc
+smtx/memops.cpp:17:45: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_read1)(int8_t* ptr, int64_t value)
+                                            ^
+smtx/memops.cpp:36:45: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_read2)(int8_t* ptr, int64_t value)
+                                            ^
+smtx/memops.cpp:54:45: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_read4)(int8_t* ptr, int64_t value)
+                                            ^
+smtx/memops.cpp:72:45: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_read8)(int8_t* ptr, int64_t value)
+                                            ^
+smtx/memops.cpp:90:44: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_read)(int8_t* ptr, int64_t value, uint32_t size)
+                                           ^
+smtx/memops.cpp:123:46: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_write1)(int8_t* ptr, int64_t value)
+                                             ^
+smtx/memops.cpp:139:46: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_write2)(int8_t* ptr, int64_t value)
+                                             ^
+smtx/memops.cpp:157:46: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_write4)(int8_t* ptr, int64_t value)
+                                             ^
+smtx/memops.cpp:175:46: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_write8)(int8_t* ptr, int64_t value)
+                                             ^
+smtx/memops.cpp:193:45: warning: unused parameter 'value' [-Wunused-parameter]
+void PREFIX(ver_write)(int8_t* ptr, int64_t value, uint32_t size)
+                                            ^
+10 warnings generated.
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/malloc.cpp -c -emit-llvm -o obj/smtx/malloc.bc
+smtx/malloc.cpp:67:18: warning: implicit conversion changes signedness: 'int' to 'unsigned long' [-Wsign-conversion]
+  size = (size_t)ROUND_UP( size, ALIGNMENT );
+                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+include/internals/constants.h:48:27: note: expanded from macro 'ROUND_UP'
+#define ROUND_UP(n,k)     ROUND_DOWN( (n) + ((k) - 1), (k))
+                          ^
+include/internals/constants.h:47:30: note: expanded from macro 'ROUND_DOWN'
+#define ROUND_DOWN(n,k)   ( (~((k)-1)) & (uint64_t) (n) )
+                             ^~~~~~~~  ~
+smtx/malloc.cpp:84:18: warning: implicit conversion changes signedness: 'int' to 'unsigned long' [-Wsign-conversion]
+  size = (size_t)ROUND_UP( size, ALIGNMENT );
+                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+include/internals/constants.h:48:27: note: expanded from macro 'ROUND_UP'
+#define ROUND_UP(n,k)     ROUND_DOWN( (n) + ((k) - 1), (k))
+                          ^
+include/internals/constants.h:47:30: note: expanded from macro 'ROUND_DOWN'
+#define ROUND_DOWN(n,k)   ( (~((k)-1)) & (uint64_t) (n) )
+                             ^~~~~~~~  ~
+smtx/malloc.cpp:91:24: warning: unused parameter 'stage' [-Wunused-parameter]
+void ver_free(unsigned stage, void* ptr)
+                       ^
+smtx/malloc.cpp:99:31: warning: unused parameter 'stage' [-Wunused-parameter]
+void update_ver_free(unsigned stage, void* ptr)
+                              ^
+smtx/malloc.cpp:99:44: warning: unused parameter 'ptr' [-Wunused-parameter]
+void update_ver_free(unsigned stage, void* ptr)
+                                           ^
+5 warnings generated.
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/packet.cpp -c -emit-llvm -o obj/smtx/packet.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/smtx.cpp -c -emit-llvm -o obj/smtx/smtx.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/communicate.cpp -c -emit-llvm -o obj/smtx/communicate.bc
+clang -O3 -pedantic -fPIC -Iinclude  -Wall -Wextra -Wconversion -Wshadow -Wcast-qual -Winit-self -Wmissing-include-dirs -Winline  smtx/units.cpp -c -emit-llvm -o obj/smtx/units.bc
+llvm-link -o lib/libsmtx.bca obj/control.bc obj/debug.bc obj/loopevent.bc obj/pcb.bc obj/private.bc obj/speculation.bc obj/strategy.bc obj/sw_queue/sw_queue.bc obj/smtx/memops.bc obj/smtx/malloc.bc obj/smtx/packet.bc obj/smtx/smtx.bc obj/smtx/communicate.bc obj/smtx/units.bc

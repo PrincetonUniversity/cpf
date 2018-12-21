@@ -1,0 +1,155 @@
+This document describes sequences of events (API calls) which the
+parallel program triggers.
+
+
+
+******************************************************************
+At a very high level, a parallel region looks like this:
+
+  __specpriv_begin_invocation
+
+  do // this is the speculative-recovery loop; created by compiler
+  {
+    __specpriv_spawn_workers
+    if( worker process )
+    {
+      for i // loop from the source programm; modified by compiler
+      {
+        __specpriv_begin_iter
+
+        // Some source ops are rematerialized here, such as increment CIV
+
+        if( i % NUM_WORKERS == MY_WORKER_ID )
+        {
+
+          // loop body
+
+        }
+        __specpriv_end_iter
+      }
+      
+      // this will terminate the worker
+      __specpriv_worker_finishes
+    }
+    else if( main process )
+    {
+      __specpriv_join_children
+
+      if( misspec )
+      {
+        // do recovery
+
+        __specpriv_recovery_finished
+      }
+    }
+
+  } while( misspec )
+
+  __specpriv_end_invocation
+
+
+
+
+*******************************************************************
+Periodically, __specpriv_end_iteration will perform a checkpoint:
+
+
+
+  __specpriv_worker_perform_checkpoint:
+    
+    // This may block if we have reached the memory
+    // limit on checkpoints.
+    let partial = __specpriv_get_checkpoint_for_iter
+
+    lock partial
+    __specpriv_perform_checkpoint_locked
+    {
+      map partial.priv, partial.shadow, partial.redux
+
+        __specpriv_distill_worker_private_into_partial
+        __specpriv_distill_worker_redux_into_partial
+        __specpriv_copy_io_to_redux
+
+      unmap partial.redux, partial.shadow, partial.priv
+    }
+    unlock partial
+
+    __specpriv_commit_zero_or_more_checkpoints
+    {
+      let alpha, beta = two earliest checkpoints.
+
+      if alpha, beta are complete
+      {
+        // This is rare; happens approx once every NUM_WORKERS times
+
+        lock alpha, beta, and checkpoint list
+          
+          assert alpha, beta are complete, adjacent
+
+          __specpriv_combine_checkpoints
+          {
+            __specpriv_combine_private
+            {
+              map anywhere alpha.priv, alpha.shadow
+              map anywhere beta.priv, beta.shadow
+
+              __specpriv_distill_committed_private_into_partial
+
+              unmap beta.shadow, beta.priv
+              unmap alpha.shadow, alpha.priv
+            }
+
+            __specpriv_combine_redux
+            {
+              map anywhere alpha.redux
+              map anywhere beta.redux
+
+              __specpriv_distill_committed_redux_into_partial 
+
+              unmap beta.redux
+              unmap alpha.redux
+            }
+          }
+
+          pop alpha
+
+        unlock
+      }
+    }
+
+
+
+***********************************************************************
+When shutting down parallel execution, the latest non-speculative
+checkpoint will be combined into the main process' heaps.
+
+  __specpriv_join_workers:
+    
+    ...
+
+    __specpriv_distill_checkpoints_into_liveout
+    {
+      __specpriv_commit_zero_or_more_checkpoints
+
+      foreach chkpt // expected to iterate only once.
+      {
+        break if not complete checkpoint.
+
+        map anywhere chkpt.priv, chkpt.shadow, chkpt.redux
+        
+        __specpriv_commit_io
+        __specpriv_distill_committed_private_into_main
+        __specpriv_distill_committed_redux_into_main
+
+        unmap chkpt.redux, chkpt.shadow, chkpt.priv
+        pop chkpt
+      }
+
+      squash all remaining checkpoints.
+    }
+
+
+
+
+
+
