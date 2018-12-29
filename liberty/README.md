@@ -20,9 +20,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH/:/$LLVM_INSTALL_DIR/lib:/$LIBERTY_LIBS_D
 #### Building the code
 
 ```
-cd cpf
+cd liberty
 mkdir ../llvm-liberty-objects
 cd ../llvm-liberty-objects
-../cpf/configure --with-llvmsrc=$LLVM_SRC_ROOT --with-llvmobj=$LLVM_OBJ_DIR --prefix=$LLVM_INSTALL_DIR --exec-prefix=$LLVM_INSTALL_DIR --includedir=$LIBERTY_INCLUDE_DIR
+../liberty/configure --with-llvmsrc=$LLVM_SRC_ROOT --with-llvmobj=$LLVM_OBJ_DIR --prefix=$LLVM_INSTALL_DIR --exec-prefix=$LLVM_INSTALL_DIR --includedir=$LIBERTY_INCLUDE_DIR
 make
 ```
