@@ -1,0 +1,34 @@
+#==============================================================================#
+# File extensions to be ignored anywhere in the tree.
+#==============================================================================#
+# Temp files created by most text editors.
+*~
+# Merge files created by git.
+*.orig
+# Byte compiled python modules.
+*.pyc
+# vim swap files
+.*.sw?
+.sw?
+
+# Nested build directory
+/build
+
+#==============================================================================#
+# Explicit files to ignore (only matches one).
+#==============================================================================#
+# Various tag programs
+/tags
+/liberty/tags
+/TAGS
+/GPATH
+/GRTAGS
+/GSYMS
+/GTAGS
+.gitusers
+autom4te.cache
+cscope.files
+cscope.out
+autoconf/aclocal.m4
+autoconf/autom4te.cache
+/compile_commands.json
