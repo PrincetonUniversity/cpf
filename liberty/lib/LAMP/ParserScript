@@ -1,0 +1,107 @@
+echo expects directories to be configured
+echo expects input to be in code source dir "~/LAMPViewDemo/ParserCode/197.parser/src"
+
+cd ~/LAMPViewDemo/ParserCode/197.parser/src/
+
+ls
+
+emacs main.c &
+
+read -p "working with 197.parser"
+
+
+llvm-gcc -g -emit-llvm -c *.c -DSPEC_CPU2000 2> compilerwarnings
+rm main.bc
+llvm-link *.o -o main.bc
+
+echo llvm-gcc -emit-llvm -c *.c -DSPEC_CPU2000
+echo rm main.bc
+echo llvm-link *.o -o main.bc
+
+echo
+echo
+
+read -p "bytecode creation and linking"
+
+opt -loopsimplify < main.bc > main.ls.bc
+opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < main.ls.bc > main.lamp.bc 2> debugjunk
+
+
+opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < main.ls.bc > main.lamp.bc 2> debugjunk
+echo opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init "<" main.ls.bc ">" main.lamp.bc "2>" debugjunk
+
+cp loops.out ~/LAMPViewDemo/ParserDemo/.
+cp main.ls.bc ~/LAMPViewDemo/ParserDemo/.
+
+echo
+echo
+
+read -p "instrumentation stage"
+
+less loops.out
+
+llc < main.lamp.bc > main.lamp.s
+g++ -o main.lamp.exe main.lamp.s ~/trunk/llvm-liberty/lib/LAMP/LAMPlib/hooks/lamp_hooks.o
+ 
+
+echo llc "<" main.lamp.bc ">" main.lamp.s
+echo g++ -o main.lamp.exe main.lamp.s ~/trunk/llvm-liberty/lib/LAMP/LAMPlib/hooks/lamp_hooks.o
+
+
+echo
+echo
+
+read -p "link stage"
+
+./main.lamp.exe 2.1.dict -batch < test.in
+echo running takes too long so skip for demo
+echo ./main.lamp.exe 2.1.dict -batch "<" test.in
+
+echo mv result.lamp.profile ~/LAMPViewDemo/ParserDemo/result.lamp.profile
+
+cd ~/LAMPViewDemo/ParserDemo
+
+less result.lamp.profile -j 1049
+
+opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-inst-cnt -lamp-map-loop -lamp-load-profile < main.ls.bc > /dev/null 2> debugoutput2
+
+echo opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "<" main.ls.bc ">" /dev/null
+
+echo
+echo
+
+read -p "Reader Pass"
+
+less lcout.out
+less dout.out
+less auxout.out
+
+echo
+echo
+
+echo Lets examine the loop on line 1519 "(actually on 1522)"
+
+echo
+
+echo ~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoop
+~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoop
+
+echo ~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoopLines
+~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoopLines
+
+ls Loop*
+
+emacs Loop255.result &
+emacs Loop255.LO.result &
+
+echo ~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDirectory
+~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDirectory
+
+
+
+
+
+
+
+
+

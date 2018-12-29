@@ -1,0 +1,79 @@
+#define DEBUG_TYPE "moduleloops"
+
+#include "llvm/IR/Function.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/DataLayout.h"
+
+#include "liberty/Utilities/ModuleLoops.h"
+
+
+// sot: heavily modified to remove the need for GimmeLoops
+
+namespace liberty
+{
+using namespace llvm;
+
+/*
+GimmeLoops &ModuleLoops::compute(const Function *fcn)
+{
+  if( !results.count(fcn) )
+  {
+    // Evil, but okay because NONE of these passes modify the IR
+    Function *non_const_function = const_cast<Function*>(fcn);
+
+//    errs() << "Computing loops for " << fcn->getName() << '\n';
+
+    //sot
+    //results[fcn].init(td, tli, non_const_function, true);
+    results[fcn] = GimmeLoops(td, tli, non_const_function, true);
+  }
+
+  return results[fcn];
+}
+*/
+
+DominatorTree &ModuleLoops::getAnalysis_DominatorTree(const Function *fcn)
+{
+  // Evil, but okay because we only will run only an analysis pass
+  Function *non_const_function = const_cast<Function*>(fcn);
+
+  DominatorTreeWrapperPass *dtp = &getAnalysis< DominatorTreeWrapperPass>(*non_const_function);
+  DominatorTree& dt = dtp->getDomTree();
+  return dt;
+}
+
+PostDominatorTree &ModuleLoops::getAnalysis_PostDominatorTree(const Function *fcn)
+{
+  // Evil, but okay because we only will run only an analysis pass
+  Function *non_const_function = const_cast<Function*>(fcn);
+
+  PostDominatorTreeWrapperPass *pdtp = &getAnalysis< PostDominatorTreeWrapperPass>(*non_const_function);
+  PostDominatorTree& pdt = pdtp->getPostDomTree();
+  return pdt;
+}
+
+LoopInfo &ModuleLoops::getAnalysis_LoopInfo(const Function *fcn)
+{
+  // Evil, but okay because we only will run only an analysis pass
+  Function *non_const_function = const_cast<Function*>(fcn);
+
+  LoopInfoWrapperPass& lip = getAnalysis< LoopInfoWrapperPass>(*non_const_function);
+  LoopInfo& li = lip.getLoopInfo();
+  return li;
+}
+
+ScalarEvolution &ModuleLoops::getAnalysis_ScalarEvolution(const Function *fcn)
+{
+  // Evil, but okay because we only will run only an analysis pass
+  Function *non_const_function = const_cast<Function*>(fcn);
+
+  ScalarEvolutionWrapperPass *sep = &getAnalysis< ScalarEvolutionWrapperPass>(*non_const_function);
+  ScalarEvolution& se = sep->getSE();
+  return se;
+}
+
+char ModuleLoops::ID = 0;
+static RegisterPass< ModuleLoops > rp("mloops", "ModuleLoops: get your pass manager on...");
+
+}
+

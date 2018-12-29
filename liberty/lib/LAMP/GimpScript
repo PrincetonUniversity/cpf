@@ -1,0 +1,125 @@
+echo expects gimp in arun directory and a "~/LAMPViewDemo/GimpDemo" dir
+read -p "press enter to continue"
+
+cd /home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/plug-ins/common/
+
+ls sparkle.c
+
+emacs sparkle.c &
+
+read -p "working with sparkle"
+
+
+llvm-gcc -emit-llvm -DHAVE_CONFIG_H -I. -I../.. -I../.. -DPNG_NO_MMX_CODE -pthread -I/usr/include/gtk-2.0 -I/usr/lib/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/pixman-1   -I/home/rarun/gimp/gimp-2.6.4-org/install/include  -DGIMP_DISABLE_DEPRECATED -DG_DISABLE_DEPRECATED -DGDK_PIXBUF_DISABLE_DEPRECATED -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DPANGO_DISABLE_DEPRECATED -DGDK_MULTIHEAD_SAFE -DGTK_MULTIHEAD_SAFE  -g -MT sparkle.o -MD -MP -MF .deps/sparkle.Tpo -c -o sparkle.bc.pre sparkle.c
+
+echo llvm-gcc -emit-llvm -DHAVE_CONFIG_H -I. -I../.. -I../.. -DPNG_NO_MMX_CODE -pthread -I/usr/include/gtk-2.0 -I/usr/lib/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/pixman-1   -I/home/rarun/gimp/gimp-2.6.4-org/install/include  -DGIMP_DISABLE_DEPRECATED -DG_DISABLE_DEPRECATED -DGDK_PIXBUF_DISABLE_DEPRECATED -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DPANGO_DISABLE_DEPRECATED -DGDK_MULTIHEAD_SAFE -DGTK_MULTIHEAD_SAFE  -g -MT sparkle.o -MD -MP -MF .deps/sparkle.Tpo -c -o sparkle.bc.pre sparkle.c
+
+echo
+echo
+
+read -p "bytecode creation"
+
+mv -f .deps/sparkle.Tpo .deps/sparkle.Po
+
+opt -loopsimplify < sparkle.bc.pre > main.ls.bc
+
+opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -lamp-init-fn main -insert-lamp-init < main.ls.bc > main.lamp.bc 2> debugjunk
+
+echo opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -lamp-init-fn main -insert-lamp-init "<" main.ls.bc ">" main.lamp.bc
+
+cp loops.out ~/LAMPViewDemo/GimpDemo/.
+cp main.ls.bc ~/LAMPViewDemo/GimpDemo/.
+
+echo
+echo
+
+read -p "instrumentation stage"
+
+less loops.out
+
+llc < main.lamp.bc > main.lamp.s
+echo llc "<" main.lamp.bc ">" main.lamp.s
+
+gcc -c main.lamp.s
+echo gcc -c main.lamp.s
+
+cp main.lamp.o sparkle.o
+echo cp main.lamp.o sparkle.o
+
+/bin/bash ../../libtool --tag=CC   --mode=link gcc -Wall -Wdeclaration-after-statement -Wmissing-prototypes -Wmissing-declarations -Winit-self -Wpointer-arith -Wold-style-definition   -o sparkle sparkle.o ../../libgimp/libgimpui-2.0.la ../../libgimpwidgets/libgimpwidgets-2.0.la ../../libgimpmodule/libgimpmodule-2.0.la ../../libgimp/libgimp-2.0.la ../../libgimpmath/libgimpmath-2.0.la ../../libgimpconfig/libgimpconfig-2.0.la ../../libgimpcolor/libgimpcolor-2.0.la ../../libgimpbase/libgimpbase-2.0.la -pthread -lgtk-x11-2.0 -lgdk-x11-2.0 -latk-1.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lcairo -lgobject-2.0 -lgmodule-2.0 -ldl -lgthread-2.0 -lrt -lglib-2.0 ~/trunk/llvm-liberty/lib/LAMP/LAMPlib/hooks/lamp_hooks.o
+
+echo /bin/bash ../../libtool --tag=CC   --mode=link gcc -Wall -Wdeclaration-after-statement -Wmissing-prototypes -Wmissing-declarations -Winit-self -Wpointer-arith -Wold-style-definition   -o sparkle sparkle.o ../../libgimp/libgimpui-2.0.la ../../libgimpwidgets/libgimpwidgets-2.0.la ../../libgimpmodule/libgimpmodule-2.0.la ../../libgimp/libgimp-2.0.la ../../libgimpmath/libgimpmath-2.0.la ../../libgimpconfig/libgimpconfig-2.0.la ../../libgimpcolor/libgimpcolor-2.0.la ../../libgimpbase/libgimpbase-2.0.la -pthread -lgtk-x11-2.0 -lgdk-x11-2.0 -latk-1.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lcairo -lgobject-2.0 -lgmodule-2.0 -ldl -lgthread-2.0 -lrt -lglib-2.0 ~/trunk/llvm-liberty/lib/LAMP/LAMPlib/hooks/lamp_hooks.o
+
+echo
+echo
+
+read -p "link stage"
+
+
+/usr/bin/install -c .libs/sparkle /home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/install/lib/gimp/2.0/plug-ins/sparkle
+  /bin/bash ../../libtool   --mode=install /usr/bin/install -c 'sphere-designer' '/home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/install/lib/gimp/2.0/plug-ins/sphere-designer'
+
+echo /usr/bin/install -c .libs/sparkle /home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/install/lib/gimp/2.0/plug-ins/sparkle
+echo /bin/bash ../../libtool   --mode=install /usr/bin/install -c 'sphere-designer' '/home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/install/lib/gimp/2.0/plug-ins/sphere-designer'
+
+echo
+echo
+
+read -p "install stage"
+
+cd ~/LAMPViewDemo/GimpDemo
+
+echo
+echo
+
+echo Run the Sparkle plugin under lighting!
+echo
+
+echo /home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/install/bin/gimp ~/cry.jpg
+
+/home/rarun/sw_only_speculation/benchmarks/gimp-2.6.4/install/bin/gimp ~/cry.jpg
+
+less result.lamp.profile --jump-target=1049
+
+opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-inst-cnt -lamp-map-loop -lamp-load-profile < main.ls.bc > /dev/null 2> debugoutput2
+
+echo opt -load ~/llvmnew/llvm-install/lib/libLAMP.so -debug -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "<" main.ls.bc ">" /dev/null
+
+echo
+echo
+
+read -p "Reader Pass"
+
+less lcout.out
+less dout.out
+less auxout.out
+
+echo
+echo
+
+echo Lets examine the loop on line 812
+
+echo
+
+echo ~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoop
+~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoop
+
+echo ~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoopLines
+~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDumpLoopLines
+
+ls Loop*
+
+emacs Loop6.result &
+emacs Loop6.LO.result &
+
+echo ~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDirectory
+~/trunk/llvm-liberty/lib/LAMP/LAMPViewingTool/LAMPDirectory
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,47 @@
+__prof_begin() -- guaranteed to be called before any other...
+
+void __prof_malloc(const char *name, void *ptr, uin64_t size)
+  - report that a heap allocation occurred in the current context.
+
+void __prof_realloc(const char *name, void *old_ptr, void *new_ptr, uint64_t size);
+  - report that a heap object was allocated/resized/freed.
+
+void __prof_free(const char *name, void *ptr)
+  - report that a heap object was freed in the current context.
+
+void __prof_report_global(const char *name, void *base, uint64_t size)
+  - called at program startup; reports base and size of a static allocation unit.
+
+void __prof_report_global(const char *name, void *base, uint64_t size)
+  - called at program startup; reports base and size of a symbol in constant memory.
+    constants may have overlapping addresses with one another.
+
+void __prof_report_stack(const char *name, void *base, uint64_t array_size, uint64_t elt_size)
+  - report that a stack object was allocated in the current context.
+
+void __prof_begin_function(const char *name)
+  - report that a function invocation has begun.
+
+void __prof_end_function(const char *name)
+  - report that a function invocation has ended.
+  - Implicity frees all stack allocation units.
+
+void __prof_begin_iter(const char *loop_name)
+  - report that a new iteration of the loop has begun.
+
+void __prof_end_iter(const char *loop_name)
+  - report that the current iteration of the loop has ended.
+
+void __prof_find_underlying_object(const char *name, void *ptr)
+  - asks the runtime system to determine which allocation unit the pointer belongs to.
+    record that in the underlying object table for name.
+
+void __prof_predict_int(const char *name, uint64_t zext_value)
+  - asks the runtime system to determine if the given value is predictable
+    for a given loop.  Record that in the predictable integer table for name at the given context.
+
+void __prof_predict_ptr(const char *name, void *ptr)
+  - asks the runtime system to determine if the given pointer is predictable
+    (i.e. null or a consistent offset within a consistent alocation unit).
+    Record that in the predictablel pointer table for name at the given context.
+
