@@ -14,7 +14,7 @@ ifdef SYSCHAR_INCLUDE_DIR
   CHAR=Characterization
 endif
 
-DIRS= SLAMP LAMP Analysis Utilities \
+DIRS= SLAMP LAMP Analysis SpecPriv Utilities Redux \
 LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler \
 Exclusions
 
