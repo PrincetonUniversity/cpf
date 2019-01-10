@@ -91,11 +91,14 @@ Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
   return remeds;
 }
 
-std::set<Critic_ptr> Orchestrator::getCritics() {
+std::set<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
+                                              unsigned threadBudget,
+                                              LoopProfLoad *lpl) {
   std::set<Critic_ptr> critics;
 
   // DOALL critic
-  critics.insert(std::unique_ptr<DOALLCritic>(new DOALLCritic()));
+  critics.insert(
+      std::unique_ptr<DOALLCritic>(new DOALLCritic(perf, threadBudget, lpl)));
 
   return critics;
 }
@@ -103,30 +106,22 @@ std::set<Critic_ptr> Orchestrator::getCritics() {
 // for now pick the cheapest remedy for each criticism
 // TODO: perform instead global reasoning and consider the best set of
 // remedies for a given set of criticisms
-SelectedRemedies Orchestrator::addressCriticisms(PDG &pdg,
-                                                 Criticisms &criticisms) {
-  SelectedRemedies sr;
-  sr.cost = 0;
+void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
+                                     long &selectedRemediesCost,
+                                     Criticisms &criticisms) {
   for (Criticism cr : criticisms) {
     Remedies &rs = mapCriticismsToRemeds[cr];
     Remedy_ptr cheapestR = *(rs.begin());
-    sr.cost += cheapestR->cost;
-    sr.remeds.push_back(cheapestR);
-
-    // remove resolved edge from pdg
-    Vertices::ID v, w;
-    bool lc;
-    DepType dt;
-    std::tie(v, w, lc, dt) = cr;
-    pdg.removeEdge(v, w, lc, dt);
+    selectedRemediesCost += cheapestR->cost;
+    selectedRemedies.push_back(cheapestR);
   }
-  return sr;
 }
 
 bool Orchestrator::findBestStrategy(
     Loop *loop, LoopAA *loopAA, PerformanceEstimator &perf,
     ControlSpeculation *ctrlspec, SmtxSlampSpeculationManager &smtxMan,
-    LoopProfLoad &lpl, PipelineStrategy *strat, unsigned threadBudget,
+    LoopProfLoad &lpl, PipelineStrategy *strat,
+    std::unique_ptr<SelectedRemedies> &sRemeds, unsigned threadBudget,
     bool ignoreAntiOutput, bool includeReplicableStages, bool constrainSubLoops,
     bool abortIfNoParallelStage) {
   BasicBlock *header = loop->getHeader();
@@ -147,20 +142,12 @@ bool Orchestrator::findBestStrategy(
   errs().flush();
 
   SCCs sccs(pdg);
+  sccs.recompute(pdg);
   printFullPDG(loop, pdg, sccs);
 
-  // initial computations for perf estimation
-  const unsigned loopTime = perf.estimate_loop_weight(loop);
-  const unsigned scaledLoopTime = Selector::FixedPoint * loopTime;
-  const unsigned depthPenalty =
-      Selector::PenalizeLoopNest *
-      loop->getLoopDepth(); // break ties with nested loops
-  unsigned adjLoopTime = scaledLoopTime;
-  if (scaledLoopTime > depthPenalty)
-    adjLoopTime = scaledLoopTime - depthPenalty;
-
   long maxSavings = 0;
-  PipelineStrategy *psBest;
+  std::unique_ptr<PipelineStrategy> psBest;
+  std::unique_ptr<SelectedRemedies> srBest;
 
   // get all possible criticisms
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
@@ -192,66 +179,47 @@ bool Orchestrator::findBestStrategy(
   }
 
   // receive actual criticisms from critics given the enhanced pdg
-  std::set<Critic_ptr> critics = getCritics();
+  std::set<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     DEBUG(errs() << "Critic " << (*criticIt)->getCriticName() << "\n");
-    // create a copy of the pdg for each critic
-    // creating copies is just a requirement of the current pipeline
-    // suggestion implementation. It could be easily avoided
-    Vertices tmpV(pdg.getV().getLoop());
-    PDG tmpPdg(pdg, tmpV, pdg.getControlSpeculator(), ignoreAntiOutput);
     CriticRes res = (*criticIt)->getCriticisms(pdg);
     Criticisms &criticisms = res.criticisms;
-    int expSpeedup = res.expSpeedup;
+    long expSpeedup = res.expSpeedup;
+    std::unique_ptr<ParallelizationPlan> ps = std::move(res.ps);
+
     if (expSpeedup == -1) {
-      DEBUG(errs() << (*criticIt)->getCriticName() << " not applicable to "
-                   << fcn->getName() << "::" << header->getName()
+      DEBUG(errs() << (*criticIt)->getCriticName()
+                   << " not applicable/profitable to " << fcn->getName()
+                   << "::" << header->getName()
                    << ": not all criticisms are addressable\n");
       continue;
     }
 
-    SelectedRemedies selectedRemedies;
+    std::unique_ptr<SelectedRemedies> selectedRemedies =
+        std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
+    long selectedRemediesCost = 0;
     if (!criticisms.size()) {
-      DEBUG(errs() << "No criticisms were generated\n");
-      selectedRemedies.cost = 0;
+      DEBUG(errs() << "No criticisms generated\n");
     } else {
-      DEBUG(errs() << "All criticisms were addressible\n");
+      DEBUG(errs() << "Addressible criticisms\n");
       // orchestrator selects set of remedies to address the given criticisms,
       // computes remedies' total cost
-      selectedRemedies = addressCriticisms(tmpPdg, criticisms);
+      addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
     }
 
-    // get Pipeline stages
-    // for DOALL it will return 1 single parallel stage
-    PipelineStrategy *ps = new PipelineStrategy();
-    sccs.recompute(tmpPdg);
-    SCCs::markSequentialSCCs(tmpPdg,sccs);
-    bool success =
-        Pipeline::suggest(loop, tmpPdg, sccs, perf, *ps, threadBudget,
-                          includeReplicableStages, abortIfNoParallelStage);
-    if (success) {
-
-      // recompute more precisely expected speedup of this critic
-      //(TODO: speedup estimation should probably be done entirely in
-      //getCriticisms function)
-      long estimatePipelineWeight =
-          (long)Selector::FixedPoint * perf.estimate_pipeline_weight(*ps, loop);
-      const long wt = adjLoopTime - estimatePipelineWeight;
-      long scaledwt = 0;
-
-      if (perf.estimate_loop_weight(loop))
-        scaledwt = wt * (double)lpl.getLoopTime(loop->getHeader()) /
-                   (double)perf.estimate_loop_weight(loop);
-
-      if (maxSavings < scaledwt - selectedRemedies.cost) {
-        psBest = ps;
-        maxSavings = scaledwt - selectedRemedies.cost;
-      }
+    long savings = expSpeedup - selectedRemediesCost;
+    if (maxSavings < savings) {
+      maxSavings = savings;
+      psBest = std::move(ps);
+      srBest = std::move(selectedRemedies);
     }
   }
 
   if (maxSavings) {
-    strat = psBest;
+    // TODO: release to raw pointer wont be needed if the user of this function
+    // can handle smart pointers for parallelization strategies
+    strat = psBest.release();
+    sRemeds = std::move(srBest);
     return true;
   }
 

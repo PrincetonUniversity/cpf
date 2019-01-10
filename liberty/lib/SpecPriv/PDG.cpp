@@ -1444,7 +1444,7 @@ bool PDG::isLoopCarriedMemDependent(Vertices::ID src, Vertices::ID dst) const
 PDG::PDG(const Vertices &vertices, PartialEdgeSet &edges, ControlSpeculation &cs, bool ignoreAO, LoopAA *stack)
   : numComplaints(0), numUsefulRemedies(0), numUnneededRemedies(0), V(vertices), E(edges), ctrlspec(cs), ignoreAntiOutput(ignoreAO), aa(stack) {}
 
-PDG::PDG(PDG &pdg, const Vertices &v, ControlSpeculation &cs, bool ignoreAO)
+PDG::PDG(const PDG &pdg, const Vertices &v, ControlSpeculation &cs, bool ignoreAO)
     : V(v), E(V), ctrlspec(cs), ignoreAntiOutput(ignoreAO) {
 
   aa = pdg.getAA();

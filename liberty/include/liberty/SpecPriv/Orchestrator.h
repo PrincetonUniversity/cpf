@@ -25,11 +25,7 @@ using namespace llvm;
 
 struct PerformanceEstimator;
 
-struct SelectedRemedies {
-  std::vector<Remedy_ptr> remeds;
-  int cost;
-};
-
+typedef std::vector<Remedy_ptr> SelectedRemedies;
 typedef std::unique_ptr<Remediator> Remediator_ptr;
 typedef std::unique_ptr<Critic> Critic_ptr;
 
@@ -41,7 +37,7 @@ public:
       ControlSpeculation *ctrlspec, SmtxSlampSpeculationManager &smtxMan,
       LoopProfLoad &lpl,
       // Output
-      PipelineStrategy *strat,
+      PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
       // Optional inputs
       unsigned threadBudget = 25, bool ignoreAntiOutput = false,
       bool includeReplicableStages = true, bool constrainSubLoops = false,
@@ -52,9 +48,12 @@ private:
 
   std::set<Remediator_ptr> getRemediators(Loop *A, ControlSpeculation *ctrlspec,
                                           SmtxSlampSpeculationManager &smtxMan);
-  std::set<Critic_ptr> getCritics();
+  std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
+                                  unsigned threadBudget, LoopProfLoad *lpl);
 
-  SelectedRemedies addressCriticisms(PDG &pdg, Criticisms &criticisms);
+  void addressCriticisms(SelectedRemedies &selectedRemedies,
+                         long &selectedRemediesCost,
+                         Criticisms &criticisms);
 };
 
 } // namespace SpecPriv

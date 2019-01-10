@@ -143,8 +143,6 @@ unsigned Selector::computeWeights(
       SmtxSlampSpeculationManager &smtxMan =
           proxy.getAnalysis<SmtxSlampSpeculationManager>();
 
-      PipelineStrategy *ps = new PipelineStrategy();
-
       /*
       errs() << "Run Pipeline::suggest for " << nA << "...\n";
 
@@ -166,9 +164,16 @@ unsigned Selector::computeWeights(
       errs() << "Run Orchestrator:: find best parallelization strategy for "
              << nA << "...\n";
 
-      Orchestrator *orch = new Orchestrator();
+      std::unique_ptr<Orchestrator> orch =
+          std::unique_ptr<Orchestrator>(new Orchestrator());
+
+      // TODO: make this unique_ptr (need to change strategies map and all its
+      // users)
+      PipelineStrategy *ps;
+      std::unique_ptr<SelectedRemedies> sr;
+
       bool applicable =
-          orch->findBestStrategy(A, aa, perf, ctrlspec, smtxMan, lpl, ps,
+          orch->findBestStrategy(A, aa, perf, ctrlspec, smtxMan, lpl, ps, sr,
                                  NumThreads, pipelineOption_ignoreAntiOutput(),
                                  pipelineOption_includeReplicableStages(),
                                  pipelineOption_constrainSubLoops(),

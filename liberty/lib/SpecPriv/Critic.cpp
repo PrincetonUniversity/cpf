@@ -5,7 +5,6 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/SpecPriv/Critic.h"
-#include "liberty/SpecPriv/PDG.h"
 
 #define DEFAULT_THREADS 24
 
@@ -62,6 +61,91 @@ void Critic::printCriticisms(raw_ostream &fout, Criticisms &cs, const PDG &pdg) 
   fout << "-===============================================================-\n";
 }
 
+void Critic::complainAboutEdge(CriticRes &res, const PDG &pdg, Vertices::ID src,
+                               Vertices::ID dst, bool loopCarried) {
+  if (loopCarried) {
+    if (pdg.hasLoopCarriedCtrlEdge(src, dst))
+      res.criticisms.insert(
+          std::make_tuple(src, dst, loopCarried, DepType::Ctrl));
+
+    if (pdg.hasLoopCarriedMemEdge(src, dst))
+      res.criticisms.insert(
+          std::make_tuple(src, dst, loopCarried, DepType::Mem));
+
+    if (pdg.hasLoopCarriedRegEdge(src, dst))
+      res.criticisms.insert(
+          std::make_tuple(src, dst, loopCarried, DepType::Reg));
+  } else {
+    if (pdg.hasIntraIterationCtrlEdge(src, dst))
+      res.criticisms.insert(
+          std::make_tuple(src, dst, loopCarried, DepType::Ctrl));
+
+    if (pdg.hasIntraIterationMemEdge(src, dst))
+      res.criticisms.insert(
+          std::make_tuple(src, dst, loopCarried, DepType::Mem));
+
+    if (pdg.hasIntraIterationRegEdge(src, dst))
+      res.criticisms.insert(
+          std::make_tuple(src, dst, loopCarried, DepType::Reg));
+  }
+}
+
+std::unique_ptr<ParallelizationPlan>
+Critic::getPipelineStrategy(PDG &pdg) {
+  // get Pipeline stages
+  std::unique_ptr<ParallelizationPlan> ps =
+      std::unique_ptr<ParallelizationPlan>(new ParallelizationPlan());
+
+  SCCs sccs(pdg);
+  sccs.recompute(pdg);
+  SCCs::markSequentialSCCs(pdg, sccs);
+  Loop *loop = pdg.getV().getLoop();
+  bool success = Pipeline::suggest(loop, pdg, sccs, *perf, *ps, threadBudget);
+
+  // there should be a parallelization plan given that all the criticisms are
+  // addressible
+  assert(success);
+
+  return ps;
+}
+
+long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
+                                   const PDG &pdg) {
+  Loop *loop = pdg.getV().getLoop();
+  const unsigned loopTime = perf->estimate_loop_weight(loop);
+  const unsigned scaledLoopTime = Selector::FixedPoint * loopTime;
+  const unsigned depthPenalty =
+      Selector::PenalizeLoopNest *
+      loop->getLoopDepth(); // break ties with nested loops
+  unsigned adjLoopTime = scaledLoopTime;
+  if (scaledLoopTime > depthPenalty)
+    adjLoopTime = scaledLoopTime - depthPenalty;
+
+  long estimatePipelineWeight =
+      (long)Selector::FixedPoint * perf->estimate_pipeline_weight(ps, loop);
+  const long wt = adjLoopTime - estimatePipelineWeight;
+  long scaledwt = 0;
+
+  if (perf->estimate_loop_weight(loop))
+    scaledwt = wt * (double)lpl->getLoopTime(loop->getHeader()) /
+               (double)perf->estimate_loop_weight(loop);
+
+  return scaledwt;
+}
+
+PDG getExpectedPdg(const PDG &pdg, Criticisms &criticisms) {
+  Vertices tmpV(pdg.getV().getLoop());
+  PDG tmpPdg(pdg, tmpV, pdg.getControlSpeculator(), false /*ignoreAntiOutput*/);
+  for (Criticism cr : criticisms) {
+    Vertices::ID v, w;
+    bool lc;
+    DepType dt;
+    std::tie(v, w, lc, dt) = cr;
+    tmpPdg.removeEdge(v, w, lc, dt);
+  }
+  return tmpPdg;
+}
+
 CriticRes DOALLCritic::getCriticisms(const PDG &pdg) {
   // Produce criticisms using the applicability guard of DOALL
   DEBUG(errs() << "Begin criticisms generation for DOALL critic\n");
@@ -82,26 +166,27 @@ CriticRes DOALLCritic::getCriticisms(const PDG &pdg) {
                    << *pdg.getV().get(i) << " to " << *pdg.getV().get(dst)
                    << '\n');
 
-        if (pdg.hasLoopCarriedCtrlEdge(i, dst))
-          res.criticisms.insert(std::make_tuple(i, dst, true, DepType::Ctrl));
-
-        if (pdg.hasLoopCarriedMemEdge(i, dst))
-          res.criticisms.insert(std::make_tuple(i, dst, true, DepType::Mem));
-
-        if (pdg.hasLoopCarriedRegEdge(i, dst))
-          res.criticisms.insert(std::make_tuple(i, dst, true, DepType::Reg));
-
+        // check if this edge is removable
         if (int c = pdg.removableLoopCarriedEdge(i, dst)) {
           if (c == -1) {
             // criticism cannot be remedied. Abort
+            DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
+                         << *pdg.getV().get(i) << " to " << *pdg.getV().get(dst)
+                         << '\n');
             res.expSpeedup = -1;
             return res;
           }
         }
+
+        complainAboutEdge(res, pdg, i, dst, true);
       }
     }
   }
-  res.expSpeedup = DEFAULT_THREADS;
+
+  PDG expPdg = getExpectedPdg(pdg, res.criticisms);
+  res.ps = getPipelineStrategy(expPdg);
+  res.expSpeedup = getExpPipelineSpeedup(*res.ps, expPdg);
+
   return res;
 }
 

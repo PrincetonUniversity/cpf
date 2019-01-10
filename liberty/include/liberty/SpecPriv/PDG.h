@@ -382,7 +382,7 @@ struct PDG
   PDG(const Vertices &V, PartialEdgeSet &E, ControlSpeculation &ctrlspec, bool ignoreAO, LoopAA *aa);
 
   // copy constructor
-  PDG(PDG &pdg, const Vertices &v, ControlSpeculation &cs, bool ignoreAO);
+  PDG(const PDG &pdg, const Vertices &v, ControlSpeculation &cs, bool ignoreAO);
 
 private:
   const Vertices &V;

@@ -48,13 +48,14 @@ namespace liberty {
 
   // A trivial, STL-container based
   // graph, used for the NM-flow network
+  /*
   typedef std::pair<unsigned,SCCNode*> Vertex;
   typedef std::pair<Vertex,Vertex> Edge;
   typedef std::vector<Vertex> VertexList;
   typedef DenseMap<Vertex,VertexList> Adjacencies;
   typedef double Weight;
   typedef DenseMap<Edge, Weight> Weights;
-
+  */
 
 
 }
