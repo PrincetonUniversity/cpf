@@ -1,0 +1,3 @@
+This repository uses sub-modules.
+
+To clone the repository and its sub-mdoules: git clone --recurse-submodules
