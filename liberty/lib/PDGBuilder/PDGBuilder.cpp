@@ -12,12 +12,12 @@
 
 #include "llvm/ADT/iterator_range.h"
 
-#include "liberty/PDG/PDGAnalysis.hpp"
+#include "liberty/PDGBuilder/PDGBuilder.hpp"
 
 using namespace llvm;
 using namespace liberty;
 
-void llvm::PDGAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
+void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired< LoopAA >();
   //AU.addRequired<DominatorTreeWrapperPass>();
@@ -26,11 +26,11 @@ void llvm::PDGAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
-bool llvm::PDGAnalysis::runOnModule (Module &M){
+bool llvm::PDGBuilder::runOnModule (Module &M){
   return false;
 }
 
-std::unique_ptr<llvm::PDG> llvm::PDGAnalysis::getLoopPDG(Loop *loop) {
+std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>();
   pdg->populateNodesOf(loop);
 
@@ -47,7 +47,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGAnalysis::getLoopPDG(Loop *loop) {
   return pdg;
 }
 
-void llvm::PDGAnalysis::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {
+void llvm::PDGBuilder::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {
   for (auto node : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
     Value *pdgValue = node->getT();
     if (pdgValue->getNumUses() == 0)
@@ -92,7 +92,7 @@ void llvm::PDGAnalysis::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {
   }
 }
 
-void llvm::PDGAnalysis::constructEdgesFromControl(
+void llvm::PDGBuilder::constructEdgesFromControl(
     PDG &pdg, Loop *loop, PostDominatorTree &postDomTree) {
   for (auto bbi = loop->block_begin(); bbi != loop->block_end(); ++bbi) {
     auto &B = **bbi;
@@ -123,7 +123,7 @@ void llvm::PDGAnalysis::constructEdgesFromControl(
   }
 }
 
-void llvm::PDGAnalysis::constructEdgesFromMemory(PDG &pdg, Loop *loop,
+void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
                                                  LoopAA *aa) {
   noctrlspec.setLoopOfInterest(loop->getHeader());
   for (auto nodeI : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
@@ -148,7 +148,7 @@ void llvm::PDGAnalysis::constructEdgesFromMemory(PDG &pdg, Loop *loop,
   }
 }
 
-void llvm::PDGAnalysis::queryMemoryDep(Instruction *src, Instruction *dst,
+void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
                                        LoopAA::TemporalRelation FW,
                                        LoopAA::TemporalRelation RV, Loop *loop,
                                        LoopAA *aa, PDG &pdg) {
@@ -231,7 +231,7 @@ void llvm::PDGAnalysis::queryMemoryDep(Instruction *src, Instruction *dst,
   }
 }
 
-void llvm::PDGAnalysis::queryIntraIterationMemoryDep(Instruction *src,
+void llvm::PDGBuilder::queryIntraIterationMemoryDep(Instruction *src,
                                                      Instruction *dst,
                                                      Loop *loop, LoopAA *aa,
                                                      PDG &pdg) {
@@ -239,7 +239,7 @@ void llvm::PDGAnalysis::queryIntraIterationMemoryDep(Instruction *src,
     queryMemoryDep(src, dst, LoopAA::Same, LoopAA::Same, loop, aa, pdg);
 }
 
-void llvm::PDGAnalysis::queryLoopCarriedMemoryDep(Instruction *src,
+void llvm::PDGBuilder::queryLoopCarriedMemoryDep(Instruction *src,
                                                   Instruction *dst, Loop *loop,
                                                   LoopAA *aa, PDG &pdg) {
   // there is always a feasible path for inter-iteration deps
@@ -250,3 +250,6 @@ void llvm::PDGAnalysis::queryLoopCarriedMemoryDep(Instruction *src,
 
   queryMemoryDep(src, dst, LoopAA::Before, LoopAA::After, loop, aa, pdg);
 }
+
+char PDGBuilder::ID = 0;
+static RegisterPass< PDGBuilder > rp("pdgbuilder", "PDGBuilder");

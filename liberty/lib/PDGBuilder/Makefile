@@ -8,7 +8,7 @@ LEVEL=../..
 #
 # Give the name of a library.  This will build a dynamic version.
 #
-LIBRARYNAME=PDG
+LIBRARYNAME=PDGBuilder
 BUILD_RELINKED=1
 SHARED_LIBRARY=1
 

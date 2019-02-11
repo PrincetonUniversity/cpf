@@ -4,6 +4,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "PDG.hpp"
 #include <set>
 
 namespace liberty
@@ -14,7 +15,7 @@ class LoopAA;
 namespace SpecPriv
 {
 
-class PDG;
+//class PDG;
 using namespace llvm;
 
 
@@ -85,7 +86,7 @@ struct Reduction
 
   // PDG can be NULL
   static bool isRegisterReduction(
-    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const PDG *pdg, const std::set<PHINode*> &ignore,
+    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const llvm::PDG *pdg, const std::set<PHINode*> &ignore,
     /* Outputs */ Reduction::Type &rt, BinaryOperator::BinaryOps &reductionOpcode,  VSet &u_phis, VSet &u_binops, VSet &u_cmps, VSet &u_brs, VSet &used_outside, Value* &initial_value);
 
 private:

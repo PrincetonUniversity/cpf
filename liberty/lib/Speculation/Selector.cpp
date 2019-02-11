@@ -19,8 +19,8 @@
 #include "liberty/Utilities/ModuleLoops.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
-#include "liberty/PDG/PDGAnalysis.hpp"
 #include "PDG.hpp"
+#include "liberty/PDGBuilder/PDGBuilder.hpp"
 
 #include "Ebk.h"
 #include "Classify.h"
@@ -31,6 +31,8 @@
 //#include "Transform.h"
 
 #include "LoopDependenceInfo.hpp"
+
+using namespace llvm;
 
 namespace liberty
 {
@@ -74,7 +76,7 @@ void Selector::analysisUsage(AnalysisUsage &au)
   au.addRequired< BlockFrequencyInfoWrapperPass >();
   au.addRequired< BranchProbabilityInfoWrapperPass >();
   //au.addRequired< LoopAA >();
-  au.addRequired< PDGAnalysis >();
+  au.addRequired< PDGBuilder >();
   au.addRequired< ModuleLoops >();
   au.addRequired< LoopProfLoad >();
   au.addRequired< Targets >();
@@ -122,7 +124,7 @@ unsigned Selector::computeWeights(
   Pass &proxy = getPass();
   ProfilePerformanceEstimator &perf = proxy.getAnalysis< ProfilePerformanceEstimator >();
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
-  PDGAnalysis &pdgAnalysis = proxy.getAnalysis< PDGAnalysis >();
+  PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
 
   const unsigned N = vertices.size();
@@ -148,8 +150,8 @@ unsigned Selector::computeWeights(
       adjLoopTime = scaledLoopTime - depthPenalty;
 
     {
-      //std::unique_ptr<llvm::PDG> pdg = pdgAnalysis.getLoopPDG(A);
-      llvm::PDG *pdg = pdgAnalysis.getLoopPDG(A).release();
+      //std::unique_ptr<llvm::PDG> pdg = pdgBuilder.getLoopPDG(A);
+      llvm::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
 
       std::unique_ptr<LoopDependenceInfo> ldi =
           std::make_unique<LoopDependenceInfo>(pdg, A, li, pdt);

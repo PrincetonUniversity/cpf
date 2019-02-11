@@ -11,10 +11,10 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/SpecPriv/Reduction.h"
-#include "liberty/SpecPriv/PDG.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/SplitEdge.h"
+#include "PDG.hpp"
 
 
 #include <list>
@@ -470,7 +470,7 @@ Value *Reduction::getIdentityValue(Type ty, LLVMContext &ctx)
 // -loop-rotate, i.e., the loop latch should end with a conditional branch.
 // If it does not have the rotated form, this just returns true to be
 // consistent with the old spec.
-static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const PDG *pdg)
+static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const llvm::PDG *pdg)
 {
   if (!pdg)
     return true;
@@ -478,13 +478,21 @@ static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const
   BranchInst *backEdge = dyn_cast<BranchInst>(latch->getTerminator());
   if (!backEdge)
     return true;
-  Vertices::ID instV = pdg->getV().get(inst);
-  Vertices::ID backEdgeV = pdg->getV().get(backEdge);
-  return pdg->isIntraIterationRegDependent(instV, backEdgeV);
+  // TODO: there should be a const version of fetchNode
+  llvm::PDG *non_const_pdg = const_cast<llvm::PDG*>(pdg);
+  auto instNode = non_const_pdg->fetchNode((Value *) inst);
+  for (auto edge : instNode->getOutgoingEdges()) {
+    Instruction *incomingInst = dyn_cast<Instruction>(edge->getIncomingT());
+    if (incomingInst == (Instruction*) backEdge) {
+      if (!edge->isMemoryDependence() && !edge->isControlDependence() && !edge->isLoopCarriedDependence())
+        return true;
+    }
+  }
+  return false;
 }
 
 bool Reduction::isRegisterReduction(
-    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const PDG *pdg, const std::set<PHINode*> &ignore,
+    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const llvm::PDG *pdg, const std::set<PHINode*> &ignore,
     /* Outputs */ Reduction::Type &rt, BinaryOperator::BinaryOps &reductionOpcode,  VSet &u_phis, VSet &u_binops, VSet &u_cmps, VSet &u_brs, VSet &used_outside, Value* &initial_value)
 {
   if( ignore.count(phi0) )

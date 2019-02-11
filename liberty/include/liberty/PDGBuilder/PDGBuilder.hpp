@@ -1,5 +1,6 @@
 #pragma once
 
+#include "llvm/Pass.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
@@ -12,11 +13,11 @@ using namespace llvm;
 using namespace liberty;
 
 namespace llvm {
-struct PDGAnalysis : public ModulePass {
+struct PDGBuilder : public ModulePass {
 public:
   static char ID;
-  PDGAnalysis() : ModulePass(ID) {}
-  virtual ~PDGAnalysis() {}
+  PDGBuilder() : ModulePass(ID) {}
+  virtual ~PDGBuilder() {}
 
   // bool doInitialization (Module &M) override ;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
