@@ -10,8 +10,8 @@
 #include "llvm/Analysis/LoopPass.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/SpecPriv/PDG.h"
 #include "liberty/SpecPriv/Critic.h"
+#include "PDG.hpp"
 
 #include <set>
 #include <memory>
@@ -40,7 +40,7 @@ struct RemedyCompare {
     if (lhs->getRemedyName().equals(rhs->getRemedyName()))
       return lhs->compare(rhs);
     else if (lhs->cost == rhs->cost)
-      return (lhs->getRemedyName().equals(rhs->getRemedyName()) == -1);
+      return (lhs->getRemedyName().compare(rhs->getRemedyName()) == -1);
     else
       return lhs->cost < rhs->cost;
   }
@@ -52,7 +52,7 @@ enum DepResult { NoDep = 0, Dep = 1 };
 
 class Remediator {
 public:
-  Remedies satisfy(const PDG &pdg, const Criticisms &criticisms);
+  Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
   struct RemedResp {
     DepResult depRes;

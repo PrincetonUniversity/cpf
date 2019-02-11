@@ -14,8 +14,7 @@ ifdef SYSCHAR_INCLUDE_DIR
   CHAR=Characterization
 endif
 
-DIRS= SLAMP LAMP Analysis SpecPriv Utilities Redux \
-LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler \
-Exclusions
+DIRS= SLAMP LAMP Analysis PDG Speculation Orchestration Utilities \
+LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler Exclusions
 
 include $(LEVEL)/Makefile.common

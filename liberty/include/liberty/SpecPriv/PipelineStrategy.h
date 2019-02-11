@@ -2,9 +2,9 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_TRANSFORM_PIPELINE_STRATEGY_H
 #define LLVM_LIBERTY_SPEC_PRIV_TRANSFORM_PIPELINE_STRATEGY_H
 
-#include "liberty/SpecPriv/ControlSpeculator.h"
-#include "liberty/SpecPriv/DAGSCC.h"
-#include "liberty/SpecPriv/PDG.h"
+#include "PDG.hpp"
+#include "SCCDAG.hpp"
+#include "SCC.hpp"
 
 #include "llvm/Support/Casting.h"
 
@@ -101,7 +101,7 @@ struct PipelineStage
     Parallel
   };
 
-  PipelineStage(Type t, const PDG &pdg, const SCCs &sccs, const SCCs::SCCSet &scc_list);
+  PipelineStage(Type t, const PDG &pdg, const SCCDAG::SCCSet &scc_list);
 
   /// Create a degenerate sequential stage containing all instructions from this loop
   PipelineStage(Loop *loop);
@@ -113,23 +113,23 @@ struct PipelineStage
 
   bool communicatesTo(const PipelineStage &other) const;
 
-  void print_txt(raw_ostream &fout, ControlSpeculation *ctrlspec=0, StringRef line_suffix = "") const;
+  void print_txt(raw_ostream &fout, StringRef line_suffix = "") const;
 
 private:
   //sot
   //void print_inst_txt(raw_ostream &fout, ControlSpeculation *ctrlspec, Instruction *inst, const char *line_suffix = 0) const;
-  void print_inst_txt(raw_ostream &fout, ControlSpeculation *ctrlspec, Instruction *inst, StringRef line_suffix = "") const;
+  void print_inst_txt(raw_ostream &fout, Instruction *inst, StringRef line_suffix = "") const;
 };
 
 // Represents dependences between instructions
 // which span pipeline stages.
 struct CrossStageDependence
 {
-  CrossStageDependence(Instruction *s, Instruction *d, const PartialEdge &pe)
-    : src(s), dst(d), edge(pe) {}
+  CrossStageDependence(Instruction *s, Instruction *d, DGEdge<Value> *e)
+    : src(s), dst(d), edge(e) {}
 
   Instruction *src, *dst;
-  PartialEdge edge;
+  DGEdge<Value> *edge;
 };
 
 struct PipelineStrategy : public LoopParallelizationStrategy
@@ -143,13 +143,16 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   CrossStageDependences crossStageDeps;
 
   virtual void summary(raw_ostream &fout) const;
-  void dump_pipeline(raw_ostream &fout, ControlSpeculation *ctrlspec=0, StringRef line_suffix = "") const;
+  void dump_pipeline(raw_ostream &fout, StringRef line_suffix = "") const;
 
   bool expandReplicatedStages();
   static bool expandReplicatedStages(Stages &stages);
 
+  /*
+  // sot: remove for now
   void print_dot(raw_ostream &fout, const PDG &pdg, const SCCs &sccs, ControlSpeculation *ctrlspec=0) const;
   void print_dot(const PDG &pdg, const SCCs &sccs, StringRef dot, StringRef tred, ControlSpeculation *ctrlspec=0) const;
+  */
 
   // Interrogate a pipeline:
   bool mayExecuteInStage(const Instruction *inst, unsigned stageno) const;
@@ -171,7 +174,10 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   virtual unsigned getStageNum() const { return stages.size(); }
 
   // Sanity check
+  /*
+  // sot: remove for now, no longer computing partial pdg
   void assertPipelineProperty(const PDG &pdg) const;
+  */
   virtual void assertConsistentWithIR(Loop *loop);
 
   static bool classof(const LoopParallelizationStrategy *lps)
@@ -180,9 +186,12 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   }
 
 private:
+  /*
+  // sot: remove for now, no longer computing partial pdg
   void assertPipelineProperty(const PDG &pdg, const PipelineStage &earlier, const PipelineStage &later) const;
   void assertCheckedPipelineProperty(const PDG &pdg, const PipelineStage &earlier, const PipelineStage &later) const;
   void assertParallelStageProperty(const PDG &pdg, const PipelineStage &parallel, const PipelineStage &other) const;
+  */
 };
 
 

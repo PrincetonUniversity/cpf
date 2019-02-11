@@ -1,8 +1,6 @@
 #ifndef LLVM_LIBERTY_ORCHESTRATOR_H
 #define LLVM_LIBERTY_ORCHESTRATOR_H
 
-#include "liberty/SpecPriv/DAGSCC.h"
-#include "liberty/SpecPriv/PDG.h"
 #include "liberty/SpecPriv/PipelineStrategy.h"
 #include "liberty/SpecPriv/Remediator.h"
 #include "liberty/SpecPriv/Critic.h"
@@ -15,6 +13,8 @@
 #include "liberty/SpecPriv/CommutativeLibsRemed.h"
 //#include "liberty/SpecPriv/CommutativeGuessRemed.h"
 //#include "liberty/SpecPriv/PureFunRemed.h"
+#include "PDG.hpp"
+#include "SCCDAG.hpp"
 
 #include <vector>
 #include <memory>
@@ -33,9 +33,9 @@ class Orchestrator {
 public:
   bool findBestStrategy(
       // Inputs
-      Loop *loop, LoopAA *aa, PerformanceEstimator &perf,
-      ControlSpeculation *ctrlspec, SmtxSlampSpeculationManager &smtxMan,
-      LoopProfLoad &lpl,
+      Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
+      PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+      SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
       // Output
       PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
       // Optional inputs
@@ -44,16 +44,17 @@ public:
       bool abortIfNoParallelStage = true);
 
 private:
-  std::map<Criticism, Remedies> mapCriticismsToRemeds;
+  std::map<Criticism*, Remedies> mapCriticismsToRemeds;
+  std::map<u_sptr, Remedy_ptr> mapRemedEdgeCostsToRemedies;
 
   std::set<Remediator_ptr> getRemediators(Loop *A, ControlSpeculation *ctrlspec,
                                           SmtxSlampSpeculationManager &smtxMan);
+
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);
 
   void addressCriticisms(SelectedRemedies &selectedRemedies,
-                         long &selectedRemediesCost,
-                         Criticisms &criticisms);
+                         long &selectedRemediesCost, Criticisms &criticisms);
 };
 
 } // namespace SpecPriv

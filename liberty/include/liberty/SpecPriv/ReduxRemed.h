@@ -26,7 +26,7 @@ class ReduxRemedy : public Remedy {
 public:
   const Instruction *reduxI;
 
-  void apply(PDG &pdg);
+  void apply(llvm::PDG &pdg);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "redux-remedy"; };
 };

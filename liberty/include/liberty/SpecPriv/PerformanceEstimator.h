@@ -2,7 +2,6 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_PERFORMANCE_ESTIMATOR_H
 #define LLVM_LIBERTY_SPEC_PRIV_PERFORMANCE_ESTIMATOR_H
 
-#include "liberty/SpecPriv/PDG.h"
 #include "liberty/SpecPriv/PipelineStrategy.h"
 #include "liberty/Utilities/MakePtr.h"
 #include "llvm/Support/Format.h"

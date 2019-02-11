@@ -109,8 +109,6 @@ struct LoopPostDom
   // Get the immediate post-dominator for a block
   ControlSpeculation::LoopBlock ipdom(ControlSpeculation::LoopBlock bb) const;
 
-
-
   void printPD(raw_ostream &fout) const;
   void printPDF(raw_ostream &fout) const;
   void printIPD_dot(raw_ostream &fout) const;

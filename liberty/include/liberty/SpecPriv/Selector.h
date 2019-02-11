@@ -17,6 +17,8 @@
 #include "liberty/SpecPriv/UpdateOnClone.h"
 #include "liberty/SpecPriv/PerformanceEstimator.h"
 #include "liberty/SpecPriv/PipelineStrategy.h"
+#include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/PredictionSpeculation.h"
 
 namespace liberty
 {

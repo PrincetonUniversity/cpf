@@ -5,8 +5,8 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/SpecPriv/Remediator.h"
-#include "liberty/SpecPriv/PDG.h"
 #include "liberty/Analysis/ControlSpeculation.h"
+#include "PDG.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -27,6 +27,9 @@ public:
 
 class ControlSpecRemediator : public Remediator {
 public:
+
+  typedef std::set<DGEdge<Value> *> EdgeSet;
+
   ControlSpecRemediator(ControlSpeculation *ctrlspec)
       : Remediator(), speculator(ctrlspec) {}
 
@@ -42,8 +45,7 @@ public:
 
   void processLoopOfInterest(Loop *l);
 
-  void buildTransitiveIntraIterationControlDependenceCache(
-      SpecPriv::PartialEdgeSet &cache, SpecPriv::Vertices &V);
+  //void buildTransitiveIntraIterationControlDependenceCache(EdgeSet &cache);
 
 private:
   ControlSpeculation *speculator;
@@ -56,4 +58,3 @@ private:
 } // namespace liberty
 
 #endif
-
