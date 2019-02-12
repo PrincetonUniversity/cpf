@@ -12,7 +12,7 @@
 #include "liberty/SpecPriv/Orchestrator.h"
 #include "liberty/SpecPriv/PerformanceEstimator.h"
 //#include "liberty/SpecPriv/Pipeline.h"
-#include "liberty/SpecPriv/Selector.h"
+//#include "liberty/SpecPriv/Selector.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"
@@ -132,6 +132,9 @@ bool Orchestrator::findBestStrategy(
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
+  DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
+               << "::" << header->getName());
+
   long maxSavings = 0;
   std::unique_ptr<PipelineStrategy> psBest;
   std::unique_ptr<SelectedRemedies> srBest;
@@ -161,7 +164,6 @@ bool Orchestrator::findBestStrategy(
     CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
     Criticisms &criticisms = res.criticisms;
     long expSpeedup = res.expSpeedup;
-    std::unique_ptr<ParallelizationPlan> ps = std::move(res.ps);
 
     if (expSpeedup == -1) {
       DEBUG(errs() << (*criticIt)->getCriticName()
@@ -186,7 +188,7 @@ bool Orchestrator::findBestStrategy(
     long savings = expSpeedup - selectedRemediesCost;
     if (maxSavings < savings) {
       maxSavings = savings;
-      psBest = std::move(ps);
+      psBest = std::move(res.ps);
       srBest = std::move(selectedRemedies);
     }
   }

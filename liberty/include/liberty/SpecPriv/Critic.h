@@ -2,8 +2,7 @@
 #define LLVM_LIBERTY_CRITIC_H
 
 #include "liberty/SpecPriv/PerformanceEstimator.h"
-//#include "liberty/SpecPriv/DOALL.h"
-#include "liberty/SpecPriv/Selector.h"
+#include "liberty/LoopProf/LoopProfLoad.h"
 #include "PDG.hpp"
 #include "SCC.hpp"
 #include "SCCDAG.hpp"
@@ -45,6 +44,9 @@ public:
   virtual CriticRes getCriticisms(PDG &pdg, Loop *loop,
                                   LoopDependenceInfo &ldi) = 0;
   virtual StringRef getCriticName() const = 0;
+
+  static const unsigned FixedPoint;
+  static const unsigned PenalizeLoopNest;
 
 protected:
   PerformanceEstimator *perf;

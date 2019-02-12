@@ -135,7 +135,7 @@ unsigned Selector::computeWeights(
     Loop *A = vertices[i];
     BasicBlock *hA = A->getHeader();
     Function *fA = hA->getParent();
-    const Twine nA = fA->getName() + " :: " + hA->getName();
+    //const Twine nA = fA->getName() + " :: " + hA->getName();
 
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
@@ -166,15 +166,16 @@ unsigned Selector::computeWeights(
 
       // trying to find the best parallelization strategy for this loop
 
-      errs() << "Run Orchestrator:: find best parallelization strategy for "
-             << nA << "...\n";
+      DEBUG(
+          errs() << "Run Orchestrator:: find best parallelization strategy for "
+                 << fA->getName() << " :: " << hA->getName() << "...\n");
 
       std::unique_ptr<Orchestrator> orch =
           std::unique_ptr<Orchestrator>(new Orchestrator());
 
       // TODO: make this unique_ptr (need to change strategies map and all its
       // users)
-      PipelineStrategy *ps;
+      PipelineStrategy *ps = nullptr;
       std::unique_ptr<SelectedRemedies> sr;
 
       bool applicable = orch->findBestStrategy(
@@ -208,27 +209,23 @@ unsigned Selector::computeWeights(
           scaledweights[i] = scaledwt;
         }
 
-        errs() << "Parallelizable Loop " << nA << " has expected savings " << weights[i]
-               << '\n';
+        DEBUG(errs() << "Parallelizable Loop " << fA->getName()
+                     << " :: " << hA->getName() << " has expected savings "
+                     << weights[i] << '\n');
 
         findLateInliningOpportunities(A,*ps,perf,opportunities);
 
-      }
-      else
-        DEBUG(
-          errs() << "No parallelizing transform applicable to " << nA << '\n';
-        );
-
-      if( !applicable )
-      {
-        delete ps;
+      } else {
+        DEBUG(errs() << "No parallelizing transform applicable to "
+                     << fA->getName() << " :: " << hA->getName() << '\n';);
+        if (ps)
+          delete ps;
 
         weights[i] = 0;
         scaledweights[i] = 0;
-        for(unsigned v=0; v<N; ++v)
-        {
-          edges.erase( Edge(i,v) );
-          edges.erase( Edge(v,i) );
+        for (unsigned v = 0; v < N; ++v) {
+          edges.erase(Edge(i, v));
+          edges.erase(Edge(v, i));
         }
       }
     }
@@ -252,7 +249,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 
     BasicBlock *hA = A->getHeader();
     Function *fA = hA->getParent();
-    const Twine nA = fA->getName() + " :: " + hA->getName();
+    //const Twine nA = fA->getName() + " :: " + hA->getName();
 
     for(unsigned j=i+1; j<N; ++j)
     {
@@ -260,27 +257,31 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 
       BasicBlock *hB = B->getHeader();
       Function *fB = hB->getParent();
-      const Twine nB = fB->getName() + " :: " + hB->getName();
+      //const Twine nB = fB->getName() + " :: " + hB->getName();
 
       /* If we can prove simultaneous activation,
        * exclude one of the loops */
       if( mustBeSimultaneouslyActive(A, B) )
       {
-        DEBUG(errs() << "Loop " << nA << " is incompatible with loop "
-                     << nB << " because of simultaneous activation.\n");
+        DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+                     << " is incompatible with loop " << fB->getName()
+                     << " :: " << hB->getName()
+                     << " because of simultaneous activation.\n");
         continue;
       }
 
-      if( ! compatibleParallelizations(A,B) )
-      {
-        DEBUG(errs() << "Loop " << nA << " is incompatible with loop "
-                     << nB << " because of incompatible assignments.\n");
+      if (!compatibleParallelizations(A, B)) {
+        DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+                     << " is incompatible with loop " << fB->getName()
+                     << " :: " << hB->getName()
+                     << " because of incompatible assignments.\n");
         continue;
       }
 
-      DEBUG(errs() << "Loop " << nA << " is COMPATIBLE with loop "
-                   << nB << ".\n");
-      edges.insert( Edge(i,j) );
+      DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+                   << " is COMPATIBLE with loop " << fB->getName()
+                   << " :: " << hB->getName() << ".\n");
+      edges.insert(Edge(i, j));
       edges.insert( Edge(j,i) );
     }
   }

@@ -1,3 +1,5 @@
+#define DEBUG_TYPE "pdgbuilder"
+
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/BasicBlock.h"
@@ -34,22 +36,30 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>();
   pdg->populateNodesOf(loop);
 
+  DEBUG(errs() << "constructEdgesFromMemory ...\n");
+
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   constructEdgesFromMemory(*pdg, loop, aa);
+
+  DEBUG(errs() << "constructEdgesFromControl ...\n");
 
   auto *F = loop->getHeader()->getParent();
   auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(*F).getPostDomTree();
   constructEdgesFromControl(*pdg, loop, PDT);
 
+  DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
+
   // constructEdgesFromUseDefs adds external nodes for live-ins and live-outs
   constructEdgesFromUseDefs(*pdg, loop);
+
+  DEBUG(errs() << "PDG construction completed\n");
 
   return pdg;
 }
 
 void llvm::PDGBuilder::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {
-  for (auto node : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
-    Value *pdgValue = node->getT();
+  for (auto inodePair : pdg.internalNodePairs()) {
+    Value *pdgValue = inodePair.first;
     if (pdgValue->getNumUses() == 0)
       continue;
 
@@ -109,9 +119,12 @@ void llvm::PDGBuilder::constructEdgesFromControl(
            make_range(pred_begin(dominatedBB), pred_end(dominatedBB))) {
         if (postDomTree.properlyDominates(&B, predBB))
           continue;
+
+        if (!loop->contains(predBB))
+          continue;
         auto controlTerminator = predBB->getTerminator();
-        // TODO: check if this check for loopCarried is enough
-        // predBB should also be a loop exiting block
+        // TODO: is this check if this check for loopCarried enough?
+        // should predBB also be a loop exiting block?
         bool loopCarried = (&B == loop->getHeader());
         for (auto &I : B) {
           auto edge = pdg.addEdge((Value *)controlTerminator, (Value *)&I);
@@ -162,21 +175,33 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   bool loopCarried = FW != RV;
 
   // forward dep test
-  const LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
+  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
   if (LoopAA::NoModRef == forward)
     return;
 
   // forward is Mod, ModRef, or Ref
 
-  assert((forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
-         !src->mayWriteToMemory() &&
-         "forward modref result is mod or modref but src instruction does not "
-         "write to memory");
+  if ((forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+      !src->mayWriteToMemory()) {
+    DEBUG(errs() << "forward modref result is mod or modref but src "
+                    "instruction does not "
+                    "write to memory");
+    if (forward == LoopAA::ModRef)
+      forward = LoopAA::Ref;
+    else
+      forward = LoopAA::NoModRef;
+  }
 
-  assert((forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
-         !src->mayReadFromMemory() &&
-         "forward modref result is ref or modref but src instruction does not "
-         "read from memory");
+  if ((forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
+      !src->mayReadFromMemory()) {
+    DEBUG(errs() << "forward modref result is ref or modref but src "
+                    "instruction does not "
+                    "read from memory");
+    if (forward == LoopAA::ModRef)
+      forward = LoopAA::Mod;
+    else
+      forward = LoopAA::NoModRef;
+  }
 
   // reverse dep test
   LoopAA::ModRefResult reverse = forward;
@@ -188,15 +213,27 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   if (loopCarried || src != dst)
     reverse = aa->modref(dst, RV, src, loop);
 
-  assert((reverse == LoopAA::Mod || reverse == LoopAA::ModRef) &&
-         !dst->mayWriteToMemory() &&
-         "reverse modref result is mod or modref but dst instruction does not "
-         "write to memory");
+  if ((reverse == LoopAA::Mod || reverse == LoopAA::ModRef) &&
+      !dst->mayWriteToMemory()) {
+    DEBUG(errs() << "reverse modref result is mod or modref but dst "
+                    "instruction does not "
+                    "write to memory");
+    if (reverse == LoopAA::ModRef)
+      reverse = LoopAA::Ref;
+    else
+      reverse = LoopAA::NoModRef;
+  }
 
-  assert((reverse == LoopAA::Ref || reverse == LoopAA::ModRef) &&
-         !dst->mayReadFromMemory() &&
-         "reverse modref result is ref or modref but dst instruction does not "
-         "read from memory");
+  if ((reverse == LoopAA::Ref || reverse == LoopAA::ModRef) &&
+      !dst->mayReadFromMemory()) {
+    DEBUG(errs() << "reverse modref result is ref or modref but src "
+                    "instruction does not "
+                    "read from memory");
+    if (reverse == LoopAA::ModRef)
+      reverse = LoopAA::Mod;
+    else
+      reverse = LoopAA::NoModRef;
+  }
 
   if (LoopAA::NoModRef == reverse)
     return;

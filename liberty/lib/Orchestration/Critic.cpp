@@ -16,8 +16,8 @@ Criticisms Critic::getAllCriticisms(const PDG &pdg) {
   Criticisms criticisms;
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
 
-    DEBUG(errs() << "  Found new edge(s) from " << *edge->getOutgoingT()
-                 << " to " << *edge->getIncomingT() << '\n');
+    //DEBUG(errs() << "  Found new edge(s) from " << *edge->getOutgoingT()
+    //             << " to " << *edge->getIncomingT() << '\n');
 
     criticisms.insert(edge);
   }
@@ -34,6 +34,9 @@ void Critic::printCriticisms(raw_ostream &fout, Criticisms &cs, const PDG &pdg) 
   fout << "-===============================================================-\n";
 }
 
+const unsigned Critic::FixedPoint(1000);
+const unsigned Critic::PenalizeLoopNest( Critic::FixedPoint*10 );
+
 // Note that just getting score = perf.estimate_pipeline_weight( stages ) should
 // be enough to compare different parallelization plans of the same loop. Loop
 // related computations are only needed for the final score computation used in
@@ -41,16 +44,15 @@ void Critic::printCriticisms(raw_ostream &fout, Criticisms &cs, const PDG &pdg) 
 long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
                                    const PDG &pdg, Loop *loop) {
   const unsigned loopTime = perf->estimate_loop_weight(loop);
-  const unsigned scaledLoopTime = Selector::FixedPoint * loopTime;
+  const unsigned scaledLoopTime = FixedPoint * loopTime;
   const unsigned depthPenalty =
-      Selector::PenalizeLoopNest *
-      loop->getLoopDepth(); // break ties with nested loops
+      PenalizeLoopNest * loop->getLoopDepth(); // break ties with nested loops
   unsigned adjLoopTime = scaledLoopTime;
   if (scaledLoopTime > depthPenalty)
     adjLoopTime = scaledLoopTime - depthPenalty;
 
   long estimatePipelineWeight =
-      (long)Selector::FixedPoint * perf->estimate_pipeline_weight(ps, loop);
+      (long)FixedPoint * perf->estimate_pipeline_weight(ps, loop);
   const long wt = adjLoopTime - estimatePipelineWeight;
   long scaledwt = 0;
 
@@ -135,6 +137,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   if (ldi.sccdagAttrs.isLoopGovernedByIV() &&
       ldi.sccdagAttrs.sccIVBounds.find(headerSCC) !=
           ldi.sccdagAttrs.sccIVBounds.end()) {
+    DEBUG(errs() << "Counted loop found\n" );
     for (auto edge : headerSCC->getEdges()) {
       if (headerSCC->isInternal(edge->getOutgoingT()) &&
           headerSCC->isInternal(edge->getIncomingT()) &&
@@ -152,7 +155,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
                    << '\n');
 
       // check if this edge is removable
-      if (edge->isRemovable()) {
+      if (!edge->isRemovable()) {
         // criticism cannot be remedied. Abort
         DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
                      << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
