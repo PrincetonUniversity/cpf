@@ -29,6 +29,7 @@
 //#include "RoI.h"
 #include "UpdateOnCloneAdaptors.h"
 //#include "Transform.h"
+#include "HeaderPhiPredictionSpeculation.h"
 
 #include "LoopDependenceInfo.hpp"
 
@@ -161,6 +162,8 @@ unsigned Selector::computeWeights(
       ControlSpeculation *ctrlspec =
           proxy.getAnalysis<ProfileGuidedControlSpeculator>()
               .getControlSpecPtr();
+      PredictionSpeculation *predspec =
+          &proxy.getAnalysis<HeaderPhiPredictionSpeculation>();
       SmtxSlampSpeculationManager &smtxMan =
           proxy.getAnalysis<SmtxSlampSpeculationManager>();
 
@@ -179,8 +182,8 @@ unsigned Selector::computeWeights(
       std::unique_ptr<SelectedRemedies> sr;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, perf, ctrlspec, smtxMan, lpl, ps, sr, NumThreads,
-          pipelineOption_ignoreAntiOutput(),
+          A, *pdg, *ldi, perf, ctrlspec, predspec, smtxMan, lpl, ps, sr,
+          NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());

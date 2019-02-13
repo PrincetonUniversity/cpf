@@ -57,21 +57,19 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 
 std::set<Remediator_ptr>
 Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
+                             PredictionSpeculation *headerPhiPred,
                              SmtxSlampSpeculationManager &smtxMan) {
   std::set<Remediator_ptr> remeds;
 
   // memory specualation remediator
-  remeds.insert(
-      std::unique_ptr<SmtxSlampRemediator>(new SmtxSlampRemediator(&smtxMan)));
+  remeds.insert(std::make_unique<SmtxSlampRemediator>(&smtxMan));
 
-  // add value prediction TODO
-  // getAnalysis< HeaderPhiPredictionSpeculation >();
+  // header phi value prediction
+  remeds.insert(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
-  unique_ptr<ControlSpecRemediator> ctrlSpecRemed =
-      std::unique_ptr<ControlSpecRemediator>(
-          new ControlSpecRemediator(ctrlspec));
+  auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
   ctrlSpecRemed->processLoopOfInterest(A);
   remeds.insert(std::move(ctrlSpecRemed));
 
@@ -84,14 +82,12 @@ Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
   remeds.insert(std::move(reduxRemed));
   */
 
-  /*
   // TXIO remediator
-  remeds.insert(unique_ptr<TXIORemediator> (new TXIORemediator()));
-  */
+  remeds.insert(std::make_unique<TXIORemediator>());
 
   // commutative libs remediator
-  remeds.insert(std::unique_ptr<CommutativeLibsRemediator>(
-      new CommutativeLibsRemediator()));
+  //remeds.insert(std::unique_ptr<CommutativeLibsRemediator>(
+  //    new CommutativeLibsRemediator()));
 
   return remeds;
 }
@@ -125,10 +121,11 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-    SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
-    PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
-    unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
-    bool constrainSubLoops, bool abortIfNoParallelStage) {
+    PredictionSpeculation *headerPhiPred, SmtxSlampSpeculationManager &smtxMan,
+    LoopProfLoad &lpl, PipelineStrategy *strat,
+    std::unique_ptr<SelectedRemedies> &sRemeds, unsigned threadBudget,
+    bool ignoreAntiOutput, bool includeReplicableStages, bool constrainSubLoops,
+    bool abortIfNoParallelStage) {
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
@@ -143,7 +140,8 @@ bool Orchestrator::findBestStrategy(
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
   // address all possible criticisms
-  std::set<Remediator_ptr> remeds = getRemediators(loop, ctrlspec, smtxMan);
+  std::set<Remediator_ptr> remeds =
+      getRemediators(loop, ctrlspec, headerPhiPred, smtxMan);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);

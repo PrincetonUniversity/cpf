@@ -9,6 +9,7 @@
 #include "liberty/SpecPriv/ControlSpecRemed.h"
 #include "liberty/SpecPriv/ReduxRemed.h"
 #include "liberty/SpecPriv/SmtxSlampRemed.h"
+#include "liberty/SpecPriv/HeaderPhiPredRemed.h"
 //#include "liberty/SpecPriv/ReplicaRemed.h"
 #include "liberty/SpecPriv/CommutativeLibsRemed.h"
 //#include "liberty/SpecPriv/CommutativeGuessRemed.h"
@@ -35,6 +36,7 @@ public:
       // Inputs
       Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+      PredictionSpeculation *headerPhiPred,
       SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
       // Output
       PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
@@ -48,6 +50,7 @@ private:
   std::map<u_sptr, Remedy_ptr> mapRemedEdgeCostsToRemedies;
 
   std::set<Remediator_ptr> getRemediators(Loop *A, ControlSpeculation *ctrlspec,
+                                          PredictionSpeculation *headerPhiPred,
                                           SmtxSlampSpeculationManager &smtxMan);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
