@@ -290,6 +290,14 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
     remedResp.depRes = DepResult::NoDep;
   }
 
+  else {
+    const PHINode *phi = dyn_cast<PHINode>(B);
+    if (phi && speculator->phiUseIsSpeculativelyDead(phi, A)) {
+      ++numRegDepRem;
+      remedResp.depRes = DepResult::NoDep;
+    }
+  }
+
   remedResp.remedy = remedy;
   return remedResp;
 }
