@@ -16,6 +16,10 @@ Criticisms Critic::getAllCriticisms(const PDG &pdg) {
   Criticisms criticisms;
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
 
+    if (!pdg.isInternal(edge->getIncomingT()) ||
+        !pdg.isInternal(edge->getOutgoingT()))
+      continue;
+
     //DEBUG(errs() << "  Found new edge(s) from " << *edge->getOutgoingT()
     //             << " to " << *edge->getIncomingT() << '\n');
 
@@ -147,6 +151,10 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   }
 
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
+
+    if (!pdg.isInternal(edge->getIncomingT()) ||
+        !pdg.isInternal(edge->getOutgoingT()))
+      continue;
 
     if (edge->isLoopCarriedDependence() && !boundedIVRemovableEdges.count(edge)) {
 
