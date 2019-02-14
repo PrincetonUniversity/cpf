@@ -127,6 +127,12 @@ unsigned Selector::computeWeights(
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
   PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
+  ControlSpeculation *ctrlspec =
+      proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+  PredictionSpeculation *predspec =
+      &proxy.getAnalysis<HeaderPhiPredictionSpeculation>();
+  SmtxSlampSpeculationManager &smtxMan =
+      proxy.getAnalysis<SmtxSlampSpeculationManager>();
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -159,14 +165,6 @@ unsigned Selector::computeWeights(
 
       ldi->sccdagAttrs.populate(ldi->loopSCCDAG, ldi->liSummary, se);
 
-      ControlSpeculation *ctrlspec =
-          proxy.getAnalysis<ProfileGuidedControlSpeculator>()
-              .getControlSpecPtr();
-      PredictionSpeculation *predspec =
-          &proxy.getAnalysis<HeaderPhiPredictionSpeculation>();
-      SmtxSlampSpeculationManager &smtxMan =
-          proxy.getAnalysis<SmtxSlampSpeculationManager>();
-
       // trying to find the best parallelization strategy for this loop
 
       DEBUG(
@@ -182,7 +180,7 @@ unsigned Selector::computeWeights(
       std::unique_ptr<SelectedRemedies> sr;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, perf, ctrlspec, predspec, smtxMan, lpl, ps, sr,
+          A, *pdg, *ldi, perf, ctrlspec, predspec, mloops, smtxMan, lpl, ps, sr,
           NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),

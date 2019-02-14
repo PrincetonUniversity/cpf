@@ -14,6 +14,8 @@
 #include "liberty/SpecPriv/Reduction.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
+#include "LoopDependenceInfo.hpp"
+
 #include <unordered_set>
 
 namespace liberty
@@ -25,6 +27,7 @@ using namespace SpecPriv;
 class ReduxRemedy : public Remedy {
 public:
   const Instruction *reduxI;
+  const SCC *reduxSCC;
 
   void apply(llvm::PDG &pdg);
   bool compare(const Remedy_ptr rhs) const;
@@ -33,7 +36,8 @@ public:
 
 class ReduxRemediator : public Remediator {
 public:
-  ReduxRemediator(ModuleLoops *ml) : Remediator(), mloops(ml) {}
+  ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi)
+      : Remediator(), mloops(ml), loopDepInfo(ldi) {}
 
   void setLoopOfInterest(Loop *l) {
     Function *f = l->getHeader()->getParent();
@@ -53,6 +57,7 @@ private:
   std::unordered_set<const Instruction *> regReductions;
   ModuleLoops *mloops;
   ScalarEvolution *se;
+  LoopDependenceInfo *loopDepInfo;
 };
 
 } // namespace liberty

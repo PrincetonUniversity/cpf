@@ -16,6 +16,7 @@
 //#include "liberty/SpecPriv/PureFunRemed.h"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
+#include "LoopDependenceInfo.hpp"
 
 #include <vector>
 #include <memory>
@@ -36,7 +37,7 @@ public:
       // Inputs
       Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-      PredictionSpeculation *headerPhiPred,
+      PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
       // Output
       PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
@@ -51,6 +52,8 @@ private:
 
   std::set<Remediator_ptr> getRemediators(Loop *A, ControlSpeculation *ctrlspec,
                                           PredictionSpeculation *headerPhiPred,
+                                          ModuleLoops &mloops,
+                                          LoopDependenceInfo &ldi,
                                           SmtxSlampSpeculationManager &smtxMan);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,

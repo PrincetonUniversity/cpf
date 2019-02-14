@@ -58,6 +58,7 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 std::set<Remediator_ptr>
 Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
                              PredictionSpeculation *headerPhiPred,
+                             ModuleLoops &mloops, LoopDependenceInfo &ldi,
                              SmtxSlampSpeculationManager &smtxMan) {
   std::set<Remediator_ptr> remeds;
 
@@ -74,13 +75,10 @@ Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
   remeds.insert(std::move(ctrlSpecRemed));
 
   // reduction remediator
-  /*
-  ModuleLoops &mloops = getAnalysis<ModuleLoops>();
   unique_ptr<ReduxRemediator> reduxRemed =
-      unique_ptr<ReduxRemediator>(new ReduxRemediator(&mloops));
+      std::make_unique<ReduxRemediator>(&mloops, &ldi);
   reduxRemed->setLoopOfInterest(A);
   remeds.insert(std::move(reduxRemed));
-  */
 
   // TXIO remediator
   remeds.insert(std::make_unique<TXIORemediator>());
@@ -121,16 +119,16 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-    PredictionSpeculation *headerPhiPred, SmtxSlampSpeculationManager &smtxMan,
-    LoopProfLoad &lpl, PipelineStrategy *strat,
-    std::unique_ptr<SelectedRemedies> &sRemeds, unsigned threadBudget,
-    bool ignoreAntiOutput, bool includeReplicableStages, bool constrainSubLoops,
-    bool abortIfNoParallelStage) {
+    PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+    SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
+    PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
+    unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
+    bool constrainSubLoops, bool abortIfNoParallelStage) {
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
   DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
-               << "::" << header->getName());
+               << "::" << header->getName() << "\n");
 
   long maxSavings = 0;
   std::unique_ptr<PipelineStrategy> psBest;
@@ -141,7 +139,7 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
-      getRemediators(loop, ctrlspec, headerPhiPred, smtxMan);
+      getRemediators(loop, ctrlspec, headerPhiPred, mloops, ldi, smtxMan);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
