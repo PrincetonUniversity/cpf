@@ -15,6 +15,6 @@ ifdef SYSCHAR_INCLUDE_DIR
 endif
 
 DIRS= SLAMP LAMP Analysis PDGBuilder Strategy Speculation Orchestration Utilities Redux \
-LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler Exclusions
+LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler Exclusions GraphAlgorithms
 
 include $(LEVEL)/Makefile.common
