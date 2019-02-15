@@ -8,12 +8,11 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/SLAMP/SLAMPLoad.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/SpecPriv/ControlSpeculator.h"
-//#include "liberty/SpecPriv/Pipeline.h"
-#include "liberty/SpecPriv/PredictionSpeculator.h"
-#include "liberty/SpecPriv/ProfilePerformanceEstimator.h"
-//#include "liberty/SpecPriv/Read.h"
-#include "liberty/SpecPriv/SmtxSlampManager.h"
+#include "liberty/Speculation/ControlSpeculator.h"
+#include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
+//#include "liberty/Speculation/Read.h"
+#include "liberty/Speculation/SmtxSlampManager.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
@@ -21,9 +20,9 @@
 //#include "PtrResidueAA.h"
 //#include "LocalityAA.h"
 //#include "RoI.h"
-#include "RemedSelector.h"
-//#include "UpdateOnCloneAdaptors.h"
-#include "HeaderPhiPredictionSpeculation.h"
+#include "liberty/Speculation/RemedSelector.h"
+//#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
+#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 
 
 namespace liberty

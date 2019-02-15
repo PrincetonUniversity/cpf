@@ -1,7 +1,7 @@
 #include "llvm/IR/IntrinsicInst.h"
 
 #include "liberty/LoopProf/LoopProfLoad.h"
-#include "liberty/SpecPriv/ProfilePerformanceEstimator.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
 namespace liberty

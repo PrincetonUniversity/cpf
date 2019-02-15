@@ -5,8 +5,7 @@
 
 #define DEBUG_TYPE "header-phi-prof"
 
-#include "liberty/SpecPriv/HeaderPhiProfiler.h"
-
+#include "liberty/Speculation/HeaderPhiProfiler.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Utilities/CastUtil.h"
 #include "liberty/Utilities/GlobalCtors.h"

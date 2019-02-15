@@ -5,7 +5,7 @@
 #include "llvm/IR/Intrinsics.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 
-#include "liberty/SpecPriv/Indeterminate.h"
+#include "liberty/PointsToProfiler/Indeterminate.h"
 
 namespace liberty
 {

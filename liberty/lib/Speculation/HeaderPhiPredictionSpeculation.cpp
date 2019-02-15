@@ -1,8 +1,7 @@
 #define DEBUG_TYPE "header-phi-prediction-speculation"
 
-#include "HeaderPhiPredictionSpeculation.h"
-
-#include "liberty/SpecPriv/HeaderPhiLoad.h"
+#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
+#include "liberty/Speculation/HeaderPhiLoad.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/Utilities/ComputeGEPOffset.h"
 #include "Metadata.h"

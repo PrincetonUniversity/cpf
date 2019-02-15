@@ -3,8 +3,7 @@
 #include "llvm/ADT/Statistic.h"
 
 #include "liberty/Utilities/FindUnderlyingObjects.h"
-
-#include "PointsToAA.h"
+#include "liberty/Speculation/PointsToAA.h"
 
 namespace liberty
 {

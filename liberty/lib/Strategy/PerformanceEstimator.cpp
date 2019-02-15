@@ -1,6 +1,6 @@
 #define DEBUG_TYPE "pipeline"
 
-#include "liberty/SpecPriv/PerformanceEstimator.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
 namespace liberty
 {
@@ -34,7 +34,7 @@ unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrat
 unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::Stages &stages, const Loop *loop)
 {
   errs() << "\t*** estimate pipeline weights\n";
-  
+
   unsigned long max = 0;
   for(unsigned i=0, N=stages.size(); i<N; ++i)
   {
@@ -46,12 +46,12 @@ unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrat
 
     unsigned rep = stage.parallel_factor;
     if( rep > 1 )
-    { 
+    {
       double par_wt = estimate_parallelization_weight( stage.instructions.begin(), stage.instructions.end(), loop );
-  
+
       rep = (double)rep * par_wt;
 
-      if (rep == 0) rep = 1; 
+      if (rep == 0) rep = 1;
 
       // errs() << "original wt " << wt << " p-weight " << par_wt << " rep " << rep << "\n";
 
@@ -67,9 +67,9 @@ unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrat
 
     errs() << "\t\t- Stage " << format("%2d", i)
            << " Weight " << format("%6.2f", 100.0 * (double)seq_wt / estimate_loop_weight(loop))
-           << " P-Factor " << format("%4d", rep) 
-           << " Speedup " << format("%6.2f", speedup) 
-           << " Absolute P-Weight " << wt 
+           << " P-Factor " << format("%4d", rep)
+           << " Speedup " << format("%6.2f", speedup)
+           << " Absolute P-Weight " << wt
            << "\n";
 
     if( wt > max )

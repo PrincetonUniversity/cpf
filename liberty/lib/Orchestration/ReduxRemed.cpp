@@ -9,8 +9,7 @@
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
-#include "liberty/SpecPriv/ReduxRemed.h"
-#include "liberty/SpecPriv/Reduction.h"
+#include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Analysis/ReductionDetection.h"
 
 #define DEFAULT_REDUX_REMED_COST 1

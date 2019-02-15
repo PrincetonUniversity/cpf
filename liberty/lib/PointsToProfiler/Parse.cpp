@@ -5,7 +5,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 
-#include "liberty/SpecPriv/Parse.h"
+#include "liberty/PointsToProfiler/Parse.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 #include "liberty/Utilities/GetMemOper.h"

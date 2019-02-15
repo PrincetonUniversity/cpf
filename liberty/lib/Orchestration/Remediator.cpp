@@ -8,7 +8,7 @@
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/GetMemOper.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/SpecPriv/Remediator.h"
+#include "liberty/Orchestration/Remediator.h"
 
 namespace liberty
 {

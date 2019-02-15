@@ -8,8 +8,7 @@
 
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
-#include "liberty/SpecPriv/Read.h"
-#include "liberty/SpecPriv/Reduction.h"
+#include "liberty/Speculation/Read.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 #include "liberty/Utilities/GetMemOper.h"

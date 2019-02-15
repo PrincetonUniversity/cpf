@@ -9,10 +9,8 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/ValueMap.h"
 
-#include "liberty/SpecPriv/Orchestrator.h"
-#include "liberty/SpecPriv/PerformanceEstimator.h"
-//#include "liberty/SpecPriv/Pipeline.h"
-//#include "liberty/SpecPriv/Selector.h"
+#include "liberty/Orchestration/Orchestrator.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"

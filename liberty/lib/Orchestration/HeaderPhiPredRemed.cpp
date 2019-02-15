@@ -2,7 +2,7 @@
 
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/SpecPriv/HeaderPhiPredRemed.h"
+#include "liberty/Orchestration/HeaderPhiPredRemed.h"
 
 #define DEFAULT_HEADER_PHI_PRED_REMED_COST 40
 

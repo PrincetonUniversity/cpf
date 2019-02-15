@@ -2,7 +2,7 @@
 #include "llvm/IR/Dominators.h"
 
 #include "liberty/Utilities/GetOrInsertCIV.h"
-#include "liberty/SpecPriv/Remat.h"
+#include "liberty/PointsToProfiler/Remat.h"
 
 namespace liberty
 {

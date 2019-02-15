@@ -7,7 +7,7 @@
 #include "llvm/IR/ValueMap.h"
 #include "llvm/Support/FileSystem.h"
 
-#include "liberty/SpecPriv/PipelineStrategy.h"
+#include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"

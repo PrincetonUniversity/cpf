@@ -2,8 +2,7 @@
 
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
-
-#include "liberty/SpecPriv/LoopDominators.h"
+#include "liberty/Speculation/LoopDominators.h"
 
 namespace liberty
 {

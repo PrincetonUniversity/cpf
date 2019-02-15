@@ -4,7 +4,7 @@
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/SpecPriv/Critic.h"
+#include "liberty/Orchestration/Critic.h"
 
 #define DEFAULT_THREADS 24
 

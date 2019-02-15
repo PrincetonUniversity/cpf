@@ -1,10 +1,9 @@
 #define DEBUG_TYPE "spec-priv-smtx-slamp-manager"
 
-#include "liberty/SpecPriv/SmtxSlampManager.h"
-
 #include "llvm/ADT/Statistic.h"
 
 #include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Speculation/SmtxSlampManager.h"
 
 namespace liberty
 {

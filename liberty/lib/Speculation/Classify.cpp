@@ -10,16 +10,16 @@
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/SpecPriv/Read.h"
-#include "liberty/SpecPriv/ControlSpeculator.h"
-#include "liberty/SpecPriv/PredictionSpeculator.h"
+#include "liberty/Speculation/Read.h"
+#include "liberty/Speculation/ControlSpeculator.h"
+#include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/PointsToAA.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"
 #include "liberty/Utilities/StableHash.h"
 
-#include "Classify.h"
-#include "PointsToAA.h"
 
 #include <set>
 

@@ -5,7 +5,7 @@
 #include "liberty/Analysis/ControlSpecIterators.h"
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/SpecPriv/ControlSpeculator.h"
+#include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"
 

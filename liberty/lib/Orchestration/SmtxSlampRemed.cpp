@@ -1,6 +1,6 @@
 #define DEBUG_TYPE "smtx-slamp-remed"
 
-#include "liberty/SpecPriv/SmtxSlampRemed.h"
+#include "liberty/Orchestration/SmtxSlampRemed.h"
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/IntrinsicInst.h"

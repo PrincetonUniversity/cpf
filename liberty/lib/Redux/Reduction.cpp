@@ -10,7 +10,7 @@
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/SpecPriv/Reduction.h"
+#include "liberty/Redux/Reduction.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/SplitEdge.h"

@@ -4,8 +4,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/SpecPriv/PredictionSpeculator.h"
-#include "liberty/SpecPriv/Remat.h"
+#include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/PointsToProfiler/Remat.h"
 
 namespace liberty
 {

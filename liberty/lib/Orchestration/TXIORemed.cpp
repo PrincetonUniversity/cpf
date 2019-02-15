@@ -3,7 +3,7 @@
 #include "llvm/ADT/Statistic.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 
-#include "liberty/SpecPriv/TXIORemed.h"
+#include "liberty/Orchestration/TXIORemed.h"
 #include "liberty/Utilities/GetMemOper.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 

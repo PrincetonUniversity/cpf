@@ -54,9 +54,8 @@
 #include "liberty/Utilities/InsertPrintf.h"
 #include "liberty/Utilities/SplitEdge.h"
 #include "liberty/Utilities/GlobalCtors.h"
-
-#include "liberty/SpecPriv/Indeterminate.h"
-#include "liberty/SpecPriv/Remat.h"
+#include "liberty/PointsToProfiler/Indeterminate.h"
+#include "liberty/PointsToProfiler/Remat.h"
 
 #include <sstream>
 

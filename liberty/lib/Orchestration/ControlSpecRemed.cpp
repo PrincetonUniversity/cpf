@@ -1,11 +1,11 @@
 #define DEBUG_TYPE "ctrlspec-remed"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/SpecPriv/Remediator.h"
-#include "liberty/SpecPriv/ControlSpecRemed.h"
-#include "liberty/SpecPriv/LoopDominators.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
+#include "liberty/Orchestration/Remediator.h"
+#include "liberty/Speculation/LoopDominators.h"
 #include "liberty/Utilities/Timer.h"
 
 #include "llvm/IR/IntrinsicInst.h"

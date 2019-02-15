@@ -1,4 +1,4 @@
-#include "liberty/SpecPriv/HeaderPhiLoad.h"
+#include "liberty/Speculation/HeaderPhiLoad.h"
 
 #include "llvm/Support/raw_ostream.h"
 

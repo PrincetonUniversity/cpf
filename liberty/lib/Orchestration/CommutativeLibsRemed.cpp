@@ -5,7 +5,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/SpecPriv/CommutativeLibsRemed.h"
+#include "liberty/Orchestration/CommutativeLibsRemed.h"
 
 #define DEFAULT_COMM_LIBS_REMED_COST 100
 
