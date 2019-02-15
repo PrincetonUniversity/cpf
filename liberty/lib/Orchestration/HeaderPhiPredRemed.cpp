@@ -39,6 +39,9 @@ Remediator::RemedResp HeaderPhiPredRemediator::regdep(const Instruction *A,
   // values.
   if (loopCarried && predspec->isPredictable(B, L)) {
     ++numNoLCRegDep;
+    remedy->predPHI = dyn_cast<PHINode>(B);
+    assert(remedy->predPHI &&
+           "HeaderPhiPredRemediator predicts only values of phi nodes");
     remedResp.depRes = DepResult::NoDep;
   }
 
