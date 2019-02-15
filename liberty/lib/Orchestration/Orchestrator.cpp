@@ -73,10 +73,12 @@ Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
   remeds.insert(std::move(ctrlSpecRemed));
 
   // reduction remediator
-  unique_ptr<ReduxRemediator> reduxRemed =
-      std::make_unique<ReduxRemediator>(&mloops, &ldi);
+  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi);
   reduxRemed->setLoopOfInterest(A);
   remeds.insert(std::move(reduxRemed));
+
+  // counted induction variable remediator
+  remeds.insert(std::make_unique<CountedIVRemediator>(&ldi));
 
   // TXIO remediator
   remeds.insert(std::make_unique<TXIORemediator>());

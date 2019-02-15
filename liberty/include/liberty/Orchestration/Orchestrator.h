@@ -10,6 +10,7 @@
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
+#include "liberty/Orchestration/CountedIVRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"

@@ -67,20 +67,13 @@ long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
   return scaledwt;
 }
 
-PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms,
-                    std::set<DGEdge<Value> *> boundedIVRemovableEdges) {
+PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
   std::vector<Value *> iPdgNodes;
   for (auto node : pdg.internalNodePairs()) {
     iPdgNodes.push_back(node.first);
   }
 
   PDG *expPdg = pdg.createSubgraphFromValues(iPdgNodes, false);
-
-  for (auto edge : boundedIVRemovableEdges)
-    expPdg->removeEdge(edge);
-
-  // at this point expPdg can be used for new remediators possibilities
-  // pdg is annotated with costs and bounded IV deps are removed
 
   for (auto cr : criticisms)
     expPdg->removeEdge(cr);
@@ -134,29 +127,13 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   	DEBUG(errs() << "DOALL:   Some post environment value is not reducable\n");
   }
 
-  // detect counted loop in order to ignore related dependences
-  auto headerBr = ldi.header->getTerminator();
-  auto headerSCC = ldi.loopSCCDAG->sccOfValue(headerBr);
-  std::set<DGEdge<Value> *> boundedIVRemovableEdges;
-  if (ldi.sccdagAttrs.isLoopGovernedByIV() &&
-      ldi.sccdagAttrs.sccIVBounds.find(headerSCC) !=
-          ldi.sccdagAttrs.sccIVBounds.end()) {
-    DEBUG(errs() << "Counted loop found\n" );
-    for (auto edge : headerSCC->getEdges()) {
-      if (headerSCC->isInternal(edge->getOutgoingT()) &&
-          headerSCC->isInternal(edge->getIncomingT()) &&
-          edge->isLoopCarriedDependence())
-        boundedIVRemovableEdges.insert(edge);
-    }
-  }
-
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
 
     if (!pdg.isInternal(edge->getIncomingT()) ||
         !pdg.isInternal(edge->getOutgoingT()))
       continue;
 
-    if (edge->isLoopCarriedDependence() && !boundedIVRemovableEdges.count(edge)) {
+    if (edge->isLoopCarriedDependence()) {
 
       DEBUG(errs() << "  Found new DOALL criticism loop-carried from "
                    << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
@@ -178,7 +155,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   }
 
   // get expected pdg if all the criticisms are satisfied
-  PDG *expPdg = getExpectedPdg(pdg, res.criticisms, boundedIVRemovableEdges);
+  PDG *expPdg = getExpectedPdg(pdg, res.criticisms);
 
   res.ps = getDOALLStrategy(*expPdg, loop);
 
