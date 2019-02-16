@@ -90,7 +90,6 @@ void GimmeLoops::init(const DataLayout *target, TargetLibraryInfo *lib, Function
 
   sep = new ScalarEvolutionWrapperPass();
 
-
   ppp = new MyPMDataManager();
 
   AnalysisResolver *ar= 0;
@@ -99,17 +98,26 @@ void GimmeLoops::init(const DataLayout *target, TargetLibraryInfo *lib, Function
 
   tlip->setResolver(ar);
 
+  // Add the implementations of the all the analyses required in
+  // getAnalysisUsage.
+  // This way it is known what should be returned on getAnalysis
+
+  // in this case it seems that DominatorTreeWrapperPass did not need to be
+  // added, nor the tgtLibInfo
   ar = new AnalysisResolver(*ppp);
   ar->addAnalysisImplsPair(&TargetLibraryInfoWrapperPass::ID, tlip);
   ar->addAnalysisImplsPair(&DominatorTreeWrapperPass::ID, dtp);
   pdtp->setResolver(ar);
 
+  // lip seems to only need DominatorTreeWrapperPass (based on
+  // LoopInfoWrapperPass::getAnalysisUsage())
   ar = new AnalysisResolver(*ppp);
   ar->addAnalysisImplsPair(&TargetLibraryInfoWrapperPass::ID, tlip);
   ar->addAnalysisImplsPair(&DominatorTreeWrapperPass::ID, dtp);
   ar->addAnalysisImplsPair(&PostDominatorTreeWrapperPass::ID, pdtp);
   lip->setResolver(ar);
 
+  // needs all except for postdom
   ar = new AnalysisResolver(*ppp);
   ar->addAnalysisImplsPair(&TargetLibraryInfoWrapperPass::ID, tlip);
   ar->addAnalysisImplsPair(&DominatorTreeWrapperPass::ID, dtp);
@@ -118,17 +126,14 @@ void GimmeLoops::init(const DataLayout *target, TargetLibraryInfo *lib, Function
   ar->addAnalysisImplsPair(&AssumptionCacheTracker::ID, act);
   sep->setResolver(ar);
 
-
   tlip->doInitialization(*mod);
   dtp->doInitialization(*mod);
   pdtp->doInitialization(*mod);
   lip->doInitialization(*mod);
   sep->doInitialization(*mod);
 
-
   tlip->runOnModule(*mod);
   ppp->recordAvailableAnalysis(tlip);
-
 
   // run DT
 
@@ -156,6 +161,5 @@ void GimmeLoops::init(const DataLayout *target, TargetLibraryInfo *lib, Function
   li = &lip->getLoopInfo();
   se = &sep->getSE();
 }
-
 
 }
