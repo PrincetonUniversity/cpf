@@ -15,6 +15,7 @@
 #include "llvm/ADT/iterator_range.h"
 
 #include "liberty/PDGBuilder/PDGBuilder.hpp"
+#include "liberty/Analysis/LLVMAAResults.h"
 
 using namespace llvm;
 using namespace liberty;
@@ -25,6 +26,7 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   //AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<PostDominatorTreeWrapperPass>();
   //AU.addRequired<ScalarEvolutionWrapperPass>();
+  AU.addRequired<LLVMAAResults>();
   AU.setPreservesAll();
 }
 
@@ -37,7 +39,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   pdg->populateNodesOf(loop);
 
   DEBUG(errs() << "constructEdgesFromMemory ...\n");
-
+  getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   constructEdgesFromMemory(*pdg, loop, aa);
 
