@@ -157,6 +157,8 @@ public:
     NonCapturedFieldsAnalysis &noescape = getAnalysis< NonCapturedFieldsAnalysis >();
     Tracer tracer(nocap,noescape);
 
+    LLVMContext &ctx = gep1->getType()->getContext();
+
     gep_type_iterator gi1 = gep_type_begin(gep1),
                       gi2 = gep_type_begin(gep2);
 
@@ -179,12 +181,16 @@ public:
       if (ST1 != ST2)
         return MayAlias;
 
+      /*
       Type *t1 = gi1.getIndexedType();
       if( t1 != gi2.getIndexedType())
         return MayAlias;
+      */
 
-      if( isa< SequentialType >(t1)
-      &&  areStaticallyIdentical(cv1, cv2, Rel, L, tracer) )
+      // Heejin's fix in 3.5 seems incomplete
+      //if( isa< SequentialType >(t1) || isa< PointerType >(t1)
+      //||  areStaticallyIdentical(cv1, cv2, Rel, L, tracer) )
+      if (areStaticallyIdentical(cv1, cv2, Rel, L, tracer))
       {
         ++ix1;
         ++ix2;
@@ -200,19 +206,6 @@ public:
     // 2. One statically different index, at a GEP level which is a struct/array/pointer
     // i.e. we can prove that we're talking about two different fields/elements.
 
-    //sot : operator* is no longer supported in LLVM 5.0 for gep_type_iterator
-    // replaced with getIndexedType for Sequential Type and getStructTypeOrNull for Structs
-    StructType *ST1 = gi1.getStructTypeOrNull();
-    StructType *ST2 = gi2.getStructTypeOrNull();
-    if (ST1 != ST2)
-      return MayAlias;
-
-    Type *ty1 = gi1.getIndexedType();
-    if( ty1 != gi2.getIndexedType() )
-      return MayAlias;
-    if( !isa< CompositeType >(ty1) )
-      return MayAlias;
-
     // Iterators point to the first differing index.
 
     // Value of the differing index
@@ -225,8 +218,6 @@ public:
       cv2 = *ix2;
 
     // Implicit zero rule
-    // sot: fix for removal of getGlobalContext
-    LLVMContext &ctx = ty1->getContext();
     ConstantInt *zero = ConstantInt::get( Type::getInt64Ty(ctx) ,0);
     if( !cv1 && ix2 != e2 && ++ix2 == e2 ) // if second gep index at penultimate value
       cv1 = zero; // then first gets an implicit zero
@@ -235,6 +226,27 @@ public:
 
     if( !cv1 || !cv2 )
       return MayAlias;
+
+
+    //sot : operator* is no longer supported in LLVM 5.0 for gep_type_iterator
+    // replaced with getIndexedType for Sequential Type and getStructTypeOrNull for Structs
+    StructType *ST1 = gi1.getStructTypeOrNull();
+    StructType *ST2 = gi2.getStructTypeOrNull();
+    if (ST1 != ST2)
+      return MayAlias;
+
+    // sot: getIndexedType seems not to return the same result as *operator in
+    // LLVM 3.5 (e.g., instead of getting a PointerType, it seeems that
+    // PointeeTy is returned)
+    /*
+    Type *ty1 = gi1.getIndexedType();
+    if( ty1 != gi2.getIndexedType() )
+      return MayAlias;
+
+    //if( !isa< CompositeType >(ty1) )
+    if( !isa< CompositeType >(ty1) && !isa< PointerType > (ty1))
+      return MayAlias;
+    */
 
     if( ! areStaticallyDifferent(cv1,cv2,Rel,L,tracer) )
       return MayAlias;

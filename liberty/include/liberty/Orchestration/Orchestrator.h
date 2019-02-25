@@ -30,7 +30,7 @@ struct PerformanceEstimator;
 
 typedef std::vector<Remedy_ptr> SelectedRemedies;
 typedef std::unique_ptr<Remediator> Remediator_ptr;
-typedef std::unique_ptr<Critic> Critic_ptr;
+typedef std::shared_ptr<Critic> Critic_ptr;
 
 class Orchestrator {
 public:
@@ -41,7 +41,8 @@ public:
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
       // Output
-      PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
+      std::unique_ptr<PipelineStrategy> &strat,
+      std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
       // Optional inputs
       unsigned threadBudget = 25, bool ignoreAntiOutput = false,
       bool includeReplicableStages = true, bool constrainSubLoops = false,

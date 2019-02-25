@@ -96,8 +96,7 @@ std::set<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
   std::set<Critic_ptr> critics;
 
   // DOALL critic
-  critics.insert(
-      std::unique_ptr<DOALLCritic>(new DOALLCritic(perf, threadBudget, lpl)));
+  critics.insert(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
 
   return critics;
 }
@@ -121,7 +120,8 @@ bool Orchestrator::findBestStrategy(
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
-    PipelineStrategy *strat, std::unique_ptr<SelectedRemedies> &sRemeds,
+    std::unique_ptr<PipelineStrategy> &strat,
+    std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
   BasicBlock *header = loop->getHeader();
@@ -130,19 +130,24 @@ bool Orchestrator::findBestStrategy(
   DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
                << "::" << header->getName() << "\n");
 
+  // create pdg without live-in and live-out values (aka external to the loop nodes)
+  std::vector<Value *> iPdgNodes;
+  for (auto node : pdg.internalNodePairs()) {
+    iPdgNodes.push_back(node.first);
+  }
+  PDG *ipdg = pdg.createSubgraphFromValues(iPdgNodes, false);
+
   long maxSavings = 0;
-  std::unique_ptr<PipelineStrategy> psBest;
-  std::unique_ptr<SelectedRemedies> srBest;
 
   // get all possible criticisms
-  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
+  Criticisms allCriticisms = Critic::getAllCriticisms(*ipdg);
 
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
       getRemediators(loop, ctrlspec, headerPhiPred, mloops, ldi, smtxMan);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
-    Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
+    Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
       auto rCost = make_shared<unsigned>();
       mapRemedEdgeCostsToRemedies[rCost] = r;
@@ -157,7 +162,7 @@ bool Orchestrator::findBestStrategy(
   std::set<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     DEBUG(errs() << "Critic " << (*criticIt)->getCriticName() << "\n");
-    CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
+    CriticRes res = (*criticIt)->getCriticisms(*ipdg, loop, ldi);
     Criticisms &criticisms = res.criticisms;
     long expSpeedup = res.expSpeedup;
 
@@ -184,18 +189,16 @@ bool Orchestrator::findBestStrategy(
     long savings = expSpeedup - selectedRemediesCost;
     if (maxSavings < savings) {
       maxSavings = savings;
-      psBest = std::move(res.ps);
-      srBest = std::move(selectedRemedies);
+      strat = std::move(res.ps);
+      sRemeds = std::move(selectedRemedies);
+      sCritic = *criticIt;
     }
   }
 
-  if (maxSavings) {
-    // TODO: release to raw pointer wont be needed if the user of this function
-    // can handle smart pointers for parallelization strategies
-    strat = psBest.release();
-    sRemeds = std::move(srBest);
+  delete ipdg;
+
+  if (maxSavings)
     return true;
-  }
 
   // no profitable parallelization strategy was found for this loop
   return false;

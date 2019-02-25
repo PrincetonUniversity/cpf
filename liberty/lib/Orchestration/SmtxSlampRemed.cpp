@@ -212,6 +212,9 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
+      DEBUG(errs() << "No observed IntraIter dep from " << *A << "  and  " << *B
+                   << "\n");
+
       // Keep track of this
 
       // queryAcrossCallsites(A,Same,B,L);
@@ -220,6 +223,9 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       // No flow
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
+
+      DEBUG(errs() << "PredictableIntraIterDep between " << *A << "  and  "
+                   << *B << "\n");
 
       slamp::PredMap predictions =
           slamp.getPredictions(L->getHeader(), B, A, false);

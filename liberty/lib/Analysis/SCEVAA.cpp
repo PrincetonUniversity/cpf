@@ -16,10 +16,11 @@ namespace liberty
 {
 using namespace llvm;
 
-STATISTIC(numQueries,  "Num queries received");
-STATISTIC(numEligible, "Num eligible queries");
-STATISTIC(numNoAlias,  "Num no-alias queries");
-STATISTIC(numMustAlias,"Num must-alias queries");
+STATISTIC(numQueries,   "Num queries received");
+STATISTIC(numEligible,  "Num eligible queries");
+STATISTIC(numNoAlias,   "Num no-alias queries");
+STATISTIC(numNoAliasMD, "Num no-alias queries with multi-dim check");
+STATISTIC(numMustAlias, "Num must-alias queries");
 
 /// This analysis compares SCEV expressions to analysis
 /// induction variables.  It is meant to very quickly
@@ -56,7 +57,8 @@ public:
     ScalarEvolution *SE,
     const Loop *L,
     const SCEV *ptr1, const APInt &size1, // (from earlier iteration)
-    const SCEV *ptr2, const APInt &size2  // (from later iteration)
+    const SCEV *ptr2, const APInt &size2,  // (from later iteration)
+		bool innerLoopAccess
     )
   {
 /*
@@ -134,9 +136,54 @@ public:
 //            errs() << "===> Disjoint\n";
             return true;
           }
+
+          // sot: add extra check for pointers with same base and step but not
+          // inner loop access (useful for multi-dim array accesses)
+          if (diffBasesRange.getSignedMin() == 0 &&
+              diffStepRange.getSignedMin() == 0 && !innerLoopAccess) {
+
+            const SCEVUnknown *ptrBase1 =
+                dyn_cast<SCEVUnknown>(SE->getPointerBase(ptr1));
+            if (!ptrBase1)
+              return false;
+
+            const SCEV *ptrSCEV = SE->getMinusSCEV(ptr1, ptrBase1);
+
+            const SCEVAddRecExpr *sAR = dyn_cast<SCEVAddRecExpr>(ptrSCEV);
+
+            if (sAR) {
+              // check 1
+              const SCEV *base = sAR->getStart();
+              const SCEV *step = sAR->getStepRecurrence(*SE);
+              const ConstantRange diffRange1 =
+                  SE->getSignedRange(SE->getSMinExpr(step, base));
+              bool check1 = diffRange1.getSignedMin().sge(0);
+
+              // check 2
+              const SCEV *ElementSize = SE->getConstant(size1);
+              SmallVector<const SCEV *, 4> Subscripts;
+              SmallVector<const SCEV *, 4> Sizes;
+              SE->delinearize(sAR, Subscripts, Sizes, ElementSize);
+
+              const SCEV *diffSCEV =
+                  SE->getMinusSCEV(step, SE->getMulExpr(ElementSize, Sizes[0]));
+              const ConstantRange diffRange2 = SE->getSignedRange(diffSCEV);
+              bool check2 = diffRange2.getSignedMin().sge(0);
+
+              assert(check1 == check2 &&
+                     "Checks in SCEVAA expected to be equivalent");
+
+              if (check1) {
+                ++numNoAliasMD;
+                DEBUG(errs()
+                      << "stepGreaterThan:\n"
+                      << *ptr1 << " and " << *ptr2 << "\n===> Disjoint\n");
+                return true;
+              }
+            }
+          }
         }
       }
-
 //      errs() << '\n';
     }
 
@@ -225,7 +272,11 @@ public:
       // in pointers must be greater than the access size during any
       // two iterations I1 < I2.
 
-      if( stepGreaterThan(SE, L, s1, size1, s2, size2) )
+      bool innerLoopAccess =
+          (s1 == SE->getSCEV(const_cast<Value *>(P1.ptr)) &&
+           s2 == SE->getSCEV(const_cast<Value *>(P2.ptr)));
+
+      if( stepGreaterThan(SE, L, s1, size1, s2, size2, innerLoopAccess) )
       {
         ++numNoAlias;
         return NoAlias;

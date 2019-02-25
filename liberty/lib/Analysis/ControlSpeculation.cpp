@@ -404,11 +404,17 @@ bool ControlSpeculation::isReachable(BasicBlock *src, BasicBlock *dst, Loop *loo
 
     Visited::iterator E = visited.end(),
       i=std::lower_bound(visited.begin(), E, n);
-    if( i != E && *i == n )
-      continue;
+    if( i != E && *i == n ) {
+      if (n != dst)
+        continue;
+      else
+      // visit of the same block again indicates presence of nested loop.
+        return reachableCache[key] = true;
+    }
+
     visited.insert(i,n);
 
-    if( n == dst )
+    if( n == dst && visited.size() > 1)
       return reachableCache[key] = true;
 
     LoopBlock nn(n);
@@ -422,6 +428,8 @@ bool ControlSpeculation::isReachable(BasicBlock *src, BasicBlock *dst, Loop *loo
     }
   }
 
+  DEBUG(errs() << "Found unreachable (intra-iteration) basic blocks: src: "
+               << src->getName() << " , dst " << dst->getName() << "\n");
   return reachableCache[key] = false;
 }
 

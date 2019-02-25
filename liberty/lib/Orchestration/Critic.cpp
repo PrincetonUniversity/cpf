@@ -67,18 +67,15 @@ long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
   return scaledwt;
 }
 
-PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
-  std::vector<Value *> iPdgNodes;
-  for (auto node : pdg.internalNodePairs()) {
-    iPdgNodes.push_back(node.first);
+void getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
+
+  for (auto cr : criticisms) {
+    DEBUG(errs() << " Removing DOALL criticism loop-carried from "
+                 << *cr->getOutgoingT() << " to " << *cr->getIncomingT()
+                 << '\n');
+
+    pdg.removeEdge(cr);
   }
-
-  PDG *expPdg = pdg.createSubgraphFromValues(iPdgNodes, false);
-
-  for (auto cr : criticisms)
-    expPdg->removeEdge(cr);
-
-  return expPdg;
 }
 
 std::unique_ptr<ParallelizationPlan>
@@ -89,8 +86,13 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
   SCCDAG *loopSCCDAG = SCCDAG::createSCCDAGFrom(&pdg);
 
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
-    if (edge->isLoopCarriedDependence())
+    if (edge->isLoopCarriedDependence()) {
+      DEBUG(errs() << "No DOALL strategy possible since there is at least one "
+                      "loop carried edge."
+                   << '\n');
+
       return nullptr;
+    }
   }
 
   SCCDAG::SCCSet maxParallel;
@@ -101,6 +103,8 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
 
   PipelineStage parallel_stage =
       PipelineStage(PipelineStage::Parallel, pdg, maxParallel);
+
+  parallel_stage.parallel_factor = threadBudget;
 
   ps->stages.push_back(parallel_stage);
 
@@ -154,17 +158,22 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
     }
   }
 
+  // TODO: create deep copy of the PDG with only its internal nodes when there
+  // are more than one critics.
+  // pdg.createSubgraphFromValues is not appropriate since it creates new edges,
+  // thus losing the connection between criticisms in the original pdg and edges
+  // in the copy. Need to add new copy function when multiple critics are
+  // available
+  //
   // get expected pdg if all the criticisms are satisfied
-  PDG *expPdg = getExpectedPdg(pdg, res.criticisms);
+  getExpectedPdg(pdg, res.criticisms);
 
-  res.ps = getDOALLStrategy(*expPdg, loop);
+  res.ps = getDOALLStrategy(pdg, loop);
 
   if (res.ps)
-    res.expSpeedup = getExpPipelineSpeedup(*res.ps, *expPdg, loop);
+    res.expSpeedup = getExpPipelineSpeedup(*res.ps, pdg, loop);
   else
     res.expSpeedup = -1;
-
-  delete expPdg;
 
   return res;
 }

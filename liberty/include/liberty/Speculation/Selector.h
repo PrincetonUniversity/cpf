@@ -19,6 +19,7 @@
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Orchestration/Remediator.h"
 
 namespace liberty
@@ -45,11 +46,14 @@ struct Selector : public UpdateOnClone
   const LoopParallelizationStrategy &getStrategy(Loop *loop) const;
   LoopParallelizationStrategy &getStrategy(Loop *loop);
 
-  typedef std::map<BasicBlock*, LoopParallelizationStrategy*> Loop2Strategy;
+  //typedef std::map<BasicBlock*, LoopParallelizationStrategy*> Loop2Strategy;
+  typedef std::map<BasicBlock *, std::unique_ptr<LoopParallelizationStrategy>>
+      Loop2Strategy;
   typedef Loop2Strategy::const_iterator strat_iterator;
 
-  typedef std::map<BasicBlock*, Remedies> Loop2SelectedRemedies;
-  typedef std::map<BasicBlock*, Critic*> Loop2SelectedCritics;
+  typedef std::map<BasicBlock *, std::unique_ptr<SelectedRemedies>>
+      Loop2SelectedRemedies;
+  typedef std::map<BasicBlock *, Critic_ptr> Loop2SelectedCritics;
 
   strat_iterator strat_begin() const { return strategies.begin(); }
   strat_iterator strat_end() const { return strategies.end(); }

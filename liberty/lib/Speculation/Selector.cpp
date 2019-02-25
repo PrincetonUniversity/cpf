@@ -8,13 +8,18 @@
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/LoopInfo.h"
 
+#include "llvm/ADT/GraphTraits.h"
+#include "llvm/Analysis/DOTGraphTraitsPass.h"
+#include "llvm/Analysis/DomPrinter.h"
+#include "llvm/Support/GraphWriter.h"
+#include "llvm/Support/DOTGraphTraits.h"
+
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
@@ -32,6 +37,7 @@
 //#include "Transform.h"
 
 #include "LoopDependenceInfo.hpp"
+#include "DGGraphTraits.hpp"
 
 using namespace llvm;
 
@@ -97,6 +103,20 @@ PredictionSpeculation *Selector::getPredictionSpeculation() const
   return &none;
 }
 
+template <class GT>
+void writeGraph(const std::string &filename, GT *graph) {
+  std::error_code EC;
+  raw_fd_ostream File(filename, EC, sys::fs::F_Text);
+  std::string Title = DOTGraphTraits<GT *>::getGraphName(graph);
+
+  if (!EC) {
+    WriteGraph(File, graph, false, Title);
+  } else {
+    DEBUG(errs() << "Error opening file for writing!\n");
+    abort();
+  }
+}
+
 void Selector::computeVertices(Vertices &vertices)
 {
   Pass &proxy = getPass();
@@ -160,6 +180,9 @@ unsigned Selector::computeWeights(
       //std::unique_ptr<llvm::PDG> pdg = pdgBuilder.getLoopPDG(A);
       llvm::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
 
+      std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+      writeGraph<PDG>(pdgDotName, pdg);
+
       std::unique_ptr<LoopDependenceInfo> ldi =
           std::make_unique<LoopDependenceInfo>(pdg, A, li, pdt);
 
@@ -176,12 +199,13 @@ unsigned Selector::computeWeights(
 
       // TODO: make this unique_ptr (need to change strategies map and all its
       // users)
-      PipelineStrategy *ps = nullptr;
+      std::unique_ptr<PipelineStrategy> ps;
       std::unique_ptr<SelectedRemedies> sr;
+      Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, perf, ctrlspec, predspec, mloops, smtxMan, lpl, ps, sr,
-          NumThreads, pipelineOption_ignoreAntiOutput(),
+          sc, NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
@@ -190,7 +214,8 @@ unsigned Selector::computeWeights(
       {
         ++numApplicable;
         ps->setValidFor( hA );
-        strategies[ hA ] = ps;
+
+        // TODO: also save LDI. In order to apply non-spec DOALL
 
         long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
         const long wt = adjLoopTime - estimatePipelineWeight;
@@ -216,11 +241,12 @@ unsigned Selector::computeWeights(
 
         findLateInliningOpportunities(A,*ps,perf,opportunities);
 
+        strategies[ hA ] = std::move(ps);
+        selectedRemedies[ hA ] = std::move(sr);
+        selectedCritics[ hA ] = sc;
       } else {
         DEBUG(errs() << "No parallelizing transform applicable to "
                      << fA->getName() << " :: " << hA->getName() << '\n';);
-        if (ps)
-          delete ps;
 
         weights[i] = 0;
         scaledweights[i] = 0;
@@ -335,8 +361,10 @@ void Selector::contextRenamedViaClone(
 
 Selector::~Selector()
 {
+/*
   for(Loop2Strategy::iterator i=strategies.begin(), e=strategies.end(); i!=e; ++i)
     delete i->second;
+*/
 }
 
 const LoopParallelizationStrategy &Selector::getStrategy(Loop *loop) const
@@ -348,9 +376,8 @@ const LoopParallelizationStrategy &Selector::getStrategy(Loop *loop) const
 
 LoopParallelizationStrategy &Selector::getStrategy(Loop *loop)
 {
-  LoopParallelizationStrategy *lps = strategies[ loop->getHeader() ];
-  assert( lps && "No strategy for that loop" );
-  return *lps;
+  assert(strategies[loop->getHeader()] && "No strategy for that loop");
+  return *strategies[loop->getHeader()];
 }
 
 void Selector::findLateInliningOpportunities(
@@ -621,8 +648,8 @@ bool Selector::doSelection(
     weights.clear();
     scaledweights.clear();
 
-    for(Loop2Strategy::iterator i=strategies.begin(), e=strategies.end(); i!=e; ++i)
-      delete i->second;
+    //for(Loop2Strategy::iterator i=strategies.begin(), e=strategies.end(); i!=e; ++i)
+    //  delete i->second;
     strategies.clear();
   }
 
@@ -660,7 +687,7 @@ bool Selector::doSelection(
 
     // 'loop' is a loop we will parallelize
     if( DebugFlag && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-      printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()], lpl, true);
+      printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(), lpl, true);
 
     Vertices::iterator j = std::find(toDelete.begin(), toDelete.end(), loop);
     if( j != toDelete.end() )
@@ -675,13 +702,13 @@ bool Selector::doSelection(
 
     // 'deleteme' is a loop we will NOT parallelize.
     if( DebugFlag && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-      printOneLoopStrategy(errs(), deleteme, strategies[deleteme->getHeader()], lpl, false);
+      printOneLoopStrategy(errs(), deleteme, strategies[deleteme->getHeader()].get(), lpl, false);
 
     Loop2Strategy::iterator j = strategies.find( deleteme->getHeader() );
     if( j != strategies.end() )
     {
-      if( j->second )
-        delete j->second;
+      //if( j->second )
+        //delete j->second;
       strategies.erase(j);
     }
   }

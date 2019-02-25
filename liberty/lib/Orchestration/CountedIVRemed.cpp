@@ -42,6 +42,8 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
     ++numNoRegDep;
     remedy->ivSCC = aSCC;
     remedResp.depRes = DepResult::NoDep;
+    DEBUG(errs() << "CountedIVRemed removed reg dep between inst " << *A
+                 << "  and  " << *B << '\n');
   }
 
   remedResp.remedy = remedy;
@@ -69,6 +71,8 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
     ++numNoCtrlDep;
     remedy->ivSCC = aSCC;
     remedResp.depRes = DepResult::NoDep;
+    DEBUG(errs() << "CountedIVRemed removed ctrl dep between inst " << *A
+                 << "  and  " << *B << '\n');
   }
 
   remedResp.remedy = remedy;

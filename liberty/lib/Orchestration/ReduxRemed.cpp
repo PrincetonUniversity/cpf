@@ -85,8 +85,8 @@ bool ReduxRemediator::isRegReductionPHI(Instruction *I, Loop *l) {
 
 // there can be RAW reg deps
 Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
-                                         const Instruction *B, bool loopCarried,
-                                         const Loop *L) {
+                                              const Instruction *B,
+                                              bool loopCarried, const Loop *L) {
 
   ++numRegQueries;
   Remediator::RemedResp remedResp;
@@ -118,14 +118,16 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     F->addFnAttr("unsafe-fp-math", "true");
   }
 
-  errs() << "  Redux remed examining edge(s) from " << *A << " to " << *B
-         << '\n';
+  //errs() << "  Redux remed examining edge(s) from " << *A << " to " << *B
+  //       << '\n';
 
   auto aSCC = loopDepInfo->loopSCCDAG->sccOfValue(ncA);
   auto bSCC = loopDepInfo->loopSCCDAG->sccOfValue(ncB);
   if (aSCC == bSCC && loopDepInfo->sccdagAttrs.canExecuteReducibly(aSCC)) {
     ++numRegDepsRemovedNoelleRedux;
     errs() << "Resolved by noelle Redux\n";
+    DEBUG(errs() << "Removed reg dep between inst " << *A
+                 << "  and  " << *B << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxSCC = aSCC;
     remedy->reduxI = nullptr;
@@ -137,6 +139,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   if (reduxdet.isSumReduction(L, A, B, loopCarried)) {
     ++numRegDepsRemovedSumRedux;
     errs() << "Resolved by liberty sumRedux\n";
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
     remedResp.depRes = DepResult::NoDep;
     if (loopCarried)
       remedy->reduxI = A;
@@ -149,6 +153,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   if (reduxdet.isMinMaxReduction(L, A, B, loopCarried)) {
     ++numRegDepsRemovedMinMaxRedux;
     errs() << "Resolved by liberty MinMaxRedux\n";
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
     remedResp.depRes = DepResult::NoDep;
     if (loopCarried)
       remedy->reduxI = A;
@@ -166,6 +172,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     // Intra iteration dep removed
     ++numRegDepsRemovedRedux;
     errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (intra-iteration)\n";
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxI = B;
     remedy->reduxSCC = nullptr;
@@ -178,6 +186,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     // Loop-carried dep removed
     ++numRegDepsRemovedRedux;
     errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (loop-carried)\n";
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxI = A;
     remedy->reduxSCC = nullptr;
@@ -206,6 +216,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         // Intra iteration dep removed
         ++numRegDepsRemovedLLVMRedux;
         errs() << "Resolved by llvm redux detection (intra-iteration)\n";
+        DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                     << '\n');
         remedResp.depRes = DepResult::NoDep;
         remedy->reduxI = B;
         remedy->reduxSCC = nullptr;
@@ -221,6 +233,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         // Loop-carried dep removed
         ++numRegDepsRemovedLLVMRedux;
         errs() << "Resolved by llvm redux detection (loop-carried)\n";
+        DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                     << '\n');
         remedResp.depRes = DepResult::NoDep;
         remedy->reduxI = A;
         remedy->reduxSCC = nullptr;
@@ -229,7 +243,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
       }
     }
   }
-  errs() << "Redux remed unable to resolve this dep\n";
+  //errs() << "Redux remed unable to resolve this dep\n";
   remedResp.remedy = remedy;
   return remedResp;
 }

@@ -78,6 +78,9 @@ Remediator::RemedResp TXIORemediator::memdep(const Instruction *A,
     ++numTXIONoMemDep;
     remedResp.depRes = DepResult::NoDep;
     remedy->printI = A;
+
+    DEBUG(errs() << "TXIORemed removed mem dep between inst " << *A << "  and  "
+                 << *B << '\n');
   }
   remedResp.remedy = remedy;
   return remedResp;

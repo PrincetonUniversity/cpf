@@ -41,6 +41,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   DEBUG(errs() << "constructEdgesFromMemory ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+  aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
 
   DEBUG(errs() << "constructEdgesFromControl ...\n");
@@ -157,8 +158,8 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
       if (!j->mayReadOrWriteMemory())
         continue;
 
-      queryLoopCarriedMemoryDep(i, j, loop, aa, pdg);
       queryIntraIterationMemoryDep(i, j, loop, aa, pdg);
+      queryLoopCarriedMemoryDep(i, j, loop, aa, pdg);
     }
   }
 }
@@ -190,8 +191,10 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
                     "write to memory");
     if (forward == LoopAA::ModRef)
       forward = LoopAA::Ref;
-    else
+    else {
       forward = LoopAA::NoModRef;
+      return;
+    }
   }
 
   if ((forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
@@ -201,8 +204,10 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
                     "read from memory");
     if (forward == LoopAA::ModRef)
       forward = LoopAA::Mod;
-    else
+    else {
       forward = LoopAA::NoModRef;
+      return;
+    }
   }
 
   // reverse dep test

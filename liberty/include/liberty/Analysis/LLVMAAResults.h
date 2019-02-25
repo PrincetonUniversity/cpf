@@ -35,6 +35,10 @@ namespace liberty
 
     StringRef getLoopAAName() const { return "llvm-results-aa"; }
 
+    virtual SchedulingPreference getSchedulingPreference() const {
+      return SchedulingPreference(Bottom + 1);
+    }
+
     void getAnalysisUsage(AnalysisUsage &AU) const
     {
       LoopAA::getAnalysisUsage(AU);

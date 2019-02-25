@@ -25,8 +25,14 @@ STATISTIC(numQueriesReceived,              "Num queries passed to KillFlow");
 STATISTIC(numEligibleBackwardLoadQueries,  "Num eligible BACKWARD LOAD");
 STATISTIC(numKilledBackwardLoadFlows,      "Num killed BACKWARD LOAD");
 
+STATISTIC(numEligibleBackwardStoreQueries, "Num eligible BACKWARD STORE");
+STATISTIC(numKilledBackwardStore,          "Num killed BACKWARD STORE");
+
 STATISTIC(numEligibleForwardStoreQueries,  "Num eligible FORWARD STORE");
 STATISTIC(numKilledForwardStoreFlows,      "Num killed FORWARD STORE");
+
+STATISTIC(numEligibleForwardLoadQueries,   "Num eligible FORWARD LOAD");
+STATISTIC(numKilledForwardLoad,            "Num killed FORWARD LOAD");
 
 STATISTIC(numEligibleBackwardCallQueries,  "Num eligible BACKWARD CALLSITE");
 // STATISTIC(numKilledBackwardCallFlows,      "Num killed BACKWARD CALLSITE");
@@ -327,13 +333,16 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     {
       if( L->contains(i1) && L->contains(i2) )
       {
-/*
+        // intra-iteration reachability is checked before initiating an
+        // intra-iteration mem dep query
+        /*
         // Is there a path from i1 to i2 within this loop?
         if( !isReachable(L,i1,i2) )
         {
           res = NoModRef;
         }
         else
+        */
         {
           if( const StoreInst *store = dyn_cast< StoreInst >(i1) )
           {
@@ -341,7 +350,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
             {
               ++numKilledForwardStoreFlows;
-              res = ModRefResult(res & ~Mod);
+              //res = ModRefResult(res & ~Mod);
+              res = NoModRef;
             }
           }
 
@@ -351,11 +361,33 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
             {
               ++numKilledBackwardLoadFlows;
-              res = ModRefResult(res & ~Mod);
+              //res = ModRefResult(res & ~Mod);
+              res = NoModRef;
+            }
+          }
+
+          // handle WAR
+          if( const LoadInst *load = dyn_cast< LoadInst >(i1) )
+          {
+            ++numEligibleForwardLoadQueries;
+            if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
+            {
+              ++numKilledForwardLoad;
+              res = NoModRef;
+            }
+          }
+
+          // handle WAW
+          if( const StoreInst *store = dyn_cast< StoreInst >(i2) )
+          {
+            ++numEligibleBackwardStoreQueries;
+            if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
+            {
+              ++numKilledBackwardStore;
+              res = NoModRef;
             }
           }
         }
-*/
       }
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
       return res;
@@ -382,7 +414,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         {
           ++numKilledBackwardLoadFlows;
           DEBUG(errs() << "Removed the mod bit at AAA\n");
-          res = ModRefResult(res & ~Mod);
+          //res = ModRefResult(res & ~Mod);
+          res = NoModRef;
         }
       }
 
@@ -409,6 +442,19 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             }
  */
           }
+
+      // handle WAR and WAW
+      if( const StoreInst *store = dyn_cast< StoreInst >(later) )
+      {
+        ++numEligibleBackwardStoreQueries;
+        if( pointerKilledBefore(L, store->getPointerOperand(), store, queryStart, AnalysisTimeout) )
+        {
+          ++numKilledBackwardStore;
+          // no dependence between this store and insts from previous iteration possible
+          res = NoModRef;
+        }
+      }
+
     }
 
     if( res == Ref || res == NoModRef )
@@ -430,7 +476,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         if( pointerKilledAfter(L, store->getPointerOperand(), store, queryStart, AnalysisTimeout) )
         {
           ++numKilledForwardStoreFlows;
-          res = ModRefResult(res & ~Mod);
+          //res = ModRefResult(res & ~Mod);
+          res = NoModRef;
+          return res;
         }
       }
 
@@ -452,6 +500,19 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             }
 */
           }
+
+      // handle WAR deps
+      if( const LoadInst *load = dyn_cast< LoadInst >(earlier) )
+      {
+        ++numEligibleForwardLoadQueries;
+        if( pointerKilledAfter(L, load->getPointerOperand(), load, queryStart, AnalysisTimeout) )
+        {
+          DEBUG(errs() << "Killed dep: load inst as earlier : " << *load << "\n later is "  << *later << "\n");
+          ++numKilledForwardLoad;
+          res = NoModRef;
+          return res;
+        }
+      }
     }
 
 
