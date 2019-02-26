@@ -58,8 +58,7 @@ public:
     const Loop *L,
     const SCEV *ptr1, const APInt &size1, // (from earlier iteration)
     const SCEV *ptr2, const APInt &size2,  // (from later iteration)
-		bool innerLoopAccess
-    )
+		bool multiDimArrayEligible)
   {
 /*
     The reasoning works like this:
@@ -114,15 +113,17 @@ public:
 
     // Consider the case where ptr2>ptr1:
     {
-      // If the difference in bases is non-negative
       const SCEV *diffBases = SE->getMinusSCEV( base2, base1 );
       const ConstantRange diffBasesRange = SE->getSignedRange(diffBases);
-//      errs() << " forward difference in bases: " << diffBasesRange << ' ' << *diffBases << '\n';
+
+      const SCEV *diffStep = SE->getMinusSCEV(step2, step1);
+      const ConstantRange diffStepRange = SE->getSignedRange(diffStep);
+
+      // If the difference in bases is non-negative
+//     	errs() << " forward difference in bases: " << diffBasesRange << ' ' << *diffBases << '\n';
       if( diffBasesRange.getSignedMin().sge(0) )
       {
         // and, If the difference in steps is non-negative
-        const SCEV *diffStep = SE->getMinusSCEV( step2, step1 );
-        const ConstantRange diffStepRange = SE->getSignedRange(diffStep);
 //        errs() << " forward difference in steps: " << diffStepRange << ' ' << *diffStep << '\n';
         if( diffStepRange.getSignedMin().sge(0) )
         {
@@ -136,58 +137,95 @@ public:
 //            errs() << "===> Disjoint\n";
             return true;
           }
+        }
+      }
 
-          // sot: add extra check for pointers with same base and step but not
-          // inner loop access (useful for multi-dim array accesses)
-          if (diffBasesRange.getSignedMin() == 0 &&
-              diffStepRange.getSignedMin() == 0 && !innerLoopAccess) {
+      // sot: add extra check for pointers with same step and base (seems to
+      // handle SCEVs with different subloops and semantically equivalent but
+      // syntactically hard to process bases). Not applicable for inner most
+      // loop accesses (useful for multi-dim array accesses)
+      if (diffStepRange.getSignedMin() == 0 && multiDimArrayEligible) {
 
-            const SCEVUnknown *ptrBase1 =
-                dyn_cast<SCEVUnknown>(SE->getPointerBase(ptr1));
-            if (!ptrBase1)
-              return false;
+        const SCEVUnknown *ptrBase1 =
+            dyn_cast<SCEVUnknown>(SE->getPointerBase(ptr1));
+        if (!ptrBase1)
+          return false;
 
-            const SCEV *ptrSCEV = SE->getMinusSCEV(ptr1, ptrBase1);
+        const SCEV *ptrSCEV = SE->getMinusSCEV(ptr1, ptrBase1);
 
-            const SCEVAddRecExpr *sAR = dyn_cast<SCEVAddRecExpr>(ptrSCEV);
+        const SCEVAddRecExpr *sAR = dyn_cast<SCEVAddRecExpr>(ptrSCEV);
 
-            if (sAR) {
-              // check 1
-              const SCEV *base = sAR->getStart();
-              const SCEV *step = sAR->getStepRecurrence(*SE);
-              const ConstantRange diffRange1 =
-                  SE->getSignedRange(SE->getSMinExpr(step, base));
-              bool check1 = diffRange1.getSignedMin().sge(0);
+        if (sAR) {
+          //const SCEV *base = sAR->getStart();
+          const SCEV *step = sAR->getStepRecurrence(*SE);
 
-              // check 2
-              const SCEV *ElementSize = SE->getConstant(size1);
-              SmallVector<const SCEV *, 4> Subscripts;
-              SmallVector<const SCEV *, 4> Sizes;
-              SE->delinearize(sAR, Subscripts, Sizes, ElementSize);
+          const SCEV *ElementSize = SE->getConstant(size1);
+          SmallVector<const SCEV *, 4> Subscripts;
+          SmallVector<const SCEV *, 4> Sizes;
+          SE->delinearize(sAR, Subscripts, Sizes, ElementSize);
 
-              const SCEV *diffSCEV =
-                  SE->getMinusSCEV(step, SE->getMulExpr(ElementSize, Sizes[0]));
-              const ConstantRange diffRange2 = SE->getSignedRange(diffSCEV);
-              bool check2 = diffRange2.getSignedMin().sge(0);
+          if (Sizes.size() < 2)
+            return false;
 
-              assert(check1 == check2 &&
-                     "Checks in SCEVAA expected to be equivalent");
+          // relevant size is the second to last size (the last one is equal to
+          // the elementSize). the other sizes refer to outer loops if any
+          unsigned relevantSizeIndex = Sizes.size() - 2;
 
-              if (check1) {
-                ++numNoAliasMD;
-                DEBUG(errs()
-                      << "stepGreaterThan:\n"
-                      << *ptr1 << " and " << *ptr2 << "\n===> Disjoint\n");
-                return true;
-              }
-            }
+          const SCEV *diffSCEV = SE->getMinusSCEV(
+              step, SE->getMulExpr(ElementSize, Sizes[relevantSizeIndex]));
+          const ConstantRange diffRange = SE->getSignedRange(diffSCEV);
+          bool check = diffRange.getSignedMin().sge(0);
+
+					if (check) {
+              ++numNoAliasMD;
+              DEBUG(errs() << "stepGreaterThan:\n"
+                           << *ptr1 << " and " << *ptr2 << "\n===> Disjoint\n");
+              return true;
           }
         }
       }
-//      errs() << '\n';
+    }
+    return false;
+  }
+
+  void delinearize(ScalarEvolution *SE, const Pointer &P, const APInt &size,
+                   SmallVectorImpl<const SCEV *> &Sizes,
+                   const SCEVUnknown *ptrBase) {
+    const SCEV *pSCEV = SE->getSCEV(const_cast<Value *>(P.ptr));
+
+    ptrBase = dyn_cast<SCEVUnknown>(SE->getPointerBase(pSCEV));
+    if (ptrBase) {
+      const SCEV *spSCEV = SE->getMinusSCEV(pSCEV, ptrBase);
+
+      const SCEVAddRecExpr *sAR = dyn_cast<SCEVAddRecExpr>(spSCEV);
+
+      if (sAR) {
+        const SCEV *ElementSize = SE->getConstant(size);
+        SmallVector<const SCEV *, 4> Subscripts;
+        SE->delinearize(sAR, Subscripts, Sizes, ElementSize);
+      }
+    }
+  }
+
+  bool checkMultiDimArrayEligibility(const SCEVUnknown *ptrBase1,
+                                     SmallVectorImpl<const SCEV *> &Sizes1,
+                                     const SCEVUnknown *ptrBase2,
+                                     SmallVectorImpl<const SCEV *> &Sizes2) {
+
+    // check that both have the same pointer base
+    if (!ptrBase1 && ptrBase1 != ptrBase2)
+      return false;
+
+    // check that both pointer access arrays of same dimensions
+    if (Sizes1.size() != Sizes2.size() || Sizes1.size() < 2)
+      return false;
+
+    for (unsigned i = 0; i < Sizes1.size(); i++) {
+      if (Sizes1[i] != Sizes2[i])
+        return false;
     }
 
-    return false;
+		return true;
   }
 
   virtual AliasResult aliasCheck(const Pointer &P1,
@@ -272,11 +310,22 @@ public:
       // in pointers must be greater than the access size during any
       // two iterations I1 < I2.
 
-      bool innerLoopAccess =
+      bool innerMostLoopAccess =
           (s1 == SE->getSCEV(const_cast<Value *>(P1.ptr)) &&
            s2 == SE->getSCEV(const_cast<Value *>(P2.ptr)));
 
-      if( stepGreaterThan(SE, L, s1, size1, s2, size2, innerLoopAccess) )
+      const SCEVUnknown *ptrBase1;
+      SmallVector<const SCEV *, 4> Sizes1;
+      const SCEVUnknown *ptrBase2;
+      SmallVector<const SCEV *, 4> Sizes2;
+      delinearize(SE, P1, size1, Sizes1, ptrBase1);
+      delinearize(SE, P2, size2, Sizes2, ptrBase2);
+
+      bool multiDimArrayEligible =
+          !innerMostLoopAccess &&
+          checkMultiDimArrayEligibility(ptrBase1, Sizes1, ptrBase2, Sizes2);
+
+      if( stepGreaterThan(SE, L, s1, size1, s2, size2, multiDimArrayEligible))
       {
         ++numNoAlias;
         return NoAlias;
