@@ -107,12 +107,17 @@ std::set<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
 void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
                                      long &selectedRemediesCost,
                                      Criticisms &criticisms) {
+  DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
     Remedies &rs = mapCriticismsToRemeds[cr];
     Remedy_ptr cheapestR = *(rs.begin());
     selectedRemediesCost += cheapestR->cost;
     selectedRemedies.push_back(cheapestR);
+    DEBUG(errs() << cheapestR->getRemedyName() << " addresses criticicm:\n"
+                 << *cr->getOutgoingT() << " ->\n"
+                 << *cr->getIncomingT() << "\n\n");
   }
+  DEBUG(errs() << "--------------------------------------------------------\n");
 }
 
 bool Orchestrator::findBestStrategy(

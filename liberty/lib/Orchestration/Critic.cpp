@@ -139,13 +139,13 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
 
     if (edge->isLoopCarriedDependence()) {
 
-      DEBUG(errs() << "  Found new DOALL criticism loop-carried from "
-                   << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
-                   << '\n');
+      //DEBUG(errs() << "  Found new DOALL criticism loop-carried from "
+      //             << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
+      //             << '\n');
 
       // check if this edge is removable
       if (!edge->isRemovable()) {
-        // criticism cannot be remedied. Abort
+        // criticism cannot be remedied.
         DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
                      << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                      << '\n');
