@@ -2,6 +2,7 @@
 
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Operator.h"
 #include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
@@ -81,18 +82,35 @@ public:
     nonMalloc.clear();
     mallocSrcs.clear();
 
-    for(GlobalIt global = M.global_begin(); global != M.global_end(); ++global) {
+    for (GlobalIt global = M.global_begin(); global != M.global_end();
+         ++global) {
       Type *type = global->getType()->getElementType();
-      if(type->isPointerTy()) {
-        for(UseIt use = global->user_begin(); use != global->user_end(); ++use) {
-          if(const StoreInst *store = dyn_cast<StoreInst>(*use)) {
+      if (type->isPointerTy()) {
+        for (UseIt use = global->user_begin(); use != global->user_end();
+             ++use) {
+          if (const StoreInst *store = dyn_cast<StoreInst>(*use)) {
             const Instruction *src = liberty::findNoAliasSource(store);
-            if(src) {
+            if (src) {
               mallocSrcs[&*global].insert(src);
             } else {
               nonMalloc.insert(&*global);
             }
-          } else if(!isa<LoadInst>(*use)) {
+          } else if (const BitCastOperator *bcOp =
+                         dyn_cast<BitCastOperator>(*use)) {
+            for (UseIt bUse = bcOp->user_begin(); bUse != bcOp->user_end();
+                 ++bUse) {
+              if (const StoreInst *bStore = dyn_cast<StoreInst>(*bUse)) {
+                const Instruction *s = liberty::findNoAliasSource(bStore);
+                if (s) {
+                  mallocSrcs[&*global].insert(s);
+                } else {
+                  nonMalloc.insert(&*global);
+                }
+              } else if (!isa<LoadInst>(*bUse)) {
+                nonMalloc.insert(&*global);
+              }
+            }
+          } else if (!isa<LoadInst>(*use)) {
             nonMalloc.insert(&*global);
           }
         }
