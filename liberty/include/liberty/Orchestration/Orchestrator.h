@@ -8,6 +8,7 @@
 #include "liberty/Orchestration/TXIORemed.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/ReduxRemed.h"
+#include "liberty/Orchestration/PrivRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
@@ -52,11 +53,10 @@ private:
   std::map<Criticism*, Remedies> mapCriticismsToRemeds;
   std::map<u_sptr, Remedy_ptr> mapRemedEdgeCostsToRemedies;
 
-  std::set<Remediator_ptr> getRemediators(Loop *A, ControlSpeculation *ctrlspec,
-                                          PredictionSpeculation *headerPhiPred,
-                                          ModuleLoops &mloops,
-                                          LoopDependenceInfo &ldi,
-                                          SmtxSlampSpeculationManager &smtxMan);
+  std::set<Remediator_ptr>
+  getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+                 PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+                 LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);

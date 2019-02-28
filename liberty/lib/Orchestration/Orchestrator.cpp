@@ -54,7 +54,7 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 */
 
 std::set<Remediator_ptr>
-Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
+Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
                              PredictionSpeculation *headerPhiPred,
                              ModuleLoops &mloops, LoopDependenceInfo &ldi,
                              SmtxSlampSpeculationManager &smtxMan) {
@@ -76,6 +76,11 @@ Orchestrator::getRemediators(Loop *A, ControlSpeculation *ctrlspec,
   auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi);
   reduxRemed->setLoopOfInterest(A);
   remeds.insert(std::move(reduxRemed));
+
+  // privitization remediator
+  auto privRemed = std::make_unique<PrivRemediator>();
+  privRemed->setPDG(pdg);
+  remeds.insert(std::move(privRemed));
 
   // counted induction variable remediator
   remeds.insert(std::make_unique<CountedIVRemediator>(&ldi));
@@ -169,7 +174,7 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
-      getRemediators(loop, ctrlspec, headerPhiPred, mloops, ldi, smtxMan);
+      getRemediators(loop, ipdg, ctrlspec, headerPhiPred, mloops, ldi, smtxMan);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);

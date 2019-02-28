@@ -12,7 +12,7 @@
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Analysis/ReductionDetection.h"
 
-#define DEFAULT_REDUX_REMED_COST 1
+#define DEFAULT_REDUX_REMED_COST 2
 
 namespace liberty
 {
