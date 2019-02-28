@@ -56,6 +56,7 @@
 #include "liberty/Utilities/GlobalCtors.h"
 #include "liberty/PointsToProfiler/Indeterminate.h"
 #include "liberty/PointsToProfiler/Remat.h"
+#include "liberty/Utilities/ModuleLoops.h"
 
 #include <sstream>
 
@@ -135,8 +136,9 @@ struct MallocProfiler : public ModulePass
   void getAnalysisUsage(AnalysisUsage &au) const
   {
     au.addRequired< KillFlow >();
-    au.addRequired< LoopInfoWrapperPass >();
-    au.addRequired< ScalarEvolutionWrapperPass >();
+    //au.addRequired< LoopInfoWrapperPass >();
+    //au.addRequired< ScalarEvolutionWrapperPass >();
+    au.addRequired< ModuleLoops >();
   }
 
   Constant *fileptr_au_name(Module &mod)
@@ -164,6 +166,8 @@ struct MallocProfiler : public ModulePass
 
     u32 = Type::getInt32Ty(ctx);
     Type *charptrptr = PointerType::getUnqual( charptr );
+
+    ModuleLoops &mloops = getAnalysis<ModuleLoops>();
 
     unmanaged_fopen_name = 0;
     unmanaged_library_constant_au_name = 0;
@@ -303,7 +307,9 @@ struct MallocProfiler : public ModulePass
     realloc16 = mod.getOrInsertFunction("__prof_realloc_align16", realloc16_ty);
 
     for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i)
-      runOnFunction(&*i);
+      runOnFunction(&*i, mloops);
+
+    DEBUG(errs() << "Instrumented all functions\n");
 
     do_init(mod, globals);
 
@@ -1132,7 +1138,7 @@ private:
           continue;
         already.insert(inst);
 
-        DEBUG(errs() << "Instrumenting indeterminate base object: " << inst->getName() << '\n');
+        DEBUG(errs() << "Instrumenting indeterminate base object: " << *inst << '\n');
         instrumentInstructionForIndeterminateBase(inst, interesting, li);
         modified = true;
       }
@@ -1486,7 +1492,7 @@ private:
     return modified;
   }
 
-  bool runOnFunction(Function *fcn)
+  bool runOnFunction(Function *fcn, ModuleLoops &mloops)
   {
     if( fcn->isDeclaration() )
       return false;
@@ -1546,8 +1552,10 @@ private:
 
     generateInstructionNames(fcn);
 
-    ScalarEvolution &scev = getAnalysis< ScalarEvolutionWrapperPass >(*fcn).getSE();
-    LoopInfo &li = getAnalysis< LoopInfoWrapperPass >(*fcn).getLoopInfo();
+    //ScalarEvolution &scev = getAnalysis< ScalarEvolutionWrapperPass >(*fcn).getSE();
+    //LoopInfo &li = getAnalysis< LoopInfoWrapperPass >(*fcn).getLoopInfo();
+    ScalarEvolution &scev = mloops.getAnalysis_ScalarEvolution(fcn);
+    LoopInfo &li = mloops.getAnalysis_LoopInfo(fcn);
 
     LoadAtLoopSet upward_exposed_loads;
     identifyUpwardExposedLoads(loads, li, upward_exposed_loads);
@@ -1625,8 +1633,11 @@ private:
       if( isMain )
       {
         Value *actuals[] = { fcn->arg_begin(),
-                             fcn->arg_end() };
+                             fcn->arg_begin() + 1 };
+                             //fcn->arg_end() };
+
         begin << CallInst::Create(manage_argv,
+          //ArrayRef<Value*>(actuals));
           ArrayRef<Value*>(&actuals[0], &actuals[2]) );
       }
 
@@ -1643,8 +1654,11 @@ private:
 
           if( isMain )
           {
+            //Value *actuals[] = { fcn->arg_begin(),
+            //                     fcn->arg_end() };
             Value *actuals[] = { fcn->arg_begin(),
-                                 fcn->arg_end() };
+                                 fcn->arg_begin() + 1 };
+
             end << CallInst::Create(unmanage_argv,
               ArrayRef<Value*>(&actuals[0], &actuals[2]));
           }

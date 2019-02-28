@@ -30,6 +30,9 @@ namespace liberty {
     // int
     Type *intType = Type::getInt32Ty(Context);
 
+    Type *int8Type = Type::getInt8Ty(Context);
+    PointerType *int8PtrType = Type::getInt8PtrTy(Context);
+
     // void fcn(void)
     std::vector<Type*> formals(0);
     FunctionType *voidFcnVoidType = FunctionType::get(
@@ -38,16 +41,21 @@ namespace liberty {
       false);
 
     // The type of a global constructor
-    // record, llvm calls this "{ i32, void () * }"
-    std::vector<Type*> fieldsty(2);
+    // record, llvm calls this "{ i32, void () *, i8* }"
+    std::vector<Type*> fieldsty(3);
     fieldsty[0] = intType;
     fieldsty[1] = PointerType::getUnqual( voidFcnVoidType );
+    fieldsty[2] = PointerType::getUnqual( int8Type );
     StructType *ctorRecordType = StructType::get(f->getContext(), fieldsty);
 
 
 
     // Build a new constructor list
     std::vector<Constant*> elts;
+
+    // keep old list if any, append it at the end of our new constructor list
+    // (after our startup function)
+    std::vector<Constant*> old_elts;
 
     // If there was already a constructor list...
     GlobalVariable *previous = module->getGlobalVariable(name);
@@ -67,6 +75,7 @@ namespace liberty {
           for(User::op_iterator i=ca->op_begin(), e=ca->op_end(); i!=e; ++i) {
 
             ConstantStruct *oldRec = cast< ConstantStruct >( i->get() );
+
             ConstantInt *prio = cast< ConstantInt >( oldRec->getAggregateElement(0u) );
 
             if( ( (prio->getZExtValue() > priority) && ascending )
@@ -90,7 +99,7 @@ namespace liberty {
             }
             else
             {
-              elts.push_back( oldRec );
+              old_elts.push_back( oldRec );
             }
           }
 
@@ -104,13 +113,20 @@ namespace liberty {
     }
 
     // (global constructor record value)
-    std::vector<Constant *> fields(2);
+    std::vector<Constant *> fields(3);
     fields[0] = ConstantInt::get( intType, priority);
     fields[1] = f;
+    fields[2] = ConstantPointerNull::get(int8PtrType);;
     Constant *record = ConstantStruct::get(ctorRecordType,fields);
 
     // Add our new elements
     elts.push_back(record);
+
+
+    // Append elements of the old contructor list at the end of the new list
+    // Appending in the beginning leads to early abort
+    for (auto el: old_elts)
+      elts.push_back(el);
 
     // Add it to the module
     Constant *array = ConstantArray::get(

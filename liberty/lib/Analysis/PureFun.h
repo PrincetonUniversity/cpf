@@ -63,6 +63,8 @@
   "llvm.cttz.i64",
   "llvm.pow.f32",
   "llvm.pow.f64",
+  "llvm.fabs.f32",
+  "llvm.fabs.f64",
 
 // New with llvm 135637
   "llvm.lifetime.start",
