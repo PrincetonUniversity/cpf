@@ -107,17 +107,37 @@ std::set<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
 void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
                                      long &selectedRemediesCost,
                                      Criticisms &criticisms) {
+  DEBUG(errs() << "\n-====================================================-\n");
   DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
     Remedies &rs = mapCriticismsToRemeds[cr];
     Remedy_ptr cheapestR = *(rs.begin());
     selectedRemediesCost += cheapestR->cost;
     selectedRemedies.push_back(cheapestR);
-    DEBUG(errs() << cheapestR->getRemedyName() << " addresses criticicm:\n"
+    DEBUG(errs() << "----------------------------------------------------\n");
+    DEBUG(errs() << cheapestR->getRemedyName()
+                 << " chosen to address criticicm:\n"
                  << *cr->getOutgoingT() << " ->\n"
-                 << *cr->getIncomingT() << "\n\n");
+                 << *cr->getIncomingT() << "\n");
+    if (rs.size() > 1) {
+      DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
+      auto itR = rs.begin();
+      while(itR != rs.end()) {
+        if (*itR == cheapestR) {
+          ++itR;
+          continue;
+        }
+        DEBUG(errs() << (*itR)->getRemedyName());
+        if ((++itR) != rs.end())
+          DEBUG(errs() << ", ");
+        else
+          DEBUG(errs() << "\n");
+      }
+    }
+    DEBUG(errs()
+          << "------------------------------------------------------\n\n");
   }
-  DEBUG(errs() << "--------------------------------------------------------\n");
+  DEBUG(errs() << "-====================================================-\n\n");
 }
 
 bool Orchestrator::findBestStrategy(
