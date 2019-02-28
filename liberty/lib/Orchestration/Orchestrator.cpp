@@ -55,6 +55,7 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 
 std::set<Remediator_ptr>
 Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+                             PredictionSpeculation *loadedValuePred,
                              PredictionSpeculation *headerPhiPred,
                              ModuleLoops &mloops, LoopDependenceInfo &ldi,
                              SmtxSlampSpeculationManager &smtxMan) {
@@ -65,6 +66,9 @@ Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
 
   // header phi value prediction
   remeds.insert(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
+
+  // Loop-Invariant Loaded-Value Prediction
+  remeds.insert(std::make_unique<LoadedValuePredRemediator>(loadedValuePred));
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
@@ -148,6 +152,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+    PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
     std::unique_ptr<PipelineStrategy> &strat,
@@ -174,7 +179,8 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
-      getRemediators(loop, ipdg, ctrlspec, headerPhiPred, mloops, ldi, smtxMan);
+      getRemediators(loop, ipdg, ctrlspec, loadedValuePred, headerPhiPred,
+                     mloops, ldi, smtxMan);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);

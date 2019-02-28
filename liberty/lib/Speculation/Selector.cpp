@@ -149,8 +149,10 @@ unsigned Selector::computeWeights(
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
   ControlSpeculation *ctrlspec =
       proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-  PredictionSpeculation *predspec =
+  PredictionSpeculation *headerPhiPred =
       &proxy.getAnalysis<HeaderPhiPredictionSpeculation>();
+  PredictionSpeculation *loadedValuePred =
+      &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
   SmtxSlampSpeculationManager &smtxMan =
       proxy.getAnalysis<SmtxSlampSpeculationManager>();
 
@@ -204,8 +206,9 @@ unsigned Selector::computeWeights(
       Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, perf, ctrlspec, predspec, mloops, smtxMan, lpl, ps, sr,
-          sc, NumThreads, pipelineOption_ignoreAntiOutput(),
+          A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
+          smtxMan, lpl, ps, sr, sc, NumThreads,
+          pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());

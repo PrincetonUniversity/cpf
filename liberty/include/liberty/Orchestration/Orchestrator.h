@@ -11,6 +11,7 @@
 #include "liberty/Orchestration/PrivRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
+#include "liberty/Orchestration/LoadedValuePredRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
@@ -39,6 +40,7 @@ public:
       // Inputs
       Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+      PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
       // Output
@@ -55,6 +57,7 @@ private:
 
   std::set<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+                 PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan);
 

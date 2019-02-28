@@ -37,6 +37,7 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< SLAMPLoadProfile >();
   au.addRequired< SmtxSlampSpeculationManager >();
   au.addRequired< ProfileGuidedControlSpeculator >();
+  au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< HeaderPhiPredictionSpeculation >();
 }
 
