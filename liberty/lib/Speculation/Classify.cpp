@@ -215,6 +215,7 @@ bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus) const
 {
   KillFlow &kill = getAnalysis< KillFlow >();
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
+  ctrlspec->setLoopOfInterest(loop->getHeader());
 
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
@@ -267,6 +268,7 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src, Inst
     return true;
 
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
+  ctrlspec->setLoopOfInterest(loop->getHeader());
 
   for(CCPairs::const_iterator i=flows.begin(), e=flows.end(); i!=e; ++i)
   {
@@ -376,6 +378,7 @@ bool Classify::runOnLoop(Loop *loop)
     << " *****************\n");
 
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
+  ctrlspec->setLoopOfInterest(loop->getHeader());
   if( ctrlspec->isNotLoop(loop) )
   {
     DEBUG(errs() << "- This loop never takes its backedge.\n");

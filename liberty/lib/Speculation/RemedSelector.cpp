@@ -24,7 +24,6 @@
 //#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 
-
 namespace liberty
 {
 namespace SpecPriv
@@ -39,6 +38,8 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< HeaderPhiPredictionSpeculation >();
+  au.addRequired<ReadPass>();
+  au.addRequired<Classify>();
 }
 
 bool RemedSelector::runOnModule(Module &mod)

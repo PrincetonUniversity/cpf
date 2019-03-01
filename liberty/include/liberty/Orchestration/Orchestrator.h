@@ -13,10 +13,12 @@
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
+#include "liberty/Orchestration/LocalityRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
+#include "liberty/Speculation/Read.h"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
 #include "LoopDependenceInfo.hpp"
@@ -42,7 +44,8 @@ public:
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-      SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
+      SmtxSlampSpeculationManager &smtxMan, const Read &rd,
+      const HeapAssignment &asgn, LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -59,7 +62,8 @@ private:
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
                  PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-                 LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan);
+                 LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
+                 const Read &rd, const HeapAssignment &asgn);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);

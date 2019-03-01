@@ -155,6 +155,8 @@ unsigned Selector::computeWeights(
       &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
   SmtxSlampSpeculationManager &smtxMan =
       proxy.getAnalysis<SmtxSlampSpeculationManager>();
+  const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
+  Classify &classify = proxy.getAnalysis<Classify>();
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -169,6 +171,8 @@ unsigned Selector::computeWeights(
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
+
+    const HeapAssignment &asgn = classify.getAssignmentFor(A);
 
     const unsigned loopTime = perf.estimate_loop_weight(A);
     const unsigned scaledLoopTime = FixedPoint*loopTime;
@@ -207,7 +211,7 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
-          smtxMan, lpl, ps, sr, sc, NumThreads,
+          smtxMan, rd, asgn, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),

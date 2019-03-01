@@ -58,7 +58,8 @@ Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
                              PredictionSpeculation *loadedValuePred,
                              PredictionSpeculation *headerPhiPred,
                              ModuleLoops &mloops, LoopDependenceInfo &ldi,
-                             SmtxSlampSpeculationManager &smtxMan) {
+                             SmtxSlampSpeculationManager &smtxMan,
+                             const Read &rd, const HeapAssignment &asgn) {
   std::set<Remediator_ptr> remeds;
 
   // memory specualation remediator
@@ -91,6 +92,9 @@ Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
 
   // TXIO remediator
   remeds.insert(std::make_unique<TXIORemediator>());
+
+  // separation logic remediator (Privateer PLDI '12)
+  remeds.insert(std::make_unique<LocalityRemediator>(rd, asgn));
 
   // commutative libs remediator
   //remeds.insert(std::unique_ptr<CommutativeLibsRemediator>(
@@ -154,7 +158,8 @@ bool Orchestrator::findBestStrategy(
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-    SmtxSlampSpeculationManager &smtxMan, LoopProfLoad &lpl,
+    SmtxSlampSpeculationManager &smtxMan, const Read &rd,
+    const HeapAssignment &asgn, LoopProfLoad &lpl,
     std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
@@ -180,7 +185,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
       getRemediators(loop, ipdg, ctrlspec, loadedValuePred, headerPhiPred,
-                     mloops, ldi, smtxMan);
+                     mloops, ldi, smtxMan, rd, asgn);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);
