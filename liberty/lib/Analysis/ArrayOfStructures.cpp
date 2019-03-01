@@ -145,6 +145,28 @@ public:
 
     const GEPOperator *gep1 = dyn_cast< GEPOperator >( v1 ),
                       *gep2 = dyn_cast< GEPOperator >( v2 );
+
+    // handle cases where the gep is bitcasted before the mem operation
+    auto bitcast1 = dyn_cast<BitCastInst>(v1);
+    auto bitcast2 = dyn_cast<BitCastInst>(v2);
+
+    if (bitcast1) {
+      const Value *src1 = bitcast1->getOperand(0);
+      if (const GEPOperator *srcGep1 = dyn_cast<GEPOperator>(src1))
+        gep1 = srcGep1;
+    }
+
+    if (bitcast2) {
+      const Value *src2 = bitcast2->getOperand(0);
+      if (const GEPOperator *srcGep2 = dyn_cast<GEPOperator>(src2))
+        gep2 = srcGep2;
+    }
+
+    // do not handle bitcasts to different types
+    if ((bitcast1 || bitcast2) && (v1->getType() != v2->getType())) {
+      return MayAlias;
+    }
+
     if( !gep1 || !gep2 )
       return MayAlias;
 
