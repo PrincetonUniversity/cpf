@@ -96,6 +96,9 @@ Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
   // separation logic remediator (Privateer PLDI '12)
   remeds.insert(std::make_unique<LocalityRemediator>(rd, asgn));
 
+  // memory versioning remediator
+  remeds.insert(std::make_unique<MemVerRemediator>());
+
   // commutative libs remediator
   //remeds.insert(std::unique_ptr<CommutativeLibsRemediator>(
   //    new CommutativeLibsRemediator()));
