@@ -54,8 +54,12 @@ LoopAA::AliasResult LLVMAAResults::alias(
     const Loop *L) {
 
   // only handles intra-iteration mem queries
-  if (!notDifferentParent(ptrA, ptrB))
+  auto *funA = getParent(ptrA);
+  if (!funA || !notDifferentParent(ptrA, ptrB))
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L);
+
+  if (funA != curF)
+    computeAAResults(funA);
 
   auto aaRes = aa->alias(ptrA, sizeA, ptrB, sizeB);
 
@@ -78,15 +82,19 @@ LoopAA::AliasResult LLVMAAResults::alias(
                              LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L));
 }
 
-LoopAA::ModRefResult LLVMAAResults::modref(
-    const Instruction *A,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L) {
+LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
+                                           TemporalRelation rel,
+                                           const Value *ptrB, unsigned sizeB,
+                                           const Loop *L) {
 
-  if (A->getParent()->getParent() != curF ||
-      (getParent(ptrB) && getParent(ptrB) != curF))
+  auto *funA = A->getParent()->getParent();
+  auto *funB = getParent(ptrB);
+
+  if (!funA || funA != funB)
     return LoopAA::modref(A, rel, ptrB, sizeB, L);
+
+  if (funA != curF)
+    computeAAResults(funA);
 
   auto aaRes = aa->getModRefInfo(A, ptrB, sizeB);
 
@@ -98,42 +106,46 @@ LoopAA::ModRefResult LLVMAAResults::modref(
   return LoopAA::ModRefResult(aaRes & LoopAA::modref(A, rel, ptrB, sizeB, L));
 }
 
- LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
-                                            TemporalRelation rel,
-                                            const Instruction *B,
-                                            const Loop *L) {
+LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
+                                           TemporalRelation rel,
+                                           const Instruction *B,
+                                           const Loop *L) {
+  auto *funA = A->getParent()->getParent();
+  auto *funB = B->getParent()->getParent();
 
-   if (A->getParent()->getParent() != curF ||
-       B->getParent()->getParent() != curF)
-     return LoopAA::modref(A, rel, B, L);
+  if (!funA || funA != funB)
+    return LoopAA::modref(A, rel, B, L);
 
-   llvm::ModRefInfo aaRes;
+  if (funA != curF)
+    computeAAResults(funA);
 
-   Instruction *nA = const_cast<Instruction *>(A);
-   Instruction *nB = const_cast<Instruction *>(B);
-   auto *callA = dyn_cast<CallInst>(nA);
-   auto *callB = dyn_cast<CallInst>(nB);
+  llvm::ModRefInfo aaRes;
 
-   if (callA && callB)
-     aaRes =
-         aa->getModRefInfo(ImmutableCallSite(callA), ImmutableCallSite(callB));
-   else if (callB)
-     aaRes = aa->getModRefInfo(nA, ImmutableCallSite(callB));
-   else
-     aaRes = aa->getModRefInfo(A, MemoryLocation::get(B));
+  Instruction *nA = const_cast<Instruction *>(A);
+  Instruction *nB = const_cast<Instruction *>(B);
+  auto *callA = dyn_cast<CallInst>(nA);
+  auto *callB = dyn_cast<CallInst>(nB);
 
-   if (aaRes == llvm::MRI_NoModRef) {
-     ++numNoModRef;
-     return LoopAA::NoModRef;
-   }
+  if (callA && callB)
+    aaRes =
+        aa->getModRefInfo(ImmutableCallSite(callA), ImmutableCallSite(callB));
+  else if (callB)
+    aaRes = aa->getModRefInfo(nA, ImmutableCallSite(callB));
+  else
+    aaRes = aa->getModRefInfo(A, MemoryLocation::get(B));
 
-   return LoopAA::ModRefResult(aaRes & LoopAA::modref(A, rel, B, L));
+  if (aaRes == llvm::MRI_NoModRef) {
+    ++numNoModRef;
+    return LoopAA::NoModRef;
+  }
+
+  return LoopAA::ModRefResult(aaRes & LoopAA::modref(A, rel, B, L));
 }
 
 static RegisterPass<LLVMAAResults>
-X("llvm-aa-results", "LLVM's AA Results formulated as a CAF analysis pass");
+    X("llvm-aa-results", "LLVM's AA Results formulated as a CAF analysis pass");
 static RegisterAnalysisGroup<liberty::LoopAA> Y(X);
 
 char LLVMAAResults::ID = 0;
 
-}
+} // namespace liberty
