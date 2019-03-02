@@ -39,7 +39,7 @@ public:
   */
 
   RemedResp memdep(const Instruction *A, const Instruction *B,
-                   const bool LoopCarried, const Loop *L);
+                   bool LoopCarried, bool RAW, const Loop *L);
 
 private:
   // TODO: eventually remove this manager

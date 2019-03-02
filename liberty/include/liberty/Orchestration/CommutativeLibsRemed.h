@@ -26,7 +26,7 @@ public:
   StringRef getRemediatorName() const { return "comm-libs-remediator"; }
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   const Loop *L);
+                   bool RAW, const Loop *L);
 
   RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried,
                    const Loop *L);

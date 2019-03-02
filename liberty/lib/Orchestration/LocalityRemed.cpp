@@ -32,7 +32,7 @@ bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
 
 Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
                                                  const Instruction *B,
-                                                 const bool LoopCarried,
+                                                 bool LoopCarried, bool RAW,
                                                  const Loop *L) {
 
   Remediator::RemedResp remedResp;

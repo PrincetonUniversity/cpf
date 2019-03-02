@@ -28,7 +28,7 @@ public:
   StringRef getRemediatorName() const { return "loaded-value-pred-remediator"; }
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   const Loop *L);
+                   bool RAW, const Loop *L);
 
 private:
   PredictionSpeculation *predspec;

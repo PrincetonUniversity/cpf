@@ -23,9 +23,10 @@ namespace liberty
       assert(sop && dop &&
              "PDG nodes that are part of criticims should be instructions");
       bool lc = cr->isLoopCarriedDependence();
+      bool raw = cr->isRAWDependence();
       Remedy_ptr r;
       if (cr->isMemoryDependence())
-        r = tryRemoveMemEdge(sop, dop, lc, loop);
+        r = tryRemoveMemEdge(sop, dop, lc, raw, loop);
       else if (cr->isControlDependence())
         r = tryRemoveCtrlEdge(sop, dop, lc, loop);
       else
@@ -48,8 +49,8 @@ namespace liberty
 
   Remedy_ptr Remediator::tryRemoveMemEdge(const Instruction *sop,
                                           const Instruction *dop, bool lc,
-                                          const Loop *loop) {
-    RemedResp remedResp = memdep(sop, dop, lc, loop);
+                                          bool raw, const Loop *loop) {
+    RemedResp remedResp = memdep(sop, dop, lc, raw, loop);
     if (remedResp.depRes == DepResult::NoDep)
       return remedResp.remedy;
     else
@@ -80,7 +81,7 @@ namespace liberty
 
   Remediator::RemedResp Remediator::memdep(const Instruction *sop,
                                            const Instruction *dop, bool lc,
-                                           const Loop *loop) {
+                                           bool raw, const Loop *loop) {
     RemedResp remedResp;
     remedResp.depRes = DepResult::Dep;
     return remedResp;

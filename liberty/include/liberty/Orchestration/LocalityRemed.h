@@ -44,7 +44,7 @@ public:
   StringRef getRemediatorName() const { return "locality-remediator"; }
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   const Loop *L);
+                   bool RAW, const Loop *L);
 
 private:
   const Read &read;

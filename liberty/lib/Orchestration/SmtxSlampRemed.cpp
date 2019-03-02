@@ -92,7 +92,7 @@ void SmtxSlampRemediator::queryAcrossCallsites(
 
 Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
                                                   const Instruction *B,
-                                                  const bool LoopCarried,
+                                                  bool LoopCarried, bool RAW,
                                                   const Loop *L) {
   ++numQueries;
   Remediator::RemedResp remedResp;

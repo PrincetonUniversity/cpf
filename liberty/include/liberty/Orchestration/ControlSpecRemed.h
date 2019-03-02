@@ -36,7 +36,7 @@ public:
   StringRef getRemediatorName() const { return "ctrl-spec-remediator"; }
 
   RemedResp memdep(const Instruction *A, const Instruction *B,
-                   const bool LoopCarried, const Loop *L);
+                   bool LoopCarried, bool RAW, const Loop *L);
 
   RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
 

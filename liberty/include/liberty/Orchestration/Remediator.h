@@ -61,7 +61,7 @@ public:
 
   // Query for mem deps
   virtual RemedResp memdep(const Instruction *A, const Instruction *B,
-                           bool loopCarried, const Loop *L);
+                           bool loopCarried, bool raw, const Loop *L);
 
   // Query for RAW register dependences
   // is there a RAW reg dep from A to B?
@@ -73,7 +73,7 @@ public:
                             const Loop *L);
 
   Remedy_ptr tryRemoveMemEdge(const Instruction *sop, const Instruction *dop,
-                              bool loopCarried, const Loop *L);
+                              bool loopCarried, bool raw, const Loop *L);
 
   Remedy_ptr tryRemoveRegEdge(const Instruction *sop, const Instruction *dop,
                               bool loopCarried, const Loop *L);

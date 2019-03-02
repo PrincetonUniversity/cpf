@@ -10,7 +10,7 @@ namespace liberty {
 using namespace llvm;
 
 STATISTIC(numPrivNoMemDep,
-          "Number of output mem deps removed by privitization");
+          "Number of false mem deps removed by privitization");
 
 void PrivRemedy::apply(PDG &pdg) {
   // TODO: code for application of privitization here.
@@ -37,7 +37,7 @@ bool PrivRemediator::isPrivate(const Instruction *I) {
 
 Remediator::RemedResp PrivRemediator::memdep(const Instruction *A,
                                              const Instruction *B,
-                                             const bool LoopCarried,
+                                             bool LoopCarried, bool RAW,
                                              const Loop *L) {
 
   Remediator::RemedResp remedResp;
