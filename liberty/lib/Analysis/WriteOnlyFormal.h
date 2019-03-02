@@ -12,7 +12,9 @@
 { "llvm.va_end", 0 },
 // New with llvm 135637
 {  "llvm.lifetime.start", 1},
+{  "llvm.lifetime.start.p0i8", 1},
 {  "llvm.lifetime.end", 1},
+{  "llvm.lifetime.end.p0i8", 1},
 {  "llvm.invariant.start",1},
 {  "llvm.invariant.end",0},
 {  "llvm.invariant.end",2},

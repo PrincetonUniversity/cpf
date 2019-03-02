@@ -423,6 +423,14 @@ namespace liberty
     if( !inst->mayReadFromMemory() )
       return false;
 
+    if (const IntrinsicInst *intrinsic = dyn_cast<IntrinsicInst>(inst)) {
+      if (intrinsic->getIntrinsicID() == Intrinsic::lifetime_start ||
+          intrinsic->getIntrinsicID() == Intrinsic::lifetime_end ||
+          intrinsic->getIntrinsicID() == Intrinsic::invariant_start ||
+          intrinsic->getIntrinsicID() == Intrinsic::invariant_end)
+        return false;
+    }
+
     CallSite cs = getCallSite(inst);
     if( cs.getInstruction() )
     {
@@ -462,6 +470,14 @@ namespace liberty
   {
     if( !inst->mayWriteToMemory() )
       return false;
+
+    if (const IntrinsicInst *intrinsic = dyn_cast<IntrinsicInst>(inst)) {
+      if (intrinsic->getIntrinsicID() == Intrinsic::lifetime_start ||
+          intrinsic->getIntrinsicID() == Intrinsic::lifetime_end ||
+          intrinsic->getIntrinsicID() == Intrinsic::invariant_start ||
+          intrinsic->getIntrinsicID() == Intrinsic::invariant_end)
+        return false;
+    }
 
     CallSite cs = getCallSite(inst);
     if( cs.getInstruction() )

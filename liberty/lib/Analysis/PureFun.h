@@ -68,9 +68,13 @@
 
 // New with llvm 135637
   "llvm.lifetime.start",
+  "llvm.lifetime.start.p0i8",
   "llvm.lifetime.end",
+  "llvm.lifetime.end.p0i8",
   "llvm.invariant.start",
+  "llvm.invariant.start.p0i8",
   "llvm.invariant.end",
+  "llvm.invariant.end.p0i8",
   "llvm.var.annotation",
   "llvm.annotation.i8",
   "llvm.annotation.i16",
@@ -285,8 +289,9 @@
 
 // stdlib.h
   "atoi",
-  /* "calloc", */
-  /* "malloc", */
+  "calloc",
+  "malloc",
+  "free",
 
 // string.h
   "memchr",
