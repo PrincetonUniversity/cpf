@@ -5,6 +5,7 @@
 #include "liberty/Utilities/GetMemOper.h"
 //#include "liberty/Utilities/GetSize.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/Classify.h"
 
@@ -38,8 +39,12 @@ public:
 
 class LocalityRemediator : public Remediator {
 public:
-  LocalityRemediator(const Read &rd, const HeapAssignment &c)
-      : read(rd), asgn(c) {}
+  LocalityRemediator(const Read &rd, const HeapAssignment &c,
+                     LocalityAA &localityaa)
+      : read(rd), asgn(c) {
+    // This AA stack includes static analysis and separation speculation
+    aa = localityaa.getTopAA();
+  }
 
   StringRef getRemediatorName() const { return "locality-remediator"; }
 
@@ -49,6 +54,7 @@ public:
 private:
   const Read &read;
   const HeapAssignment &asgn;
+  LoopAA *aa;
 };
 
 } // namespace liberty

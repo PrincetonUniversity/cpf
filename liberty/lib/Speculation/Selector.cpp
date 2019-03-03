@@ -35,6 +35,7 @@
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 //#include "Transform.h"
+#include "liberty/Orchestration/LocalityAA.h"
 
 #include "LoopDependenceInfo.hpp"
 #include "DGGraphTraits.hpp"
@@ -168,6 +169,8 @@ unsigned Selector::computeWeights(
     Function *fA = hA->getParent();
     //const Twine nA = fA->getName() + " :: " + hA->getName();
 
+    const DataLayout &DL = fA->getParent()->getDataLayout();
+
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
@@ -194,6 +197,9 @@ unsigned Selector::computeWeights(
 
       ldi->sccdagAttrs.populate(ldi->loopSCCDAG, ldi->liSummary, se);
 
+      LocalityAA localityaa(rd, asgn);
+      localityaa.InitializeLoopAA(&proxy, DL);
+
       // trying to find the best parallelization strategy for this loop
 
       DEBUG(
@@ -211,7 +217,7 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
-          smtxMan, rd, asgn, lpl, ps, sr, sc, NumThreads,
+          smtxMan, rd, asgn, localityaa, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),

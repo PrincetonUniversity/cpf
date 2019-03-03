@@ -38,6 +38,7 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< HeaderPhiPredictionSpeculation >();
+  au.addRequired<LoopAA>();
   au.addRequired<ReadPass>();
   au.addRequired<Classify>();
 }

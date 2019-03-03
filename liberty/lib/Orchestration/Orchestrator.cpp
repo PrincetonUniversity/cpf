@@ -53,13 +53,12 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 }
 */
 
-std::set<Remediator_ptr>
-Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-                             PredictionSpeculation *loadedValuePred,
-                             PredictionSpeculation *headerPhiPred,
-                             ModuleLoops &mloops, LoopDependenceInfo &ldi,
-                             SmtxSlampSpeculationManager &smtxMan,
-                             const Read &rd, const HeapAssignment &asgn) {
+std::set<Remediator_ptr> Orchestrator::getRemediators(
+    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+    PredictionSpeculation *loadedValuePred,
+    PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+    LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
+    const Read &rd, const HeapAssignment &asgn, LocalityAA &localityaa) {
   std::set<Remediator_ptr> remeds;
 
   // memory specualation remediator
@@ -94,7 +93,7 @@ Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
   remeds.insert(std::make_unique<TXIORemediator>());
 
   // separation logic remediator (Privateer PLDI '12)
-  remeds.insert(std::make_unique<LocalityRemediator>(rd, asgn));
+  remeds.insert(std::make_unique<LocalityRemediator>(rd, asgn, localityaa));
 
   // memory versioning remediator
   remeds.insert(std::make_unique<MemVerRemediator>());
@@ -162,7 +161,7 @@ bool Orchestrator::findBestStrategy(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, const Read &rd,
-    const HeapAssignment &asgn, LoopProfLoad &lpl,
+    const HeapAssignment &asgn, LocalityAA &localityaa, LoopProfLoad &lpl,
     std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
@@ -188,7 +187,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
       getRemediators(loop, ipdg, ctrlspec, loadedValuePred, headerPhiPred,
-                     mloops, ldi, smtxMan, rd, asgn);
+                     mloops, ldi, smtxMan, rd, asgn, localityaa);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);

@@ -12,10 +12,13 @@
 namespace liberty {
 using namespace llvm;
 
-STATISTIC(numEligible,   "Num eligible queries");
-STATISTIC(numPrivatized, "Num privatized");
-STATISTIC(numSeparated,  "Num separated");
-STATISTIC(numSubSep,     "Num separated via subheaps");
+STATISTIC(numEligible,        "Num eligible queries");
+STATISTIC(numPrivatizedPriv,  "Num privatized (Private)");
+STATISTIC(numPrivatizedRedux, "Num privatized (Redux)");
+STATISTIC(numPrivatizedShort, "Num privatized (Short-lived)");
+STATISTIC(numSeparated,       "Num separated");
+STATISTIC(numLocalityAA,      "Num removed via LocalityAA");
+STATISTIC(numSubSep,          "Num separated via subheaps");
 
 void LocalityRemedy::apply(PDG &pdg) {
   // TODO: transfer the code for application of separation logic here.
@@ -28,6 +31,47 @@ bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
   if (this->privateI == sepRhs->privateI)
     return this->localI < sepRhs->localI;
   return this->privateI < sepRhs->privateI;
+}
+
+bool noMemoryDep(const Instruction *src, const Instruction *dst,
+                 LoopAA::TemporalRelation FW, LoopAA::TemporalRelation RV,
+                 const Loop *loop, LoopAA *aa, bool rawDep) {
+  // forward dep test
+  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
+  if (LoopAA::NoModRef == forward)
+    return true;
+
+  // forward is Mod, ModRef, or Ref
+
+  // reverse dep test
+  LoopAA::ModRefResult reverse = forward;
+
+  if (src != dst)
+    reverse = aa->modref(dst, RV, src, loop);
+
+  if (LoopAA::NoModRef == reverse)
+    return true;
+
+  if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
+    return true; // RaR dep; who cares.
+
+  // At this point, we know there is one or more of
+  // a flow-, anti-, or output-dependence.
+
+  bool RAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+             (reverse == LoopAA::Ref || reverse == LoopAA::ModRef);
+  bool WAR = (forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
+             (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
+  bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+             (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
+
+  if (rawDep && !RAW)
+    return true;
+
+  if (!rawDep && !WAR && !WAW)
+    return true;
+
+  return false;
 }
 
 Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
@@ -48,8 +92,16 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
 
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);
-  if (!ptr1 || !ptr2)
+  if (!ptr1 || !ptr2) {
+    if (LoopCarried) {
+      bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW);
+      if (noDep) {
+        ++numLocalityAA;
+        remedResp.depRes = DepResult::NoDep;
+      }
+    }
     return remedResp;
+  }
   if (!isa<PointerType>(ptr1->getType()))
     return remedResp;
   if (!isa<PointerType>(ptr2->getType()))
@@ -75,17 +127,19 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     // there cannot be cross-iteration flows.
     if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
         t1 == HeapAssignment::Private) {
-      ++numPrivatized;
       remedResp.depRes = DepResult::NoDep;
       if (t1 == HeapAssignment::Private) {
+        ++numPrivatizedPriv;
         remedy->cost += PRIVATE_ACCESS_COST;
         remedy->privateI = A;
         remedy->localI = nullptr;
       } else if (t1 == HeapAssignment::Local) {
+        ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->privateI = nullptr;
         remedy->localI = A;
       } else {
+        ++numPrivatizedRedux;
         remedy->privateI = nullptr;
         remedy->localI = nullptr;
       }
@@ -95,17 +149,19 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
         t2 == HeapAssignment::Private) {
-      ++numPrivatized;
       remedResp.depRes = DepResult::NoDep;
       if (t2 == HeapAssignment::Private) {
+        ++numPrivatizedPriv;
         remedy->cost += PRIVATE_ACCESS_COST;
         remedy->privateI = B;
         remedy->localI = nullptr;
       } else if (t2 == HeapAssignment::Local) {
+        ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->privateI = nullptr;
         remedy->localI = B;
       } else {
+        ++numPrivatizedRedux;
         remedy->privateI = nullptr;
         remedy->localI = nullptr;
       }

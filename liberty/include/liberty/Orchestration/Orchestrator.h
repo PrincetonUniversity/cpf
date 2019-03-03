@@ -14,6 +14,7 @@
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
 #include "liberty/Orchestration/LocalityRemed.h"
+#include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
@@ -46,7 +47,7 @@ public:
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, const Read &rd,
-      const HeapAssignment &asgn, LoopProfLoad &lpl,
+      const HeapAssignment &asgn, LocalityAA &localityaa, LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -64,7 +65,8 @@ private:
                  PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-                 const Read &rd, const HeapAssignment &asgn);
+                 const Read &rd, const HeapAssignment &asgn,
+                 LocalityAA &localityaa);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);
