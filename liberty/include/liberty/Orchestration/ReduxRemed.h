@@ -35,28 +35,38 @@ public:
 
 class ReduxRemediator : public Remediator {
 public:
-  ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi)
-      : Remediator(), mloops(ml), loopDepInfo(ldi) {}
+  ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi, LoopAA *aa)
+      : Remediator(), mloops(ml), loopDepInfo(ldi), loopAA(aa) {}
 
   void setLoopOfInterest(Loop *l) {
     Function *f = l->getHeader()->getParent();
     se = &mloops->getAnalysis_ScalarEvolution(f);
     // clear the cached results for the new loop
     regReductions.clear();
+    memReductions.clear();
+    findMemReductions(l);
   }
 
   StringRef getRemediatorName() const { return "redux-remediator"; }
 
+  void findMemReductions(Loop *l);
+
   RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried,
                    const Loop *L);
 
+  RemedResp memdep(const Instruction *A, const Instruction *B, bool LoopCarried,
+                   bool RAW, const Loop *L);
+
   bool isRegReductionPHI(Instruction *I, Loop *l);
+  bool isMemReduction(const Instruction *I);
 
 private:
   std::unordered_set<const Instruction *> regReductions;
+  std::unordered_set<const StoreInst*> memReductions;
   ModuleLoops *mloops;
   ScalarEvolution *se;
   LoopDependenceInfo *loopDepInfo;
+  LoopAA *loopAA;
 };
 
 } // namespace liberty

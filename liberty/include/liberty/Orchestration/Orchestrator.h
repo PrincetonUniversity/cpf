@@ -21,6 +21,7 @@
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Analysis/LoopAA.h"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
 #include "LoopDependenceInfo.hpp"
@@ -47,7 +48,8 @@ public:
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, const Read &rd,
-      const HeapAssignment &asgn, LocalityAA &localityaa, LoopProfLoad &lpl,
+      const HeapAssignment &asgn, LocalityAA &localityaa, LoopAA *loopAA,
+      LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -66,7 +68,7 @@ private:
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
                  const Read &rd, const HeapAssignment &asgn,
-                 LocalityAA &localityaa);
+                 LocalityAA &localityaa, LoopAA *loopAA);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);

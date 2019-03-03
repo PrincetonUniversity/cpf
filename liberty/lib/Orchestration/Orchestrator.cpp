@@ -53,12 +53,14 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 }
 */
 
-std::set<Remediator_ptr> Orchestrator::getRemediators(
-    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-    PredictionSpeculation *loadedValuePred,
-    PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-    LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-    const Read &rd, const HeapAssignment &asgn, LocalityAA &localityaa) {
+std::set<Remediator_ptr>
+Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+                             PredictionSpeculation *loadedValuePred,
+                             PredictionSpeculation *headerPhiPred,
+                             ModuleLoops &mloops, LoopDependenceInfo &ldi,
+                             SmtxSlampSpeculationManager &smtxMan,
+                             const Read &rd, const HeapAssignment &asgn,
+                             LocalityAA &localityaa, LoopAA *loopAA) {
   std::set<Remediator_ptr> remeds;
 
   // memory specualation remediator
@@ -77,7 +79,7 @@ std::set<Remediator_ptr> Orchestrator::getRemediators(
   remeds.insert(std::move(ctrlSpecRemed));
 
   // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi);
+  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA);
   reduxRemed->setLoopOfInterest(A);
   remeds.insert(std::move(reduxRemed));
 
@@ -161,8 +163,8 @@ bool Orchestrator::findBestStrategy(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, const Read &rd,
-    const HeapAssignment &asgn, LocalityAA &localityaa, LoopProfLoad &lpl,
-    std::unique_ptr<PipelineStrategy> &strat,
+    const HeapAssignment &asgn, LocalityAA &localityaa, LoopAA *loopAA,
+    LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -187,7 +189,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
       getRemediators(loop, ipdg, ctrlspec, loadedValuePred, headerPhiPred,
-                     mloops, ldi, smtxMan, rd, asgn, localityaa);
+                     mloops, ldi, smtxMan, rd, asgn, localityaa, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);

@@ -25,6 +25,7 @@ STATISTIC(numRegDepsRemovedMinMaxRedux,       "Num reg deps removed with min/max
 STATISTIC(numRegDepsRemovedLLVMRedux,         "Num reg deps removed with llvm's reduction identification");
 STATISTIC(numRegDepsRemovedNoelleRedux,       "Num reg deps removed with noelle redux");
 STATISTIC(numRegDepsRemovedRedux,             "Num reg deps removed with liberty redux");
+STATISTIC(numMemDepsRemovedRedux,             "Num mem deps removed");
 
 void ReduxRemedy::apply(llvm::PDG &pdg) {
   // TODO: transfer the code for application of redux here.
@@ -82,6 +83,72 @@ bool ReduxRemediator::isRegReductionPHI(Instruction *I, Loop *l) {
   return false;
 }
 
+void ReduxRemediator::findMemReductions(Loop *l) {
+
+  std::set<Value *> visitedAccums;
+  const std::vector<Loop *> subloops = l->getSubLoops();
+
+  for (Loop::block_iterator bbi = l->block_begin(), bbe = l->block_end();
+       bbi != bbe; ++bbi) {
+    BasicBlock *bb = *bbi;
+    // Exclude instructions in one of subloops
+    bool withinSubloop = false;
+    for (auto &sl : subloops) {
+      if (sl->contains(bb)) {
+        withinSubloop = true;
+        break;
+      }
+    }
+    if (withinSubloop)
+      continue;
+
+    for (BasicBlock::iterator i = bb->begin(), e = bb->end(); i != e; ++i) {
+      LoadInst *load = dyn_cast<LoadInst>(i);
+      if (!load)
+        continue;
+
+      Value *accum = load->getPointerOperand();
+      if (visitedAccums.count(accum))
+        continue;
+      visitedAccums.insert(accum);
+
+      // Pointer to accumulator must be loop invariant
+      if (!l->isLoopInvariant(accum))
+        continue;
+
+      const BinaryOperator *add = nullptr;
+      const CmpInst *cmp = nullptr;
+      const BranchInst *br = nullptr;
+      const StoreInst *store = nullptr;
+      const Reduction::Type type =
+          Reduction::isReductionLoad(load, &add, &cmp, &br, &store);
+      if (!type)
+        continue;
+
+      // Looks like a reduction.
+      // Next, we will use static analysis to ensure that
+      //  for every other memory operation in this loop, either:
+      //   a. the operation is a reduction operation of the same type, or
+      //   b. the operation does not access this accumulator.
+      if (!Reduction::allOtherAccessesAreReduction(l, type, accum, loopAA))
+        continue;
+
+      // Now this is a reduction
+      // This should be either add reduction or min/max reduction
+      memReductions.insert(store);
+    }
+  }
+}
+
+bool ReduxRemediator::isMemReduction(const Instruction *I) {
+  const StoreInst *sI = dyn_cast<StoreInst>(I);
+  if (!sI)
+    return false;
+  if (memReductions.count(sI))
+    return true;
+
+  return false;
+}
 
 // there can be RAW reg deps
 Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
@@ -108,6 +175,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   Instruction *ncB = const_cast<Instruction*>(B);
   Loop *ncL = const_cast<Loop *>(L);
 
+  /*
   Function *F = ncA->getParent()->getParent();
   if (F->getFnAttribute("no-nans-fp-math").getValueAsString() == "false") {
     errs() << "THe no-nans-fp-math flag was not set!\n";
@@ -117,6 +185,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     errs() << "THe unsafe-fp-math flag was not set!\n";
     F->addFnAttr("unsafe-fp-math", "true");
   }
+  */
 
   //errs() << "  Redux remed examining edge(s) from " << *A << " to " << *B
   //       << '\n';
@@ -125,7 +194,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   auto bSCC = loopDepInfo->loopSCCDAG->sccOfValue(ncB);
   if (aSCC == bSCC && loopDepInfo->sccdagAttrs.canExecuteReducibly(aSCC)) {
     ++numRegDepsRemovedNoelleRedux;
-    errs() << "Resolved by noelle Redux\n";
+    DEBUG(errs() << "Resolved by noelle Redux\n");
     DEBUG(errs() << "Removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
     remedResp.depRes = DepResult::NoDep;
@@ -138,7 +207,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   ReductionDetection reduxdet;
   if (reduxdet.isSumReduction(L, A, B, loopCarried)) {
     ++numRegDepsRemovedSumRedux;
-    errs() << "Resolved by liberty sumRedux\n";
+    DEBUG(errs() << "Resolved by liberty sumRedux\n");
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
@@ -152,7 +221,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   }
   if (reduxdet.isMinMaxReduction(L, A, B, loopCarried)) {
     ++numRegDepsRemovedMinMaxRedux;
-    errs() << "Resolved by liberty MinMaxRedux\n";
+    DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
@@ -171,7 +240,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     // B: x1 = x0 + ..
     // Intra iteration dep removed
     ++numRegDepsRemovedRedux;
-    errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (intra-iteration)\n";
+    DEBUG(errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (intra-iteration)\n");
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
@@ -185,7 +254,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     // A: x1 = x0 + ..
     // Loop-carried dep removed
     ++numRegDepsRemovedRedux;
-    errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (loop-carried)\n";
+    DEBUG(errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (loop-carried)\n");
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
@@ -215,7 +284,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         // B: x1 = x0 + ..
         // Intra iteration dep removed
         ++numRegDepsRemovedLLVMRedux;
-        errs() << "Resolved by llvm redux detection (intra-iteration)\n";
+        DEBUG(errs() << "Resolved by llvm redux detection (intra-iteration)\n");
         DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                      << '\n');
         remedResp.depRes = DepResult::NoDep;
@@ -232,7 +301,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         // A: x1 = x0 + ..
         // Loop-carried dep removed
         ++numRegDepsRemovedLLVMRedux;
-        errs() << "Resolved by llvm redux detection (loop-carried)\n";
+        DEBUG(errs() << "Resolved by llvm redux detection (loop-carried)\n");
         DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                      << '\n');
         remedResp.depRes = DepResult::NoDep;
@@ -243,8 +312,47 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
       }
     }
   }
+
   //errs() << "Redux remed unable to resolve this dep\n";
   remedResp.remedy = remedy;
   return remedResp;
 }
+
+Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
+                                              const Instruction *B,
+                                              bool LoopCarried, bool RAW,
+                                              const Loop *L) {
+
+  Remediator::RemedResp remedResp;
+  // conservative answer
+  remedResp.depRes = DepResult::Dep;
+  auto remedy = make_shared<ReduxRemedy>();
+  remedy->cost = DEFAULT_REDUX_REMED_COST;
+
+  if (isMemReduction(A)) {
+    ++numMemDepsRemovedRedux;
+    DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
+                 << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->reduxI = A;
+    remedy->reduxSCC = nullptr;
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
+  if (isMemReduction(B)) {
+    ++numMemDepsRemovedRedux;
+    DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
+                 << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->reduxI = B;
+    remedy->reduxSCC = nullptr;
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
+  remedResp.remedy = remedy;
+  return remedResp;
+}
+
 } // namespace liberty
