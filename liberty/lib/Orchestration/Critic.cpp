@@ -123,6 +123,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
 
   CriticRes res;
 
+  /*
   if (ldi.numberOfExits() > 1) {
   	DEBUG(errs() << "DOALL:   More than 1 loop exit blocks\n");
   }
@@ -130,6 +131,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   if (!ldi.sccdagAttrs.areAllLiveOutValuesReducable(ldi.environment)) {
   	DEBUG(errs() << "DOALL:   Some post environment value is not reducable\n");
   }
+  */
 
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
 
