@@ -129,8 +129,9 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   for (Criticism *cr : criticisms) {
     Remedies &rs = mapCriticismsToRemeds[cr];
     Remedy_ptr cheapestR = *(rs.begin());
-    selectedRemediesCost += cheapestR->cost;
-    selectedRemedies.push_back(cheapestR);
+    if (!selectedRemedies.count(cheapestR))
+      selectedRemediesCost += cheapestR->cost;
+    selectedRemedies.insert(cheapestR);
     DEBUG(errs() << "----------------------------------------------------\n");
     DEBUG(errs() << cheapestR->getRemedyName()
                  << " chosen to address criticicm:\n"

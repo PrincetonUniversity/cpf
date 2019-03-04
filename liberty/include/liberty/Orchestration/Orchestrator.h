@@ -35,7 +35,7 @@ using namespace llvm;
 
 struct PerformanceEstimator;
 
-typedef std::vector<Remedy_ptr> SelectedRemedies;
+typedef std::set<Remedy_ptr, RemedyCompare> SelectedRemedies;
 typedef std::unique_ptr<Remediator> Remediator_ptr;
 typedef std::shared_ptr<Critic> Critic_ptr;
 
