@@ -25,6 +25,7 @@ STATISTIC(numRegDepsRemovedMinMaxRedux,       "Num reg deps removed with min/max
 STATISTIC(numRegDepsRemovedLLVMRedux,         "Num reg deps removed with llvm's reduction identification");
 STATISTIC(numRegDepsRemovedNoelleRedux,       "Num reg deps removed with noelle redux");
 STATISTIC(numRegDepsRemovedRedux,             "Num reg deps removed with liberty redux");
+STATISTIC(numCondRegDepsRemoved,              "Num reg deps removed with cond redux");
 STATISTIC(numMemDepsRemovedRedux,             "Num mem deps removed");
 
 void ReduxRemedy::apply(llvm::PDG &pdg) {
@@ -81,6 +82,60 @@ bool ReduxRemediator::isRegReductionPHI(Instruction *I, Loop *l) {
       return true;
   }
   return false;
+}
+
+// address scenarios like the following in 179.art
+// tresult = 1;
+// for (..) {
+// ... (noone reads tresult)
+//  if (..)
+//    tresult = 0;
+// }
+//
+// In loop's LLVM IR we get:
+// %tresult.0 = phi i32 [ %tresult.1, %for.end101 ], [ 1, %for.end78 ]
+// %tresult.1 = select i1 %cmp120, i32 0, i32 %tresult.0
+//
+// TODO: expand this detection to handle the conditional reg reduction in 175.vpr
+// for now this detection is focused on the scenario described above
+bool ReduxRemediator::isConditionalReductionPHI(const Instruction *I,
+                                                const Loop *l) const {
+  const PHINode *phi = dyn_cast<PHINode>(I);
+  if (!phi)
+    return false;
+  if (l->getHeader() != I->getParent())
+    return false;
+
+  unsigned usesInsideLoop = 0;
+  const Instruction *loopUserI = nullptr;
+  for (auto user: phi->users()) {
+    const Instruction *userI = dyn_cast<Instruction>(user);
+    if (!userI)
+      return false;
+    if (l->contains(userI)) {
+      ++usesInsideLoop;
+      loopUserI = userI;
+    }
+  }
+
+  if (usesInsideLoop != 1)
+    return false;
+
+  const SelectInst *updateI = dyn_cast<SelectInst>(loopUserI);
+  if (!updateI)
+    return false;
+
+  if (!updateI->hasOneUse() || updateI->user_back() != (User *)phi)
+    return false;
+
+  const Value *newV = (updateI->getTrueValue() == (Value *)phi)
+                          ? updateI->getFalseValue()
+                          : updateI->getTrueValue();
+
+  if (!newV || !l->isLoopInvariant(newV))
+    return false;
+
+  return true;
 }
 
 void ReduxRemediator::findMemReductions(Loop *l) {
@@ -311,6 +366,29 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         return remedResp;
       }
     }
+  }
+
+  if (isConditionalReductionPHI(A, L)) {
+    ++numCondRegDepsRemoved;
+    DEBUG(errs() << "Resolved by cond redux detection\n");
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->reduxI = B;
+    remedy->reduxSCC = nullptr;
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+  if (isConditionalReductionPHI(B, L)) {
+    ++numCondRegDepsRemoved;
+    DEBUG(errs() << "Resolved by cond redux detection\n");
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->reduxI = A;
+    remedy->reduxSCC = nullptr;
+    remedResp.remedy = remedy;
+    return remedResp;
   }
 
   //errs() << "Redux remed unable to resolve this dep\n";

@@ -58,6 +58,7 @@ public:
                    bool RAW, const Loop *L);
 
   bool isRegReductionPHI(Instruction *I, Loop *l);
+  bool isConditionalReductionPHI(const Instruction *I, const Loop *l) const;
   bool isMemReduction(const Instruction *I);
 
 private:
