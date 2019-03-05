@@ -35,7 +35,7 @@ using namespace llvm;
 
 struct PerformanceEstimator;
 
-typedef std::set<Remedy_ptr, RemedyCompare> SelectedRemedies;
+typedef std::set<Remedies_ptr, RemediesCompare> SelectedRemedies;
 typedef std::unique_ptr<Remediator> Remediator_ptr;
 typedef std::shared_ptr<Critic> Critic_ptr;
 
@@ -59,7 +59,7 @@ public:
       bool abortIfNoParallelStage = true);
 
 private:
-  std::map<Criticism*, Remedies> mapCriticismsToRemeds;
+  std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
   std::map<u_sptr, Remedy_ptr> mapRemedEdgeCostsToRemedies;
 
   std::set<Remediator_ptr>
