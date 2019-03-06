@@ -37,8 +37,6 @@ bool StaticID::runOnModule(Module& m)
   ofstream load_static_id;
   ofstream inst_static_id;
 
-  std::string crit_edge_str = "crit_edge";
-
   if (print_load_static_id)
   {
     load_static_id.open("load-static-id.txt");
@@ -65,12 +63,6 @@ bool StaticID::runOnModule(Module& m)
 
     for (Function::iterator bi = func->begin() ; bi != func->end() ; bi++)
     {
-      // sot: ignore dummy basic blocks created to break crit_edges
-      std::string bbName = (&*bi)->getName().str();
-      if (bbName.length() >= crit_edge_str.length())
-        if (bbName.compare (bbName.length() - crit_edge_str.length(), crit_edge_str.length(), crit_edge_str) == 0)
-          continue;
-
       id_bb_map[bb_id] = &*bi;
       bb_id_map[&*bi] = bb_id++;
 
@@ -82,12 +74,6 @@ bool StaticID::runOnModule(Module& m)
 
     for (inst_iterator ii = inst_begin(func) ; ii != inst_end(func) ; ii++)
     {
-      // sot: ignore dummy basic blocks created to break crit_edges
-      std::string bbName = (&*ii)->getParent()->getName().str();
-      if (bbName.length() >= crit_edge_str.length())
-        if (bbName.compare (bbName.length() - crit_edge_str.length(), crit_edge_str.length(), crit_edge_str) == 0)
-          continue;
-
       func_local_id_inst_map[func][func_inst_id] = &*ii;
       func_local_inst_id_map[func][&*ii] = func_inst_id++;
 
@@ -102,15 +88,15 @@ bool StaticID::runOnModule(Module& m)
         inst_static_id << " function: " << func->getName().str();
         inst_static_id << " basic block: " << (*ii).getParent()->getName().str();
         inst_static_id << " instruction: ";
-
-        //#if 0
-        //{
+      
+        #if 0
+        {
           string inst_string;
           raw_string_ostream os(inst_string);
           (*ii).print(os);
           inst_static_id << inst_string;
-        //}
-        //#endif
+        }
+        #endif
 
         inst_static_id << "\n";
       }
@@ -142,7 +128,7 @@ bool StaticID::runOnModule(Module& m)
 
   uint32_t gv_id = 1;
 
-  for (Module::global_iterator gi = m.global_begin() ; gi != m.global_end() ; gi++)
+  for (Module::global_iterator gi = m.global_begin() ; gi != m.global_end() ; gi++) 
   {
     id_gv_map[gv_id] = &*gi;
     gv_id_map[&*gi] = gv_id++;
