@@ -29,6 +29,7 @@ bool LoopFissionRemediator::seqStageEligible(
     std::queue<const Instruction *> &instQ,
     std::unordered_set<const Instruction *> &visited, Criticisms &cr) {
   EdgeWeight seqStageWeight = 0;
+  const Instruction *rootInst = instQ.front();
   while (!instQ.empty()) {
     const Instruction *inst = instQ.front();
     instQ.pop();
@@ -37,13 +38,21 @@ bool LoopFissionRemediator::seqStageEligible(
       continue;
     visited.insert(inst);
 
-    // check if the sequential part is more than 5% of total loop weight
-    seqStageWeight += perf.estimate_weight(inst);
-    if ((seqStageWeight * 100.0) / loopWeight >= 5.0)
+    if (notSeqStageEligible.count(inst))
       return false;
 
-    if (!isReplicable(inst))
+    // check if the sequential part is more than 5% of total loop weight
+    seqStageWeight += perf.estimate_weight(inst);
+    if ((seqStageWeight * 100.0) / loopWeight >= 5.0) {
+      notSeqStageEligible.insert(rootInst);
       return false;
+    }
+
+    if (!isReplicable(inst)) {
+      for (auto I : visited)
+        notSeqStageEligible.insert(I);
+      return false;
+    }
 
     auto pdgNode = pdg->fetchNode(const_cast<Instruction *>(inst));
     for (auto edge : pdgNode->getIncomingEdges()) {
@@ -52,8 +61,7 @@ bool LoopFissionRemediator::seqStageEligible(
       else {
         auto outgoingV = edge->getOutgoingT();
         Instruction *outgoingI = dyn_cast<Instruction>(outgoingV);
-        if (!outgoingI)
-          return false;
+        assert(outgoingI && "pdg node is not an instruction");
         instQ.push(outgoingI);
       }
     }
