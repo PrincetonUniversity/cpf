@@ -29,6 +29,9 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
   // conservative answer
   remedResp.depRes = DepResult::Dep;
 
+  if (!loopCarried)
+    return remedResp;
+
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
 
@@ -51,8 +54,8 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
 }
 
 Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
-                                                     const Instruction *B,
-                                                     const Loop *L) {
+                                                   const Instruction *B,
+                                                   const Loop *L) {
 
   Remediator::RemedResp remedResp;
   // conservative answer

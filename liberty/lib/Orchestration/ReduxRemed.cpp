@@ -211,9 +211,14 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
                                               bool loopCarried, const Loop *L) {
 
   ++numRegQueries;
+
   Remediator::RemedResp remedResp;
   // conservative answer
   remedResp.depRes = DepResult::Dep;
+
+  if (!loopCarried)
+    return remedResp;
+
   auto remedy = make_shared<ReduxRemedy>();
   remedy->cost = DEFAULT_REDUX_REMED_COST;
 
@@ -266,10 +271,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
-    if (loopCarried)
-      remedy->reduxI = A;
-    else
-      remedy->reduxI = B;
+    remedy->reduxI = A;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
@@ -280,30 +282,13 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
-    if (loopCarried)
-      remedy->reduxI = A;
-    else
-      remedy->reduxI = B;
+    remedy->reduxI = A;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
   }
 
   // use Nick's Redux
-  if (isRegReductionPHI(ncA, ncL)) {
-    // A: x0 = phi(initial from outside loop, x1 from backedge)
-    // B: x1 = x0 + ..
-    // Intra iteration dep removed
-    ++numRegDepsRemovedRedux;
-    DEBUG(errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (intra-iteration)\n");
-    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
-                 << '\n');
-    remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = B;
-    remedy->reduxSCC = nullptr;
-    remedResp.remedy = remedy;
-    return remedResp;
-  }
   if (isRegReductionPHI(ncB, ncL)) {
     // B: x0 = phi(initial from outside loop, x1 from backedge)
     // A: x1 = x0 + ..
@@ -332,23 +317,6 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   // first
 
   if (L->getLoopPreheader()) {
-    if (PHINode *PhiA = dyn_cast<PHINode>(ncA)) {
-      if (RecurrenceDescriptor::isReductionPHI(PhiA, ncL,
-                                               recdes)) {
-        // A: x0 = phi(initial from outside loop, x1 from backedge)
-        // B: x1 = x0 + ..
-        // Intra iteration dep removed
-        ++numRegDepsRemovedLLVMRedux;
-        DEBUG(errs() << "Resolved by llvm redux detection (intra-iteration)\n");
-        DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
-                     << '\n');
-        remedResp.depRes = DepResult::NoDep;
-        remedy->reduxI = B;
-        remedy->reduxSCC = nullptr;
-        remedResp.remedy = remedy;
-        return remedResp;
-      }
-    }
     if (PHINode *PhiB = dyn_cast<PHINode>(ncB)) {
       if (RecurrenceDescriptor::isReductionPHI(PhiB, ncL,
                                                recdes)) {
@@ -368,17 +336,6 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     }
   }
 
-  if (isConditionalReductionPHI(A, L)) {
-    ++numCondRegDepsRemoved;
-    DEBUG(errs() << "Resolved by cond redux detection\n");
-    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
-                 << '\n');
-    remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = B;
-    remedy->reduxSCC = nullptr;
-    remedResp.remedy = remedy;
-    return remedResp;
-  }
   if (isConditionalReductionPHI(B, L)) {
     ++numCondRegDepsRemoved;
     DEBUG(errs() << "Resolved by cond redux detection\n");
@@ -406,6 +363,9 @@ Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   auto remedy = make_shared<ReduxRemedy>();
   remedy->cost = DEFAULT_REDUX_REMED_COST;
+
+  if (!LoopCarried)
+    return remedResp;
 
   if (isMemReduction(A)) {
     ++numMemDepsRemovedRedux;
