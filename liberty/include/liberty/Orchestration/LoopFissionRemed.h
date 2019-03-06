@@ -45,6 +45,8 @@ private:
   PerformanceEstimator &perf;
   EdgeWeight loopWeight;
 
+  std::unordered_set<const Instruction*> notSeqStageEligible;
+
   bool seqStageEligible(std::queue<const Instruction *> &instQ,
                         std::unordered_set<const Instruction *> &visited,
                         Criticisms &cr);
