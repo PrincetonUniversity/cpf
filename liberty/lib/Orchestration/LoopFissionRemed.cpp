@@ -10,7 +10,8 @@ namespace liberty {
 using namespace llvm;
 
 STATISTIC(numLoopFissionNoRegDep, "Number of reg deps removed by loop fission");
-STATISTIC(numLoopFissionNoCtrlDep, "Number of ctrl deps removed by loop fission");
+STATISTIC(numLoopFissionNoCtrlDep,
+          "Number of ctrl deps removed by loop fission");
 
 void LoopFissionRemedy::apply(PDG &pdg) {
   // TODO: code for application of loop fission here.
@@ -19,55 +20,45 @@ void LoopFissionRemedy::apply(PDG &pdg) {
 bool LoopFissionRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<LoopFissionRemedy> loopFissionRhs =
       std::static_pointer_cast<LoopFissionRemedy>(rhs);
-  return this->seqSCC < loopFissionRhs->seqSCC;
+  return this->produceI < loopFissionRhs->produceI;
 }
 
-bool LoopFissionRemediator::isReplicable(SCC *scc) {
-  if (replicableSCCs.count(scc))
-    return true;
-
-  if (nonReplicableSCCs.count(scc))
-    return false;
-
-  for (auto instPair : scc->internalNodePairs()) {
-    const Instruction *inst = dyn_cast<Instruction>(instPair.first);
-    assert(inst);
-
-    if (inst->mayWriteToMemory()) {
-      nonReplicableSCCs.insert(scc);
-      return false;
-    }
-  }
-  replicableSCCs.insert(scc);
-  return true;
-}
+bool isReplicable(const Instruction *I) { return !I->mayWriteToMemory(); }
 
 bool LoopFissionRemediator::seqStageEligible(
-    SCCDAG *sccdag, std::queue<SCC *> sccQ, std::unordered_set<SCC *> visited) {
-  while (!sccQ.empty()) {
-    SCC *scc = sccQ.front();
-    sccQ.pop();
+    std::queue<const Instruction *> instQ,
+    std::unordered_set<const Instruction *> visited, Criticisms &cr) {
+  while (!instQ.empty()) {
+    const Instruction *inst = instQ.front();
+    instQ.pop();
 
-    if (visited.count(scc))
+    if (visited.count(inst))
       continue;
-    visited.insert(scc);
+    visited.insert(inst);
 
-    if (!isReplicable(scc))
+    if (!isReplicable(inst))
       return false;
 
-    auto sccNode = sccdag->fetchNode(scc);
-    for (auto edge : sccNode->getIncomingEdges()) {
-      auto outgoingSCC = edge->getOutgoingT();
-      sccQ.push(outgoingSCC);
+    auto pdgNode = pdg->fetchNode(const_cast<Instruction *>(inst));
+    for (auto edge : pdgNode->getIncomingEdges()) {
+      if (edge->isRemovable())
+        cr.insert(edge);
+      else {
+        auto outgoingV = edge->getOutgoingT();
+        Instruction *outgoingI = dyn_cast<Instruction>(outgoingV);
+        if (!outgoingI)
+          return false;
+        instQ.push(outgoingI);
+      }
     }
   }
   return true;
 }
 
-Remediator::RemedResp LoopFissionRemediator::removeDep(const Instruction *A,
-                                                       const Instruction *B,
-                                                       bool LoopCarried) {
-  Remediator::RemedResp remedResp;
+Remediator::RemedCriticResp
+LoopFissionRemediator::removeDep(const Instruction *A, const Instruction *B,
+                                 bool LoopCarried) {
+  Remediator::RemedCriticResp remedResp;
 
   // conservative answer
   remedResp.depRes = DepResult::Dep;
@@ -75,30 +66,30 @@ Remediator::RemedResp LoopFissionRemediator::removeDep(const Instruction *A,
       std::shared_ptr<LoopFissionRemedy>(new LoopFissionRemedy());
   remedy->cost = DEFAULT_LOOP_FISSION_REMED_COST;
 
-  auto sccdag = loopDepInfo->loopSCCDAG;
-  auto bSCC = sccdag->sccOfValue(const_cast<Instruction *>(B));
+  std::queue<const Instruction *> instQ;
+  instQ.push(A);
+  std::unordered_set<const Instruction *> visited;
+  Criticisms cr;
 
-  std::queue<SCC *> sccQ;
-  sccQ.push(bSCC);
-  std::unordered_set<SCC *> visited;
-
-  if (!LoopCarried || !seqStageEligible(sccdag, sccQ, visited)) {
+  if (!LoopCarried || !seqStageEligible(instQ, visited, cr)) {
     remedResp.remedy = remedy;
     return remedResp;
   }
 
   remedResp.depRes = DepResult::NoDep;
-  remedy->seqSCC = bSCC;
+  remedResp.criticisms = cr;
+  remedy->produceI = A;
+  remedy->replicatedI = visited;
 
   remedResp.remedy = remedy;
   return remedResp;
 }
 
-Remediator::RemedResp LoopFissionRemediator::ctrldep(const Instruction *A,
-                                                     const Instruction *B,
-                                                     const Loop *L) {
+Remediator::RemedCriticResp
+LoopFissionRemediator::removeCtrldep(const Instruction *A, const Instruction *B,
+                                     const Loop *L) {
 
-  Remediator::RemedResp remedResp = removeDep(A, B, true);
+  Remediator::RemedCriticResp remedResp = removeDep(A, B, true);
 
   if (remedResp.depRes == DepResult::NoDep) {
     ++numLoopFissionNoCtrlDep;
@@ -108,12 +99,11 @@ Remediator::RemedResp LoopFissionRemediator::ctrldep(const Instruction *A,
   return remedResp;
 }
 
-Remediator::RemedResp LoopFissionRemediator::regdep(const Instruction *A,
-                                                    const Instruction *B,
-                                                    bool loopCarried,
-                                                    const Loop *L) {
+Remediator::RemedCriticResp
+LoopFissionRemediator::removeRegDep(const Instruction *A, const Instruction *B,
+                                    bool loopCarried, const Loop *L) {
 
-  Remediator::RemedResp remedResp = removeDep(A, B, loopCarried);
+  Remediator::RemedCriticResp remedResp = removeDep(A, B, loopCarried);
 
   if (remedResp.depRes == DepResult::NoDep) {
     ++numLoopFissionNoRegDep;
@@ -121,6 +111,24 @@ Remediator::RemedResp LoopFissionRemediator::regdep(const Instruction *A,
                  << "  and  " << *B << '\n');
   }
   return remedResp;
+}
+
+Remediator::RemedCriticResp
+LoopFissionRemediator::satisfy(Loop *loop, const Criticism *cr) {
+  Instruction *sop = dyn_cast<Instruction>(cr->getOutgoingT());
+  Instruction *dop = dyn_cast<Instruction>(cr->getIncomingT());
+  assert(sop && dop &&
+         "PDG nodes that are part of criticims should be instructions");
+  bool lc = cr->isLoopCarriedDependence();
+  RemedCriticResp r;
+  if (!lc || cr->isMemoryDependence())
+    r.depRes = DepResult::Dep;
+  else if (cr->isControlDependence())
+    r = removeCtrldep(sop, dop, loop);
+  else
+    r = removeRegDep(sop, dop, lc, loop);
+
+  return r;
 }
 
 } // namespace liberty

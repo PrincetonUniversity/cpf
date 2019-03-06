@@ -211,7 +211,7 @@ bool Orchestrator::findBestStrategy(
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
-      auto rCost = make_shared<unsigned>();
+      auto rCost = make_shared<unsigned>(r->cost);
       mapRemedEdgeCostsToRemedies[rCost] = r;
       for (Criticism *c : r->resolvedC) {
         // one single remedy resolves this criticism
@@ -221,6 +221,50 @@ bool Orchestrator::findBestStrategy(
         c->insertEdgeRemedCost(rCost);
       }
     }
+  }
+
+  // second level remediators, produce both remedies and criticisms
+  auto loopFissionRemediator = std::make_unique<LoopFissionRemediator>(ipdg);
+
+  std::unordered_set<Criticism*> criticismsResolvedByLoopFission;
+  std::map<Criticism*, Remedies_ptr> loopFissionCriticismsToRemeds;
+  std::map<Criticism*, unsigned> loopFissionCriticismsToCost;
+
+  for (Criticism *c : allCriticisms) {
+    Remediator::RemedCriticResp resp = loopFissionRemediator->satisfy(loop, c);
+    if (resp.depRes == DepResult::Dep)
+      continue;
+
+    // collect all the remedies required to satisfy this criticism
+    Remedies_ptr remeds = make_shared<Remedies>();
+    unsigned totalCost = 0;
+    remeds->insert(resp.remedy);
+    totalCost += resp.remedy->cost;
+
+    // satisfy all criticisms of the loop fission remediator
+    // for now select the cheapest one
+    for (Criticism *remedC : resp.criticisms) {
+      SetOfRemedies &sors = mapCriticismsToRemeds[remedC];
+      Remedies_ptr cheapestR = *(sors.begin());
+      assert(
+          cheapestR->size() == 1 &&
+          "Multiple remedies for one criticism from first-level remediators");
+      Remedy_ptr chosenR = *(cheapestR->begin());
+      remeds->insert(chosenR);
+      totalCost += chosenR->cost;
+    }
+
+    criticismsResolvedByLoopFission.insert(c);
+    loopFissionCriticismsToRemeds[c] = remeds;
+    loopFissionCriticismsToCost[c] = totalCost;
+  }
+
+  for (Criticism *c : criticismsResolvedByLoopFission) {
+    auto &remeds = loopFissionCriticismsToRemeds[c];
+    mapCriticismsToRemeds[c].insert(remeds);
+    unsigned totalCost = loopFissionCriticismsToCost[c];
+    auto rCost = make_shared<unsigned>(totalCost);
+    c->insertEdgeRemedCost(rCost);
   }
 
   // receive actual criticisms from critics given the enhanced pdg

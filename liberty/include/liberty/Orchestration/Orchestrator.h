@@ -16,6 +16,7 @@
 #include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/MemVerRemed.h"
+#include "liberty/Orchestration/LoopFissionRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
@@ -28,6 +29,7 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_set>
 
 namespace liberty {
 namespace SpecPriv {
