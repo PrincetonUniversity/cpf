@@ -208,8 +208,13 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
       const BasicBlock *succ = term->getSuccessor(sn);
       //const double rate = pi.getEdgeWeight( ProfileInfo::Edge(pred,succ) );
       auto prob = bpi.getEdgeProbability(pred, sn);
-      const double rate = prob.scale(bfi.getBlockProfileCount(pred).getValue());
-      //const double rate = prob.getNumerator() / (double) prob.getDenominator();
+      const double rate = prob.scale(pred_cnt);
+      const double rateAlt = pred_cnt * (double(prob.getNumerator()) / double(prob.getDenominator()));
+
+      //DEBUG(errs() << "rate1 is " <<  rate  << "  and rate2 is " << rateAlt << "\n");
+      assert(abs(rate - rateAlt) < 0.5 &&
+             "two different ways to compute branch frequency differ");
+
       //this will never be less than zero. getEdgeProbability does not inform if weights unknown
       // but it is assumed that if function or the source block has count then the edge will have as well
       //if( rate < 0.0 )
@@ -221,6 +226,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
         continue;
       }
 
+      /*
       if ( dominatesTargetHeader( succ ) )
       {
         DEBUG(
@@ -228,6 +234,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
                  << pred->getName() << "->" << succ->getName() << "\n");
         continue;
       }
+      */
 
       // Does this control-flow edge exit a subloop of our loop of interest?
       Loop *lpred = li.getLoopFor(pred);
@@ -280,9 +287,13 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
         // as well as to branches which exit the loop
         // of interest.
 
+        bool loopOfInterestExit =
+            lpred && !lpred->contains(succ) &&
+            lpred->getHeader() == getLoopHeaderOfInterest();
+
         // Normal biasing threshhold for all branches
         // which are not loop exits.
-        if (rate > pred_cnt * MaxMisspec) {
+        if (!loopOfInterestExit && rate > pred_cnt * MaxMisspec) {
           DEBUG(errs() << pred->getName() << "->" << succ->getName() << ", "
                        << (unsigned)rate << " > " << (unsigned)pred_cnt << " * "
                        << format("%f", MaxMisspec) << "\n");
