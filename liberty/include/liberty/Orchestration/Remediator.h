@@ -48,6 +48,49 @@ struct RemedyCompare {
 
 typedef std::set<Remedy_ptr, RemedyCompare> Remedies;
 
+typedef std::shared_ptr<Remedies> Remedies_ptr;
+
+struct RemediesCompare {
+  bool operator()(const Remedies_ptr &lhs, const Remedies_ptr &rhs) const {
+
+    RemedyCompare remedyCompare;
+
+    // compute total costs
+    unsigned costLHS = 0;
+    for (auto r : *lhs) {
+      costLHS += r->cost;
+    }
+    unsigned costRHS = 0;
+    for (auto r : *rhs) {
+      costRHS += r->cost;
+    }
+
+    // if different sizes compare their costs
+    if (lhs->size() != rhs->size()) {
+      return costLHS < costRHS;
+    }
+
+    auto itLHS = lhs->begin();
+    auto itRHS = rhs->begin();
+    bool identical = true;
+    while (itLHS != lhs->end()) {
+      // check if each remedy is equal
+      if (remedyCompare(*itLHS, *itRHS) || remedyCompare(*itRHS, *itLHS)) {
+        identical = false;
+        break;
+      }
+      ++itLHS;
+      ++itRHS;
+    }
+    if (identical)
+      return false;
+
+    return costLHS < costRHS;
+  }
+};
+
+typedef std::set<Remedies_ptr, RemediesCompare> SetOfRemedies;
+
 enum DepResult { NoDep = 0, Dep = 1 };
 
 class Remediator {
@@ -57,6 +100,12 @@ public:
   struct RemedResp {
     DepResult depRes;
     Remedy_ptr remedy;
+  };
+
+  struct RemedCriticResp {
+    DepResult depRes;
+    Remedy_ptr remedy;
+    Criticisms criticisms;
   };
 
   // Query for mem deps
