@@ -2,6 +2,8 @@
 #define LLVM_LIBERTY_LOOP_FISSION_REMED_H
 
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/GraphAlgorithms/Graphs.h"
 
 #include "PDG.hpp"
 
@@ -23,7 +25,10 @@ public:
 
 class LoopFissionRemediator : public Remediator {
 public:
-  LoopFissionRemediator(PDG *pdg) : Remediator(), pdg(pdg) {}
+  LoopFissionRemediator(Loop *loop, PDG *pdg, PerformanceEstimator &perf)
+      : Remediator(), pdg(pdg), perf(perf) {
+    loopWeight = perf.estimate_loop_weight(loop);
+  }
 
   StringRef getRemediatorName() const { return "loop-fission-remediator"; }
 
@@ -37,9 +42,11 @@ public:
 
 private:
   PDG *pdg;
+  PerformanceEstimator &perf;
+  EdgeWeight loopWeight;
 
-  bool seqStageEligible(std::queue<const Instruction *> instQ,
-                        std::unordered_set<const Instruction *> visited,
+  bool seqStageEligible(std::queue<const Instruction *> &instQ,
+                        std::unordered_set<const Instruction *> &visited,
                         Criticisms &cr);
 
   RemedCriticResp removeDep(const Instruction *A, const Instruction *B,

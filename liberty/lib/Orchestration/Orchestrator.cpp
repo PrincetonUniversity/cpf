@@ -224,7 +224,8 @@ bool Orchestrator::findBestStrategy(
   }
 
   // second level remediators, produce both remedies and criticisms
-  auto loopFissionRemediator = std::make_unique<LoopFissionRemediator>(ipdg);
+  auto loopFissionRemediator =
+      std::make_unique<LoopFissionRemediator>(loop, ipdg, perf);
 
   std::unordered_set<Criticism*> criticismsResolvedByLoopFission;
   std::map<Criticism*, Remedies_ptr> loopFissionCriticismsToRemeds;

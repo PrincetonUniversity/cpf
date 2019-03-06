@@ -26,8 +26,9 @@ bool LoopFissionRemedy::compare(const Remedy_ptr rhs) const {
 bool isReplicable(const Instruction *I) { return !I->mayWriteToMemory(); }
 
 bool LoopFissionRemediator::seqStageEligible(
-    std::queue<const Instruction *> instQ,
-    std::unordered_set<const Instruction *> visited, Criticisms &cr) {
+    std::queue<const Instruction *> &instQ,
+    std::unordered_set<const Instruction *> &visited, Criticisms &cr) {
+  EdgeWeight seqStageWeight = 0;
   while (!instQ.empty()) {
     const Instruction *inst = instQ.front();
     instQ.pop();
@@ -35,6 +36,11 @@ bool LoopFissionRemediator::seqStageEligible(
     if (visited.count(inst))
       continue;
     visited.insert(inst);
+
+    // check if the sequential part is more than 5% of total loop weight
+    seqStageWeight += perf.estimate_weight(inst);
+    if ((seqStageWeight * 100.0) / loopWeight >= 5.0)
+      return false;
 
     if (!isReplicable(inst))
       return false;
