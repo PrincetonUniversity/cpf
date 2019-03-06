@@ -102,6 +102,12 @@ public:
     Remedy_ptr remedy;
   };
 
+  struct RemedCriticResp {
+    DepResult depRes;
+    Remedy_ptr remedy;
+    Criticisms criticisms;
+  };
+
   // Query for mem deps
   virtual RemedResp memdep(const Instruction *A, const Instruction *B,
                            bool loopCarried, bool raw, const Loop *L);
