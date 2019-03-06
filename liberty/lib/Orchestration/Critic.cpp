@@ -133,6 +133,9 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   }
   */
 
+  unsigned criticismsTotal = 0;
+  unsigned criticismsCovered = 0;
+
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
 
     if (!pdg.isInternal(edge->getIncomingT()) ||
@@ -140,6 +143,8 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
       continue;
 
     if (edge->isLoopCarriedDependence()) {
+
+      ++criticismsTotal;
 
       //DEBUG(errs() << "  Found new DOALL criticism loop-carried from "
       //             << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
@@ -156,9 +161,18 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
         continue;
       }
 
+      ++criticismsCovered;
       res.criticisms.insert(edge);
     }
   }
+  BasicBlock *loopH = loop->getHeader();
+  Function *loopF = loopH->getParent();
+  double percentageCovered = (100.0 * criticismsCovered) / criticismsTotal;
+  DEBUG(errs() << "\nCoverage of dependences for hot loop " << loopF->getName()
+               << " :: " << loopH->getName() << " "
+               << "covered=" << criticismsCovered
+               << ", total=" << criticismsTotal << " , percentage="
+               << format("%.2f", percentageCovered) << "\%\n\n");
 
   // TODO: create deep copy of the PDG with only its internal nodes when there
   // are more than one critics.
