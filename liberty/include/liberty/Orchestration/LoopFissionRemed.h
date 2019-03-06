@@ -2,10 +2,10 @@
 #define LLVM_LIBERTY_LOOP_FISSION_REMED_H
 
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/GraphAlgorithms/Graphs.h"
 
-#include "LoopDependenceInfo.hpp"
 #include "PDG.hpp"
-#include "SCCDAG.hpp"
 
 #include <unordered_set>
 #include <queue>
@@ -15,7 +15,8 @@ using namespace llvm;
 
 class LoopFissionRemedy : public Remedy {
 public:
-  const SCC *seqSCC;
+  const Instruction *produceI;
+  std::unordered_set<const Instruction *> replicatedI;
 
   void apply(PDG &pdg);
   bool compare(const Remedy_ptr rhs) const;
@@ -24,29 +25,34 @@ public:
 
 class LoopFissionRemediator : public Remediator {
 public:
-  LoopFissionRemediator(PDG &pdg, LoopDependenceInfo *ldi)
-      : Remediator(), loopDepInfo(ldi) {}
+  LoopFissionRemediator(Loop *loop, PDG *pdg, PerformanceEstimator &perf)
+      : Remediator(), pdg(pdg), perf(perf) {
+    loopWeight = perf.estimate_loop_weight(loop);
+  }
 
   StringRef getRemediatorName() const { return "loop-fission-remediator"; }
 
-  RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
+  RemedCriticResp removeCtrldep(const Instruction *A, const Instruction *B,
+                                const Loop *L);
 
-  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   const Loop *L);
+  RemedCriticResp removeRegDep(const Instruction *A, const Instruction *B,
+                               bool loopCarried, const Loop *L);
+
+  RemedCriticResp satisfy(Loop *loop, const Criticism *cr);
 
 private:
-  std::unordered_set<SCC*> replicableSCCs;
-  std::unordered_set<SCC*> nonReplicableSCCs;
-  //const SCCDAG *sccdag;
-  LoopDependenceInfo *loopDepInfo;
+  PDG *pdg;
+  PerformanceEstimator &perf;
+  EdgeWeight loopWeight;
 
-  bool seqStageEligible(SCCDAG *sccdag, std::queue<SCC *> sccQ,
-                        std::unordered_set<SCC *> visited);
+  std::unordered_set<const Instruction*> notSeqStageEligible;
 
-  RemedResp removeDep(const Instruction *A, const Instruction *B,
-                      bool LoopCarried);
+  bool seqStageEligible(std::queue<const Instruction *> &instQ,
+                        std::unordered_set<const Instruction *> &visited,
+                        Criticisms &cr);
 
-  bool isReplicable(SCC *scc);
+  RemedCriticResp removeDep(const Instruction *A, const Instruction *B,
+                            bool LoopCarried);
 };
 
 } // namespace liberty

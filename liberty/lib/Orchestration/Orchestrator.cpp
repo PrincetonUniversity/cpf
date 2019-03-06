@@ -118,6 +118,41 @@ std::set<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
   return critics;
 }
 
+void printRemedies(Remedies &rs) {
+  DEBUG(errs() << "( ");
+  auto itRs = rs.begin();
+  while(itRs != rs.end()) {
+    DEBUG(errs() << (*itRs)->getRemedyName());
+    if ((++itRs) != rs.end())
+      DEBUG(errs() << ", ");
+  }
+  DEBUG(errs() << " )");
+}
+
+void printSelected(SetOfRemedies &sors, Remedies_ptr &selected, Criticism &cr) {
+  DEBUG(errs() << "----------------------------------------------------\n");
+  printRemedies(*selected);
+  DEBUG(errs() << " chosen to address criticicm:\n"
+               << *cr.getOutgoingT() << " ->\n"
+               << *cr.getIncomingT() << "\n");
+  if (sors.size() > 1) {
+    DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
+    auto itR = sors.begin();
+    while (itR != sors.end()) {
+      if (*itR == selected) {
+        ++itR;
+        continue;
+      }
+      printRemedies(**itR);
+      if ((++itR) != sors.end())
+        DEBUG(errs() << ", ");
+      else
+        DEBUG(errs() << "\n");
+    }
+  }
+  DEBUG(errs() << "------------------------------------------------------\n\n");
+}
+
 // for now pick the cheapest remedy for each criticism
 // TODO: perform instead global reasoning and consider the best set of
 // remedies for a given set of criticisms
@@ -127,33 +162,14 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   DEBUG(errs() << "\n-====================================================-\n");
   DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
-    Remedies &rs = mapCriticismsToRemeds[cr];
-    Remedy_ptr cheapestR = *(rs.begin());
-    if (!selectedRemedies.count(cheapestR))
-      selectedRemediesCost += cheapestR->cost;
-    selectedRemedies.insert(cheapestR);
-    DEBUG(errs() << "----------------------------------------------------\n");
-    DEBUG(errs() << cheapestR->getRemedyName()
-                 << " chosen to address criticicm:\n"
-                 << *cr->getOutgoingT() << " ->\n"
-                 << *cr->getIncomingT() << "\n");
-    if (rs.size() > 1) {
-      DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
-      auto itR = rs.begin();
-      while(itR != rs.end()) {
-        if (*itR == cheapestR) {
-          ++itR;
-          continue;
-        }
-        DEBUG(errs() << (*itR)->getRemedyName());
-        if ((++itR) != rs.end())
-          DEBUG(errs() << ", ");
-        else
-          DEBUG(errs() << "\n");
-      }
+    SetOfRemedies &sors = mapCriticismsToRemeds[cr];
+    Remedies_ptr cheapestR = *(sors.begin());
+    if (!selectedRemedies.count(cheapestR)) {
+      for (auto r : *cheapestR)
+        selectedRemediesCost += r->cost;
     }
-    DEBUG(errs()
-          << "------------------------------------------------------\n\n");
+    printSelected(sors, cheapestR, *cr);
+    selectedRemedies.insert(cheapestR);
   }
   DEBUG(errs() << "-====================================================-\n\n");
 }
@@ -195,13 +211,61 @@ bool Orchestrator::findBestStrategy(
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
-      auto rCost = make_shared<unsigned>();
+      auto rCost = make_shared<unsigned>(r->cost);
       mapRemedEdgeCostsToRemedies[rCost] = r;
       for (Criticism *c : r->resolvedC) {
-        mapCriticismsToRemeds[c].insert(r);
+        // one single remedy resolves this criticism
+        auto remedSet = make_shared<Remedies>();
+        remedSet->insert(r);
+        mapCriticismsToRemeds[c].insert(remedSet);
         c->insertEdgeRemedCost(rCost);
       }
     }
+  }
+
+  // second level remediators, produce both remedies and criticisms
+  auto loopFissionRemediator =
+      std::make_unique<LoopFissionRemediator>(loop, ipdg, perf);
+
+  std::unordered_set<Criticism*> criticismsResolvedByLoopFission;
+  std::map<Criticism*, Remedies_ptr> loopFissionCriticismsToRemeds;
+  std::map<Criticism*, unsigned> loopFissionCriticismsToCost;
+
+  for (Criticism *c : allCriticisms) {
+    Remediator::RemedCriticResp resp = loopFissionRemediator->satisfy(loop, c);
+    if (resp.depRes == DepResult::Dep)
+      continue;
+
+    // collect all the remedies required to satisfy this criticism
+    Remedies_ptr remeds = make_shared<Remedies>();
+    unsigned totalCost = 0;
+    remeds->insert(resp.remedy);
+    totalCost += resp.remedy->cost;
+
+    // satisfy all criticisms of the loop fission remediator
+    // for now select the cheapest one
+    for (Criticism *remedC : resp.criticisms) {
+      SetOfRemedies &sors = mapCriticismsToRemeds[remedC];
+      Remedies_ptr cheapestR = *(sors.begin());
+      assert(
+          cheapestR->size() == 1 &&
+          "Multiple remedies for one criticism from first-level remediators");
+      Remedy_ptr chosenR = *(cheapestR->begin());
+      remeds->insert(chosenR);
+      totalCost += chosenR->cost;
+    }
+
+    criticismsResolvedByLoopFission.insert(c);
+    loopFissionCriticismsToRemeds[c] = remeds;
+    loopFissionCriticismsToCost[c] = totalCost;
+  }
+
+  for (Criticism *c : criticismsResolvedByLoopFission) {
+    auto &remeds = loopFissionCriticismsToRemeds[c];
+    mapCriticismsToRemeds[c].insert(remeds);
+    unsigned totalCost = loopFissionCriticismsToCost[c];
+    auto rCost = make_shared<unsigned>(totalCost);
+    c->insertEdgeRemedCost(rCost);
   }
 
   // receive actual criticisms from critics given the enhanced pdg

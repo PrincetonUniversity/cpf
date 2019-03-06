@@ -16,6 +16,7 @@
 #include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/MemVerRemed.h"
+#include "liberty/Orchestration/LoopFissionRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
@@ -28,6 +29,7 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_set>
 
 namespace liberty {
 namespace SpecPriv {
@@ -35,7 +37,7 @@ using namespace llvm;
 
 struct PerformanceEstimator;
 
-typedef std::set<Remedy_ptr, RemedyCompare> SelectedRemedies;
+typedef std::set<Remedies_ptr, RemediesCompare> SelectedRemedies;
 typedef std::unique_ptr<Remediator> Remediator_ptr;
 typedef std::shared_ptr<Critic> Critic_ptr;
 
@@ -59,7 +61,7 @@ public:
       bool abortIfNoParallelStage = true);
 
 private:
-  std::map<Criticism*, Remedies> mapCriticismsToRemeds;
+  std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
   std::map<u_sptr, Remedy_ptr> mapRemedEdgeCostsToRemedies;
 
   std::set<Remediator_ptr>
