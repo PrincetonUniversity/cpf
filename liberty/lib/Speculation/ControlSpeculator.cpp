@@ -123,12 +123,10 @@ void ProfileGuidedControlSpeculator::getAnalysisUsage(AnalysisUsage &au) const
 bool ProfileGuidedControlSpeculator::dominatesTargetHeader(const BasicBlock* bb)
 {
   const Function* fcn = bb->getParent();
+  auto targetHeader = getLoopHeaderOfInterest();
   DominatorTree&  dt = this->mloops->getAnalysis_DominatorTree( fcn );
-  Targets&        targets = getAnalysis< Targets >();
-
-  for(Targets::header_iterator i=targets.begin(), e=targets.end(); i!=e; ++i)
-    if ( dt.dominates( bb, *i ) )
-      return true;
+  if ( dt.dominates( bb, targetHeader ) )
+    return true;
   return false;
 }
 
@@ -152,6 +150,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   const double MinSamples = 10.0;
   const double MaxMisspec = 0.00001; // 0.001%
   const double MaxMisspecLoopExit = 0.0;
+  const double MaxMisspecTargetLoopExit = 0.04; // 4%
 
   // Decline to comment on functions that were never invoked.
   // (we speculate that the function's callsites never run,
@@ -208,8 +207,10 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
       const BasicBlock *succ = term->getSuccessor(sn);
       //const double rate = pi.getEdgeWeight( ProfileInfo::Edge(pred,succ) );
       auto prob = bpi.getEdgeProbability(pred, sn);
-      const double rate = prob.scale(bfi.getBlockProfileCount(pred).getValue());
-      //const double rate = prob.getNumerator() / (double) prob.getDenominator();
+      // if rate should have been 1, scaling sometimes will make it 0. Silly semantics of PGO.
+      //const double rate = prob.scale(pred_cnt);
+      const double rate = pred_cnt * (double(prob.getNumerator()) / double(prob.getDenominator()));
+
       //this will never be less than zero. getEdgeProbability does not inform if weights unknown
       // but it is assumed that if function or the source block has count then the edge will have as well
       //if( rate < 0.0 )
@@ -280,9 +281,19 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
         // as well as to branches which exit the loop
         // of interest.
 
+        bool loopOfInterestExit =
+            lpred && !lpred->contains(succ) &&
+            lpred->getHeader() == getLoopHeaderOfInterest();
+
+        if (loopOfInterestExit && rate > pred_cnt * MaxMisspecTargetLoopExit) {
+          errs() << "Target loop exit " << pred->getName() << "->"
+                 << succ->getName() << " cannot be speculated\n";
+          continue;
+        }
+
         // Normal biasing threshhold for all branches
         // which are not loop exits.
-        if (rate > pred_cnt * MaxMisspec) {
+        if (!loopOfInterestExit && rate > pred_cnt * MaxMisspec) {
           DEBUG(errs() << pred->getName() << "->" << succ->getName() << ", "
                        << (unsigned)rate << " > " << (unsigned)pred_cnt << " * "
                        << format("%f", MaxMisspec) << "\n");
