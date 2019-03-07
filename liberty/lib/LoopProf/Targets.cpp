@@ -96,9 +96,11 @@ bool Targets::expectsManyIterations(const Loop *loop)
     // const double rate = prob.getNumerator() / (double) prob.getDenominator();
     if ( !bfi.getBlockProfileCount(pred).hasValue() )
       continue;
-    // const double pred_cnt = bfi.getBlockProfileCount(pred).getValue();
+    const double pred_cnt = bfi.getBlockProfileCount(pred).getValue();
     // const double edgeCount = ((double) bfi.getBlockFreq(pred).getFrequency() * fcn->getEntryCount().getValue()) / bfi.getEntryFreq();
-    const double edgeCount = bpi.getEdgeProbability(pred, header).scale(bfi.getBlockProfileCount(pred).getValue());
+    //const double edgeCount = bpi.getEdgeProbability(pred, header).scale(bfi.getBlockProfileCount(pred).getValue());
+    auto prob = bpi.getEdgeProbability(pred, header);
+    const double edgeCount = pred_cnt * (double(prob.getNumerator()) / double(prob.getDenominator()));
 
     //or I could have used the numerator but the above is safer in case the numerator and denominator get scaled
     //uint32_t edgeCount = prob.getNumerator();
