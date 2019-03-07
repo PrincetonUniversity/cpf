@@ -17,7 +17,7 @@ export LIBERTY_LIBS_DIR=$LIBERTY_OBJ_DIR/Debug+Asserts/lib/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH/:/$LLVM_INSTALL_DIR/lib:/$LIBERTY_LIBS_DIR/
 ```
 
-### Building LLVM
+#### Building LLVM
 ```
 mkdir ~/llvm-workspace
 cd ~/llvm-workspace
