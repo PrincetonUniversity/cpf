@@ -66,11 +66,11 @@ unsigned long ProfilePerformanceEstimator::relative_weight(const Instruction *in
   //getEntryCount returns -1 if no value in LLVM 7.0
   // in LLVM 5.0 it returns llvm::Optional<long unsigned int>
   auto fcnt = fcn->getEntryCount();
-  if( fcnt.hasValue() && fcnt.getValue() < 1 )
+  if ((fcnt.hasValue() && fcnt.getValue() < 1) || !fcnt.hasValue())
   {
-    // Function never executed, so we don't know the relative
-    // weights of the blocks inside.  We will assign
-    // the same relative weight to all blocks in this function.
+    // Function never executed or no profile info available, so we don't know
+    // the relative weights of the blocks inside.  We will assign the same
+    // relative weight to all blocks in this function.
 
     return 100 * instruction_type_weight(inst);
   }
@@ -78,6 +78,10 @@ unsigned long ProfilePerformanceEstimator::relative_weight(const Instruction *in
   {
     //sot
     //const double bbcnt = pi.getExecutionCount(bb);
+    if (!bfi.getBlockProfileCount(bb).hasValue()) {
+      errs() << "No profile count for BB " << bb->getName() << "\n";
+      return 100 * instruction_type_weight(inst);
+    }
     const double bbcnt = bfi.getBlockProfileCount(bb).getValue();
     const unsigned long bbicnt = (unsigned) (100 * bbcnt);
 
