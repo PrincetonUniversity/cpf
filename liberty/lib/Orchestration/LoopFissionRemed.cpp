@@ -56,7 +56,7 @@ bool LoopFissionRemediator::seqStageEligible(
 
     auto pdgNode = pdg->fetchNode(const_cast<Instruction *>(inst));
     for (auto edge : pdgNode->getIncomingEdges()) {
-      if (edge->isRemovable())
+      if (edge->isRemovableDependence())
         cr.insert(edge);
       else {
         auto outgoingV = edge->getOutgoingT();
