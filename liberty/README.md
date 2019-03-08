@@ -13,6 +13,7 @@ export LIBERTY_SRC_DIR=/path/to/cpf/liberty
 export LIBERTY_OBJ_DIR=$LIBERTY_SRC_DIR/../llvm-liberty-objects/
 export LIBERTY_INCLUDE_DIR=$LIBERTY_SRC_DIR/include/
 export LIBERTY_LIBS_DIR=$LIBERTY_OBJ_DIR/Debug+Asserts/lib/
+export LIBERTY_SMTX_DIR=$LIBERTY_SRC_DIR/support/smtx/
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH/:/$LLVM_INSTALL_DIR/lib:/$LIBERTY_LIBS_DIR/
 ```
@@ -35,7 +36,9 @@ export LLVM_INSTALL_DIR=$HOME/llvm-workspace/llvm-install/
 #### Building CPF
 Adjust first NOELLEHEADERS in cpf/liberty/Makefile.common.in to the correct location
 ```
-cd liberty
+cd $LIBERTY_SRC_DIR/support/smtx
+make
+cd $LIBERTY_SRC_DIR
 mkdir ../llvm-liberty-objects
 cd ../llvm-liberty-objects
 ../liberty/configure --with-llvmsrc=$LLVM_SRC_ROOT --with-llvmobj=$LLVM_OBJ_DIR --prefix=$LLVM_INSTALL_DIR --exec-prefix=$LLVM_INSTALL_DIR --includedir=$LIBERTY_INCLUDE_DIR --disable-optimized
