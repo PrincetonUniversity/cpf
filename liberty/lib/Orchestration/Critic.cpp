@@ -151,7 +151,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
       //             << '\n');
 
       // check if this edge is removable
-      if (!edge->isRemovable()) {
+      if (!edge->isRemovableDependence()) {
         // criticism cannot be remedied.
         DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
                      << *edge->getOutgoingT() << " to " << *edge->getIncomingT()

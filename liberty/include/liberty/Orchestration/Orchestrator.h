@@ -62,7 +62,6 @@ public:
 
 private:
   std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
-  std::map<u_sptr, Remedy_ptr> mapRemedEdgeCostsToRemedies;
 
   std::set<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
