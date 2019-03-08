@@ -211,14 +211,12 @@ bool Orchestrator::findBestStrategy(
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
-      auto rCost = make_shared<unsigned>(r->cost);
-      mapRemedEdgeCostsToRemedies[rCost] = r;
       for (Criticism *c : r->resolvedC) {
         // one single remedy resolves this criticism
         auto remedSet = make_shared<Remedies>();
         remedSet->insert(r);
         mapCriticismsToRemeds[c].insert(remedSet);
-        c->insertEdgeRemedCost(rCost);
+        c->setRemovable(true);
       }
     }
   }
@@ -229,7 +227,6 @@ bool Orchestrator::findBestStrategy(
 
   std::unordered_set<Criticism*> criticismsResolvedByLoopFission;
   std::map<Criticism*, Remedies_ptr> loopFissionCriticismsToRemeds;
-  std::map<Criticism*, unsigned> loopFissionCriticismsToCost;
 
   for (Criticism *c : allCriticisms) {
     Remediator::RemedCriticResp resp = loopFissionRemediator->satisfy(loop, c);
@@ -238,9 +235,7 @@ bool Orchestrator::findBestStrategy(
 
     // collect all the remedies required to satisfy this criticism
     Remedies_ptr remeds = make_shared<Remedies>();
-    unsigned totalCost = 0;
     remeds->insert(resp.remedy);
-    totalCost += resp.remedy->cost;
 
     // satisfy all criticisms of the loop fission remediator
     // for now select the cheapest one
@@ -252,20 +247,16 @@ bool Orchestrator::findBestStrategy(
           "Multiple remedies for one criticism from first-level remediators");
       Remedy_ptr chosenR = *(cheapestR->begin());
       remeds->insert(chosenR);
-      totalCost += chosenR->cost;
     }
 
     criticismsResolvedByLoopFission.insert(c);
     loopFissionCriticismsToRemeds[c] = remeds;
-    loopFissionCriticismsToCost[c] = totalCost;
+    c->setRemovable(true);
   }
 
   for (Criticism *c : criticismsResolvedByLoopFission) {
     auto &remeds = loopFissionCriticismsToRemeds[c];
     mapCriticismsToRemeds[c].insert(remeds);
-    unsigned totalCost = loopFissionCriticismsToCost[c];
-    auto rCost = make_shared<unsigned>(totalCost);
-    c->insertEdgeRemedCost(rCost);
   }
 
   // receive actual criticisms from critics given the enhanced pdg
