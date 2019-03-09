@@ -5,12 +5,12 @@ if test $# -lt 1 ; then
   echo "USAGE: `basename $0` INSTALL_DIR" ;
   exit 1;
 fi
-instDir="$1" ;
+instDir="`realpath $1`" ;
 
 # Create the installation directory
 origDir=`pwd` ;
-cd $instDir ;
 mkdir -p "$instDir" ;
+cd $instDir ;
 
 mkdir llvm-workspace
 cd llvm-workspace
