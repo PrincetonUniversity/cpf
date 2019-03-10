@@ -18,6 +18,7 @@ STATISTIC(numPrivatizedRedux, "Num privatized (Redux)");
 STATISTIC(numPrivatizedShort, "Num privatized (Short-lived)");
 STATISTIC(numSeparated,       "Num separated");
 STATISTIC(numLocalityAA,      "Num removed via LocalityAA");
+STATISTIC(numLocalityAA2,     "Num removed via LocalityAA (non-removable by LocalityRemed)");
 STATISTIC(numSubSep,          "Num separated via subheaps");
 
 void LocalityRemedy::apply(PDG &pdg) {
@@ -196,6 +197,15 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
         remedResp.remedy = remedy;
         return remedResp;
       }
+    }
+  }
+
+  // check if collaboration of AA and LocalityAA achieves better accuracy
+  if (LoopCarried) {
+    bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW);
+    if (noDep) {
+      ++numLocalityAA2;
+      remedResp.depRes = DepResult::NoDep;
     }
   }
 

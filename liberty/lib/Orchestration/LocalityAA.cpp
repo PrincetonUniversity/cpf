@@ -54,15 +54,15 @@ LoopAA::AliasResult LocalityAA::aliasCheck(
     //
     // dont consider privatization for now since it is hard implementation-wise
     // to collect the set of required private reads and writes
-    //if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local || t1 == HeapAssignment::Private )
-    if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local)
+    if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local || t1 == HeapAssignment::Private )
+    //if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local)
     {
       ++numReduxLocalPrivatized;
       return NoAlias;
     }
 
-    //if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local || t2 == HeapAssignment::Private )
-    if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local)
+    if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local || t2 == HeapAssignment::Private )
+    //if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local)
     {
       ++numReduxLocalPrivatized;
       return NoAlias;
