@@ -287,8 +287,20 @@ bool Orchestrator::findBestStrategy(
       addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
     }
 
-    long savings = expSpeedup - selectedRemediesCost;
-    if (maxSavings < savings) {
+    long adjRemedCosts = (long)Critic::FixedPoint * selectedRemediesCost;
+    long savings = expSpeedup - adjRemedCosts;
+
+    DEBUG(errs() << "Expected Savings from critic "
+                 << (*criticIt)->getCriticName()
+                 << " (no remedies): " << expSpeedup
+                 << "  and selected remedies cost: " << adjRemedCosts << "\n");
+
+    // for coverage purposes, given that the cost model is not complete and not
+    // consistent among speedups and remedies cost, assume that it is always
+    // profitable to parallelize if loop is DOALL-able.
+    //
+    //if (maxSavings  < savings) {
+    if (!maxSavings || maxSavings < savings) {
       maxSavings = savings;
       strat = std::move(res.ps);
       sRemeds = std::move(selectedRemedies);

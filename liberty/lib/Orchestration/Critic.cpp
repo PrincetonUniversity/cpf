@@ -58,6 +58,7 @@ long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
   long estimatePipelineWeight =
       (long)FixedPoint * perf->estimate_pipeline_weight(ps, loop);
   const long wt = adjLoopTime - estimatePipelineWeight;
+  /*
   long scaledwt = 0;
 
   if (perf->estimate_loop_weight(loop))
@@ -65,6 +66,8 @@ long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
                (double)perf->estimate_loop_weight(loop);
 
   return scaledwt;
+  */
+  return wt;
 }
 
 void getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
