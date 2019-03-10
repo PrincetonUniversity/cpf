@@ -51,40 +51,42 @@ private:
   // graph depth
   std::queue<CallInst *> inlineCallInsts;
 
-  bool processBB(BasicBlock &BB, std::unordered_set<Function *> &curPathVisited,
-                 std::queue<CallInst *> &tmpInlineCallInsts) {
+  // keep list of already processed functions
+  std::unordered_set<Function*> processedFunctions;
+
+  void processBB(BasicBlock &BB,
+                 std::unordered_set<Function *> &curPathVisited) {
     for (Instruction &I : BB) {
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
         if (calledFun && !calledFun->isDeclaration()) {
-          if (processFunction(calledFun, curPathVisited, tmpInlineCallInsts))
-            tmpInlineCallInsts.push(call);
-          else
-            return false;
+          if (validCallInsts.count(call))
+            continue;
+          if (processFunction(calledFun, curPathVisited)) {
+            inlineCallInsts.push(call);
+            validCallInsts.insert(call);
+          }
         }
       }
     }
-
-    return true;
   }
 
   bool processFunction(Function *F,
-                       std::unordered_set<Function *> &curPathVisited,
-                       std::queue<CallInst *> &tmpInlineCallInsts) {
+                       std::unordered_set<Function *> &curPathVisited) {
     // check if there is a cycle in call graph
     if (curPathVisited.count(F))
       return false;
     curPathVisited.insert(F);
 
-    bool inlinable = true;
-    for (BasicBlock &BB : *F) {
-      if (!processBB(BB, curPathVisited, tmpInlineCallInsts)) {
-        inlinable = false;
-        break;
-      }
-    }
+    if (processedFunctions.count(F))
+      return true;
+    processedFunctions.insert(F);
+
+    for (BasicBlock &BB : *F)
+      processBB(BB, curPathVisited);
+
     curPathVisited.erase(F);
-    return inlinable;
+    return true;
   }
 
   void runOnTargetLoop(Loop *loop) {
@@ -92,31 +94,8 @@ private:
     Function *loopFun = loop->getHeader()->getParent();
     curPathVisited.insert(loopFun);
 
-    for (BasicBlock *BB : loop->getBlocks()) {
-      for (Instruction &I : *BB) {
-        if (CallInst *call = dyn_cast<CallInst>(&I)) {
-          Function *calledFun = call->getCalledFunction();
-          if (calledFun && !calledFun->isDeclaration()) {
-            if (validCallInsts.count(call))
-              continue;
-            std::queue<CallInst *> tmpInlineCallInsts;
-            if (processFunction(calledFun, curPathVisited,
-                                tmpInlineCallInsts)) {
-              while (!tmpInlineCallInsts.empty()) {
-                CallInst *cI = tmpInlineCallInsts.front();
-                tmpInlineCallInsts.pop();
-                if (validCallInsts.count(cI))
-                  continue;
-                inlineCallInsts.push(cI);
-                validCallInsts.insert(cI);
-              }
-              inlineCallInsts.push(call);
-              validCallInsts.insert(call);
-            }
-          }
-        }
-      }
-    }
+    for (BasicBlock *BB : loop->getBlocks())
+      processBB(*BB, curPathVisited);
   }
 
   bool transform() {
