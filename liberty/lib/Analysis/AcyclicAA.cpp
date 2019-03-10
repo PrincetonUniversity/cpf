@@ -63,6 +63,9 @@ namespace liberty
     if(!cs.getInstruction())
       return false;
 
+    if (!cs.getCalledValue())
+      return false;
+
     // Compensate for constant expressions casting functions to different
     // types. These are especially common in pre-ANSI C programs.
     Function *F =
