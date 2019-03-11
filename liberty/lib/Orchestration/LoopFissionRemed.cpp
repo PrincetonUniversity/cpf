@@ -49,8 +49,7 @@ bool LoopFissionRemediator::seqStageEligible(
     }
 
     if (!isReplicable(inst)) {
-      for (auto I : visited)
-        notSeqStageEligible.insert(I);
+      notSeqStageEligible.insert(rootInst);
       return false;
     }
 
