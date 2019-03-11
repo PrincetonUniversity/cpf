@@ -12,6 +12,7 @@
 #include <set>
 #include <memory>
 #include <tuple>
+#include <vector>
 
 namespace liberty {
 using namespace llvm;

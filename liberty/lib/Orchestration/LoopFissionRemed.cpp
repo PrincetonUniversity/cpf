@@ -59,6 +59,8 @@ bool LoopFissionRemediator::seqStageEligible(
         cr.insert(edge);
       else {
         auto outgoingV = edge->getOutgoingT();
+        if (!pdg->isInternal(outgoingV))
+          continue;
         Instruction *outgoingI = dyn_cast<Instruction>(outgoingV);
         assert(outgoingI && "pdg node is not an instruction");
         instQ.push(outgoingI);

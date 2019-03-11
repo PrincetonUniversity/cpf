@@ -129,7 +129,7 @@ void printRemedies(Remedies &rs) {
   DEBUG(errs() << " )");
 }
 
-void printSelected(SetOfRemedies &sors, Remedies_ptr &selected, Criticism &cr) {
+void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism &cr) {
   DEBUG(errs() << "----------------------------------------------------\n");
   printRemedies(*selected);
   DEBUG(errs() << " chosen to address criticicm:\n"
@@ -165,7 +165,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
     SetOfRemedies &sors = mapCriticismsToRemeds[cr];
     Remedies_ptr cheapestR = *(sors.begin());
     if (!selectedRemedies.count(cheapestR)) {
-      for (auto r : *cheapestR)
+      for (auto &r : *cheapestR)
         selectedRemediesCost += r->cost;
     }
     printSelected(sors, cheapestR, *cr);
@@ -191,29 +191,32 @@ bool Orchestrator::findBestStrategy(
   DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
                << "::" << header->getName() << "\n");
 
+  /*
+  // avoid computing internal pdg to reduce memory consumption
   // create pdg without live-in and live-out values (aka external to the loop nodes)
   std::vector<Value *> iPdgNodes;
   for (auto node : pdg.internalNodePairs()) {
     iPdgNodes.push_back(node.first);
   }
   PDG *ipdg = pdg.createSubgraphFromValues(iPdgNodes, false);
+  */
 
   long maxSavings = 0;
 
   // get all possible criticisms
-  Criticisms allCriticisms = Critic::getAllCriticisms(*ipdg);
+  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
-      getRemediators(loop, ipdg, ctrlspec, loadedValuePred, headerPhiPred,
+      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred,
                      mloops, ldi, smtxMan, rd, asgn, localityaa, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
-    Remedies remedies = (*remediatorIt)->satisfy(*ipdg, loop, allCriticisms);
+    Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
       for (Criticism *c : r->resolvedC) {
         // one single remedy resolves this criticism
-        auto remedSet = std::make_shared<Remedies>();
+        Remedies_ptr remedSet = std::make_shared<Remedies>();
         remedSet->insert(r);
         mapCriticismsToRemeds[c].insert(remedSet);
         c->setRemovable(true);
@@ -223,7 +226,7 @@ bool Orchestrator::findBestStrategy(
 
   // second level remediators, produce both remedies and criticisms
   auto loopFissionRemediator =
-      std::make_unique<LoopFissionRemediator>(loop, ipdg, perf);
+      std::make_unique<LoopFissionRemediator>(loop, &pdg, perf);
 
   std::unordered_set<Criticism*> criticismsResolvedByLoopFission;
   std::map<Criticism*, Remedies_ptr> loopFissionCriticismsToRemeds;
@@ -263,7 +266,7 @@ bool Orchestrator::findBestStrategy(
   std::set<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     DEBUG(errs() << "Critic " << (*criticIt)->getCriticName() << "\n");
-    CriticRes res = (*criticIt)->getCriticisms(*ipdg, loop, ldi);
+    CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
     Criticisms &criticisms = res.criticisms;
     long expSpeedup = res.expSpeedup;
 
@@ -308,7 +311,7 @@ bool Orchestrator::findBestStrategy(
     }
   }
 
-  delete ipdg;
+  //delete ipdg;
 
   if (maxSavings)
     return true;
