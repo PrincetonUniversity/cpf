@@ -213,7 +213,7 @@ bool Orchestrator::findBestStrategy(
     for (Remedy_ptr r : remedies) {
       for (Criticism *c : r->resolvedC) {
         // one single remedy resolves this criticism
-        auto remedSet = make_shared<Remedies>();
+        auto remedSet = std::make_shared<Remedies>();
         remedSet->insert(r);
         mapCriticismsToRemeds[c].insert(remedSet);
         c->setRemovable(true);
@@ -234,12 +234,12 @@ bool Orchestrator::findBestStrategy(
       continue;
 
     // collect all the remedies required to satisfy this criticism
-    Remedies_ptr remeds = make_shared<Remedies>();
+    Remedies_ptr remeds = std::make_shared<Remedies>();
     remeds->insert(resp.remedy);
 
     // satisfy all criticisms of the loop fission remediator
     // for now select the cheapest one
-    for (Criticism *remedC : resp.criticisms) {
+    for (Criticism *remedC : *resp.criticisms) {
       SetOfRemedies &sors = mapCriticismsToRemeds[remedC];
       Remedies_ptr cheapestR = *(sors.begin());
       assert(
