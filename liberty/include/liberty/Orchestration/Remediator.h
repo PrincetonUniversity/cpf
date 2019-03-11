@@ -14,6 +14,7 @@
 #include "PDG.hpp"
 
 #include <set>
+#include <unordered_set>
 #include <memory>
 
 namespace liberty {
@@ -91,6 +92,11 @@ struct RemediesCompare {
 
 typedef std::set<Remedies_ptr, RemediesCompare> SetOfRemedies;
 
+typedef std::unique_ptr<Criticisms> Criticisms_uptr;
+
+typedef std::unordered_set<const Instruction *> InstSet;
+typedef std::unique_ptr<InstSet> InstSet_uptr;
+
 enum DepResult { NoDep = 0, Dep = 1 };
 
 class Remediator {
@@ -105,7 +111,7 @@ public:
   struct RemedCriticResp {
     DepResult depRes;
     Remedy_ptr remedy;
-    Criticisms criticisms;
+    Criticisms_uptr criticisms;
   };
 
   // Query for mem deps

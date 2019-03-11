@@ -9,6 +9,7 @@
 
 #include <unordered_set>
 #include <queue>
+#include <memory>
 
 namespace liberty {
 using namespace llvm;
@@ -16,7 +17,7 @@ using namespace llvm;
 class LoopFissionRemedy : public Remedy {
 public:
   const Instruction *produceI;
-  std::unordered_set<const Instruction *> replicatedI;
+  InstSet_uptr replicatedI;
 
   void apply(PDG &pdg);
   bool compare(const Remedy_ptr rhs) const;

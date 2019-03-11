@@ -81,18 +81,18 @@ LoopFissionRemediator::removeDep(const Instruction *A, const Instruction *B,
 
   std::queue<const Instruction *> instQ;
   instQ.push(A);
-  std::unordered_set<const Instruction *> visited;
-  Criticisms cr;
+  InstSet_uptr visited = std::make_unique<InstSet>();
+  Criticisms_uptr cr = std::make_unique<Criticisms>();
 
-  if (!LoopCarried || !seqStageEligible(instQ, visited, cr)) {
+  if (!LoopCarried || !seqStageEligible(instQ, *visited, *cr)) {
     remedResp.remedy = remedy;
     return remedResp;
   }
 
   remedResp.depRes = DepResult::NoDep;
-  remedResp.criticisms = cr;
+  remedResp.criticisms = std::move(cr);
   remedy->produceI = A;
-  remedy->replicatedI = visited;
+  remedy->replicatedI = std::move(visited);
 
   remedResp.remedy = remedy;
   return remedResp;
