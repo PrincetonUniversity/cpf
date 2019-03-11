@@ -29,7 +29,7 @@ bool PrivRemediator::isPrivate(const Instruction *I) {
   auto pdgNode = pdg->fetchNode(const_cast<Instruction*>(I));
   for (auto edge : pdgNode->getOutgoingEdges()) {
     if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
-        edge->isRAWDependence())
+        edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT()))
       return false;
   }
   return true;

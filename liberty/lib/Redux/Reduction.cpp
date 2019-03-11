@@ -482,6 +482,8 @@ static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const
   llvm::PDG *non_const_pdg = const_cast<llvm::PDG*>(pdg);
   auto instNode = non_const_pdg->fetchNode((Value *) inst);
   for (auto edge : instNode->getOutgoingEdges()) {
+    if (!non_const_pdg->isInternal(edge->getIncomingT()))
+      continue;
     Instruction *incomingInst = dyn_cast<Instruction>(edge->getIncomingT());
     if (incomingInst == (Instruction*) backEdge) {
       if (!edge->isMemoryDependence() && !edge->isControlDependence() && !edge->isLoopCarriedDependence())

@@ -75,6 +75,13 @@ PipelineStage::PipelineStage(Type t, const PDG &pdg, const SCCDAG::SCCSet &scc_l
   }
 }
 
+PipelineStage::PipelineStage(Type t, std::vector<Instruction *> &parallelInstV)
+    : type(t), parallel_factor(1)
+{
+  for (auto &inst : parallelInstV)
+    instructions.insert(inst);
+}
+
 void PipelineStage::print_txt(raw_ostream &fout, StringRef line_suffix) const
 {
   if( ! replicated.empty() )

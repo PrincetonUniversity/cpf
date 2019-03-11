@@ -86,9 +86,14 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
   std::unique_ptr<ParallelizationPlan> ps =
       std::unique_ptr<ParallelizationPlan>(new ParallelizationPlan());
 
-  SCCDAG *loopSCCDAG = SCCDAG::createSCCDAGFrom(&pdg);
+  //SCCDAG *loopSCCDAG = SCCDAG::createSCCDAGFrom(&pdg);
 
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
+
+    if (!pdg.isInternal(edge->getIncomingT()) ||
+        !pdg.isInternal(edge->getOutgoingT()))
+      continue;
+
     if (edge->isLoopCarriedDependence()) {
       DEBUG(errs() << "No DOALL strategy possible since there is at least one "
                       "loop carried edge."
@@ -98,14 +103,25 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
     }
   }
 
+  /*
   SCCDAG::SCCSet maxParallel;
   for (auto pair : loopSCCDAG->internalNodePairs()) {
     auto scc = pair.first;
     maxParallel.insert(scc);
   }
+  */
 
-  PipelineStage parallel_stage =
-      PipelineStage(PipelineStage::Parallel, pdg, maxParallel);
+  //PipelineStage parallel_stage =
+  //    PipelineStage(PipelineStage::Parallel, pdg, maxParallel);
+
+  std::vector<Instruction *> parallelInstV;
+  for (auto instPair : pdg.internalNodePairs()) {
+    Instruction *inst = dyn_cast<Instruction>(instPair.first);
+    assert(inst);
+    parallelInstV.push_back(inst);
+  }
+
+  PipelineStage parallel_stage = PipelineStage(PipelineStage::Parallel, parallelInstV);
 
   parallel_stage.parallel_factor = threadBudget;
 

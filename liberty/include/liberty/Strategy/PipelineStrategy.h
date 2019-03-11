@@ -8,6 +8,8 @@
 
 #include "llvm/Support/Casting.h"
 
+#include <vector>
+
 namespace liberty
 {
 namespace SpecPriv
@@ -102,6 +104,7 @@ struct PipelineStage
   };
 
   PipelineStage(Type t, const PDG &pdg, const SCCDAG::SCCSet &scc_list);
+  PipelineStage(Type t, std::vector<Instruction *> &parallelInstV);
 
   /// Create a degenerate sequential stage containing all instructions from this loop
   PipelineStage(Loop *loop);
