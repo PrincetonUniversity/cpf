@@ -659,7 +659,7 @@ namespace liberty
       errs() << '\n';
     );
 
-    currentModule = 0;
+    //currentModule = 0;
     DEBUG(errs() << "End AcyclicAA::runOnModule()\n");
     return false;
   }

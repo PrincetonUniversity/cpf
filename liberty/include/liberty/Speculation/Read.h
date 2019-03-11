@@ -48,6 +48,9 @@ struct Read : public SemanticAction, public UpdateOnClone
   void setSemiLocalFunAA(const SemiLocalFunAA *semi);
   void setControlSpeculator(ControlSpeculation *ctrl);
 
+  //set DataLayout
+  void setDataLayout(const DataLayout *DL) {this->DL = DL;}
+
   // ------------------ query profile results ---------------------
 
   const Ctx2Count &find_escapes(const AU *au) const;
