@@ -178,11 +178,11 @@ unsigned Selector::computeWeights(
 
     const HeapAssignment &asgn = classify.getAssignmentFor(A);
 
-    const unsigned loopTime = perf.estimate_loop_weight(A);
-    const unsigned scaledLoopTime = FixedPoint*loopTime;
+    const unsigned long loopTime = perf.estimate_loop_weight(A);
+    const unsigned long scaledLoopTime = FixedPoint*loopTime;
     const unsigned depthPenalty = PenalizeLoopNest*A->getLoopDepth(); // break ties with nested loops
 
-    unsigned adjLoopTime = scaledLoopTime;
+    unsigned long adjLoopTime = scaledLoopTime;
     if( scaledLoopTime > depthPenalty )
       adjLoopTime = scaledLoopTime - depthPenalty;
 
@@ -231,9 +231,11 @@ unsigned Selector::computeWeights(
 
         // TODO: also save LDI. In order to apply non-spec DOALL
 
-        long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
-        const long wt = adjLoopTime - estimatePipelineWeight;
-        long scaledwt = 0;
+        unsigned long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
+        const unsigned long wt = adjLoopTime - estimatePipelineWeight;
+        unsigned long scaledwt = 0;
+
+        //ps->dump_pipeline(errs());
 
         if (perf.estimate_loop_weight(A))
           scaledwt = wt * (double)lpl.getLoopTime(hA) / (double)perf.estimate_loop_weight(A);

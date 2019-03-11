@@ -28,7 +28,7 @@ typedef PipelineStrategy ParallelizationPlan;
 
 struct CriticRes {
   Criticisms criticisms;
-  long expSpeedup;
+  unsigned long expSpeedup;
   std::unique_ptr<ParallelizationPlan> ps;
 };
 
@@ -39,8 +39,8 @@ public:
   static Criticisms getAllCriticisms(const PDG &pdg);
   static void printCriticisms(raw_ostream &fout, Criticisms &criticisms,
                               const PDG &pdg);
-  long getExpPipelineSpeedup(const ParallelizationPlan &ps, const PDG &pdg,
-                             Loop *loop);
+  unsigned long getExpPipelineSpeedup(const ParallelizationPlan &ps,
+                                      const PDG &pdg, Loop *loop);
 
   virtual CriticRes getCriticisms(PDG &pdg, Loop *loop,
                                   LoopDependenceInfo &ldi) = 0;

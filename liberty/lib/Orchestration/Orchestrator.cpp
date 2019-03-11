@@ -157,7 +157,7 @@ void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism 
 // TODO: perform instead global reasoning and consider the best set of
 // remedies for a given set of criticisms
 void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
-                                     long &selectedRemediesCost,
+                                     unsigned long &selectedRemediesCost,
                                      Criticisms &criticisms) {
   DEBUG(errs() << "\n-====================================================-\n");
   DEBUG(errs() << "Selected Remedies:\n");
@@ -201,7 +201,7 @@ bool Orchestrator::findBestStrategy(
   PDG *ipdg = pdg.createSubgraphFromValues(iPdgNodes, false);
   */
 
-  long maxSavings = 0;
+  unsigned long maxSavings = 0;
 
   // get all possible criticisms
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
@@ -268,9 +268,9 @@ bool Orchestrator::findBestStrategy(
     DEBUG(errs() << "Critic " << (*criticIt)->getCriticName() << "\n");
     CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
     Criticisms &criticisms = res.criticisms;
-    long expSpeedup = res.expSpeedup;
+    unsigned long expSpeedup = res.expSpeedup;
 
-    if (expSpeedup == -1) {
+    if (!expSpeedup) {
       DEBUG(errs() << (*criticIt)->getCriticName()
                    << " not applicable/profitable to " << fcn->getName()
                    << "::" << header->getName()
@@ -280,7 +280,7 @@ bool Orchestrator::findBestStrategy(
 
     std::unique_ptr<SelectedRemedies> selectedRemedies =
         std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
-    long selectedRemediesCost = 0;
+    unsigned long selectedRemediesCost = 0;
     if (!criticisms.size()) {
       DEBUG(errs() << "No criticisms generated\n");
     } else {
@@ -290,8 +290,9 @@ bool Orchestrator::findBestStrategy(
       addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
     }
 
-    long adjRemedCosts = (long)Critic::FixedPoint * selectedRemediesCost;
-    long savings = expSpeedup - adjRemedCosts;
+    unsigned long adjRemedCosts =
+        (long)Critic::FixedPoint * selectedRemediesCost;
+    unsigned long savings = expSpeedup - adjRemedCosts;
 
     DEBUG(errs() << "Expected Savings from critic "
                  << (*criticIt)->getCriticName()
