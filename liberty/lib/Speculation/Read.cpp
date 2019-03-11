@@ -1101,6 +1101,8 @@ bool ReadPass::runOnModule(Module &mod)
 
   read->setControlSpeculator( getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr() );
 
+  read->setDataLayout(DL);
+
   return false;
 }
 
