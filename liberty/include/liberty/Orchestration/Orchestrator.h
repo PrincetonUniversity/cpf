@@ -75,7 +75,8 @@ private:
                                   unsigned threadBudget, LoopProfLoad *lpl);
 
   void addressCriticisms(SelectedRemedies &selectedRemedies,
-                         long &selectedRemediesCost, Criticisms &criticisms);
+                         unsigned long &selectedRemediesCost,
+                         Criticisms &criticisms);
 };
 
 } // namespace SpecPriv

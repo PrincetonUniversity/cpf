@@ -45,19 +45,20 @@ const unsigned Critic::PenalizeLoopNest( Critic::FixedPoint*10 );
 // be enough to compare different parallelization plans of the same loop. Loop
 // related computations are only needed for the final score computation used in
 // loop selection.
-long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
-                                   const PDG &pdg, Loop *loop) {
-  const unsigned loopTime = perf->estimate_loop_weight(loop);
-  const unsigned scaledLoopTime = FixedPoint * loopTime;
+unsigned long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
+                                            const PDG &pdg, Loop *loop) {
+  const long unsigned loopTime = perf->estimate_loop_weight(loop);
+  const long unsigned scaledLoopTime = FixedPoint * loopTime;
   const unsigned depthPenalty =
       PenalizeLoopNest * loop->getLoopDepth(); // break ties with nested loops
-  unsigned adjLoopTime = scaledLoopTime;
+  long unsigned adjLoopTime = scaledLoopTime;
   if (scaledLoopTime > depthPenalty)
     adjLoopTime = scaledLoopTime - depthPenalty;
 
-  long estimatePipelineWeight =
+  long unsigned estimatePipelineWeight =
       (long)FixedPoint * perf->estimate_pipeline_weight(ps, loop);
-  const long wt = adjLoopTime - estimatePipelineWeight;
+  const unsigned long wt = adjLoopTime - estimatePipelineWeight;
+
   /*
   long scaledwt = 0;
 
@@ -191,7 +192,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
                << " :: " << loopH->getName() << " "
                << "covered=" << criticismsCovered
                << ", total=" << criticismsTotal << " , percentage="
-               << format("%.2f", percentageCovered) << "\%\n\n");
+               << format("%.2f", percentageCovered) << "%\n\n");
 
   // TODO: create deep copy of the PDG with only its internal nodes when there
   // are more than one critics.
@@ -208,7 +209,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   if (res.ps)
     res.expSpeedup = getExpPipelineSpeedup(*res.ps, pdg, loop);
   else
-    res.expSpeedup = -1;
+    res.expSpeedup = 0;
 
   return res;
 }
