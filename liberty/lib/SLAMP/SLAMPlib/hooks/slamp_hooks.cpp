@@ -1210,7 +1210,8 @@ int SLAMP_fgetc(FILE *stream)
 
 int SLAMP_fputc(int c, FILE *stream)
 {
-  int result = SLAMP_fprintf(stream, percent_c, c);
+  //int result = SLAMP_fprintf(stream, percent_c, c);
+  int result = fprintf(stream, percent_c, c);
   if (result == 0) {
     return EOF;
   }
