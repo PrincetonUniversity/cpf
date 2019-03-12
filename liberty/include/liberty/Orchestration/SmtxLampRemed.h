@@ -1,10 +1,13 @@
 #ifndef LLVM_LIBERTY_SMTX_LAMP_REMED_H
 #define LLVM_LIBERTY_SMTX_LAMP_REMED_H
 
+#include "llvm/IR/DataLayout.h"
+
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/QueryCacheing.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/SmtxManager.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 
 #include <set>
@@ -25,8 +28,10 @@ public:
 
 class SmtxLampRemediator : public Remediator {
 public:
-  SmtxLampRemediator(SpecPriv::SmtxSpeculationManager *man)
-      : Remediator(), smtxMan(man) {}
+  SmtxLampRemediator(SpecPriv::SmtxSpeculationManager *man, Pass &p)
+      : Remediator(), smtxMan(man), proxy(p) {
+    aa = nullptr;
+  }
 
   StringRef getRemediatorName() const { return "smtx-lamp-remediator"; }
 
@@ -37,6 +42,8 @@ private:
   // TODO: eventually remove this manager
   SpecPriv::SmtxSpeculationManager *smtxMan;
   DenseMap<IIKey, bool> queried;
+  LoopAA *aa;
+  Pass &proxy;
 };
 
 } // namespace liberty

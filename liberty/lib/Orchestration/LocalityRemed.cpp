@@ -34,51 +34,20 @@ bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
   return this->privateI < sepRhs->privateI;
 }
 
-bool noMemoryDep(const Instruction *src, const Instruction *dst,
-                 LoopAA::TemporalRelation FW, LoopAA::TemporalRelation RV,
-                 const Loop *loop, LoopAA *aa, bool rawDep) {
-  // forward dep test
-  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
-  if (LoopAA::NoModRef == forward)
-    return true;
-
-  // forward is Mod, ModRef, or Ref
-
-  // reverse dep test
-  LoopAA::ModRefResult reverse = forward;
-
-  if (src != dst)
-    reverse = aa->modref(dst, RV, src, loop);
-
-  if (LoopAA::NoModRef == reverse)
-    return true;
-
-  if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
-    return true; // RaR dep; who cares.
-
-  // At this point, we know there is one or more of
-  // a flow-, anti-, or output-dependence.
-
-  bool RAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
-             (reverse == LoopAA::Ref || reverse == LoopAA::ModRef);
-  bool WAR = (forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
-             (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
-  bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
-             (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
-
-  if (rawDep && !RAW)
-    return true;
-
-  if (!rawDep && !WAR && !WAW)
-    return true;
-
-  return false;
-}
-
 Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
                                                  const Instruction *B,
                                                  bool LoopCarried, bool RAW,
                                                  const Loop *L) {
+
+  if (!aa) {
+    LocalityAA localityaa(read, asgn);
+    const DataLayout &DL = A->getModule()->getDataLayout();
+    localityaa.InitializeLoopAA(&proxy, DL);
+    // This AA stack includes static analysis and separation speculation
+    aa = localityaa.getTopAA();
+    //errs() << "loopAA in LocalityRemediator\n";
+    //aa->dump();
+  }
 
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -94,12 +63,13 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);
   if (!ptr1 || !ptr2) {
-    if (LoopCarried) {
-      bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW);
-      if (noDep) {
-        ++numLocalityAA;
-        remedResp.depRes = DepResult::NoDep;
-      }
+    bool noDep =
+        (LoopCarried)
+            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
+            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+    if (noDep) {
+      ++numLocalityAA;
+      remedResp.depRes = DepResult::NoDep;
     }
     return remedResp;
   }
@@ -201,12 +171,13 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   }
 
   // check if collaboration of AA and LocalityAA achieves better accuracy
-  if (LoopCarried) {
-    bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW);
-    if (noDep) {
-      ++numLocalityAA2;
-      remedResp.depRes = DepResult::NoDep;
-    }
+  bool noDep =
+      (LoopCarried)
+          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
+          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+  if (noDep) {
+    ++numLocalityAA2;
+    remedResp.depRes = DepResult::NoDep;
   }
 
   return remedResp;

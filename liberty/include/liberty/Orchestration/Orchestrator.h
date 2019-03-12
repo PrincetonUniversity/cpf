@@ -23,6 +23,7 @@
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
@@ -51,8 +52,8 @@ public:
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
-      const Read &rd, const HeapAssignment &asgn, LocalityAA &localityaa,
-      LoopAA *loopAA, LoopProfLoad &lpl,
+      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+      LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -64,14 +65,13 @@ public:
 private:
   std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
 
-  std::set<Remediator_ptr>
+  std::vector<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
                  PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
                  SmtxSpeculationManager &smtxLampMan, const Read &rd,
-                 const HeapAssignment &asgn, LocalityAA &localityaa,
-                 LoopAA *loopAA);
+                 const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);
