@@ -166,10 +166,11 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   for (Criticism *cr : criticisms) {
     SetOfRemedies &sors = mapCriticismsToRemeds[cr];
     Remedies_ptr cheapestR = *(sors.begin());
-    if (!selectedRemedies.count(cheapestR)) {
-      for (auto &r : *cheapestR)
+    for (auto &r : *cheapestR) {
+      if (!selectedRemedies.count(r)) {
         selectedRemediesCost += r->cost;
-      selectedRemedies.insert(cheapestR);
+        selectedRemedies.insert(r);
+      }
     }
     printSelected(sors, cheapestR, *cr);
   }
