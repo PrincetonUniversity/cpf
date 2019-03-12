@@ -10,6 +10,7 @@
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/PrivRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
+#include "liberty/Orchestration/SmtxLampRemed.h"
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
@@ -49,9 +50,9 @@ public:
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-      SmtxSlampSpeculationManager &smtxMan, const Read &rd,
-      const HeapAssignment &asgn, LocalityAA &localityaa, LoopAA *loopAA,
-      LoopProfLoad &lpl,
+      SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+      const Read &rd, const HeapAssignment &asgn, LocalityAA &localityaa,
+      LoopAA *loopAA, LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -68,8 +69,9 @@ private:
                  PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-                 const Read &rd, const HeapAssignment &asgn,
-                 LocalityAA &localityaa, LoopAA *loopAA);
+                 SmtxSpeculationManager &smtxLampMan, const Read &rd,
+                 const HeapAssignment &asgn, LocalityAA &localityaa,
+                 LoopAA *loopAA);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);
