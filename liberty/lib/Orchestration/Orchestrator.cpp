@@ -53,59 +53,57 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 }
 */
 
-std::set<Remediator_ptr>
-Orchestrator::getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-                             PredictionSpeculation *loadedValuePred,
-                             PredictionSpeculation *headerPhiPred,
-                             ModuleLoops &mloops, LoopDependenceInfo &ldi,
-                             SmtxSlampSpeculationManager &smtxMan,
-                             SmtxSpeculationManager &smtxLampMan,
-                             const Read &rd, const HeapAssignment &asgn,
-                             LocalityAA &localityaa, LoopAA *loopAA) {
-  std::set<Remediator_ptr> remeds;
+std::vector<Remediator_ptr> Orchestrator::getRemediators(
+    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+    PredictionSpeculation *loadedValuePred,
+    PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+    LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
+    SmtxSpeculationManager &smtxLampMan, const Read &rd,
+    const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
+  std::vector<Remediator_ptr> remeds;
+
+  // reduction remediator
+  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA);
+  reduxRemed->setLoopOfInterest(A);
+  remeds.push_back(std::move(reduxRemed));
+
+  // separation logic remediator (Privateer PLDI '12)
+  remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
 
   // memory specualation remediator (with SLAMP)
-  remeds.insert(std::make_unique<SmtxSlampRemediator>(&smtxMan));
+  remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
 
   // memory specualation remediator 2 (with LAMP)
-  remeds.insert(std::make_unique<SmtxLampRemediator>(&smtxLampMan));
+  remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
 
   // header phi value prediction
-  remeds.insert(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
+  remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // Loop-Invariant Loaded-Value Prediction
-  remeds.insert(std::make_unique<LoadedValuePredRemediator>(loadedValuePred));
+  remeds.push_back(std::make_unique<LoadedValuePredRemediator>(loadedValuePred));
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
   auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
   ctrlSpecRemed->processLoopOfInterest(A);
-  remeds.insert(std::move(ctrlSpecRemed));
-
-  // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA);
-  reduxRemed->setLoopOfInterest(A);
-  remeds.insert(std::move(reduxRemed));
+  remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
   auto privRemed = std::make_unique<PrivRemediator>();
   privRemed->setPDG(pdg);
-  remeds.insert(std::move(privRemed));
+  remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
-  remeds.insert(std::make_unique<CountedIVRemediator>(&ldi));
+  remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
   // TXIO remediator
-  remeds.insert(std::make_unique<TXIORemediator>());
-
-  // separation logic remediator (Privateer PLDI '12)
-  remeds.insert(std::make_unique<LocalityRemediator>(rd, asgn, localityaa));
+  remeds.push_back(std::make_unique<TXIORemediator>());
 
   // memory versioning remediator
-  remeds.insert(std::make_unique<MemVerRemediator>());
+  remeds.push_back(std::make_unique<MemVerRemediator>());
 
   // commutative libs remediator
-  //remeds.insert(std::unique_ptr<CommutativeLibsRemediator>(
+  //remeds.push_back(std::unique_ptr<CommutativeLibsRemediator>(
   //    new CommutativeLibsRemediator()));
 
   return remeds;
@@ -184,8 +182,8 @@ bool Orchestrator::findBestStrategy(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
-    const Read &rd, const HeapAssignment &asgn, LocalityAA &localityaa,
-    LoopAA *loopAA, LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
+    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+    LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -211,9 +209,9 @@ bool Orchestrator::findBestStrategy(
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
   // address all possible criticisms
-  std::set<Remediator_ptr> remeds = getRemediators(
+  std::vector<Remediator_ptr> remeds = getRemediators(
       loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, ldi,
-      smtxMan, smtxLampMan, rd, asgn, localityaa, loopAA);
+      smtxMan, smtxLampMan, rd, asgn, proxy, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);

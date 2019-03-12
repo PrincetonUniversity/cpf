@@ -16,6 +16,7 @@ using namespace llvm;
 STATISTIC(numQueries, "Num queries");
 STATISTIC(numEligible, "Num eligible queries");
 STATISTIC(numNoFlow, "Num no-flow results");
+STATISTIC(numSmtxAA, "Num removed via SmtxAA + CAF");
 
 void SmtxLampRemedy::apply(PDG &pdg) {
   // TODO: transfer the code for application of smtxLamp here.
@@ -50,6 +51,17 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
                                                   const Instruction *B,
                                                   bool LoopCarried, bool RAW,
                                                   const Loop *L) {
+
+  if (!aa) {
+    SmtxAA smtxaa(smtxMan);
+    const DataLayout &DL = A->getModule()->getDataLayout();
+    smtxaa.InitializeLoopAA(&proxy, DL);
+    // This AA stack includes static analysis and memory speculation
+    aa = smtxaa.getTopAA();
+    //errs() << "loopAA in SmtxLampRemediator\n";
+    //aa->dump();
+  }
+
   ++numQueries;
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -72,15 +84,19 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
   // Thus, for Before/Same queries, we are looking
   // for Store -> Load/Store
 
-  if (!isa<StoreInst>(A) && !isMemIntrinsic(A)) {
+  if ((!isa<StoreInst>(A) && !isMemIntrinsic(A)) ||
+      (!isa<LoadInst>(B) && !(isMemIntrinsic(B) && intrinsicMayRead(B)))) {
     // Callsites, etc: inapplicable
-    remedResp.remedy = remedy;
-    return remedResp;
-  }
 
-  // Again, only Store vs (Load/Store)
-  if (!isa<LoadInst>(B) && !(isMemIntrinsic(B) && intrinsicMayRead(B))) {
-    // inapplicable
+    bool noDep =
+        (LoopCarried)
+            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
+            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+    if (noDep) {
+      ++numSmtxAA;
+      remedResp.depRes = DepResult::NoDep;
+    }
+
     remedResp.remedy = remedy;
     return remedResp;
   }
@@ -106,6 +122,8 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
       // Keep track of this
 
       smtxMan->setAssumedLC(L, A, B);
+      remedResp.remedy = remedy;
+      return remedResp;
     }
   }
 
@@ -123,8 +141,21 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
 
       // queryAcrossCallsites(A,Same,B,L);
       smtxMan->setAssumedII(L, A, B);
+      remedResp.remedy = remedy;
+      return remedResp;
     }
   }
+
+  // check if collaboration of AA and SmtxAA achieves better accuracy
+  bool noDep =
+      (LoopCarried)
+          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
+          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+  if (noDep) {
+    ++numSmtxAA;
+    remedResp.depRes = DepResult::NoDep;
+  }
+
   remedResp.remedy = remedy;
   return remedResp;
 }

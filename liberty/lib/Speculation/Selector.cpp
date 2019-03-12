@@ -200,9 +200,6 @@ unsigned Selector::computeWeights(
 
       ldi->sccdagAttrs.populate(ldi->loopSCCDAG, ldi->liSummary, se);
 
-      LocalityAA localityaa(rd, asgn);
-      localityaa.InitializeLoopAA(&proxy, DL);
-
       // trying to find the best parallelization strategy for this loop
 
       DEBUG(
@@ -220,8 +217,8 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
-          smtxMan, smtxLampMan, rd, asgn, localityaa, loopAA, lpl, ps, sr, sc,
-          NumThreads, pipelineOption_ignoreAntiOutput(),
+          smtxMan, smtxLampMan, rd, asgn, proxy, loopAA, lpl,
+          ps, sr, sc, NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
