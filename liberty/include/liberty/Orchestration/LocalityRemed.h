@@ -11,7 +11,6 @@
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/Classify.h"
 
-
 namespace liberty
 {
 using namespace llvm;
@@ -43,7 +42,7 @@ class LocalityRemediator : public Remediator {
 public:
   LocalityRemediator(const Read &rd, const HeapAssignment &c, Pass &p)
       : read(rd), asgn(c), proxy(p) {
-    aa = nullptr;
+    localityaa = std::make_unique<LocalityAA>(read, asgn);
   }
 
   StringRef getRemediatorName() const { return "locality-remediator"; }
@@ -54,8 +53,8 @@ public:
 private:
   const Read &read;
   const HeapAssignment &asgn;
-  LoopAA *aa;
   Pass &proxy;
+  std::unique_ptr<LocalityAA> localityaa;
 };
 
 } // namespace liberty

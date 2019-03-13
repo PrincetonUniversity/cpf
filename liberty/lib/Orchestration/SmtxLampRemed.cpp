@@ -51,17 +51,6 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
                                                   const Instruction *B,
                                                   bool LoopCarried, bool RAW,
                                                   const Loop *L) {
-
-  if (!aa) {
-    SmtxAA smtxaa(smtxMan);
-    const DataLayout &DL = A->getModule()->getDataLayout();
-    smtxaa.InitializeLoopAA(&proxy, DL);
-    // This AA stack includes static analysis and memory speculation
-    aa = smtxaa.getTopAA();
-    //errs() << "loopAA in SmtxLampRemediator\n";
-    //aa->dump();
-  }
-
   ++numQueries;
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -76,6 +65,13 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
     remedResp.remedy = remedy;
     return remedResp;
   }
+
+  const DataLayout &DL = A->getModule()->getDataLayout();
+  smtxaa->InitializeLoopAA(&proxy, DL);
+  // This AA stack includes static analysis and memory speculation
+  LoopAA *aa = smtxaa->getTopAA();
+  // aa->dump();
+
 
   // Lamp profile data is only collected for
   // loads and stores; not callsites.
