@@ -38,17 +38,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
                                                  const Instruction *B,
                                                  bool LoopCarried, bool RAW,
                                                  const Loop *L) {
-
-  if (!aa) {
-    LocalityAA localityaa(read, asgn);
-    const DataLayout &DL = A->getModule()->getDataLayout();
-    localityaa.InitializeLoopAA(&proxy, DL);
-    // This AA stack includes static analysis and separation speculation
-    aa = localityaa.getTopAA();
-    //errs() << "loopAA in LocalityRemediator\n";
-    //aa->dump();
-  }
-
   Remediator::RemedResp remedResp;
   // conservative answer
   remedResp.depRes = DepResult::Dep;
@@ -59,6 +48,12 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
 
   if (!L || !asgn.isValidFor(L))
     return remedResp;
+
+  const DataLayout &DL = A->getModule()->getDataLayout();
+  localityaa->InitializeLoopAA(&proxy, DL);
+  // This AA stack includes static analysis and separation speculation
+  LoopAA *aa = localityaa->getTopAA();
+  //aa->dump();
 
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);

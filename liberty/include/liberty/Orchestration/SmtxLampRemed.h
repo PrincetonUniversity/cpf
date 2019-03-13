@@ -30,7 +30,7 @@ class SmtxLampRemediator : public Remediator {
 public:
   SmtxLampRemediator(SpecPriv::SmtxSpeculationManager *man, Pass &p)
       : Remediator(), smtxMan(man), proxy(p) {
-    aa = nullptr;
+    smtxaa = std::make_unique<SmtxAA>(smtxMan);
   }
 
   StringRef getRemediatorName() const { return "smtx-lamp-remediator"; }
@@ -42,8 +42,8 @@ private:
   // TODO: eventually remove this manager
   SpecPriv::SmtxSpeculationManager *smtxMan;
   DenseMap<IIKey, bool> queried;
-  LoopAA *aa;
   Pass &proxy;
+  std::unique_ptr<SmtxAA> smtxaa;
 };
 
 } // namespace liberty
