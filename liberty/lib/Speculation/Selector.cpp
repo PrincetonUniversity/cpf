@@ -229,7 +229,7 @@ unsigned Selector::computeWeights(
         // TODO: also save LDI. In order to apply non-spec DOALL
 
         unsigned long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
-        const unsigned long wt = adjLoopTime - estimatePipelineWeight;
+        const long wt = adjLoopTime - estimatePipelineWeight;
         unsigned long scaledwt = 0;
 
         //ps->dump_pipeline(errs());
@@ -257,6 +257,9 @@ unsigned Selector::computeWeights(
         strategies[ hA ] = std::move(ps);
         selectedRemedies[ hA ] = std::move(sr);
         selectedCritics[ hA ] = sc;
+        loopDepInfo [hA] = std::move(ldi);
+        selectedLoops.insert(hA);
+
       } else {
         DEBUG(errs() << "No parallelizing transform applicable to "
                      << fA->getName() << " :: " << hA->getName() << '\n';);
@@ -769,6 +772,7 @@ bool Selector::doSelection(
         //delete j->second;
       strategies.erase(j);
     }
+    selectedLoops.erase(deleteme->getHeader());
   }
 
   numSelected += maxClique.size();
