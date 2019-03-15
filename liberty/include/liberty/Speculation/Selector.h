@@ -56,9 +56,19 @@ struct Selector : public UpdateOnClone
   typedef std::map<BasicBlock *, std::unique_ptr<SelectedRemedies>>
       Loop2SelectedRemedies;
   typedef std::map<BasicBlock *, Critic_ptr> Loop2SelectedCritics;
+  typedef std::map<BasicBlock *, std::unique_ptr<LoopDependenceInfo>>
+      Loop2DepInfo;
 
   strat_iterator strat_begin() const { return strategies.begin(); }
   strat_iterator strat_end() const { return strategies.end(); }
+
+  typedef std::unordered_set<BasicBlock *> SelectedLoops;
+  typedef SelectedLoops::iterator sloops_iterator;
+  sloops_iterator sloops_begin() { return selectedLoops.begin(); }
+  sloops_iterator sloops_end() { return selectedLoops.end(); }
+
+  Loop2DepInfo &getLoop2DepInfo() { return loopDepInfo; }
+  Loop2SelectedRemedies &getLoop2SelectedRemedies() { return selectedRemedies; }
 
   virtual const HeapAssignment &getAssignment() const;
   virtual HeapAssignment &getAssignment();
@@ -128,6 +138,9 @@ protected:
 
   Loop2SelectedRemedies selectedRemedies;
   Loop2SelectedCritics selectedCritics;
+  Loop2DepInfo loopDepInfo;
+
+  SelectedLoops selectedLoops;
 
   bool doSelection(
     Vertices &vertices,
