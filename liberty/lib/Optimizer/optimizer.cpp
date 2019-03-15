@@ -4,19 +4,19 @@ Optimize using Z3
 
 #include<vector>
 #include"z3++.h"
+#include "BipartiteGraph.hpp"
 
-using namespace z3;
-
-void opt_test() {
-    context c;
-    optimize opt(c);
-    params p(c);
-    p.set("priority",c.str_symbol("pareto"));
+void base_optimizer() {
+    z3::context c;
+    z3::optimize opt(c);
+    z3::params p(c);
+    p.set("priority",c.str_symbol("pareto")); // use Pareto optimal front
     opt.set(p);
 
+    // Add remedies
     // initialize expression vector
     const unsigned N = 8;
-    expr_vector r(c);
+    z3::expr_vector r(c);
 
     for (int i = 0; i < N; i++){
         std::stringstream r_name;
@@ -33,15 +33,16 @@ void opt_test() {
 
     // optimize cost
     int price[N] = {2, 4, 3, 1, 6, 8, 10, 5};
-    expr total_cost = c.int_val(0);
+    z3::expr total_cost = c.int_val(0);
     for (int i = 0; i < N; i++){
-        expr cost = price[i] * r[i];
+        z3::expr cost = price[i] * r[i];
         total_cost = total_cost + cost;
     }
-    optimize::handle h_tc = opt.minimize(total_cost);
+
+    z3::optimize::handle h_tc = opt.minimize(total_cost);
     while (true) {
-        if (sat == opt.check()) {
-            model m = opt.get_model();
+        if (z3::sat == opt.check()) {
+            z3::model m = opt.get_model();
             std::cout << "Minimal Cost: " << opt.lower(h_tc) << "\n";
             std::cout << "Remediator selection: \n";
             for (int i = 0; i < N; i++)
@@ -55,10 +56,11 @@ void opt_test() {
 
 
 int main() {
+
     try {
-        opt_test(); std::cout << "\n";
+        base_optimizer(); std::cout << "\n";
     }
-    catch (exception & ex) {
+    catch (z3::exception & ex) {
         std::cout << "unexpected error: " << ex << "\n";
     }
     return 0;
