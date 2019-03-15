@@ -43,6 +43,7 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired<LoopAA>();
   au.addRequired<ReadPass>();
   au.addRequired<Classify>();
+  au.addRequired<CallGraphWrapperPass>();
 }
 
 bool RemedSelector::runOnModule(Module &mod)
@@ -102,6 +103,18 @@ void RemedSelector::contextRenamedViaClone(
   Selector::contextRenamedViaClone(changedContext,vmap,cmap,amap);
 }
 
+bool RemedSelector::compatibleParallelizations(const Loop *A, const Loop *B) const
+{
+  const Classify &classify = getAnalysis< Classify >();
+
+  const HeapAssignment &asgnA = classify.getAssignmentFor(A);
+  assert( asgnA.isValidFor(A) );
+
+  const HeapAssignment &asgnB = classify.getAssignmentFor(B);
+  assert( asgnB.isValidFor(B) );
+
+  return compatible(asgnA, asgnB);
+}
 
 char RemedSelector::ID = 0;
 static RegisterPass< RemedSelector > rp("remed-selector", "Remediator Selector");

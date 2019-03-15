@@ -3,6 +3,7 @@
 
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Analysis/CallGraph.h"
 
 #include <vector>
 #include <set>
@@ -47,6 +48,8 @@ struct RemedSelector : public ModulePass, public Selector
     const ValueToValueMapTy &vmap,
     const CtxToCtxMap &cmap,
     const AuToAuMap &amap);
+
+  virtual bool compatibleParallelizations(const Loop *A, const Loop *B) const;
 
   // Isn't multiple inheritance wonderful!?
   virtual void *getAdjustedAnalysisPointer(AnalysisID PI)

@@ -6,9 +6,11 @@
 
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Analysis/CallGraph.h"
 
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <map>
 
 #include "liberty/Utilities/InlineFunctionWithVmap.h"
@@ -82,8 +84,15 @@ struct Selector : public UpdateOnClone
     const AuToAuMap &amap);
 
 private:
+  typedef std::unordered_map<const Loop *, std::unordered_set<const Function *>>
+      LoopToTransCalledFuncs;
+  static bool callsFun(const Loop *l, const Function *tgtF,
+                       LoopToTransCalledFuncs &l2cF, CallGraph &callGraph);
+
   void computeEdges(const Vertices &vertices, Edges &edges);
-  static bool mustBeSimultaneouslyActive(const Loop *A, const Loop *B);
+  static bool mustBeSimultaneouslyActive(const Loop *A, const Loop *B,
+                                         LoopToTransCalledFuncs &l2cF,
+                                         CallGraph &callGraph);
   bool doInlining(LateInliningOpportunities &opps);
   // Reduction into maximum weighted clique problem
   unsigned computeWeights(
