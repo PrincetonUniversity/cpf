@@ -74,7 +74,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
 
   // memory specualation remediator 2 (with LAMP)
-  remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
+  //remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
 
   // header phi value prediction
   remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
