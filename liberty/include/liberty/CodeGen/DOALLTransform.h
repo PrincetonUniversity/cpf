@@ -27,16 +27,10 @@ struct DOALLTransform : public ModulePass {
   bool runOnModule(Module &module);
 
 private:
-  IntegerType *int1, *int8, *int16, *int32, *int64;
+  IntegerType *int64;
 
   bool doallParallelizeLoop(LoopDependenceInfo *LDI, DOALL &doall);
 
-  void linkParallelizedLoopToOriginalFunction(
-      Module *module, BasicBlock *originalPreHeader,
-      BasicBlock *startOfParLoopInOriginalFunc,
-      BasicBlock *endOfParLoopInOriginalFunc, Value *envArray,
-      Value *envIndexForExitVariable,
-      SmallVector<BasicBlock *, 10> &loopExitBlocks);
 };
 
 } // namespace liberty
