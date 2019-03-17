@@ -77,6 +77,9 @@ private:
   void addressCriticisms(SelectedRemedies &selectedRemedies,
                          unsigned long &selectedRemediesCost,
                          Criticisms &criticisms);
+  void addressCriticismsWithOptimizer(SelectedRemedies &selectedRemedies,
+                         unsigned long &selectedRemediesCost,
+                         Criticisms &criticisms, Remedies_ptr allRemedies);
 };
 
 } // namespace SpecPriv

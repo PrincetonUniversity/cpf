@@ -1,6 +1,12 @@
 #==============================================================================#
 # File extensions to be ignored anywhere in the tree.
 #==============================================================================#
+
+# Executables
+*.d
+*.o
+*.a
+*.so
 # Temp files created by most text editors.
 *~
 # Merge files created by git.

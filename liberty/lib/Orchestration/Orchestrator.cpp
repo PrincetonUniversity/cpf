@@ -14,8 +14,10 @@
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"
+#include "liberty/Optimizer/Optimizer.h"
 
 #include <iterator>
+#include <vector>
 
 namespace liberty {
 namespace SpecPriv {
@@ -174,6 +176,44 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   DEBUG(errs() << "-====================================================-\n\n");
 }
 
+void Orchestrator::addressCriticismsWithOptimizer(SelectedRemedies &selectedRemedies,
+                                     unsigned long &selectedRemediesCost,
+                                     Criticisms &criticisms, Remedies_ptr allRemedies) {
+  unsigned r_size = allRemedies->size();
+  unsigned c_size = criticisms.size();
+  std::vector<Remedy_ptr> vAllRemedies(allRemedies->begin(), allRemedies->end());
+  std::vector<Criticism *> vCriticisms(criticisms.begin(), criticisms.end());
+  std::vector<int> price(r_size, 0);
+
+  RemedCritBG rcbg(r_size, c_size);
+  //
+  // Don't consider LoopFision
+  unsigned r_idx = 0;
+  for (Remedy_ptr re : vAllRemedies){
+    price[r_idx] = re->cost;
+    std::vector<bool> remedy_line(c_size, 0);
+    for (Criticism *c : re->resolvedC) {
+      //get idx of the criticism
+      auto it = std::find(vCriticisms.begin(), vCriticisms.end(), c);
+      if (it != vCriticisms.end()){
+        int idx = std::distance(vCriticisms.begin(), it);
+        remedy_line[idx] = 1;
+      }
+    }
+    rcbg.update_one_remedy(r_idx, remedy_line);
+    r_idx++;
+  }
+  
+  std::vector<unsigned> selectedIdx = optimizer::base_optimizer(rcbg, price, false);
+  for (auto idx : selectedIdx){
+    Remedies_ptr remedSet = std::make_shared<Remedies>();
+    remedSet->insert(vAllRemedies[idx]);
+    selectedRemedies.insert(remedSet);
+    selectedRemediesCost += price[idx];
+  }
+
+}   
+
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
@@ -206,6 +246,10 @@ bool Orchestrator::findBestStrategy(
   // get all possible criticisms
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
+  // ZY: Generate a set of all remedies
+  Remedies_ptr allRemedies = std::make_shared<Remedies>();
+
+
   // address all possible criticisms
   std::set<Remediator_ptr> remeds =
       getRemediators(loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred,
@@ -214,6 +258,7 @@ bool Orchestrator::findBestStrategy(
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
+      allRemedies->insert(r); //ZY: put all remedies in it
       for (Criticism *c : r->resolvedC) {
         // one single remedy resolves this criticism
         Remedies_ptr remedSet = std::make_shared<Remedies>();
@@ -224,6 +269,7 @@ bool Orchestrator::findBestStrategy(
     }
   }
 
+  // ZY -  TODO: The optimizer ignore the loop fission for now 
   // second level remediators, produce both remedies and criticisms
   auto loopFissionRemediator =
       std::make_unique<LoopFissionRemediator>(loop, &pdg, perf);
@@ -287,7 +333,8 @@ bool Orchestrator::findBestStrategy(
       DEBUG(errs() << "Addressible criticisms\n");
       // orchestrator selects set of remedies to address the given criticisms,
       // computes remedies' total cost
-      addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
+      //addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
+      addressCriticismsWithOptimizer(*selectedRemedies, selectedRemediesCost, criticisms, allRemedies);
     }
 
     unsigned long adjRemedCosts =
