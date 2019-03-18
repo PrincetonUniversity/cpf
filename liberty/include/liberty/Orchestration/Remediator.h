@@ -138,6 +138,10 @@ public:
 
   /// Get the name of this remediator
   virtual StringRef getRemediatorName() const = 0;
+
+  bool noMemoryDep(const Instruction *src, const Instruction *dst,
+                   LoopAA::TemporalRelation FW, LoopAA::TemporalRelation RV,
+                   const Loop *loop, LoopAA *aa, bool rawDep);
 };
 
 } // namespace liberty

@@ -1,6 +1,8 @@
 #ifndef LLVM_LIBERTY_LOCALITY_REMED_H
 #define LLVM_LIBERTY_LOCALITY_REMED_H
 
+#include "llvm/IR/DataLayout.h"
+
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Utilities/GetMemOper.h"
 //#include "liberty/Utilities/GetSize.h"
@@ -8,7 +10,6 @@
 #include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/Classify.h"
-
 
 namespace liberty
 {
@@ -39,11 +40,9 @@ public:
 
 class LocalityRemediator : public Remediator {
 public:
-  LocalityRemediator(const Read &rd, const HeapAssignment &c,
-                     LocalityAA &localityaa)
-      : read(rd), asgn(c) {
-    // This AA stack includes static analysis and separation speculation
-    aa = localityaa.getTopAA();
+  LocalityRemediator(const Read &rd, const HeapAssignment &c, Pass &p)
+      : read(rd), asgn(c), proxy(p) {
+    localityaa = std::make_unique<LocalityAA>(read, asgn);
   }
 
   StringRef getRemediatorName() const { return "locality-remediator"; }
@@ -54,7 +53,8 @@ public:
 private:
   const Read &read;
   const HeapAssignment &asgn;
-  LoopAA *aa;
+  Pass &proxy;
+  std::unique_ptr<LocalityAA> localityaa;
 };
 
 } // namespace liberty

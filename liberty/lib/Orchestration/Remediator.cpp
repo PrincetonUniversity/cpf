@@ -103,4 +103,46 @@ namespace liberty
     return remedResp;
   }
 
+  bool Remediator::noMemoryDep(const Instruction *src, const Instruction *dst,
+                               LoopAA::TemporalRelation FW,
+                               LoopAA::TemporalRelation RV, const Loop *loop,
+                               LoopAA *aa, bool rawDep) {
+    // forward dep test
+    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
+    if (LoopAA::NoModRef == forward)
+      return true;
+
+    // forward is Mod, ModRef, or Ref
+
+    // reverse dep test
+    LoopAA::ModRefResult reverse = forward;
+
+    if (src != dst)
+      reverse = aa->modref(dst, RV, src, loop);
+
+    if (LoopAA::NoModRef == reverse)
+      return true;
+
+    if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
+      return true; // RaR dep; who cares.
+
+    // At this point, we know there is one or more of
+    // a flow-, anti-, or output-dependence.
+
+    bool RAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+               (reverse == LoopAA::Ref || reverse == LoopAA::ModRef);
+    bool WAR = (forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
+               (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
+    bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+               (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
+
+    if (rawDep && !RAW)
+      return true;
+
+    if (!rawDep && !WAR && !WAW)
+      return true;
+
+    return false;
+  }
+
 } // namespace liberty

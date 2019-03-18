@@ -10,6 +10,7 @@
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/PrivRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
+#include "liberty/Orchestration/SmtxLampRemed.h"
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
@@ -22,6 +23,7 @@
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
@@ -37,7 +39,7 @@ using namespace llvm;
 
 struct PerformanceEstimator;
 
-typedef std::set<Remedies_ptr, RemediesCompare> SelectedRemedies;
+typedef std::set<Remedy_ptr, RemedyCompare> SelectedRemedies;
 typedef std::unique_ptr<Remediator> Remediator_ptr;
 typedef std::shared_ptr<Critic> Critic_ptr;
 
@@ -49,8 +51,8 @@ public:
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-      SmtxSlampSpeculationManager &smtxMan, const Read &rd,
-      const HeapAssignment &asgn, LocalityAA &localityaa, LoopAA *loopAA,
+      SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
       LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
@@ -63,13 +65,13 @@ public:
 private:
   std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
 
-  std::set<Remediator_ptr>
+  std::vector<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
                  PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-                 const Read &rd, const HeapAssignment &asgn,
-                 LocalityAA &localityaa, LoopAA *loopAA);
+                 SmtxSpeculationManager &smtxLampMan, const Read &rd,
+                 const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA);
 
   std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                   unsigned threadBudget, LoopProfLoad *lpl);

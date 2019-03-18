@@ -156,6 +156,8 @@ unsigned Selector::computeWeights(
       &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
   SmtxSlampSpeculationManager &smtxMan =
       proxy.getAnalysis<SmtxSlampSpeculationManager>();
+  SmtxSpeculationManager &smtxLampMan =
+      proxy.getAnalysis<SmtxSpeculationManager>();
   const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
   Classify &classify = proxy.getAnalysis<Classify>();
   LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
@@ -169,8 +171,6 @@ unsigned Selector::computeWeights(
     BasicBlock *hA = A->getHeader();
     Function *fA = hA->getParent();
     //const Twine nA = fA->getName() + " :: " + hA->getName();
-
-    const DataLayout &DL = fA->getParent()->getDataLayout();
 
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
@@ -198,9 +198,6 @@ unsigned Selector::computeWeights(
 
       ldi->sccdagAttrs.populate(ldi->loopSCCDAG, ldi->liSummary, se);
 
-      LocalityAA localityaa(rd, asgn);
-      localityaa.InitializeLoopAA(&proxy, DL);
-
       // trying to find the best parallelization strategy for this loop
 
       DEBUG(
@@ -218,8 +215,8 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
-          smtxMan, rd, asgn, localityaa, loopAA, lpl, ps, sr, sc, NumThreads,
-          pipelineOption_ignoreAntiOutput(),
+          smtxMan, smtxLampMan, rd, asgn, proxy, loopAA, lpl,
+          ps, sr, sc, NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
@@ -232,7 +229,7 @@ unsigned Selector::computeWeights(
         // TODO: also save LDI. In order to apply non-spec DOALL
 
         unsigned long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
-        const unsigned long wt = adjLoopTime - estimatePipelineWeight;
+        const long wt = adjLoopTime - estimatePipelineWeight;
         unsigned long scaledwt = 0;
 
         //ps->dump_pipeline(errs());
@@ -260,6 +257,9 @@ unsigned Selector::computeWeights(
         strategies[ hA ] = std::move(ps);
         selectedRemedies[ hA ] = std::move(sr);
         selectedCritics[ hA ] = sc;
+        loopDepInfo [hA] = std::move(ldi);
+        selectedLoops.insert(hA);
+
       } else {
         DEBUG(errs() << "No parallelizing transform applicable to "
                      << fA->getName() << " :: " << hA->getName() << '\n';);
@@ -277,15 +277,60 @@ unsigned Selector::computeWeights(
   return numApplicable;
 }
 
-bool Selector::mustBeSimultaneouslyActive(const Loop *A, const Loop *B)
-{
-  return A->contains( B->getHeader() )
-  ||     B->contains( A->getHeader() );
+void getCalledFuns(CallGraphNode *cgNode,
+                   unordered_set<const Function *> &calledFuns) {
+  for (auto i = cgNode->begin(), e = cgNode->end(); i != e; ++i) {
+    auto *succ = i->second;
+    auto *F = succ->getFunction();
+    if (calledFuns.count(F) || F->isDeclaration())
+      continue;
+    calledFuns.insert(F);
+    getCalledFuns(succ, calledFuns);
+  }
+}
+
+bool Selector::callsFun(const Loop *l, const Function *tgtF,
+                        LoopToTransCalledFuncs &loopTransCallGraph,
+                        CallGraph &callGraph) {
+  if (loopTransCallGraph.count(l))
+    return loopTransCallGraph[l].count(tgtF);
+
+  for (const BasicBlock *BB : l->getBlocks()) {
+    for (const Instruction &I : *BB) {
+      const CallInst *call = dyn_cast<CallInst>(&I);
+      if (!call)
+        continue;
+      const Function *cFun = call->getCalledFunction();
+      if (!cFun || cFun->isDeclaration())
+        continue;
+      auto *cgNode = callGraph[cFun];
+      loopTransCallGraph[l].insert(cFun);
+      getCalledFuns(cgNode, loopTransCallGraph[l]);
+    }
+  }
+  return loopTransCallGraph[l].count(tgtF);
+}
+
+bool Selector::mustBeSimultaneouslyActive(
+    const Loop *A, const Loop *B, LoopToTransCalledFuncs &loopTransCallGraph,
+    CallGraph &callGraph) {
+
+  if (A->contains(B->getHeader()) || B->contains(A->getHeader()))
+    return true;
+
+  Function *fA = A->getHeader()->getParent();
+  Function *fB = B->getHeader()->getParent();
+
+  return callsFun(A, fB, loopTransCallGraph, callGraph) ||
+         callsFun(B, fA, loopTransCallGraph, callGraph);
 }
 
 void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 {
   const unsigned N = vertices.size();
+  LoopToTransCalledFuncs loopTransCallGraph;
+  Pass &proxy = getPass();
+  auto &callGraph = proxy.getAnalysis<CallGraphWrapperPass>().getCallGraph();
   for(unsigned i=0; i<N; ++i)
   {
     Loop *A = vertices[i];
@@ -304,7 +349,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 
       /* If we can prove simultaneous activation,
        * exclude one of the loops */
-      if( mustBeSimultaneouslyActive(A, B) )
+      if( mustBeSimultaneouslyActive(A, B, loopTransCallGraph,callGraph) )
       {
         DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                      << " is incompatible with loop " << fB->getName()
@@ -727,6 +772,7 @@ bool Selector::doSelection(
         //delete j->second;
       strategies.erase(j);
     }
+    selectedLoops.erase(deleteme->getHeader());
   }
 
   numSelected += maxClique.size();
