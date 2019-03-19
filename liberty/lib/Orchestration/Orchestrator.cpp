@@ -209,9 +209,7 @@ void Orchestrator::addressCriticismsWithOptimizer(SelectedRemedies &selectedReme
   
   std::vector<unsigned> selectedIdx = optimizer::base_optimizer(rcbg, price, false);
   for (auto idx : selectedIdx){
-    Remedies_ptr remedSet = std::make_shared<Remedies>();
-    remedSet->insert(vAllRemedies[idx]);
-    selectedRemedies.insert(remedSet);
+    selectedRemedies.insert(vAllRemedies[idx]);
     selectedRemediesCost += price[idx];
   }
 
