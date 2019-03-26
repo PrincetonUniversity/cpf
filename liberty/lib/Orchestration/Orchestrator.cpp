@@ -182,6 +182,9 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 void Orchestrator::addressCriticismsWithOptimizer(SelectedRemedies &selectedRemedies,
                                      unsigned long &selectedRemediesCost,
                                      Criticisms &criticisms, Remedies_ptr allRemedies) {
+  DEBUG(errs() << "\n-====================================================-\n");
+  DEBUG(errs() << "Selected Remedies:\n");
+
   unsigned r_size = allRemedies->size();
   unsigned c_size = criticisms.size();
   std::vector<Remedy_ptr> vAllRemedies(allRemedies->begin(), allRemedies->end());
@@ -206,13 +209,16 @@ void Orchestrator::addressCriticismsWithOptimizer(SelectedRemedies &selectedReme
     rcbg.update_one_remedy(r_idx, remedy_line);
     r_idx++;
   }
-  
+
   std::vector<unsigned> selectedIdx = optimizer::base_optimizer(rcbg, price, false);
+  DEBUG(errs() << "\nSelected Remedies:\n");
   for (auto idx : selectedIdx){
     selectedRemedies.insert(vAllRemedies[idx]);
+    DEBUG(errs() << (vAllRemedies[idx])->getRemedyName() << "\n");
     selectedRemediesCost += price[idx];
   }
 
+  DEBUG(errs() << "-====================================================-\n\n");
 }   
 
 bool Orchestrator::findBestStrategy(
