@@ -55,10 +55,12 @@ class PureFunAA : public llvm::ModulePass, public liberty::ClassicLoopAA {
  public:
   static StringRef  const pureFunNames[];
   static StringRef  const localFunNames[];
+  static StringRef  const noMemFunNames[];
 
  private:
   static StringSet pureFunSet;
   static StringSet localFunSet;
+  static StringSet noMemFunSet;
 
   void runOnSCC(const SCC &scc);
 

@@ -14,7 +14,7 @@ class PrivRemedy : public Remedy {
 public:
   const StoreInst *storeI;
 
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "priv-remedy"; };
 };

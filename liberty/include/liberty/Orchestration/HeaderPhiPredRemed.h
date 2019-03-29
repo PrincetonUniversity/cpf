@@ -17,7 +17,7 @@ public:
   const LoadInst *loadI; // populated for loop-invariant loads that feed
                          // header-phi nodes
 
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "header-phi-pred-remedy"; };
 };

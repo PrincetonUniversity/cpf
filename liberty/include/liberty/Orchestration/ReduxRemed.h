@@ -28,7 +28,7 @@ public:
   const Instruction *reduxI;
   const SCC *reduxSCC;
 
-  void apply(llvm::PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "redux-remedy"; };
 };

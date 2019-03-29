@@ -21,10 +21,8 @@
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
 #include "liberty/Orchestration/Remediator.h"
-
-//#include "Classify.h"
-//#include "LocalityAA.h"
-//#include "PtrResidueAA.h"
+#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
+#include "liberty/Speculation/Classify.h"
 
 namespace liberty
 {
@@ -42,14 +40,15 @@ struct RemedSelector : public ModulePass, public Selector
 
   StringRef getPassName() const { return "remed-selector"; }
 
+  virtual const HeapAssignment &getAssignment() const;
+  virtual HeapAssignment &getAssignment();
+
   // Update on clone
   virtual void contextRenamedViaClone(
     const Ctx *changedContext,
     const ValueToValueMapTy &vmap,
     const CtxToCtxMap &cmap,
     const AuToAuMap &amap);
-
-  virtual bool compatibleParallelizations(const Loop *A, const Loop *B) const;
 
   // Isn't multiple inheritance wonderful!?
   virtual void *getAdjustedAnalysisPointer(AnalysisID PI)
@@ -62,8 +61,12 @@ struct RemedSelector : public ModulePass, public Selector
   }
 
 protected:
+  virtual void computeVertices(Vertices &vertices);
+  // Loops with compatible heap assignments
+  virtual bool compatibleParallelizations(const Loop *A, const Loop *B) const;
+
   // The runtime gives each worker an isolated memory space
-  virtual bool pipelineOption_ignoreAntiOutput() const { return true; }
+  //virtual bool pipelineOption_ignoreAntiOutput() const { return true; }
 
   // Called after a late inlining
   virtual void resetAfterInline(
@@ -74,8 +77,10 @@ protected:
     const CallsPromotedToInvoke &call2invoke);
 
   virtual Pass &getPass() { return *this; }
-};
 
+private:
+  HeapAssignment assignment;
+};
 
 }
 }

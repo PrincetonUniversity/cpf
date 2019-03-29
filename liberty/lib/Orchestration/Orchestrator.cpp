@@ -295,6 +295,8 @@ bool Orchestrator::findBestStrategy(
 
     // satisfy all criticisms of the loop fission remediator
     // for now select the cheapest one
+    // for just coverage purposes avoid taking into account criticisms of loopFission to reduce memory pressure on some SPEC benchmarks
+    /*
     for (Criticism *remedC : *resp.criticisms) {
       SetOfRemedies &sors = mapCriticismsToRemeds[remedC];
       Remedies_ptr cheapestR = *(sors.begin());
@@ -304,6 +306,7 @@ bool Orchestrator::findBestStrategy(
       Remedy_ptr chosenR = *(cheapestR->begin());
       remeds->insert(chosenR);
     }
+    */
 
     criticismsResolvedByLoopFission.insert(c);
     loopFissionCriticismsToRemeds[c] = remeds;

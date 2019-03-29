@@ -59,8 +59,6 @@ bool RemedSelector::runOnModule(Module &mod)
 
   doSelection(vertices, edges, weights, maxClique);
 
-  // sot: remove separation speculation for now
-  /*
   // Combine all of these assignments into one big assignment
   Classify &classify = getAnalysis< Classify >();
   for(VertexSet::iterator i=maxClique.begin(), e=maxClique.end(); i!=e; ++i)
@@ -74,8 +72,31 @@ bool RemedSelector::runOnModule(Module &mod)
   }
 
   DEBUG_WITH_TYPE("classify", errs() << assignment );
-  */
   return false;
+}
+
+const HeapAssignment &RemedSelector::getAssignment() const { return assignment; }
+HeapAssignment &RemedSelector::getAssignment() { return assignment; }
+
+void RemedSelector::computeVertices(Vertices &vertices)
+{
+  ModuleLoops &mloops = getAnalysis< ModuleLoops >();
+  const Classify &classify = getAnalysis< Classify >();
+  for(Classify::iterator i=classify.begin(), e=classify.end(); i!=e; ++i)
+  {
+    const BasicBlock *header = i->first;
+    Function *fcn = const_cast< Function * >(header->getParent() );
+
+    LoopInfo &li = mloops.getAnalysis_LoopInfo(fcn);
+    Loop *loop = li.getLoopFor(header);
+    assert( loop->getHeader() == header );
+
+    const HeapAssignment &asgn = i->second;
+    if( ! asgn.isValidFor(loop) )
+      continue;
+
+    vertices.push_back( loop );
+  }
 }
 
 void RemedSelector::resetAfterInline(
@@ -85,11 +106,61 @@ void RemedSelector::resetAfterInline(
   const ValueToValueMapTy &vmap,
   const CallsPromotedToInvoke &call2invoke)
 {
+  Classify &classify = getAnalysis< Classify >();
+  //PtrResidueSpeculationManager &prman = getAnalysis< PtrResidueSpeculationManager >();
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
-  SmtxSlampSpeculationManager &smtxMan = getAnalysis< SmtxSlampSpeculationManager >();
+  ProfileGuidedPredictionSpeculator &predspec = getAnalysis< ProfileGuidedPredictionSpeculator >();
+  LAMPLoadProfile &lampprof = getAnalysis< LAMPLoadProfile >();
+  Read &spresults = getAnalysis< ReadPass >().getProfileInfo();
 
+  UpdateLAMP lamp( lampprof );
+
+  UpdateGroup group;
+  group.add( &spresults );
+  group.add( &classify );
+
+  FoldManager &fmgr = * spresults.getFoldManager();
+
+  // Hard to identify exactly which context we're updating,
+  // since the context includes loops and functions, but not callsites.
+
+  // Find every context in which 'callee' is called by 'caller'
+  typedef std::vector<const Ctx *> Ctxs;
+  Ctxs affectedContexts;
+  for(FoldManager::ctx_iterator k=fmgr.ctx_begin(), z=fmgr.ctx_end(); k!=z; ++k)
+  {
+    const Ctx *ctx = &*k;
+    if( ctx->type != Ctx_Fcn )
+      continue;
+    if( ctx->fcn != callee )
+      continue;
+
+    if( !ctx->parent )
+      continue;
+    if( ctx->parent->getFcn() != caller )
+      continue;
+
+    affectedContexts.push_back( ctx );
+    errs() << "Affected context: " << *ctx << '\n';
+  }
+
+  // Inline those contexts to build the cmap, amap
+  CtxToCtxMap cmap;
+  AuToAuMap amap;
+  for(Ctxs::const_iterator k=affectedContexts.begin(), z=affectedContexts.end(); k!=z; ++k)
+    fmgr.inlineContext(*k,vmap,cmap,amap);
+
+  lamp.resetAfterInline(callsite_no_longer_exists, caller, callee, vmap, call2invoke);
+
+  // Update others w.r.t each of those contexts
+  for(Ctxs::const_iterator k=affectedContexts.begin(), z=affectedContexts.end(); k!=z; ++k)
+    group.contextRenamedViaClone(*k,vmap,cmap,amap);
+
+  spresults.removeInstruction( callsite_no_longer_exists );
+
+  predspec.reset();
+  //prman.reset();
   ctrlspec->reset();
-  smtxMan.reset();
 }
 
 void RemedSelector::contextRenamedViaClone(
@@ -99,7 +170,7 @@ void RemedSelector::contextRenamedViaClone(
   const AuToAuMap &amap)
 {
 //  errs() << "  . . - Selector::contextRenamedViaClone: " << *changedContext << '\n';
-  //assignment.contextRenamedViaClone(changedContext,vmap,cmap,amap);
+  assignment.contextRenamedViaClone(changedContext,vmap,cmap,amap);
   Selector::contextRenamedViaClone(changedContext,vmap,cmap,amap);
 }
 

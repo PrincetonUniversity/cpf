@@ -15,7 +15,7 @@ using namespace llvm;
 STATISTIC(numTXIOQueries, "Number of mem queries asked to txio");
 STATISTIC(numTXIONoMemDep, "Number of mem deps removed by txio");
 
-void TXIORemedy::apply(PDG &pdg) {
+void TXIORemedy::apply(Task *task) {
   // TODO: transfer the code for application of txio here.
 }
 
@@ -51,6 +51,11 @@ bool TXIORemediator::isTXIOFcn(const Instruction *inst) {
   else if (callee->getName() == "putc")
     return true;
   else if (callee->getName() == "putchar")
+    return true;
+  else if (callee->getName() == "fflush")
+    return true;
+  // temporarily for dijistra, print_path is
+  else if (callee->getName() == "print_path")
     return true;
 
   return false;

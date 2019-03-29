@@ -20,7 +20,7 @@ public:
   // TODO: populate this field when responding to queries
   const Instruction *brI;
 
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "ctrl-spec-remedy"; };
 };
