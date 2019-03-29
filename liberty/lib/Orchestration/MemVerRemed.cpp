@@ -4,7 +4,8 @@
 
 #include "liberty/Orchestration/MemVerRemed.h"
 
-#define DEFAULT_MEM_VER_REMED_COST 300
+//#define DEFAULT_MEM_VER_REMED_COST 49
+#define DEFAULT_MEM_VER_REMED_COST 141
 
 namespace liberty {
 using namespace llvm;
@@ -12,7 +13,7 @@ using namespace llvm;
 STATISTIC(numNoMemDep,
           "Number of false mem deps removed with memory versioning");
 
-void MemVerRemedy::apply(PDG &pdg) {
+void MemVerRemedy::apply(Task *task) {
   // TODO: code for application of memory versioning here.
   // doing process-based parallelization suffices
 }

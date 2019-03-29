@@ -240,6 +240,10 @@ PureFunAA::PureFunAA() : ModulePass(ID), sccCount(0) {
     for(int i = 0; !localFunNames[i].empty(); ++i) {
       localFunSet.insert(localFunNames[i]);
     }
+
+    for(int i = 0; !noMemFunNames[i].empty(); ++i) {
+      noMemFunSet.insert(noMemFunNames[i]);
+    }
   }
 
   DEBUG(errs() << "Known pure functions: "  << pureFunSet.size()  << "\n");
@@ -301,6 +305,11 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
     return NoModRef;
   }
 
+  // sot
+  if (noMemFunSet.count(fun1->getName().str().c_str())) {
+    return NoModRef;
+  }
+
   // Could the first function write to the second function's read set?
   if(isReadOnly(fun1)) {
     return Ref;
@@ -332,6 +341,11 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
 
     DEBUG(errs() << "\t    result of query " << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L) << "\n");
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 2\n");
+    return NoModRef;
+  }
+
+  // sot
+  if (noMemFunSet.count(fun->getName().str().c_str())) {
     return NoModRef;
   }
 
@@ -379,8 +393,14 @@ StringRef  const PureFunAA::localFunNames[] = {
 /* "" */
 /* }; */
 
+StringRef  const PureFunAA::noMemFunNames[] = {
+#include "NoMemFun.h"
+""
+};
+
 PureFunAA::StringSet PureFunAA::pureFunSet;
 PureFunAA::StringSet PureFunAA::localFunSet;
+PureFunAA::StringSet PureFunAA::noMemFunSet;
 
 static RegisterPass<PureFunAA>
 X("pure-fun-aa", "Alias analysis for pure functions", false, true);

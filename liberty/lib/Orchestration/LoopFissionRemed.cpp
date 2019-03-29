@@ -13,7 +13,7 @@ STATISTIC(numLoopFissionNoRegDep, "Number of reg deps removed by loop fission");
 STATISTIC(numLoopFissionNoCtrlDep,
           "Number of ctrl deps removed by loop fission");
 
-void LoopFissionRemedy::apply(PDG &pdg) {
+void LoopFissionRemedy::apply(Task *task) {
   // TODO: code for application of loop fission here.
 }
 
@@ -41,9 +41,13 @@ bool LoopFissionRemediator::seqStageEligible(
     if (notSeqStageEligible.count(inst))
       return false;
 
+    if (seqStageEligibleInsts.count(inst))
+      return true;
+
     // check if the sequential part is more than 5% of total loop weight
     seqStageWeight += perf.estimate_weight(inst);
-    if ((seqStageWeight * 100.0) / loopWeight >= 5.0) {
+    //if ((seqStageWeight * 100.0) / loopWeight >= 5.0) {
+    if ((seqStageWeight * 100.0) / loopWeight >= 10.0) {
       notSeqStageEligible.insert(rootInst);
       return false;
     }
@@ -67,6 +71,8 @@ bool LoopFissionRemediator::seqStageEligible(
       }
     }
   }
+  for (auto &I :visited)
+    seqStageEligibleInsts.insert(I);
   return true;
 }
 
@@ -92,9 +98,9 @@ LoopFissionRemediator::removeDep(const Instruction *A, const Instruction *B,
   }
 
   remedResp.depRes = DepResult::NoDep;
-  remedResp.criticisms = std::move(cr);
+  //remedResp.criticisms = std::move(cr);
   remedy->produceI = A;
-  remedy->replicatedI = std::move(visited);
+  //remedy->replicatedI = std::move(visited);
 
   remedResp.remedy = remedy;
   return remedResp;

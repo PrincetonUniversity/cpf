@@ -18,7 +18,7 @@ STATISTIC(numEligible, "Num eligible queries");
 STATISTIC(numNoFlow, "Num no-flow results");
 STATISTIC(numSmtxAA, "Num removed via SmtxAA + CAF");
 
-void SmtxLampRemedy::apply(PDG &pdg) {
+void SmtxLampRemedy::apply(Task *task) {
   // TODO: transfer the code for application of smtxLamp here.
 }
 

@@ -11,7 +11,16 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Critic.h"
+#include "liberty/Utilities/InstInsertPt.h"
+#include "liberty/Utilities/InsertPrintf.h"
+#include "liberty/Speculation/Api.h"
 #include "PDG.hpp"
+#include "LoopDependenceInfo.hpp"
+#include "TaskExecution.hpp"
+
+
+#include "liberty/Speculation/Read.h"
+#include "liberty/Speculation/Classify.h"
 
 #include <set>
 #include <unordered_set>
@@ -29,9 +38,29 @@ public:
   Criticisms resolvedC;
   int cost;
 
-  virtual void apply(PDG &pdg) = 0;
+  Task *task;
+  Loop *loop;
+  const DataLayout *DL;
+
+  const Read *read;
+  const HeapAssignment *asgn;
+  std::set<const Value*> *alreadyInstrumented;
+  Module *mod;
+  Type *voidty, *voidptr;
+  IntegerType *u8, *u32;
+
+  virtual void apply(Task *task) = 0;
   virtual bool compare(const Remedy_ptr rhs) const = 0;
   virtual StringRef getRemedyName() const = 0;
+
+  HeapAssignment::Type selectHeap(const Value *ptr, const Loop *loop) const;
+  HeapAssignment::Type selectHeap(const Value *ptr, const Ctx *ctx) const;
+  bool isPrivate(Value *ptr);
+  void insertPrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz);
+  void insertReduxWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz);
+  void insertPrivateRead(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz);
+  bool replacePrivateLoadsStore(Instruction *origI);
+  bool replaceReduxStore(StoreInst *origSt);
 };
 
 struct RemedyCompare {

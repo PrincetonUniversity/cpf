@@ -12,7 +12,7 @@ using namespace llvm;
 
 class MemVerRemedy : public Remedy {
 public:
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "mem-ver-remedy"; };
 };

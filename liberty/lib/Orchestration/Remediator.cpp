@@ -1,6 +1,7 @@
 #define DEBUG_TYPE   "remediator"
 
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -13,6 +14,10 @@
 namespace liberty
 {
   using namespace llvm;
+
+  STATISTIC(numPrivRead,    "Private reads instrumented");
+  STATISTIC(numPrivWrite,   "Private writes instrumented");
+  STATISTIC(numReduxWrite,  "Redux writes instrumented");
 
   Remedies Remediator::satisfy(const PDG &pdg, Loop *loop,
                                const Criticisms &criticisms) {
@@ -144,5 +149,225 @@ namespace liberty
 
     return false;
   }
+
+HeapAssignment::Type Remedy::selectHeap(const Value *ptr, const Loop *loop) const
+{
+  const Ctx *ctx = read->getCtx(loop);
+  return selectHeap(ptr,ctx);
+}
+
+HeapAssignment::Type Remedy::selectHeap(const Value *ptr, const Ctx *ctx) const
+{
+  Ptrs aus;
+  if( !read->getUnderlyingAUs(ptr,ctx,aus) )
+    return HeapAssignment::Unclassified;
+
+  return asgn->classify(aus);
+}
+
+bool Remedy::isPrivate(Value *ptr)
+{
+  return selectHeap(ptr,loop) == HeapAssignment::Private;
+}
+
+/*
+bool Remedy::isRedux(Value *ptr)
+{
+  return selectHeap(ptr,loop) == HeapAssignment::Redux;
+}
+*/
+
+void Remedy::insertPrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
+{
+  ++numPrivWrite;
+
+  // Maybe cast to void*
+  Value *base = ptr;
+  if( base->getType() != voidptr )
+  {
+    Instruction *cast = new BitCastInst(ptr, voidptr);
+    where << cast;
+    //preprocess.addToLPS(cast, gravity);
+    base = cast;
+  }
+
+  // Maybe cast the length
+  Value *len = sz;
+  if( len->getType() != u32 )
+  {
+    Instruction *cast = new TruncInst(len,u32);
+    where << cast;
+    //preprocess.addToLPS(cast, gravity);
+    len = cast;
+  }
+
+  Constant *writerange = Api(mod).getPrivateWriteRange();
+  Value *actuals[] = { base, len };
+  Instruction *validation = CallInst::Create(writerange, ArrayRef<Value*>(&actuals[0], &actuals[2]) );
+  where << validation;
+  //preprocess.addToLPS(validation, gravity);
+}
+
+void Remedy::insertReduxWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
+{
+  ++numReduxWrite;
+
+  // Maybe cast to void*
+  Value *base = ptr;
+  if( base->getType() != voidptr )
+  {
+    Instruction *cast = new BitCastInst(ptr, voidptr);
+    where << cast;
+    //addToLPS(cast,gravity);
+    base = cast;
+  }
+
+  // Maybe cast the length
+  Value *len = sz;
+  if( len->getType() != u32 )
+  {
+    Instruction *cast = new TruncInst(len,u32);
+    where << cast;
+    //addToLPS(cast,gravity);
+    len = cast;
+  }
+
+  Constant *writerange = Api(mod).getReduxWriteRange();
+  Value *actuals[] = { base, len };
+  Instruction *validation = CallInst::Create(writerange, ArrayRef<Value*>(&actuals[0], &actuals[2]) );
+  where << validation;
+  //addToLPS(validation, gravity);
+}
+
+void Remedy::insertPrivateRead(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
+{
+  ++numPrivRead;
+
+  // Name
+  Twine msg = "Privacy violation on pointer " + ptr->getName()
+                  + " in " + where.getFunction()->getName()
+                  + " :: " + where.getBlock()->getName();
+  Constant *message = getStringLiteralExpression(*mod, msg.str());
+
+  // Maybe cast to void*
+  Value *base = ptr;
+  if( base->getType() != voidptr )
+  {
+    Instruction *cast = new BitCastInst(ptr, voidptr);
+    where << cast;
+    //preprocess.addToLPS(cast, gravity);
+    base = cast;
+  }
+
+  // Maybe cast the length
+  Value *len = sz;
+  if( len->getType() != u32 )
+  {
+    Instruction *cast = new TruncInst(len,u32);
+    where << cast;
+    //preprocess.addToLPS(cast, gravity);
+    len = cast;
+  }
+
+  Constant *readrange = Api(mod).getPrivateReadRange();
+  Value *actuals[] = { base, len, message };
+  Instruction *validation = CallInst::Create(readrange, ArrayRef<Value*>(&actuals[0], &actuals[3]) );
+
+  where << validation;
+  //preprocess.addToLPS(validation, gravity);
+}
+
+
+bool Remedy::replacePrivateLoadsStore(Instruction *origI) {
+  // get cloned inst in the parallelized code
+  Instruction *inst = task->instructionClones[origI];
+
+  bool modified = false;
+  if (LoadInst *load = dyn_cast<LoadInst>(inst)) {
+    Value *ptr = load->getPointerOperand();
+
+    //if (!isPrivate(loop, ptr))
+    //  continue;
+
+    DEBUG(errs() << "Instrumenting private load: " << *load << '\n');
+
+    PointerType *pty = cast<PointerType>(ptr->getType());
+    Type *eltty = pty->getElementType();
+    uint64_t size = DL->getTypeStoreSize(eltty);
+    Value *sz = ConstantInt::get(u32, size);
+
+    insertPrivateRead(load, InstInsertPt::Before(load), ptr, sz);
+    modified = true;
+  } else if (StoreInst *store = dyn_cast<StoreInst>(inst)) {
+    Value *ptr = store->getPointerOperand();
+
+    //if (!isPrivate(loop, ptr))
+    //  continue;
+
+    DEBUG(errs() << "Instrumenting private store: " << *store << '\n');
+
+    PointerType *pty = cast<PointerType>(ptr->getType());
+    Type *eltty = pty->getElementType();
+    uint64_t size = DL->getTypeStoreSize(eltty);
+    Value *sz = ConstantInt::get(u32, size);
+
+    insertPrivateWrite(store, InstInsertPt::Before(store), ptr, sz);
+    modified = true;
+  } else if (MemTransferInst *mti = dyn_cast<MemTransferInst>(inst)) {
+    Value *src = mti->getRawSource(), *dst = mti->getRawDest(),
+          *sz = mti->getLength();
+
+    bool psrc = isPrivate(src), pdst = isPrivate(dst);
+
+    if (psrc) {
+      DEBUG(errs() << "Instrumenting private source of mti: " << *mti << '\n');
+
+      insertPrivateRead(mti, InstInsertPt::Before(mti), src, sz);
+      modified = true;
+    }
+
+    if (pdst) {
+      DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
+
+      insertPrivateWrite(mti, InstInsertPt::Before(mti), dst, sz);
+      modified = true;
+    }
+  } else if (MemSetInst *msi = dyn_cast<MemSetInst>(inst)) {
+    Value *ptr = msi->getRawDest(), *sz = msi->getLength();
+
+    //if (!isPrivate(loop, ptr))
+    //  continue;
+
+    DEBUG(errs() << "Instrumenting private dest of memset: " << *msi << '\n');
+
+    insertPrivateWrite(msi, InstInsertPt::Before(msi), ptr, sz);
+    modified = true;
+  }
+  return modified;
+}
+
+//void Remedy::replaceReduxStore(Instruction *inst) {
+//  if (StoreInst *store = dyn_cast<StoreInst>(inst)) {
+bool Remedy::replaceReduxStore(StoreInst *origSt) {
+  // get cloned inst in the parallelized code
+  Instruction *inst = task->instructionClones[(Instruction *)origSt];
+  StoreInst *store = dyn_cast<StoreInst>(inst);
+  assert(store);
+
+  Value *ptr = store->getPointerOperand();
+
+  // if (!isRedux(loop, ptr))
+  //  continue;
+
+  DEBUG(errs() << "Instrumenting redux store: " << *store << '\n');
+
+  PointerType *pty = cast<PointerType>(ptr->getType());
+  Type *eltty = pty->getElementType();
+  uint64_t size = DL->getTypeStoreSize(eltty);
+  Value *sz = ConstantInt::get(u32, size);
+
+  insertReduxWrite(store, InstInsertPt::Before(store), ptr, sz);
+  return true;
+}
 
 } // namespace liberty

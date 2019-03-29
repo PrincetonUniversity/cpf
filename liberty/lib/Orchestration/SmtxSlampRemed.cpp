@@ -17,7 +17,7 @@ STATISTIC(numQueries, "Num queries");
 STATISTIC(numEligible, "Num eligible queries");
 STATISTIC(numNoFlow, "Num no-flow results");
 
-void SmtxSlampRemedy::apply(PDG &pdg) {
+void SmtxSlampRemedy::apply(Task *task) {
   // TODO: transfer the code for application of smtxSlamp here.
 }
 

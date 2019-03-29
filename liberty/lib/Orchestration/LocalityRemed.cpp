@@ -20,17 +20,145 @@ STATISTIC(numSeparated,       "Num separated");
 STATISTIC(numLocalityAA,      "Num removed via LocalityAA");
 STATISTIC(numLocalityAA2,     "Num removed via LocalityAA (non-removable by LocalityRemed)");
 STATISTIC(numSubSep,          "Num separated via subheaps");
+//STATISTIC(numStaticReloc, "Static allocations relocated");
+//STATISTIC(numDynReloc,    "Dynamic allocations relocated");
+STATISTIC(numUOTests,     "UO tests inserted");
 
-void LocalityRemedy::apply(PDG &pdg) {
-  // TODO: transfer the code for application of separation logic here.
+//bool LocalityRemedy::addUOChecks(const HeapAssignment &asgn, Loop *loop, BasicBlock *bb, VSet &alreadyInstrumented)
+bool LocalityRemedy::addUOCheck(Value *ptr)
+{
+  UO objectsToInstrument;
+  UO pointers;
+  Indeterminate::findIndeterminateObjects(ptr, pointers, objectsToInstrument, *DL);
+
+  if( objectsToInstrument.empty() )
+    return false;
+
+//    DEBUG(errs() << "RoI contains " << objectsToInstrument.size() << " indeterminate objects.\n");
+
+  // Okay, we have a set of UOs.  Let's instrument them!
+  bool modified = false;
+
+  for(UO::iterator i=objectsToInstrument.begin(), e=objectsToInstrument.end(); i!=e; ++i)
+  {
+    const Value *obj = *i;
+    if( alreadyInstrumented->count(obj) )
+      continue;
+    alreadyInstrumented->insert(obj);
+
+    // What heap do we expect to find this object in?
+    HeapAssignment::Type ty = selectHeap(obj,loop);
+    if( ty == HeapAssignment::Unclassified )
+    {
+      DEBUG(errs() << "Cannot check " << *obj << "!!!\n");
+      continue;
+    }
+
+    Value *cobj = const_cast< Value* >(obj);
+    insertUOCheck(cobj,ty);
+
+    modified = true;
+  }
+
+  return modified;
+}
+
+void LocalityRemedy::insertUOCheck(Value *obj, HeapAssignment::Type heap)
+{
+  BasicBlock *preheader = loop->getLoopPreheader();
+  assert( preheader && "Loop simplify!?");
+
+  //Preprocess &preprocess = getAnalysis< Preprocess >();
+
+  int sh = asgn->getSubHeap(obj, loop, *read);
+
+  // Where should we insert this check?
+  InstInsertPt where;
+  Instruction *inst_obj = dyn_cast< Instruction >(obj);
+  Instruction *cloned_inst = nullptr;
+  Instruction *cast;
+  if ( inst_obj ) {
+    // get cloned inst in the parallelized code if any
+    cloned_inst = inst_obj;
+    if (task->instructionClones.find(inst_obj) != task->instructionClones.end())
+      cloned_inst = task->instructionClones[inst_obj];
+
+//    if( roi.bbs.count(inst_obj->getParent()) )
+      where = InstInsertPt::After(cloned_inst);
+      //where = InstInsertPt::After(inst_obj);
+//    else
+//      where = InstInsertPt::End( preheader ); // TODO: assumes single parallel region
+
+    cast = new BitCastInst(cloned_inst,voidptr);
+  }
+  else if( Argument *arg = dyn_cast< Argument >(obj) )
+  {
+    Function *f = arg->getParent();
+//    if( f == preheader->getParent() )
+//      where = InstInsertPt::End( preheader ); // TODO: assumes single parallel region
+//    else
+      where = InstInsertPt::Beginning( f );
+      cast = new BitCastInst(obj,voidptr);
+  }
+  else
+    cast = new BitCastInst(obj,voidptr);
+
+  Twine msg = "UO violation on pointer " + obj->getName()
+                  + " in " + where.getFunction()->getName()
+                  + " :: " + where.getBlock()->getName()
+                  + "; should be in " + Api::getNameForHeap(heap)
+                  + ", sub-heap " + Twine(sh);
+  Constant *message = getStringLiteralExpression(*mod, msg.str());
+
+  //Instruction *cast = new BitCastInst(obj,voidptr);
+
+  Constant *check = Api(mod).getUO();
+
+  Value *code = ConstantInt::get(u8, (int) heap );
+  Constant *subheap = ConstantInt::get(u8, sh);
+
+  Value *args[] = { cast, code, subheap, message };
+  Instruction *call = CallInst::Create(check, ArrayRef<Value*>(&args[0], &args[4]) );
+
+  where << cast << call;
+  //preprocess.addToLPS(cast, inst_obj);
+  //preprocess.addToLPS(call, inst_obj);
+
+  ++numUOTests;
+  DEBUG(errs() << "Instrumented indet obj: " << *obj << '\n');
+}
+
+// change to bool eventually
+void LocalityRemedy::apply(Task *task) {
+  bool modified = false;
+  this->task = task;
+  if (privateI)
+    modified |= replacePrivateLoadsStore(privateI);
+  // modified runtime does not need replaceReduxStore anymore
+  // caused big perf problem in 052.alvinn. prevented vectorization
+  //else if (reduxS)
+  //  modified |= replaceReduxStore(reduxS);
+
+  if (ptr1)
+    modified |= addUOCheck(ptr1);
+  if (ptr2)
+    modified |= addUOCheck(ptr2);
+  //return modified;
 }
 
 bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<LocalityRemedy> sepRhs =
       std::static_pointer_cast<LocalityRemedy>(rhs);
 
-  if (this->privateI == sepRhs->privateI)
-    return this->localI < sepRhs->localI;
+  if (this->privateI == sepRhs->privateI) {
+    if (this->reduxS == sepRhs->reduxS) {
+      if (this->ptr1 == sepRhs->ptr1) {
+        return this->ptr2 < sepRhs->ptr2;
+      }
+      return this->ptr1 < sepRhs->ptr1;
+    }
+    return this->reduxS < sepRhs->reduxS;
+  }
   return this->privateI < sepRhs->privateI;
 }
 
@@ -55,9 +183,13 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   LoopAA *aa = localityaa->getTopAA();
   //aa->dump();
 
+  remedy->DL = &DL;
+  remedy->loop = const_cast<Loop*>(L);
+
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);
   if (!ptr1 || !ptr2) {
+    /*
     bool noDep =
         (LoopCarried)
             ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
@@ -66,6 +198,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       ++numLocalityAA;
       remedResp.depRes = DepResult::NoDep;
     }
+    */
     return remedResp;
   }
   if (!isa<PointerType>(ptr1->getType()))
@@ -87,6 +220,9 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   if (read.getUnderlyingAUs(ptr2, ctx, aus2))
     t2 = asgn.classify(aus2);
 
+  // errs() << "Instruction A: " << *A << "\n  type: " << t1 << "\nInstruction
+  // B: " << *B << "\n  type: " << t2 << '\n';
+
   // Loop-carried queries:
   if (LoopCarried) {
     // Reduction, local and private heaps are iteration-private, thus
@@ -97,18 +233,24 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       if (t1 == HeapAssignment::Private) {
         ++numPrivatizedPriv;
         remedy->cost += PRIVATE_ACCESS_COST;
-        remedy->privateI = A;
-        remedy->localI = nullptr;
+        remedy->privateI = const_cast<Instruction *>(A);
+        remedy->reduxS = nullptr;
       } else if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->privateI = nullptr;
-        remedy->localI = A;
+        remedy->reduxS = nullptr;
+        //remedy->localI = A;
       } else {
         ++numPrivatizedRedux;
         remedy->privateI = nullptr;
-        remedy->localI = nullptr;
+        if (auto sA = dyn_cast<StoreInst>(A))
+          remedy->reduxS = const_cast<StoreInst *>(sA);
+        else
+          remedy->reduxS = nullptr;
       }
+      remedy->ptr1 = const_cast<Value *>(ptr1);
+      remedy->ptr2 = nullptr;
       remedResp.remedy = remedy;
       return remedResp;
     }
@@ -119,18 +261,23 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       if (t2 == HeapAssignment::Private) {
         ++numPrivatizedPriv;
         remedy->cost += PRIVATE_ACCESS_COST;
-        remedy->privateI = B;
-        remedy->localI = nullptr;
+        remedy->privateI = const_cast<Instruction *>(B);
+        remedy->reduxS = nullptr;
       } else if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->privateI = nullptr;
-        remedy->localI = B;
+        remedy->reduxS = nullptr;
       } else {
         ++numPrivatizedRedux;
         remedy->privateI = nullptr;
-        remedy->localI = nullptr;
+        if (auto sB = dyn_cast<StoreInst>(B))
+          remedy->reduxS = const_cast<StoreInst *>(sB);
+        else
+          remedy->reduxS = nullptr;
       }
+      remedy->ptr1 = nullptr;
+      remedy->ptr2 = const_cast<Value *>(ptr2);
       remedResp.remedy = remedy;
       return remedResp;
     }
@@ -143,7 +290,9 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     ++numSeparated;
     remedResp.depRes = DepResult::NoDep;
     remedy->privateI = nullptr;
-    remedy->localI = nullptr;
+    remedy->reduxS = nullptr;
+    remedy->ptr1 = const_cast<Value *>(ptr1);
+    remedy->ptr2 = const_cast<Value *>(ptr2);
     remedResp.remedy = remedy;
     return remedResp;
   }
@@ -158,13 +307,17 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
         ++numSubSep;
         remedResp.depRes = DepResult::NoDep;
         remedy->privateI = nullptr;
-        remedy->localI = nullptr;
+        remedy->reduxS = nullptr;
+        remedy->ptr1 = const_cast<Value *>(ptr1);
+        remedy->ptr2 = const_cast<Value *>(ptr2);
         remedResp.remedy = remedy;
         return remedResp;
       }
     }
   }
 
+  // avoid usage of localityAA since the needed checks/remedies are not produced yet for localityAA
+  /*
   // check if collaboration of AA and LocalityAA achieves better accuracy
   bool noDep =
       (LoopCarried)
@@ -174,6 +327,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     ++numLocalityAA2;
     remedResp.depRes = DepResult::NoDep;
   }
+  */
 
   return remedResp;
 }

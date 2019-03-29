@@ -14,7 +14,7 @@ class CountedIVRemedy : public Remedy {
 public:
   const SCC *ivSCC;
 
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "counted-iv-remedy"; };
 };

@@ -19,7 +19,7 @@ public:
   const Instruction *produceI;
   InstSet_uptr replicatedI;
 
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "loop-fission-remedy"; };
 };
@@ -47,6 +47,7 @@ private:
   EdgeWeight loopWeight;
 
   std::unordered_set<const Instruction*> notSeqStageEligible;
+  std::unordered_set<const Instruction*> seqStageEligibleInsts;
 
   bool seqStageEligible(std::queue<const Instruction *> &instQ,
                         std::unordered_set<const Instruction *> &visited,

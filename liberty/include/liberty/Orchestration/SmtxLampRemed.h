@@ -21,7 +21,7 @@ public:
   const Instruction *writeI;
   const Instruction *readI;
 
-  void apply(PDG &pdg);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "smtx-lamp-remedy"; };
 };
