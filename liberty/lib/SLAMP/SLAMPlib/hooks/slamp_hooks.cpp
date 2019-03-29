@@ -1431,9 +1431,10 @@ int SLAMP_closedir(DIR* dirp)
 #define IS_INT(byte)      ((byte == 'd') || (byte == 'i') || (byte == 'X') || (byte == 'x') || (byte == 'o') || (byte == 'u') || (byte == 'c'))
 #define IS_LONG_INT(byte) ((byte == 'D') || (byte == 'O') || (byte == 'U'))
 #define IS_VOID_PTR(byte) ((byte == 'p'))
+#define IS_LEN(byte)      ((byte == 'n'))
 
 static uint8_t is_format_char(char byte) {
-    return (IS_STRING(byte) || IS_DOUBLE(byte) || IS_INT(byte) || IS_LONG_INT(byte) || IS_VOID_PTR(byte));
+    return (IS_STRING(byte) || IS_DOUBLE(byte) || IS_INT(byte) || IS_LONG_INT(byte) || IS_VOID_PTR(byte) || IS_LEN(byte));
 }
 
 static uint8_t is_half(const char *ptr) {
@@ -1522,8 +1523,13 @@ static void touch_printf_args(const char *format, va_list vp) {
     } else if (IS_VOID_PTR(byte)) {
       void *void_ptr_arg  __attribute__ ((unused));
       void_ptr_arg = va_arg(vp_save, void *);
-    } else {
-      fprintf(stderr, "Unknown type\n");
+    } else if (IS_LEN(byte)){
+        fprintf(stderr, "IS LEN%%n\n");
+        // %n return the len of string
+        // DON'T NEED TO DO ANYTHING
+    }
+    else {
+      fprintf(stderr, "Unknown type: %c$ \n", byte);
       abort();
     }
   }
@@ -1708,7 +1714,9 @@ static void touch_scanf_args(const char *format, va_list vp) {
     } else if (IS_VOID_PTR(byte)) {
       void **arg = va_arg(vp_save, void **);
       SLAMP_storen_ext(reinterpret_cast<uint64_t>(arg), 0, sizeof(*arg));
-    } else {
+    } else if (IS_LEN(byte)){
+      fprintf(stderr, "IS LEN %%n\n");   
+    }else {
       fprintf(stderr, "Unknown type\n");
       abort();
     }
