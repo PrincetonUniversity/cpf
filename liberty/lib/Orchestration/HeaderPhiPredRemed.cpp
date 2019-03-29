@@ -11,7 +11,7 @@ using namespace llvm;
 
 STATISTIC(numNoLCRegDep, "Number of lc reg deps removed by header-phi-remed");
 
-void HeaderPhiPredRemedy::apply(PDG &pdg) {
+void HeaderPhiPredRemedy::apply(Task *task) {
   // TODO: transfer the code for application of header-phi-remed here.
 }
 

@@ -28,7 +28,7 @@ STATISTIC(numRegDepsRemovedRedux,             "Num reg deps removed with liberty
 STATISTIC(numCondRegDepsRemoved,              "Num reg deps removed with cond redux");
 STATISTIC(numMemDepsRemovedRedux,             "Num mem deps removed");
 
-void ReduxRemedy::apply(llvm::PDG &pdg) {
+void ReduxRemedy::apply(Task *task) {
   // TODO: transfer the code for application of redux here.
 }
 

@@ -11,7 +11,7 @@ using namespace llvm;
 
 STATISTIC(numNoMemDep, "Number of mem deps removed by loaded-value-pred-remed");
 
-void LoadedValuePredRemedy::apply(PDG &pdg) {
+void LoadedValuePredRemedy::apply(Task *task) {
   // TODO: code for application of loaded-value-pred-remed here.
 }
 

@@ -215,8 +215,8 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
-          smtxMan, smtxLampMan, rd, asgn, proxy, loopAA, lpl,
-          ps, sr, sc, NumThreads, pipelineOption_ignoreAntiOutput(),
+          smtxMan, smtxLampMan, rd, asgn, proxy, loopAA, lpl, ps, sr, sc,
+          NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
@@ -282,7 +282,7 @@ void getCalledFuns(CallGraphNode *cgNode,
   for (auto i = cgNode->begin(), e = cgNode->end(); i != e; ++i) {
     auto *succ = i->second;
     auto *F = succ->getFunction();
-    if (calledFuns.count(F) || F->isDeclaration())
+    if (!F || calledFuns.count(F) || F->isDeclaration())
       continue;
     calledFuns.insert(F);
     getCalledFuns(succ, calledFuns);

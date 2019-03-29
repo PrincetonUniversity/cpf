@@ -29,7 +29,7 @@ const std::unordered_set<std::string>
                                                "free",   "xalloc",  "rand",
                                                "random", "lrand48", "drand48"};
 
-void CommutativeLibsRemedy::apply(PDG &pdg) {
+void CommutativeLibsRemedy::apply(Task *task) {
   // TODO: ask programmer. Programmer questions should be applied first before any transformation
 }
 

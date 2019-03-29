@@ -12,8 +12,9 @@ using namespace llvm;
 STATISTIC(numPrivNoMemDep,
           "Number of false mem deps removed by privitization");
 
-void PrivRemedy::apply(PDG &pdg) {
-  // TODO: code for application of privitization here.
+void PrivRemedy::apply(Task *task) {
+  this->task = task;
+  replacePrivateLoadsStore((Instruction*)this->storeI);
 }
 
 bool PrivRemedy::compare(const Remedy_ptr rhs) const {

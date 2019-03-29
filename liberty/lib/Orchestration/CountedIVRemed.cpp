@@ -12,7 +12,7 @@ using namespace llvm;
 STATISTIC(numNoRegDep, "Number of reg deps removed by counted IV remed");
 STATISTIC(numNoCtrlDep, "Number of ctrl deps removed by counted IV remed");
 
-void CountedIVRemedy::apply(PDG &pdg) {
+void CountedIVRemedy::apply(Task *task) {
 }
 
 bool CountedIVRemedy::compare(const Remedy_ptr rhs) const {

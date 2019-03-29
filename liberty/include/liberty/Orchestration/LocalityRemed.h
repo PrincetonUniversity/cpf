@@ -5,11 +5,21 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Utilities/GetMemOper.h"
+#include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Utilities/GlobalCtors.h"
+#include "liberty/Utilities/InsertPrintf.h"
+#include "liberty/Utilities/InstInsertPt.h"
+#include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Utilities/ReplaceConstantWithLoad.h"
+#include "liberty/Utilities/SplitEdge.h"
+
 //#include "liberty/Utilities/GetSize.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/Api.h"
+#include "liberty/PointsToProfiler/Indeterminate.h"
 
 namespace liberty
 {
@@ -30,12 +40,27 @@ public:
   // separation cost maybe should be separated from cost for private objects.
   // remedies maybe need to also record all the AUs assumed to be part of a
   // family. Heap assignment might be adjusted based on the selected remedies.
-  const Instruction *privateI;
-  const Instruction *localI;
+  Instruction *privateI;
+  StoreInst *reduxS;
+  //const Instruction *localI;
+  Value *ptr1;
+  Value *ptr2;
 
-  void apply(PDG &pdg);
+  /*
+  const Read *read;
+  const HeapAssignment *asgn;
+  std::set<const Value*> *alreadyInstrumented;
+  Module *mod;
+  Type *voidty, *voidptr;
+  IntegerType *u8, *u32;
+  */
+
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "locality-remedy"; };
+
+  bool addUOCheck(Value *ptr);
+  void insertUOCheck(Value *obj, HeapAssignment::Type heap);
 };
 
 class LocalityRemediator : public Remediator {
@@ -43,7 +68,14 @@ public:
   LocalityRemediator(const Read &rd, const HeapAssignment &c, Pass &p)
       : read(rd), asgn(c), proxy(p) {
     localityaa = std::make_unique<LocalityAA>(read, asgn);
+    //localityaa = new LocalityAA(read, asgn);
   }
+
+  /*
+  ~LocalityRemediator() {
+    delete localityaa;
+  }
+  */
 
   StringRef getRemediatorName() const { return "locality-remediator"; }
 
@@ -55,6 +87,8 @@ private:
   const HeapAssignment &asgn;
   Pass &proxy;
   std::unique_ptr<LocalityAA> localityaa;
+  //LocalityAA *localityaa;
+  //VSet alreadyInstrumented;
 };
 
 } // namespace liberty
