@@ -67,7 +67,7 @@ class LocalityRemediator : public Remediator {
 public:
   LocalityRemediator(const Read &rd, const HeapAssignment &c, Pass &p)
       : read(rd), asgn(c), proxy(p) {
-    localityaa = std::make_unique<LocalityAA>(read, asgn);
+    //localityaa = std::make_unique<LocalityAA>(read, asgn);
     //localityaa = new LocalityAA(read, asgn);
   }
 
@@ -86,7 +86,7 @@ private:
   const Read &read;
   const HeapAssignment &asgn;
   Pass &proxy;
-  std::unique_ptr<LocalityAA> localityaa;
+  //std::unique_ptr<LocalityAA> localityaa;
   //LocalityAA *localityaa;
   //VSet alreadyInstrumented;
 };

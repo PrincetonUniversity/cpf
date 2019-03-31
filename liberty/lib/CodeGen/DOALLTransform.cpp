@@ -84,16 +84,16 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
 
   // doall should be applicable now
 
-  //if (doall.canBeAppliedToLoop(LDI)) {
+  if (localityRemedUsed || nonSpecPrivRedux || doall->canBeAppliedToLoop(LDI)) {
     /*
      * Apply DOALL.
      */
- //   DEBUG(errs() << "DOALL is applicable\n");
+    DEBUG(errs() << "DOALL is applicable\n");
     doall->reset();
     modified = doall->apply(LDI);
     //modified = doall->apply(LDI, memVerUsed);
-  //} else
-  //  DEBUG(errs() << "DOALL is not applicable\n");
+  } else
+    DEBUG(errs() << "DOALL is not applicable\n");
 
   assert(modified);
 

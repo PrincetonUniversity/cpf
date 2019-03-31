@@ -178,9 +178,9 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     return remedResp;
 
   const DataLayout &DL = A->getModule()->getDataLayout();
-  localityaa->InitializeLoopAA(&proxy, DL);
+  //localityaa->InitializeLoopAA(&proxy, DL);
   // This AA stack includes static analysis and separation speculation
-  LoopAA *aa = localityaa->getTopAA();
+  //LoopAA *aa = localityaa->getTopAA();
   //aa->dump();
 
   remedy->DL = &DL;
