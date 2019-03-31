@@ -788,8 +788,9 @@ bool Read::missingAUs(const Value *uo, const Ctx *ctx, Ptrs &aus) const
     if( cs.getInstruction() )
     {
       Function *callee = cs.getCalledFunction();
-      if( callee && (callee->getName() == "malloc" || callee->getName() == "realloc") )
-      {
+      if (callee &&
+          (callee->getName() == "malloc" || callee->getName() == "calloc" ||
+           callee->getName() == "realloc")) {
         const Ctx *ctx = getCtx( cs.getInstruction()->getParent()->getParent() );
         AU *au = new AU(AU_Heap);
         au->value = uo;
@@ -854,7 +855,11 @@ bool Read::getUnderlyingAUs(const Value *ptr, const Ctx *ctx, Ptrs &aus) const
 
   // Find underlying objects using static info.
   UO uos;
+
+  //errs() << "getUnderlyingAUs for ptr:  " << *ptr <<  '\n';
+
   GetUnderlyingObjects(ptr, uos, *DL);
+
 
   // Note that, even if the pointer is computed
   // by an instruction within the loop, the underlying
@@ -865,9 +870,13 @@ bool Read::getUnderlyingAUs(const Value *ptr, const Ctx *ctx, Ptrs &aus) const
   for(UO::const_iterator i=uos.begin(), e=uos.end(); i!=e; ++i)
   {
     const Value *uo = *i;
+
+    //errs() << "UO: " << *uo << '\n';
+
     const Ctx2Ptrs &c2p = find_underylying_objects(uo);
     if( c2p.empty() )
     {
+      //errs() << "missing uo: " << *uo <<'\n';
       if( !missingAUs(uo, ctx, aus) )
         return false;
       continue;

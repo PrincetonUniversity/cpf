@@ -185,6 +185,8 @@ unsigned Selector::computeWeights(
     unsigned long adjLoopTime = scaledLoopTime;
     if( scaledLoopTime > depthPenalty )
       adjLoopTime = scaledLoopTime - depthPenalty;
+    else if (scaledLoopTime > depthPenalty / 10)
+      adjLoopTime = scaledLoopTime - depthPenalty / 10;
 
     {
       //std::unique_ptr<llvm::PDG> pdg = pdgBuilder.getLoopPDG(A);
@@ -226,11 +228,13 @@ unsigned Selector::computeWeights(
         ++numApplicable;
         ps->setValidFor( hA );
 
-        // TODO: also save LDI. In order to apply non-spec DOALL
-
         unsigned long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
         const long wt = adjLoopTime - estimatePipelineWeight;
         unsigned long scaledwt = 0;
+
+        //errs() << "wt: " << wt << "\nadjLoopTime: " << adjLoopTime
+        //       << "\nestimatePipelineWeight: " << estimatePipelineWeight
+        //       << "\ndepthPenalty: " << depthPenalty << '\n';
 
         //ps->dump_pipeline(errs());
 
