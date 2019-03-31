@@ -31,7 +31,5 @@ Bool __specpriv_distill_committed_private_into_partial(Checkpoint *commit, Mappe
 // return true if misspeculation is detected during this operation.
 Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow);
 
-unsigned __specpriv_get_checkpoint_number(Iteration iter);
-
 #endif
 

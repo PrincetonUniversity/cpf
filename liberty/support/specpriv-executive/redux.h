@@ -4,7 +4,8 @@
 #include "types.h"
 #include "heap.h"
 
-// This must perfectly match the reduction types listed in
+// This must perfectly match the
+// reduction types listed in
 // include/liberty/SpecPriv/Reduction.h
 #define NotReduction  (0)
 
@@ -59,45 +60,23 @@ struct s_reduction_info
   ReductionType   type;
 };
 
-struct s_checkpoint;
-
 // partial <-- reduce(worker,partial)
 // where worker, partial are from the same checkpoint-group of iterations.
 // Return true if misspeculation happens (impossible?)
 Bool __specpriv_distill_worker_redux_into_partial(
-  struct s_checkpoint *partial,
   MappedHeap *partial_redux);
 
 // partial <-- reduce(committed,partial)
 // where committed comes from an EARLIER checkpoint-group of iterations.
 // Return true if misspeculation happens (impossible?)
 Bool __specpriv_distill_committed_redux_into_partial(
-  struct s_checkpoint *commit, MappedHeap *commit_redux,
-  struct s_checkpoint *partial, MappedHeap *partial_redux);
+  MappedHeap *commit_redux, MappedHeap *partial_redux);
 
 // main <-- reduce(main,committed)
 // where main comes from an EARLIER checkpoint-group of iterations.
 // Return true if misspeculation happens (impossible?)
 Bool __specpriv_distill_committed_redux_into_main(
-  struct s_checkpoint *commit,
   MappedHeap *commit_redux);
-
-
-// If ptr refers to an address within the reduction
-// heap, these will read the corresponding initial
-// value.
-uint8_t __specpriv_read_redux_initial_value_i8(uint8_t *ptr);
-uint16_t __specpriv_read_redux_initial_value_i16(uint16_t *ptr);
-uint32_t __specpriv_read_redux_initial_value_i32(uint32_t *ptr);
-uint64_t __specpriv_read_redux_initial_value_i64(uint64_t *ptr);
-float __specpriv_read_redux_initial_value_f32(float *ptr);
-double __specpriv_read_redux_initial_value_f64(double *ptr);
-
-// Report a write-to-redux to the runtime.
-// Allows the runtime to perform reduction on fewer bytes during a checkpoint.
-void __specpriv_init_redux(void);
-void __specpriv_reset_redux_range(void);
-void __specpriv_redux_write_range(uint8_t *ptr, unsigned size);
 
 #endif
 

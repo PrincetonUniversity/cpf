@@ -30,11 +30,7 @@ extern uint64_t main_begin_invocation, main_end_invocation;
 extern uint64_t worker_begin_invocation, worker_end_invocation;
 extern uint64_t worker_enter_loop, worker_exit_loop;
 extern uint64_t worker_begin_waitpid, worker_end_waitpid;
-
-#if JOIN == SPIN
-extern uint64_t main_begin_waitpid_spin_slow, main_end_waitpid_spin_slow;
-extern uint64_t main_begin_waitpid_spin_fast, main_end_waitpid_spin_fast;
-#endif
+extern uint64_t distill_into_liveout_start, distill_into_liveout_end;
 
 extern uint64_t worker_time_in_checkpoints;
 extern uint64_t worker_time_in_priv_write;
@@ -44,20 +40,12 @@ extern uint64_t worker_time_in_io;
 extern uint64_t worker_private_bytes_read;
 extern uint64_t worker_private_bytes_written;
 
+extern unsigned InvocationNumber;
 
 struct s_checkpoint_record
 {
   uint64_t    checkpoint_start;
   uint64_t    checkpoint_stop;
-
-  uint64_t    find_checkpoint_start;
-  uint64_t    find_checkpoint_stop;
-
-  uint64_t    acquire_lock_start;
-  uint64_t    acquire_lock_stop;
-
-  uint64_t    map_start;
-  uint64_t    map_stop;
 
   uint64_t    redux_start;
   uint64_t    redux_stop;
@@ -70,12 +58,6 @@ struct s_checkpoint_record
 
   uint64_t    io_commit_start;
   uint64_t    io_commit_stop;
-
-  uint64_t    unmap_start;
-  uint64_t    unmap_stop;
-
-  uint64_t    combine_start;
-  uint64_t    combine_stop;
 };
 typedef struct s_checkpoint_record CheckpointRecord;
 

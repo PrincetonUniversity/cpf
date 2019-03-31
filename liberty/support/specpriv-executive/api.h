@@ -19,7 +19,5 @@ Iteration __specpriv_misspec_iter(void);
 
 void __specpriv_recovery_done(Exit);
 
-extern unsigned InvocationNumber;
-
 #endif
 

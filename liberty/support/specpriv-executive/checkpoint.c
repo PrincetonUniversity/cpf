@@ -13,12 +13,6 @@
 #include "timer.h"
 #include "fiveheaps.h"
 
-static uint32_t enable_private = 1;
-void __specpriv_enable_private(uint32_t bv)
-{
-  enable_private = bv;
-}
-
 // Determine the amount of memory (in bytes) used by the main checkpoint.
 // Not completely accurate, ignores small sources of memory consumption,
 // and instead focuses on the contribution of each heap...
@@ -37,17 +31,11 @@ static uint64_t __specpriv_count_memory_used_by_main_checkpoint(void)
 static uint64_t __specpriv_count_memory_used_by_checkpoint(Checkpoint *chkpt)
 {
   uint64_t size_shadow = 0;
-  uint64_t size_redux = 0;
-  for(SubHeap subheap=0; subheap<NUM_SUBHEAPS; ++subheap)
-  {
-    if( chkpt->shadow_highest_exclusive_by_subheap[subheap] > chkpt->shadow_lowest_inclusive_by_subheap[subheap] )
-      size_shadow = (chkpt->shadow_highest_exclusive_by_subheap[subheap] - chkpt->shadow_lowest_inclusive_by_subheap[subheap]);
-
-    if( chkpt->redux_highest_exclusive_by_subheap[subheap] > chkpt->redux_lowest_inclusive_by_subheap[subheap] )
-      size_shadow = (chkpt->redux_highest_exclusive_by_subheap[subheap] - chkpt->redux_lowest_inclusive_by_subheap[subheap]);
-  }
+  if( chkpt->shadow_highest_exclusive > chkpt->shadow_lowest_inclusive )
+    size_shadow = (chkpt->shadow_highest_exclusive - chkpt->shadow_lowest_inclusive);
 
   uint64_t size_private = size_shadow;
+  uint64_t size_redux = chkpt->redux_used;
 
   return size_private + size_shadow + size_redux;
 }
@@ -138,18 +126,16 @@ Checkpoint *__specpriv_alloc_checkpoint(CheckpointManager *mgr)
 
     release_lock( &mgr->lock );
 
-#if DEBUG_SATURATE != 0
-    printf(" -> Saturated at %u checkpoint objects\n", mgr->total_checkpoint_objects);
-#endif
     DEBUG(printf(" -> Saturated at %u checkpoint objects\n", mgr->total_checkpoint_objects));
     DEBUG(printf("Waiting for a checkpoint object: worker %u\n", __specpriv_my_worker_id()));
     ParallelControlBlock *pcb = __specpriv_get_pcb();
-    const Iteration currentIter = __specpriv_current_iter();
+    Iteration currentIter = __specpriv_current_iter();
+    const Wid numWorkers = __specpriv_num_workers();
+    currentIter -= currentIter % numWorkers;
 
     while( list_empty( &mgr->free ) && __specpriv_is_saturated(mgr) )
     {
-      if( pcb->misspeculation_happened
-      && __specpriv_get_checkpoint_number(pcb->misspeculated_iteration) <= __specpriv_get_checkpoint_number(currentIter) )
+      if( pcb->misspeculation_happened && pcb->misspeculated_iteration <= currentIter )
         return 0;
 
       struct timespec wt;
@@ -157,7 +143,7 @@ Checkpoint *__specpriv_alloc_checkpoint(CheckpointManager *mgr)
       wt.tv_nsec = 100000; // 100 microseconds
       nanosleep(&wt,0);
 
-      __specpriv_commit_zero_or_more_checkpoints( mgr, 0, 0, 0, 0 );
+      __specpriv_commit_zero_or_more_checkpoints( mgr );
     }
 
     acquire_lock( &mgr->lock );
@@ -242,36 +228,25 @@ static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, Mapped
 {
   // Initialize shadow, redux.
 
-/* Now handled by __specpriv_distill_committed_private_into_partial
- * and __specpriv_distill_committed_private_into_main
   const Len priv_used = __specpriv_sizeof_private();
-  memset((void*)shadow->base, LIVE_IN, priv_used);
-*/
-  for(uint8_t i=0; i<NUM_SUBHEAPS; ++i)
-  {
-    // empty range (min > max):
-    partial->shadow_lowest_inclusive_by_subheap[i]  = (uint8_t*) subheap_base((void*)SHADOW_ADDR, i+1);
-    partial->shadow_highest_exclusive_by_subheap[i] = (uint8_t*) subheap_base((void*)SHADOW_ADDR, i);
-
-    partial->redux_lowest_inclusive_by_subheap[i]  = (uint8_t*) subheap_base((void*)REDUX_ADDR, i+1);
-    partial->redux_highest_exclusive_by_subheap[i] = (uint8_t*) subheap_base((void*)REDUX_ADDR, i);
-  }
-
-
-/* Now handled by __specpriv_distill_committed_redux_into_partial
- * and __specpriv_distill_committed_redux_into_main.
   const Len redux_used= __specpriv_sizeof_redux();
+
+  memset((void*)shadow->base, LIVE_IN, priv_used);
+
+  partial->shadow_lowest_inclusive = (uint8_t*) (SHADOW_ADDR + (1UL<<POINTER_BITS));
+  partial->shadow_highest_exclusive = (uint8_t*) (SHADOW_ADDR);
+
   // TODO: identity
   memset((void*)redux->base, 0, redux_used);
-*/
 }
+
 
 Checkpoint *__specpriv_get_checkpoint_for_iter(CheckpointManager *mgr, Iteration iter)
 {
   DEBUG(printf("Worker %u requestst checkpoint for iteration %d\n", __specpriv_my_worker_id(), iter));
 
 #if (WHO_DOES_CHECKPOINTS & FASTEST_WORKER) != 0
-  __specpriv_commit_zero_or_more_checkpoints( mgr, 0, 0, 0, 0 );
+  __specpriv_commit_zero_or_more_checkpoints( mgr );
 #endif
 
   acquire_lock( &mgr->lock );
@@ -286,14 +261,7 @@ Checkpoint *__specpriv_get_checkpoint_for_iter(CheckpointManager *mgr, Iteration
         return cursor;
       }
 
-      if( cursor->iteration >= iter )
-      {
-        printf("Error:\n");
-        printf(" my invocation %d\n", InvocationNumber);
-        printf(" cursor->iteration == %d\n", cursor->iteration);
-        printf(" iter == %d\n", iter );
-        assert( cursor->iteration < iter );
-      }
+      assert( cursor->iteration < iter );
     }
 
   // Otherwise, create and initialize a new checkpoint.
@@ -313,157 +281,73 @@ Checkpoint *__specpriv_get_checkpoint_for_iter(CheckpointManager *mgr, Iteration
 }
 
 
-static Bool __specpriv_combine_private(
-  Checkpoint *older, Checkpoint *newer,
-  // The next three are an optimization for situations
-  // where we already have mapped a heap which is likely
-  // to be part of a combine operation.
-  Checkpoint *already_mapped_checkpoint,
-  MappedHeap *already_mapped_private,
-  MappedHeap *already_mapped_shadow)
+static Bool __specpriv_combine_private(Checkpoint *older, Checkpoint *newer)
 {
   Bool misspec = 0;
 
-  // There is a good chance that one of older,newer is
-  // already mapped.  If so, use that instead of mapping/unmapping again...
-  MappedHeap *commit_priv, *commit_shadow, *partial_priv, *partial_shadow;
+  // Map the private heaps
+  MappedHeap commit_priv, partial_priv;
+  mapped_heap_init( &commit_priv );
+  mapped_heap_init( &partial_priv );
+  heap_map_anywhere( &older->heap_priv, &commit_priv );
+  heap_map_anywhere( &newer->heap_priv, &partial_priv );
 
-  // Map heaps from the older checkpoint
-  MappedHeap my_commit_priv;
-  MappedHeap my_commit_shadow;
-
-  if( already_mapped_checkpoint == older )
-  {
-    commit_priv = already_mapped_private;
-    commit_shadow = already_mapped_shadow;
-  }
-  else
-  {
-    mapped_heap_init( &my_commit_priv );
-    mapped_heap_init( &my_commit_shadow );
-    heap_map_anywhere( &older->heap_priv, &my_commit_priv );
-    heap_map_anywhere( &older->heap_shadow, &my_commit_shadow );
-
-    commit_priv = &my_commit_priv;
-    commit_shadow = &my_commit_shadow;
-  }
-
-  // Map heaps from the newer checkpoint.
-  MappedHeap my_partial_priv;
-  MappedHeap my_partial_shadow;
-
-  if( already_mapped_checkpoint == newer )
-  {
-    partial_priv = already_mapped_private;
-    partial_shadow = already_mapped_shadow;
-  }
-  else
-  {
-    mapped_heap_init( &my_partial_priv );
-    mapped_heap_init( &my_partial_shadow );
-    heap_map_anywhere( &newer->heap_priv, &my_partial_priv );
-    heap_map_anywhere( &newer->heap_shadow, &my_partial_shadow );
-
-    partial_priv = &my_partial_priv;
-    partial_shadow = &my_partial_shadow;
-  }
+  // Map the shadow heaps
+  MappedHeap commit_shadow, partial_shadow;
+  mapped_heap_init( &commit_shadow );
+  mapped_heap_init( &partial_shadow );
+  heap_map_anywhere( &older->heap_shadow, &commit_shadow );
+  heap_map_anywhere( &newer->heap_shadow, &partial_shadow );
 
   // Combine them
   misspec |= __specpriv_distill_committed_private_into_partial(
-    older, commit_priv, commit_shadow,
-    newer, partial_priv, partial_shadow);
+    older, &commit_priv, &commit_shadow,
+    newer, &partial_priv, &partial_shadow);
 
   if( misspec )
     newer->type = CL_Broken;
 
   // Unmap
-  if( already_mapped_checkpoint != newer )
-  {
-    heap_unmap( &my_partial_shadow );
-    heap_unmap( &my_partial_priv );
-  }
+  heap_unmap( &partial_shadow );
+  heap_unmap( &commit_shadow );
 
-  if( already_mapped_checkpoint != older )
-  {
-    // Unmap
-    heap_unmap( &my_commit_shadow );
-    heap_unmap( &my_commit_priv );
-  }
+  // Unmap
+  heap_unmap( &partial_priv );
+  heap_unmap( &commit_priv );
 
   return misspec;
 }
 
-static Bool __specpriv_combine_redux(
-  Checkpoint *older, Checkpoint *newer,
-  // The next four are an optimization for situations
-  // where we already have mapped a heap which is likely
-  // to be part of a combine operation.
-  Checkpoint *already_mapped_checkpoint,
-  MappedHeap *already_mapped_redux)
+static Bool __specpriv_combine_redux(Checkpoint *older, Checkpoint *newer)
 {
   Bool misspec = 0;
 
-
-  // There is a good chance that one of older,newer is
-  // already mapped.  If so, use that instead of mapping/unmapping again...
-  MappedHeap *commit_redux, *partial_redux;
-
-
-  MappedHeap my_commit_redux;
-  MappedHeap my_partial_redux;
-
-  if( already_mapped_checkpoint == older )
-  {
-    commit_redux = already_mapped_redux;
-  }
-  else
-  {
-    mapped_heap_init( &my_commit_redux );
-    heap_map_anywhere( &older->heap_redux, &my_commit_redux );
-    commit_redux = &my_commit_redux;
-  }
-
-  if( already_mapped_checkpoint == newer )
-  {
-    partial_redux = already_mapped_redux;
-  }
-  else
-  {
-    mapped_heap_init( &my_partial_redux );
-    heap_map_anywhere( &newer->heap_redux, &my_partial_redux );
-    partial_redux = &my_partial_redux;
-  }
+  // Map the redux heaps
+  MappedHeap commit_redux, partial_redux;
+  mapped_heap_init( &commit_redux );
+  mapped_heap_init( &partial_redux );
+  heap_map_anywhere( &older->heap_redux, &commit_redux );
+  heap_map_anywhere( &newer->heap_redux, &partial_redux );
 
   // combine them.
   misspec = __specpriv_distill_committed_redux_into_partial(
-    older, commit_redux, newer, partial_redux);
+    &commit_redux, &partial_redux);
 
   if( misspec )
     newer->type = CL_Broken;
 
   else
-    __specpriv_commit_io( &older->io_events, commit_redux);
+    __specpriv_commit_io( &older->io_events, &commit_redux);
 
-  if( already_mapped_checkpoint != newer )
-    heap_unmap( &my_partial_redux );
-
-  if( already_mapped_checkpoint != older )
-    heap_unmap( &my_commit_redux );
+  heap_unmap( &partial_redux );
+  heap_unmap( &commit_redux );
 
   return misspec;
 }
 
 
 // both older and newer are locked!
-static Bool __specpriv_combine_checkpoints(
-  Checkpoint *older, Checkpoint *newer,
-  // The next four are an optimization for situations
-  // where we already have mapped a heap which is likely
-  // to be part of a combine operation.
-  Checkpoint *already_mapped_checkpoint,
-  MappedHeap *already_mapped_private,
-  MappedHeap *already_mapped_shadow,
-  MappedHeap *alreadu_mapped_redux)
+static Bool __specpriv_combine_checkpoints(Checkpoint *older, Checkpoint *newer)
 {
   DEBUG(printf("Combining checkpoints (worker %u) for iterations %d and %d\n",
     __specpriv_my_worker_id(), older->iteration, newer->iteration));
@@ -472,14 +356,8 @@ static Bool __specpriv_combine_checkpoints(
   // into the newer copy.  Misspeculation may occur
   // during this operation.
 
-  Bool misspec = 0;
-  if( enable_private )
-  {
-    if( __specpriv_combine_private(older,newer,already_mapped_checkpoint,already_mapped_private,already_mapped_shadow) )
-      misspec = 1;
-  }
-  if( __specpriv_combine_redux(older,newer,already_mapped_checkpoint,alreadu_mapped_redux) )
-    misspec = 1;
+  Bool misspec = __specpriv_combine_private(older,newer)
+              || __specpriv_combine_redux(older,newer);
 
 
   DEBUG(printf("Done combining checkpoints (worker %u) for iterations %d and %d\n",
@@ -488,17 +366,7 @@ static Bool __specpriv_combine_checkpoints(
 }
 
 // Assumes that I own NO locks -- not the checkpoints, nor the manager
-Bool __specpriv_commit_zero_or_more_checkpoints(
-  CheckpointManager *mgr,
-  // The next four are an optimization for situations
-  // where we already have mapped a heap which is likely
-  // to be part of a combine operation.  If present,
-  // these allow us to avoid unnecessary map-unmap
-  // on the private, shadow and redux heaps.
-  Checkpoint *already_mapped_checkpoint,
-  MappedHeap *already_mapped_private,
-  MappedHeap *already_mapped_shadow,
-  MappedHeap *alreadu_mapped_redux)
+Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr)
 {
   DEBUG(printf("Worker %u begins committing checkpoints...\n", __specpriv_my_worker_id() ));
 
@@ -538,11 +406,7 @@ Bool __specpriv_commit_zero_or_more_checkpoints(
     alpha->type = CL_Free;
 
     // First and next are both complete.
-    Bool misspec = __specpriv_combine_checkpoints(alpha, beta,
-      already_mapped_checkpoint,
-      already_mapped_private,
-      already_mapped_shadow,
-      alreadu_mapped_redux);
+    Bool misspec = __specpriv_combine_checkpoints(alpha, beta);
 
     if( misspec )
     {
@@ -576,11 +440,7 @@ Bool __specpriv_commit_zero_or_more_checkpoints(
 }
 
 
-static void __specpriv_worker_perform_checkpoint_locked(
-  Checkpoint *chkpt,
-  MappedHeap *partial_priv,
-  MappedHeap *partial_shadow,
-  MappedHeap *partial_redux)
+static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
 {
   CheckpointRecord *rec = 0;
   (void) rec;
@@ -589,35 +449,47 @@ static void __specpriv_worker_perform_checkpoint_locked(
       rec = &checkpoints[ numCheckpoints ];
   );
 
-  heap_alloc( partial_redux, chkpt->redux_used );
+  MappedHeap partial_priv, partial_shadow, partial_redux;
+  mapped_heap_init( &partial_priv );
+  mapped_heap_init( &partial_shadow );
+  mapped_heap_init( &partial_redux );
+
+  heap_map_anywhere( &chkpt->heap_priv, &partial_priv );
+  heap_map_anywhere( &chkpt->heap_shadow, &partial_shadow );
+  heap_map_anywhere( &chkpt->heap_redux, &partial_redux );
+
+  heap_alloc( &partial_redux, chkpt->redux_used );
 
   if( chkpt->num_workers == 0 )
-    __specpriv_initialize_partial_checkpoint(chkpt, partial_shadow, partial_redux);
+    __specpriv_initialize_partial_checkpoint(chkpt, &partial_shadow, &partial_redux);
 
   // Commit /my/ private values to the partial heap
   TOUT( if(rec) TIME(rec->private_start); );
-  if( enable_private )
   {
-    __specpriv_distill_worker_private_into_partial(chkpt, partial_priv, partial_shadow);
+    __specpriv_distill_worker_private_into_partial(chkpt, &partial_priv, &partial_shadow);
   }
   TOUT( if(rec) TIME(rec->private_stop); );
 
   // Commit /my/ reduction values to the partial heap
   TOUT( if(rec) TIME(rec->redux_start); );
   {
-    __specpriv_distill_worker_redux_into_partial(chkpt, partial_redux);
+    __specpriv_distill_worker_redux_into_partial(&partial_redux);
   }
   TOUT( if(rec) TIME(rec->redux_stop); );
 
   // Commit /my/ deferred IO to the partial heap.
   TOUT( if(rec) TIME(rec->io_start); );
   {
-    __specpriv_copy_io_to_redux( &chkpt->io_events, partial_redux);
+    __specpriv_copy_io_to_redux( &chkpt->io_events, &partial_redux);
   }
   TOUT( if(rec) TIME(rec->io_stop); );
 
 
-  chkpt->redux_used = heap_used( partial_redux );
+  chkpt->redux_used = heap_used( &partial_redux );
+
+  heap_unmap( &partial_redux );
+  heap_unmap( &partial_shadow );
+  heap_unmap( &partial_priv );
 
   ++chkpt->num_workers;
   if( __specpriv_num_workers() == chkpt->num_workers )
@@ -633,127 +505,46 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
 
   assert( ! __specpriv_i_am_main_process() );
 
-  const Iteration currentIter = __specpriv_current_iter();
+  //const Iteration currentIter = __specpriv_current_iter();
+  Iteration currentIter = __specpriv_current_iter();
+  const Wid numWorkers = __specpriv_num_workers();
+  currentIter -= currentIter % numWorkers;
   const Iteration effectiveIter = (isFinalCheckpoint) ? LAST_ITERATION : currentIter;
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
-  if( pcb->misspeculation_happened
-  && __specpriv_get_checkpoint_number(pcb->misspeculated_iteration) <= __specpriv_get_checkpoint_number(currentIter) )
-  {
-#if JOIN == SPIN
-    // Tell main process we have completed
-    // (they can read this long before waitpid()
-    // would finish)
-    pcb->workerDoneFlags[ __specpriv_my_worker_id() ] = 1;
-#endif
-
-#if DEBUG_WORKER_TERM != 0
-    fprintf(stderr, "Worker %d terminates\n", __specpriv_my_worker_id() );
-    fflush(stderr);
-#endif
-
+  if( pcb->misspeculation_happened && pcb->misspeculated_iteration <= currentIter )
     _exit(0);
-  }
 
-  uint64_t find_checkpoint_start;
-  uint64_t find_checkpoint_stop;
-  TIME(find_checkpoint_start);
   Checkpoint *chkpt = __specpriv_get_checkpoint_for_iter(&pcb->checkpoints, effectiveIter);
-  TIME(find_checkpoint_stop);
-
   if( !chkpt )
   {
-    assert( pcb->misspeculation_happened
-    && __specpriv_get_checkpoint_number(pcb->misspeculated_iteration) <= __specpriv_get_checkpoint_number(currentIter) );
-
-#if JOIN == SPIN
-    // Tell main process we have completed
-    // (they can read this long before waitpid()
-    // would finish)
-    pcb->workerDoneFlags[ __specpriv_my_worker_id() ] = 1;
-#endif
-
-#if DEBUG_WORKER_TERM != 0
-    fprintf(stderr, "Worker %d terminates\n", __specpriv_my_worker_id() );
-    fflush(stderr);
-#endif
-
+    assert( pcb->misspeculation_happened && pcb->misspeculated_iteration <= currentIter );
     _exit(0);
   }
 
-  MappedHeap partial_priv, partial_shadow, partial_redux;
-
-  uint64_t acquire_lock_start;
-  uint64_t acquire_lock_stop;
-  uint64_t map_start, map_stop;
-  uint64_t unmap_start, unmap_stop;
-
-  TIME( map_start );
-  {
-    mapped_heap_init( &partial_priv );
-    mapped_heap_init( &partial_shadow );
-    mapped_heap_init( &partial_redux );
-
-    heap_map_anywhere( &chkpt->heap_priv, &partial_priv );
-    heap_map_anywhere( &chkpt->heap_shadow, &partial_shadow );
-    heap_map_anywhere( &chkpt->heap_redux, &partial_redux );
-  }
-  TIME( map_stop );
-
-  TIME(acquire_lock_start);
   acquire_lock( &chkpt->lock );
-  TIME(acquire_lock_stop);
   {
     DEBUG(printf("Worker %u begins checkpointing at iteration %u\n",
       __specpriv_my_worker_id(), effectiveIter));
 
-    __specpriv_worker_perform_checkpoint_locked(
-      chkpt, &partial_priv, &partial_shadow, &partial_redux );
+    __specpriv_worker_perform_checkpoint_locked(chkpt);
 
     DEBUG(printf("Worker %u ends checkpointing at iteration %u\n",
       __specpriv_my_worker_id(), effectiveIter));
   }
   release_lock( &chkpt->lock );
 
-
-  uint64_t combine_start, combine_stop;
-  TIME(combine_start);
 #if (WHO_DOES_CHECKPOINTS & SLOWEST_WORKER) != 0
-  __specpriv_commit_zero_or_more_checkpoints( &pcb->checkpoints,
-    chkpt, &partial_priv, &partial_shadow, &partial_redux);
+  __specpriv_commit_zero_or_more_checkpoints( &pcb->checkpoints );
 #endif
-  TIME(combine_stop);
 
-  TIME( unmap_start );
-  {
-    heap_unmap( &partial_redux );
-    heap_unmap( &partial_shadow );
-    heap_unmap( &partial_priv );
-  }
-  TIME( unmap_stop );
-
-  TIME( checkpoint_stop );
   TOUT(
+    TIME( checkpoint_stop );
     if( numCheckpoints < MAX_CHECKPOINTS )
     {
       CheckpointRecord *rec = &checkpoints[ numCheckpoints ];
       rec->checkpoint_start = checkpoint_start;
       rec->checkpoint_stop = checkpoint_stop;
-
-      rec->acquire_lock_start = acquire_lock_start;
-      rec->acquire_lock_stop  = acquire_lock_stop;
-
-      rec->map_start = map_start;
-      rec->map_stop = map_stop;
-
-      rec->find_checkpoint_start = find_checkpoint_start;
-      rec->find_checkpoint_stop = find_checkpoint_stop;
-
-      rec->unmap_start = unmap_start;
-      rec->unmap_stop = unmap_stop;
-
-      rec->combine_start = combine_start;
-      rec->combine_stop = combine_stop;
     }
 
     worker_time_in_checkpoints += (checkpoint_stop - checkpoint_start);
@@ -765,7 +556,7 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
 {
   assert( __specpriv_i_am_main_process() );
 
-  __specpriv_commit_zero_or_more_checkpoints(mgr, 0, 0, 0, 0);
+  __specpriv_commit_zero_or_more_checkpoints(mgr);
 
   // Adopt changes from Complete checkpoints
   while( !list_empty( &mgr->used ) )
@@ -782,21 +573,18 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
     mapped_heap_init( &commit_shadow );
     mapped_heap_init( &commit_redux );
 
-    if( enable_private )
-      heap_map_anywhere( &chkpt->heap_priv, &commit_priv );
+    heap_map_anywhere( &chkpt->heap_priv, &commit_priv );
     heap_map_anywhere( &chkpt->heap_shadow, &commit_shadow );
     heap_map_anywhere( &chkpt->heap_redux, &commit_redux );
 
     __specpriv_commit_io( &chkpt->io_events, &commit_redux );
-    if( enable_private )
-      __specpriv_distill_committed_private_into_main( chkpt, &commit_priv, &commit_shadow );
-    __specpriv_distill_committed_redux_into_main( chkpt, &commit_redux );
+    __specpriv_distill_committed_private_into_main( chkpt, &commit_priv, &commit_shadow );
+    __specpriv_distill_committed_redux_into_main( &commit_redux );
     mgr->main_checkpoint->iteration = chkpt->iteration;
 
     heap_unmap( &commit_redux );
     heap_unmap( &commit_shadow );
-    if( enable_private )
-      heap_unmap( &commit_priv );
+    heap_unmap( &commit_priv );
 
     // Free this checkpoint.
     chkpt->type = CL_Free;
@@ -811,8 +599,6 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
     squash->type = CL_Free;
     push_back( &mgr->free, squash );
   }
-
-  assert( list_empty( &mgr->used ) );
 }
 
 

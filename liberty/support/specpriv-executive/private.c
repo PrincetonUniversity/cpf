@@ -19,8 +19,8 @@ static Iteration checkpointGranularity;
 
 // Range [low,high) of bytes which have been defined in the shadow heap.
 // (these addresses are relative to the natural position of the shadow heap)
-static uint8_t *shadow_lowest_inclusive_by_subheap[NUM_SUBHEAPS],
-               *shadow_highest_exclusive_by_subheap[NUM_SUBHEAPS];
+static uint8_t *shadow_lowest_inclusive,
+               *shadow_highest_exclusive;
 
 // 8-,16-,32-, and 64-bit shadow memory codes to indicate
 // the current iteration.
@@ -39,21 +39,17 @@ static __m128i code128;
 
 static void __specpriv_reset_shadow_range(void)
 {
-  for(SubHeap i=0; i<NUM_SUBHEAPS; ++i)
-  {
-    // Initially, record an empty range (min>max) for each subheap
-    shadow_lowest_inclusive_by_subheap[i] =  (uint8_t*) subheap_base((void*)SHADOW_ADDR,i+1);
-    shadow_highest_exclusive_by_subheap[i] = (uint8_t*) subheap_base((void*)SHADOW_ADDR,i);
-  }
+  // Initially, an empty range has been touched.
+  shadow_lowest_inclusive = (uint8_t*) (SHADOW_ADDR + (1UL<<POINTER_BITS));
+  shadow_highest_exclusive = (uint8_t*) (SHADOW_ADDR);
 }
 
-static void update_shadow_range(uint8_t *ptr, uint64_t size)
+static void update_shadow_range(uint8_t *shadow, uint64_t len)
 {
-  const SubHeap subheap = find_subheap_in_pointer(ptr);
-  if( ptr < shadow_lowest_inclusive_by_subheap[subheap] )
-    shadow_lowest_inclusive_by_subheap[subheap] = ptr;
-  if( shadow_highest_exclusive_by_subheap[subheap] < ptr + size )
-    shadow_highest_exclusive_by_subheap[subheap] = ptr + size;
+  if (shadow < shadow_lowest_inclusive)
+    shadow_lowest_inclusive = shadow;
+  if (shadow_highest_exclusive < shadow + len)
+    shadow_highest_exclusive = shadow + len;
 }
 
 // Called once at beginning of invocation, before workers are spawned.
@@ -64,6 +60,8 @@ void __specpriv_init_private(void)
   // of numWorkers.
   const Wid numWorkers = __specpriv_num_workers();
   checkpointGranularity = MAX_CHECKPOINT_GRANULARITY - (MAX_CHECKPOINT_GRANULARITY % numWorkers);
+
+  //DEBUG( checkpointGranularity = 10 );
 
   __specpriv_reset_shadow_range();
 }
@@ -100,7 +98,18 @@ void __specpriv_advance_iter(Iteration i)
 {
   __specpriv_set_iter(i);
 
-  if( code8 == NUM_RESERVED_SHADOW_VALUES && i > 0 )
+
+  const Wid numWorkers = __specpriv_num_workers();
+  Iteration prevI = i - numWorkers;
+  Iteration prevR = (prevI - firstIteration) / checkpointGranularity;
+  Iteration curR = (i - firstIteration) / checkpointGranularity;
+  //if( code8 == NUM_RESERVED_SHADOW_VALUES && i > 0 )
+
+  //DEBUG(
+  //    printf("PreI:%d, curI:%d, firstIteration:%d, checkpointGranularity:%d\n",
+  //           prevI, i, firstIteration, checkpointGranularity));
+
+  if (prevI >= firstIteration && prevR + 1 == curR )
     __specpriv_worker_perform_checkpoint(0);
 }
 
@@ -118,7 +127,9 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
       __specpriv_misspec("misspec during private write range (1)");
     memset(shadow, code8, len);
 
-    update_shadow_range(shadow,len);
+    update_shadow_range(shadow, len);
+
+    DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     TOUT(worker_private_bytes_written += len);
   }
@@ -251,7 +262,12 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
 
     __specpriv_private_read_range_internal(shadow, &shadow[len], name);
 
-    update_shadow_range(shadow,len);
+    if( shadow < shadow_lowest_inclusive )
+      shadow_lowest_inclusive = shadow;
+    if( shadow_highest_exclusive < shadow + len )
+      shadow_highest_exclusive = shadow + len;
+
+    DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     TOUT(worker_private_bytes_read += len);
   }
@@ -275,7 +291,7 @@ void __specpriv_private_write_1b(void *ptr)
     uint8_t *shadow = (uint8_t*) ( SHADOW_ADDR | (uint64_t)ptr );
     const uint8_t meta = *shadow;
     if( meta == READ_LIVE_IN )
-      __specpriv_misspec("misspec during private write 2b");
+      __specpriv_misspec("misspec during private write 1b");
     *shadow = code8;
 
     update_shadow_range(shadow, 1);
@@ -285,6 +301,7 @@ void __specpriv_private_write_1b(void *ptr)
 
   TADD(worker_time_in_priv_write,start);
 }
+
 void __specpriv_private_read_1b(void *ptr, const char *name)
 {
   // TODO optimize
@@ -317,6 +334,7 @@ void __specpriv_private_write_2b(void *ptr)
 
   TADD(worker_time_in_priv_write,start);
 }
+
 void __specpriv_private_read_2b(void *ptr, const char *name)
 {
   uint64_t start;
@@ -391,6 +409,8 @@ void __specpriv_private_write_4b(void *ptr)
 
     update_shadow_range((uint8_t*)shadow,4);
 
+    DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
+
     TOUT(worker_private_bytes_written += 4);
   }
 
@@ -411,6 +431,8 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
     TOUT(worker_private_bytes_read += 4);
 
     update_shadow_range((uint8_t*)shadow, 4);
+
+    DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     if( meta == code32 )
     {
@@ -481,7 +503,9 @@ void __specpriv_private_write_8b(void *ptr)
       __specpriv_misspec("misspec in private write 8b");
     *shadow = code64;
 
-    update_shadow_range( (uint8_t*)shadow, 8 );
+    update_shadow_range( (uint8_t*)shadow, 8);
+
+    DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     TOUT(worker_private_bytes_written += 8);
   }
@@ -502,6 +526,8 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
     TOUT(worker_private_bytes_read += 8);
 
     update_shadow_range( (uint8_t*)shadow, 8 );
+
+    DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     if( meta == V64( LIVE_IN ) )
     {
@@ -585,6 +611,14 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
     if( nStrides > 0 )
     {
       uint8_t *cbase = (uint8_t*) (SHADOW_ADDR | (uint64_t) base );
+      uint8_t *high = cbase + (nStrides-1)*strideWidth + lenPerStride;
+
+      if( cbase < shadow_lowest_inclusive )
+        shadow_lowest_inclusive = cbase;
+      if( shadow_highest_exclusive < high )
+        shadow_highest_exclusive = high;
+
+      DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
       switch( lenPerStride )
       {
@@ -592,9 +626,7 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
         {
           for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
           {
-            update_shadow_range( cbase, 4 );
             uint32_t *ibase = (uint32_t*)cbase;
-
             const uint32_t meta = *ibase;
             *ibase = code32;
 
@@ -616,7 +648,6 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
                 __specpriv_misspec("misspec during private write range string, lenPerStride=4");
             }
           }
-
         }
         break;
 
@@ -624,7 +655,6 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
         {
           for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
           {
-            update_shadow_range( cbase, 8 );
             uint64_t *ibase = (uint64_t*)cbase;
             const uint64_t meta = *ibase;
             *ibase = code64;
@@ -667,8 +697,6 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
         {
           for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
           {
-            update_shadow_range( cbase, lenPerStride);
-
             // TODO: optimize this.
             if( memchr(cbase, READ_LIVE_IN, lenPerStride) )
               __specpriv_misspec("misspec during private_write_range_stride, lenPerStride=x");
@@ -692,67 +720,68 @@ void __specpriv_private_read_range_stride(void *base, uint64_t nStrides, uint64_
 
   if( ! __specpriv_i_am_main_process() )
   {
+    uint8_t *cbase = (uint8_t*) ( SHADOW_ADDR | (uint64_t) base );
+
     if( nStrides > 0 )
     {
-      uint8_t *cbase = (uint8_t*) ( SHADOW_ADDR | (uint64_t) base );
+      uint8_t *high = cbase + (nStrides-1)*strideWidth + lenPerStride;
+
+      if( cbase < shadow_lowest_inclusive )
+        shadow_lowest_inclusive = cbase;
+      if( shadow_highest_exclusive < high )
+        shadow_highest_exclusive = high;
 
       DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
-
-      switch( lenPerStride )
-      {
-        case 4:
-          for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
-          {
-            update_shadow_range( cbase, 4 );
-            uint32_t *ibase = (uint32_t*)cbase;
-            const uint32_t meta = *ibase;
-            if( meta == V32(LIVE_IN) )
-              *ibase = V32(READ_LIVE_IN);
-            else if( meta != code32 && meta != V32(READ_LIVE_IN) )
-              __specpriv_misspec(message);
-          }
-          break;
-        case 8:
-          for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
-          {
-            update_shadow_range( cbase, 8 );
-            uint64_t *ibase = (uint64_t*)cbase;
-            const uint64_t meta = *ibase;
-            if( meta == V64(LIVE_IN) )
-              *ibase = V64(READ_LIVE_IN);
-            else if( meta != code64 && meta != V64(READ_LIVE_IN) )
-              __specpriv_misspec(message);
-          }
-          break;
-        case 16:
-          for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
-          {
-            update_shadow_range( cbase, 16 );
-            uint64_t *ibase = (uint64_t*)cbase;
-            const uint64_t meta0 = ibase[0];
-            if( meta0 == V64(LIVE_IN) )
-              ibase[0] = V64(READ_LIVE_IN);
-            else if( meta0 != code64 && meta0 != V64(READ_LIVE_IN) )
-              __specpriv_misspec(message);
-
-            const uint64_t meta1 = ibase[1];
-            if( meta1 == V64(LIVE_IN) )
-              ibase[2] = V64(READ_LIVE_IN);
-            else if( meta1 != code64 && meta1 != V64(READ_LIVE_IN) )
-              __specpriv_misspec(message);
-          }
-          break;
-        default:
-          for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
-          {
-            update_shadow_range( (uint8_t*)cbase, lenPerStride );
-            __specpriv_private_read_range_internal(cbase, &cbase[lenPerStride], message);
-          }
-          break;
-      }
-
-      TOUT(worker_private_bytes_read += nStrides * lenPerStride);
     }
+
+    switch( lenPerStride )
+    {
+      case 4:
+        for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
+        {
+          uint32_t *ibase = (uint32_t*)cbase;
+          const uint32_t meta = *ibase;
+          if( meta == V32(LIVE_IN) )
+            *ibase = V32(READ_LIVE_IN);
+          else if( meta != code32 && meta != V32(READ_LIVE_IN) )
+            __specpriv_misspec(message);
+        }
+        break;
+      case 8:
+        for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
+        {
+          uint64_t *ibase = (uint64_t*)cbase;
+          const uint64_t meta = *ibase;
+          if( meta == V64(LIVE_IN) )
+            *ibase = V64(READ_LIVE_IN);
+          else if( meta != code64 && meta != V64(READ_LIVE_IN) )
+            __specpriv_misspec(message);
+        }
+        break;
+      case 16:
+        for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
+        {
+          uint64_t *ibase = (uint64_t*)cbase;
+          const uint64_t meta0 = ibase[0];
+          if( meta0 == V64(LIVE_IN) )
+            ibase[0] = V64(READ_LIVE_IN);
+          else if( meta0 != code64 && meta0 != V64(READ_LIVE_IN) )
+            __specpriv_misspec(message);
+
+          const uint64_t meta1 = ibase[1];
+          if( meta1 == V64(LIVE_IN) )
+            ibase[2] = V64(READ_LIVE_IN);
+          else if( meta1 != code64 && meta1 != V64(READ_LIVE_IN) )
+            __specpriv_misspec(message);
+        }
+        break;
+      default:
+        for(uint64_t i=0; i<nStrides; ++i, cbase += strideWidth)
+          __specpriv_private_read_range_internal(cbase, &cbase[lenPerStride], message);
+        break;
+    }
+
+    TOUT(worker_private_bytes_read += nStrides * lenPerStride);
   }
 
   TADD(worker_time_in_priv_read,start);
@@ -760,21 +789,18 @@ void __specpriv_private_read_range_stride(void *base, uint64_t nStrides, uint64_
 
 // partial <-- later(worker,partial)
 // where worker, partial are from the same checkpoint-group of iterations.
-static Bool __specpriv_distill_worker_private_subheap_into_partial(
+Bool __specpriv_distill_worker_private_into_partial(
   Checkpoint *partial,
-  MappedHeap *partial_priv, MappedHeap *partial_shadow,
-  SubHeap subheap)
+  MappedHeap *partial_priv, MappedHeap *partial_shadow)
 {
-  uint8_t *shadow_lowest_inclusive = shadow_lowest_inclusive_by_subheap[subheap];
-  uint8_t *shadow_highest_exclusive = shadow_highest_exclusive_by_subheap[subheap];
-  const int len = shadow_highest_exclusive - shadow_lowest_inclusive;
+  const unsigned len = __specpriv_sizeof_private();
 
   if( len > 0 )
   {
-    uint8_t *src_p = (uint8_t*) subheap_base((void*)PRIV_ADDR, subheap),    // pointer to worker's private value
-            *src_s = (uint8_t*) subheap_base((void*)SHADOW_ADDR,subheap),   // pointer to worker's shadow
-            *dst_p = (uint8_t*) subheap_base(partial_priv->base,subheap),   // pointer to main's private value
-            *dst_s = (uint8_t*) subheap_base(partial_shadow->base,subheap); // pointer to main's shadow
+    uint8_t *src_p = (uint8_t*)PRIV_ADDR,           // pointer to worker's private value
+            *src_s = (uint8_t*)SHADOW_ADDR,         // pointer to worker's shadow
+            *dst_p = (uint8_t*)partial_priv->base,  // pointer to main's private value
+            *dst_s = (uint8_t*)partial_shadow->base;// pointer to main's shadow
 
     DEBUG(
       printf("Distilling %u private bytes from worker 0x%lx/0x%lx into partial 0x%lx/0x%lx\n",
@@ -833,55 +859,42 @@ static Bool __specpriv_distill_worker_private_subheap_into_partial(
         }
       }
     }
-
-    // Update [low,high) ranges.
-    if( shadow_lowest_inclusive < partial->shadow_lowest_inclusive_by_subheap[subheap] )
-      partial->shadow_lowest_inclusive_by_subheap[subheap] = shadow_lowest_inclusive;
-    if( partial->shadow_highest_exclusive_by_subheap[subheap] < shadow_highest_exclusive )
-      partial->shadow_highest_exclusive_by_subheap[subheap] = shadow_highest_exclusive;
   }
-  return 0;
-}
 
-Bool __specpriv_distill_worker_private_into_partial(
-  Checkpoint *partial,
-  MappedHeap *partial_priv, MappedHeap *partial_shadow)
-{
-  for(SubHeap subheap=0; subheap<NUM_SUBHEAPS; ++subheap)
-    if( __specpriv_distill_worker_private_subheap_into_partial(partial, partial_priv, partial_shadow, subheap) )
-      return 1;
+  // Update [low,high) ranges.
+  if( shadow_lowest_inclusive < partial->shadow_lowest_inclusive )
+    partial->shadow_lowest_inclusive = shadow_lowest_inclusive;
+  if( partial->shadow_highest_exclusive < shadow_highest_exclusive )
+    partial->shadow_highest_exclusive = shadow_highest_exclusive;
+
   __specpriv_reset_shadow_range();
   return 0;
 }
 
 // partial <-- later(committed,partial)
 // where committed comes from an EARLIER checkpoint-group of iterations.
-static Bool __specpriv_distill_committed_private_subheap_into_partial(
+Bool __specpriv_distill_committed_private_into_partial(
   Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow,
-  Checkpoint *partial, MappedHeap *partial_priv, MappedHeap *partial_shadow,
-  SubHeap subheap)
+  Checkpoint *partial, MappedHeap *partial_priv, MappedHeap *partial_shadow)
 {
-  uint8_t *shadow_lowest_inclusive = commit->shadow_lowest_inclusive_by_subheap[subheap];
-  uint8_t *shadow_highest_exclusive = commit->shadow_highest_exclusive_by_subheap[subheap];
-  const int len = shadow_highest_exclusive - shadow_lowest_inclusive;
-
+  const unsigned len = __specpriv_sizeof_private();
 
   if( len > 0 )
   {
-    uint8_t *src_p = (uint8_t*)subheap_base(commit_priv->base,subheap),   // ptr to committed private value
-            *src_s = (uint8_t*)subheap_base(commit_shadow->base,subheap), // ptr to committed shadow
-            *dst_p = (uint8_t*)subheap_base(partial_priv->base,subheap),  // ptr to partial private value
-            *dst_s = (uint8_t*)subheap_base(partial_shadow->base,subheap);// ptr to partial shadow
+    uint8_t *src_p = (uint8_t*)commit_priv->base,   // ptr to committed private value
+            *src_s = (uint8_t*)commit_shadow->base, // ptr to committed shadow
+            *dst_p = (uint8_t*)partial_priv->base,  // ptr to partial private value
+            *dst_s = (uint8_t*)partial_shadow->base;// ptr to partial shadow
 
     DEBUG(
       printf("Distilling %u private bytes from committed 0x%lx/0x%lx into partial 0x%lx/0x%lx\n",
         len, (uint64_t)src_p, (uint64_t)src_s, (uint64_t)dst_p, (uint64_t)dst_s);
       printf("-> fine range is [0x%lx, 0x%lx)\n",
-        (uint64_t)shadow_lowest_inclusive, (uint64_t)shadow_highest_exclusive);
+        (uint64_t)commit->shadow_lowest_inclusive, (uint64_t)commit->shadow_highest_exclusive);
     );
 
-    const unsigned low  = shadow_lowest_inclusive - (uint8_t*)SHADOW_ADDR,
-                   high = shadow_highest_exclusive - (uint8_t*)SHADOW_ADDR;
+    const unsigned low  = commit->shadow_lowest_inclusive - (uint8_t*)SHADOW_ADDR,
+                   high = commit->shadow_highest_exclusive - (uint8_t*)SHADOW_ADDR;
 
     // TODO make this faster; vectorize?
     for(unsigned i=low; i<high; ++i)
@@ -906,79 +919,45 @@ static Bool __specpriv_distill_committed_private_subheap_into_partial(
         }
       }
     }
-
-    // Reset the shadow memory so that this checkpoint
-    // object can be re-used.
-    memset( &src_s[low], 0, high-low );
-
-    // Update [low,high) ranges.
-    if( shadow_lowest_inclusive < partial->shadow_lowest_inclusive_by_subheap[subheap] )
-      partial->shadow_lowest_inclusive_by_subheap[subheap] = shadow_lowest_inclusive;
-    if( partial->shadow_highest_exclusive_by_subheap[subheap] < shadow_highest_exclusive )
-      partial->shadow_highest_exclusive_by_subheap[subheap] = shadow_highest_exclusive;
   }
 
+  // Update [low,high) ranges.
+  if( commit->shadow_lowest_inclusive < partial->shadow_lowest_inclusive )
+    partial->shadow_lowest_inclusive = commit->shadow_lowest_inclusive;
+  if( partial->shadow_highest_exclusive < commit->shadow_highest_exclusive )
+    partial->shadow_highest_exclusive = commit->shadow_highest_exclusive;
+
   return 0;
 }
 
-Bool __specpriv_distill_committed_private_into_partial(
-  Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow,
-  Checkpoint *partial, MappedHeap *partial_priv, MappedHeap *partial_shadow)
-{
-  for(SubHeap subheap=0; subheap<NUM_SUBHEAPS; ++subheap)
-    if( __specpriv_distill_committed_private_subheap_into_partial(commit,commit_priv,commit_shadow,partial,partial_priv,partial_shadow,subheap) )
-      return 1;
-  return 0;
-}
 
-static Bool __specpriv_distill_committed_private_subheap_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow, SubHeap subheap)
+Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow)
 {
-  uint8_t *shadow_lowest_inclusive = commit->shadow_lowest_inclusive_by_subheap[subheap];
-  uint8_t *shadow_highest_exclusive = commit->shadow_highest_exclusive_by_subheap[subheap];
-  const int len = shadow_highest_exclusive - shadow_lowest_inclusive;
+  const unsigned len = __specpriv_sizeof_private();
 
   if( len > 0 )
   {
-    uint8_t *src_p = (uint8_t*)subheap_base(commit_priv->base,subheap),   // ptr to committed private value
-            *src_s = (uint8_t*)subheap_base(commit_shadow->base,subheap), // ptr to committed shadow
-            *dst_p = (uint8_t*)subheap_base((void*)PRIV_ADDR,subheap);    // ptr to partial private value
+    uint8_t *src_p = (uint8_t*)commit_priv->base,   // ptr to committed private value
+            *src_s = (uint8_t*)commit_shadow->base, // ptr to committed shadow
+            *dst_p = (uint8_t*)PRIV_ADDR;           // ptr to partial private value
 
     DEBUG(
       printf("Distilling %u private bytes from committed 0x%lx/0x%lx into main 0x%lx/-\n",
         len, (uint64_t)src_p, (uint64_t)src_s, (uint64_t)dst_p);
       printf("-> fine range is [0x%lx, 0x%lx)\n",
-        (uint64_t)shadow_lowest_inclusive, (uint64_t)shadow_highest_exclusive);
+        (uint64_t)commit->shadow_lowest_inclusive, (uint64_t)commit->shadow_highest_exclusive);
     );
 
-    const unsigned low = shadow_lowest_inclusive - (uint8_t*)SHADOW_ADDR,
-                   high = shadow_highest_exclusive - (uint8_t*)SHADOW_ADDR;
+    const unsigned low = commit->shadow_lowest_inclusive - (uint8_t*)SHADOW_ADDR,
+                   high = commit->shadow_highest_exclusive - (uint8_t*)SHADOW_ADDR;
 
     // TODO: vectorize this.
     for(unsigned i=low; i<high; ++i)
       if( WAS_WRITTEN_EVER( src_s[i] ) )
         dst_p[i] = src_p[i];
-
-    // Reset the shadow memory so that this checkpoint
-    // object can be re-used
-    memset( &src_s[low], 0, high-low );
   }
 
   return 0;
-}
-
-Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow)
-{
-  for(SubHeap i=0; i<NUM_SUBHEAPS; ++i)
-    if( __specpriv_distill_committed_private_subheap_into_main(commit,commit_priv,commit_shadow,i) )
-      return 1;
-  return 0;
-}
-
-unsigned __specpriv_get_checkpoint_number(Iteration iter)
-{
-  const Iteration reliter = (iter - firstIteration);
-
-  return (reliter + checkpointGranularity - 1) / checkpointGranularity;
 }
 
 

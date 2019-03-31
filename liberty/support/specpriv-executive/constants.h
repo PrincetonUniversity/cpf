@@ -3,12 +3,6 @@
 
 #include "types.h"
 
-#define BITS_PER_BYTE     (8)
-
-// config choices for PHYSICAL_PAGE_METHOD
-#define PP_SHM            (0)
-#define PP_SPARSE_FILE    (1)
-
 // config choices for JOIN
 #define WAITPID           (0)
 #define SPIN              (1)
@@ -50,25 +44,17 @@
 #define SLOWEST_WORKER    (1<<1)
 
 // Pointer coding
-#define POINTER_BITS      (43)
-#define SUBHEAP_BITS      (40)
+#define POINTER_BITS      (44)
 
-#define POINTER_MASK      (15ULL << POINTER_BITS)
-#define SUBHEAP_MASK      (7ULL  << SUBHEAP_BITS)
+#define POINTER_MASK      (7ULL << POINTER_BITS)
 
-// IF YOU CHANGE THESE
-// Make sure you also change the constants
-// in lib/SpecPriv/Preprocess.cpp, method Preprocess::insertUOCheck().
-// The numbers MUST match.
-#define LOCAL_ADDR        (1ULL << POINTER_BITS)
+#define META_ADDR         (1ULL << POINTER_BITS)
 #define REDUX_ADDR        (2ULL << POINTER_BITS)
 #define PRIV_ADDR         (3ULL << POINTER_BITS)
 #define SHARED_ADDR       (4ULL << POINTER_BITS)
 #define RO_ADDR           (5ULL << POINTER_BITS)
-#define REDUX_INIT_ADDR   (6ULL << POINTER_BITS)
+#define LOCAL_ADDR        (6ULL << POINTER_BITS)
 #define SHADOW_ADDR       (7ULL << POINTER_BITS)
-
-#define META_ADDR         (8ULL << POINTER_BITS)
 
 
 // Sizes of kibi-, mibi-, and gibi-bytes
@@ -126,7 +112,7 @@
 
 // If we are doing timing, how many checkpoint records should we
 // keep per worker per invocation?
-#define MAX_CHECKPOINTS   ( 128 )
+#define MAX_CHECKPOINTS   ( 64 )
 
 // Last iteration
 #define LAST_ITERATION    ( INT32_MAX )

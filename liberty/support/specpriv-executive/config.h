@@ -8,24 +8,13 @@
 
 // If timing is enabled, what statistics/format to print
 #define TIMER_PRINT_TIMELINE  (1)
-#define TIMER_PRINT_OVERHEAD  (0)
+#define TIMER_PRINT_OVERHEAD  (1)
 
 // Enable debug messages? 0 (off) or 1 (on)
 #define DEBUGGING         (0)
 
-// Should I use shm objects (PP_SHM), or sparse files on disk (PP_SPARSE_FILE)?
-#define PHYSICAL_PAGE_METHOD  (PP_SHM)
-
 // Print debug messages on misspeculation? 0 (off) or 1 (on)
-#define DEBUG_MISSPEC     (0)
-
-// Print debug messages if a worker must stall becase
-// checkpoints are saturated.  0 (off) or 1 (on)
-#define DEBUG_SATURATE    (0)
-
-// Print a message when a worker terminates
-// 0 (off) or 1 (on)
-#define DEBUG_WORKER_TERM (0)
+#define DEBUG_MISSPEC     (1)
 
 // Simulate misspeculation?
 #define SIMULATE_MISSPEC  (0)
@@ -43,8 +32,10 @@
 // How do I join my workers? WAITPID or SPIN
 #define JOIN              SPIN
 
+
+
 // Number of processors; used to schedule affinities.
-#define NUM_PROCS         (24)
+#define NUM_PROCS         (28)
 
 // For deferred IO, assume that written string is shorter
 // than this.  If wrong, we will need to try again.
@@ -57,7 +48,7 @@
 // How large should we allocate our heaps.
 // Doesn't really matter; OS will only reserve
 // space for the used portion.
-#define HEAP_SIZE         (3UL*GB)
+#define HEAP_SIZE         (1*GB)
 
 // Maximum number of bytes of checkpoint state
 // that we will allocate at any time.
