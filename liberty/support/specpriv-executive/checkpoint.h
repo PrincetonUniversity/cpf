@@ -41,15 +41,8 @@ struct s_checkpoint
   // heap which were touched by the parallel
   // region.  These addresses are relative to
   // the natural address of the shadow heap.
-  uint8_t *       shadow_lowest_inclusive_by_subheap[NUM_SUBHEAPS],
-          *       shadow_highest_exclusive_by_subheap[NUM_SUBHEAPS];
-
-  // A range [lo,hi) of bytes from the redux
-  // heap which were touched by the parallel
-  // region.  These addresses are relative to
-  // the natural address of the redux heap.
-  uint8_t *       redux_lowest_inclusive_by_subheap[NUM_SUBHEAPS],
-          *       redux_highest_exclusive_by_subheap[NUM_SUBHEAPS];
+  uint8_t *       shadow_lowest_inclusive,
+          *       shadow_highest_exclusive;
 
   Len             redux_used;
 
@@ -108,12 +101,7 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint);
 
 void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr);
 
-Bool __specpriv_commit_zero_or_more_checkpoints(
-  CheckpointManager *mgr,
-  Checkpoint *already_mapped_checkpoint,
-  MappedHeap *already_mapped_private,
-  MappedHeap *already_mapped_shadow,
-  MappedHeap *alreadu_mapped_redux);
+Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr);
 
 #endif
 

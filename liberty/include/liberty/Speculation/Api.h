@@ -935,7 +935,10 @@ struct Api
 
   static uint64_t getHeapCodeMask()
   {
-    return (15ULL << 43);
+    // other version of runtime with subheaps
+    //return (15ULL << 43);
+
+    return (7ULL << 44);
   }
 
   static uint64_t getCodeForHeap(HeapAssignment::Type heap)
@@ -943,12 +946,23 @@ struct Api
     // These magic numbers must correspond with
     // the codes in support/specpriv-executive/api.c
     const uint64_t codes[] =
+      { /* ro       */ (5ULL << 44),
+        /* shared   */ (4ULL << 44),
+        /* redux    */ (2ULL << 44),
+        /* local    */ (6ULL << 44),
+        /* priv     */ (3ULL << 44)
+      };
+
+    // other version of runtime with subheaps
+    #if 0
+    const uint64_t codes[] =
       { /* ro       */ (5ULL << 43),
         /* shared   */ (4ULL << 43),
         /* redux    */ (2ULL << 43),
         /* local    */ (1ULL << 43),
         /* priv     */ (3ULL << 43)
       };
+    #endif
 
     return codes[heap];
   }

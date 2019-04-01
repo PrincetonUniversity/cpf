@@ -21,11 +21,6 @@ struct s_parallel_control_block
   Iteration           misspeculated_iteration;
   const char *        misspeculation_reason;
 
-#if SIMULATE_MISSPEC != 0
-  Iteration           totalIterations;
-  unsigned            numMisspecIterations;
-#endif
-
   char padding1[128];
 
   // The checkpoints...

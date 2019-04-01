@@ -46,12 +46,7 @@ static unsigned numLocalAUs;
 // Allow us to enumerate all reduction AUs at runtime.
 static ReductionInfo *first_reduction_info,
                      *last_reduction_info;
-// If the program only uses one kind of reduction
-// for all objects allocated from the reduction
-// heap, mark that here.  Set this to NotReduction
-// if more than one distinct type of reduction
-// is present.
-static ReductionType universal_reduction_type;
+
 
 static Len sizeof_private, sizeof_redux;
 
@@ -77,7 +72,6 @@ void __specpriv_initialize_main_heaps(void)
     MappedHeap tmp_meta;
     mapped_heap_init(&tmp_meta);
     heap_map_shared(&meta, &tmp_meta);
-    heap_reset(&tmp_meta);
     mapped_meta = (MappedHeap*)heap_alloc(&tmp_meta, sizeof(MappedHeap));
     memcpy(mapped_meta, &tmp_meta, sizeof(MappedHeap));
   }
@@ -97,15 +91,11 @@ void __specpriv_initialize_main_heaps(void)
   sizeof_private = sizeof_redux = 0;
 
   heap_map_shared(&shared, &mshared);
-  heap_reset(&mshared);
   heap_map_cow(&ro,     &mro);
-  heap_reset(&mro);
 
   // Map the /right/ version of the private, redux heaps.
   heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_priv, &mpriv0);
-  heap_reset(&mpriv0);
   heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0);
-  heap_reset(&mredux0);
 
   // Create reduction heaps for each worker.
   Wid i;
@@ -114,7 +104,6 @@ void __specpriv_initialize_main_heaps(void)
 
   // Empty list of reduction aus.
   first_reduction_info = last_reduction_info = 0;
-  universal_reduction_type = NotReduction;
 }
 
 void __specpriv_destroy_main_heaps(void)
@@ -157,24 +146,14 @@ void __specpriv_worker_remap_private(void)
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_priv, &mpriv0 );
+  if( sizeof_private )
+    heap_alloc( &mpriv0, sizeof_private );
 }
 
 void __specpriv_fiveheaps_begin_invocation(void)
 {
   sizeof_private = heap_used( &mpriv0 );
   sizeof_redux = heap_used( &mredux0 );
-}
-
-uint64_t __specpriv_sizeof_private_subheap(SubHeap subheap)
-{
-  if( subheap < 0 ) subheap = 0;
-  return subheap_used( &mpriv0, subheap );
-}
-
-uint64_t __specpriv_sizeof_redux_subheap(SubHeap subheap)
-{
-  if( subheap < 0 ) subheap = 0;
-  return subheap_used( &myRedux, subheap );
 }
 
 void __specpriv_initialize_worker_heaps(void)
@@ -184,10 +163,12 @@ void __specpriv_initialize_worker_heaps(void)
   // re-map the committed version of heap 'priv' as copy-on-write
   __specpriv_worker_remap_private();
 
-  // re-map a new independent heap as my 'redux' heap.
+  // re-map my a new independent heap as my 'redux' heap.
   heap_unmap(&mredux0);
   mapped_heap_init(&myRedux);
   heap_map_shared(&redux[myWorkerId], &myRedux);
+  if( sizeof_redux )
+    heap_alloc(&myRedux, sizeof_redux);
 
   // map my 'shadow', and 'local' heaps
   mapped_heap_init(&myShadow);
@@ -212,8 +193,7 @@ void __specpriv_destroy_worker_heaps(void)
 void *__specpriv_alloc_shared(Len size, SubHeap subheap)
 {
   assert( __specpriv_i_am_main_process() );
-  if( subheap < 0 ) subheap = 0;
-  return heap_alloc_subheap(&mshared, size, subheap);
+  return heap_alloc(&mshared, size);
 }
 
 // Free memory to the shared heap
@@ -223,7 +203,7 @@ void __specpriv_free_shared(void *ptr)
   heap_free(&mshared,ptr);
 }
 
-void *__specpriv_alloc_ro(Len size)
+void *__specpriv_alloc_ro(Len size, SubHeap subheap)
 {
   assert( __specpriv_i_am_main_process() );
   return heap_alloc(&mro, size);
@@ -241,8 +221,7 @@ void *__specpriv_alloc_local(Len size, SubHeap subheap)
     // during recovery
     return __specpriv_alloc_shared(size, subheap);
 
-  if( subheap < 0 ) subheap = 0;
-  void *p = heap_alloc_subheap(&myLocal, size, subheap);
+  void *p = heap_alloc(&myLocal, size);
   ++numLocalAUs;
   return p;
 }
@@ -263,8 +242,7 @@ void __specpriv_free_local(void *ptr)
 void *__specpriv_alloc_priv(Len size, SubHeap subheap)
 {
   assert( __specpriv_i_am_main_process() );
-  if( subheap < 0 ) subheap = 0;
-  return heap_alloc_subheap(&mpriv0, size, subheap);
+  return heap_alloc(&mpriv0, size);
 }
 
 void __specpriv_free_priv(void *ptr)
@@ -275,6 +253,10 @@ void __specpriv_free_priv(void *ptr)
 
 void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type)
 {
+
+  DEBUG(printf("Allocate redux alloc\n"));
+  DEBUG(printf("ReductionType:%hhu, len:%u\n",type, size));
+
   assert( __specpriv_i_am_main_process() );
 
   // Record info about this AU.
@@ -282,39 +264,23 @@ void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type)
   info->next = 0;
   info->size = size;
   info->type = type;
-  if( subheap < 0 ) subheap = 0;
-  info->au = heap_alloc_subheap(&mredux0, size, subheap);
+  info->au = heap_alloc(&mredux0, size);
 
   // Update the list.
   if( last_reduction_info )
     last_reduction_info->next = info;
 
   last_reduction_info = info;
-
-  // First one?
   if( !first_reduction_info )
-  {
-    // Update front of list.
     first_reduction_info = info;
-
-    // Update universal reduction type.
-    universal_reduction_type = type;
-  }
-  // Ensure universal reduction type is
-  // consistent for all reduction objects.
-  else if( universal_reduction_type != type )
-  {
-    universal_reduction_type = NotReduction;
-  }
 
   return info->au;
 }
 
-void *__specpriv_alloc_worker_redux(Len size, SubHeap subheap)
+void *__specpriv_alloc_worker_redux(Len size)
 {
   assert( ! __specpriv_i_am_main_process() );
-  if( subheap < 0 ) subheap = 0;
-  return heap_alloc_subheap(&myRedux, size, subheap);
+  return heap_alloc(&myRedux, size);
 }
 
 void __specpriv_free_redux(void *ptr)
@@ -337,16 +303,6 @@ unsigned __specpriv_num_local(void)
 ReductionInfo *__specpriv_first_reduction_info(void)
 {
   return first_reduction_info;
-}
-ReductionInfo *__specpriv_last_reduction_info(void)
-{
-  return last_reduction_info;
-}
-
-
-ReductionType __specpriv_has_universal_reduction_type(void)
-{
-  return universal_reduction_type;
 }
 
 Len __specpriv_sizeof_private(void)

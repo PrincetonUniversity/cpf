@@ -54,9 +54,6 @@ static const int oscpu2physcore[NUM_PROCS] =
 static Wid numWorkers;
 static Wid myWorkerId;
 
-// The INVOCATION number
-static unsigned inInvocation = 0;
-unsigned InvocationNumber = 0;
 
 // The global iteration number; maintained by
 // each worker.  Incremented by __specpriv_end_iter()
@@ -74,33 +71,12 @@ struct sigaction old_sigchld;
 #endif
 
 #if SIMULATE_MISSPEC != 0
-static Iteration simulateMisspecEveryNIters;
+static Iteration simulateMisspeculationAtIter;
 #endif
 
 // ---------------------------------------------------------
 // Scope management: program, parallel region, worker,
 // and iteration...
-
-uint32_t __specpriv_num_available_workers(void)
-{
-  assert( myWorkerId == MAIN_PROCESS );
-
-  if( inInvocation )
-    return 0;
-
-  unsigned numWorkers = 2;
-  const char *nw = getenv("NUM_WORKERS");
-  if( nw )
-  {
-    int n = atoi(nw);
-    assert( 1 <= n && n <= MAX_WORKERS );
-    numWorkers = (Wid) n;
-  }
-
-  return numWorkers;
-}
-
-
 
 // Called once on program startup by main process
 void __specpriv_begin(void)
@@ -110,12 +86,28 @@ void __specpriv_begin(void)
 
   // Determine number of workers from environment
   // variable.
-  inInvocation = 0;
-  numWorkers = __specpriv_num_available_workers();
+  numWorkers = 2;
+  const char *nw = getenv("NUM_WORKERS");
+  if( nw )
+  {
+    int n = atoi(nw);
+    assert( 1 <= n && n <= MAX_WORKERS );
+    numWorkers = (Wid) n;
+  }
+
+#if SIMULATE_MISSPEC != 0
+  simulateMisspeculationAtIter = ~0U;
+  const char *smai = getenv("SIMULATE_MISSPEC_ITER");
+  if( smai )
+  {
+    int n = atoi(smai);
+    assert( 0 <= n );
+    simulateMisspeculationAtIter = (Iteration)n;
+  }
+#endif
 
   __specpriv_initialize_main_heaps();
   __specpriv_init_private();
-  __specpriv_init_redux();
 
   // Save old affinity
   sched_getaffinity(0, sizeof(cpu_set_t), &old_affinity);
@@ -140,19 +132,6 @@ void __specpriv_begin(void)
   sigaction(SIGCHLD, &new_sigchld, &old_sigchld);
 #endif
 
-#if SIMULATE_MISSPEC != 0
-  ParallelControlBlock *pcb = __specpriv_get_pcb();
-  pcb->totalIterations = 0;
-  pcb->numMisspecIterations = 0;
-  simulateMisspecEveryNIters = ~0U;
-  const char *smai = getenv("SIMULATE_MISSPEC_PERIOD");
-  if( smai )
-  {
-    int n = atoi(smai);
-    assert( 0 <= n );
-    simulateMisspecEveryNIters = (Iteration)n;
-  }
-#endif
 }
 
 // Called once by main process on program shutdown
@@ -163,12 +142,6 @@ void __specpriv_end(void)
 #if (AFFINITY & MP0STARTUP) != 0
   // Reset affinity
   sched_setaffinity(0, sizeof(cpu_set_t), &old_affinity);
-#endif
-
-#if SIMULATE_MISSPEC != 0
-  ParallelControlBlock *pcb = __specpriv_get_pcb();
-  fprintf(stderr, "Total iterations %d; Num Misspec %d\n",
-    pcb->totalIterations, pcb->numMisspecIterations);
 #endif
 
   __specpriv_destroy_main_heaps();
@@ -193,13 +166,6 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
 #if JOIN == SPIN
   pcb->workerDoneFlags[ myWorkerId ] = 1;
 #endif
-
-#if DEBUG_WORKER_TERM != 0
-  fprintf(stderr, "Worker %d terminates at %d\n", myWorkerId, currentIter);
-  fflush(stderr);
-#endif
-
-
 
   __specpriv_destroy_worker_heaps();
 
@@ -295,11 +261,13 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
   TIME(worker_enter_loop);
 }
 
-
 // Called by a worker when it is done working.
 void __specpriv_worker_finishes(Exit exitTaken)
 {
   assert( myWorkerId != MAIN_PROCESS );
+
+  DEBUG(printf("Worker %u finishing with exitTaken:%u.\n", myWorkerId,
+               exitTaken));
 
   TIME(worker_exit_loop);
 
@@ -319,20 +287,19 @@ void __specpriv_worker_finishes(Exit exitTaken)
   TIME(worker_end_invocation);
   TOUT( __specpriv_print_worker_times() );
 
-#if DEBUG_WORKER_TERM != 0
-  fprintf(stderr, "Worker %d terminates at %d\n", myWorkerId, currentIter);
-  fflush(stderr);
-#endif
-
-
-
   DEBUG(printf("Worker %u finished.\n", myWorkerId));
   _exit(0);
 }
 
 Iteration __specpriv_current_iter(void)
 {
-  return currentIter;
+  // Return global iteration count instead of thread-specific one
+  if ( myWorkerId == MAIN_PROCESS)
+    return (currentIter * numWorkers);
+
+  Iteration globalCurIter = myWorkerId + (currentIter * numWorkers);
+  return globalCurIter;
+  //return currentIter;
 }
 
 Wid __specpriv_my_worker_id(void)
@@ -378,19 +345,14 @@ void __specpriv_recovery_finished(Exit e)
 
   currentIter = mi + 1;
 
-  DEBUG(printf("Recovery finished.  should resume from %u; exit %d\n", currentIter, pcb->exit_taken));
+  DEBUG(printf("Recovery finished.  should resume from %u\n", currentIter));
 }
+
 
 uint32_t __specpriv_begin_invocation(void)
 {
   TIME(main_begin_invocation);
   assert( myWorkerId == MAIN_PROCESS );
-  inInvocation = 1;
-
-#if DEBUG_WORKER_TERM != 0
-  fprintf(stderr, "Begin invoc.\n");
-  fflush(stderr);
-#endif
 
 #if (AFFINITY & MP0INVOC) != 0
   // Set affinitiy: only processor zero
@@ -414,7 +376,7 @@ uint32_t __specpriv_begin_invocation(void)
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   pcb->misspeculation_happened = 0;
-  pcb->exit_taken = 0;
+  pcb->exit_taken = 1;
   pcb->checkpoints.main_checkpoint->iteration = -1;
 
   __specpriv_fiveheaps_begin_invocation();
@@ -423,6 +385,7 @@ uint32_t __specpriv_begin_invocation(void)
 
   DEBUG(printf("At beginning of invocation, sizeof(priv)=%u, sizeof(redux)=%u\n",
     __specpriv_sizeof_private(), __specpriv_sizeof_redux() ));
+
   return numWorkers;
 }
 
@@ -475,7 +438,6 @@ Exit __specpriv_join_children(void)
 #endif
 
 #if JOIN == SPIN
-  TIME(main_begin_waitpid_spin_slow);
   // Wait until workers are almost done.
   // I.e. the front checkpoint will be the final one.
   struct timespec wt;
@@ -495,20 +457,16 @@ Exit __specpriv_join_children(void)
 
 #if (WHO_DOES_CHECKPOINTS & FASTEST_WORKER) != 0
     __specpriv_commit_zero_or_more_checkpoints( & pcb->checkpoints );
-
-    // Sleep
-    wt.tv_sec = 0;
-    wt.tv_nsec = 1000000; // 1 millisecond
-    nanosleep(&wt,0);
 #endif
   }
-  TIME(main_end_waitpid_spin_slow);
 
-  TIME(main_begin_waitpid_spin_fast);
   // Wait until all workers are done.
   for(;;)
   {
     Bool allDone = 1;
+
+    if( pcb->misspeculation_happened )
+      break;
 
     for(Wid wid=0; wid<numWorkers; ++wid)
       if( !pcb->workerDoneFlags[wid] )
@@ -524,15 +482,18 @@ Exit __specpriv_join_children(void)
     wt.tv_nsec = 1000; // 1 microsecond
     nanosleep(&wt,0);
   }
-  TIME(main_end_waitpid_spin_fast);
 #endif
 
   TIME(worker_end_waitpid);
+
+  TIME(distill_into_liveout_start);
 
   // Ensure that I am currently mounting the
   // non-speculative version of the private
   // and redux heaps.
   __specpriv_distill_checkpoints_into_liveout( &pcb->checkpoints );
+
+  TIME(distill_into_liveout_end);
 
   if( pcb->misspeculation_happened )
     return 0;
@@ -550,19 +511,6 @@ Exit __specpriv_end_invocation(void)
   TIME(main_end_invocation);
 
   TOUT(__specpriv_print_main_times());
-
-#if DEBUG_WORKER_TERM != 0
-  fprintf(stderr, "End invoc.\n");
-  fflush(stderr);
-#endif
-
-#if (TIMER != 0) //&& (TIMER_PRINT_TIMELINE != 0)
-  fflush(stdout);
-  fflush(stderr);
-  _exit(0);
-#endif
-
-  inInvocation = 0;
   return __specpriv_get_pcb()->exit_taken;
 }
 
@@ -584,46 +532,32 @@ void __specpriv_end_iter(void)
   if( __specpriv_num_local() > 0 )
     __specpriv_misspec("Object lifetime misspeculation");
 
-  ParallelControlBlock *pcb = __specpriv_get_pcb();
-
 #if SIMULATE_MISSPEC != 0
-  if( myWorkerId == 0 && simulateMisspecEveryNIters != ~0)
-  {
-    pcb->totalIterations++;
-    if( ( (pcb->totalIterations) % simulateMisspecEveryNIters) == 0 )
-    {
-      pcb->numMisspecIterations++;
-      __specpriv_misspec("Simulated misspeculation");
-    }
-  }
+  if( currentIter == simulateMisspeculationAtIter )
+    __specpriv_misspec("Simulated misspeculation");
 #endif
 
+  ParallelControlBlock *pcb = __specpriv_get_pcb();
   if( pcb->misspeculation_happened )
-  {
-    // What checkpoint am I within,
-    // and what checkpoint did misspeculation
-    // occur within?  If I am a slow worker
-    // who is lagging behind, I should continue
-    // up to that checkpoint, then exit.
-    const unsigned misspec_checkpoint_number = __specpriv_get_checkpoint_number( pcb->misspeculated_iteration );
-    const unsigned my_checkpoint_number = __specpriv_get_checkpoint_number( currentIter );
+    _exit(0);
 
-    if( my_checkpoint_number >= misspec_checkpoint_number )
-    {
-#if JOIN == SPIN
-      pcb->workerDoneFlags[ myWorkerId ] = 1;
-#endif
+  ++currentIter;
+  Iteration globalCurIter = myWorkerId + (currentIter * numWorkers);
+  //__specpriv_advance_iter(++currentIter);
+  __specpriv_advance_iter(globalCurIter);
+}
 
-#if DEBUG_WORKER_TERM != 0
-      fprintf(stderr, "Worker %d terminates at %d\n", myWorkerId, currentIter);
-      fflush(stderr);
-#endif
+void __specpriv_final_iter_ckpt_check(uint64_t rem, uint64_t chunkSize) {
+  uint64_t chunkedRem = rem / chunkSize;
+  if (rem % chunkSize)
+    ++chunkedRem;
 
-      _exit(0);
-    }
+  if (myWorkerId >= chunkedRem) {
+    DEBUG(printf("worker_id:%u\n", myWorkerId));
+
+    __specpriv_begin_iter();
+    __specpriv_end_iter();
   }
-
-  __specpriv_advance_iter(++currentIter);
 }
 
 // Perform a UO test.  Specifically, this ensures
@@ -645,19 +579,25 @@ void __specpriv_predict(uint64_t observed, uint64_t expected)
     __specpriv_misspec("Value prediction failed");
 }
 
-Wid __specpriv_spawn_workers_callback(Iteration firstIter, void (*callback)(void*), void *user)
+//Wid __specpriv_spawn_workers_callback(Iteration firstIter, void (*callback)(void*), void *user)
+Wid __specpriv_spawn_workers_callback(
+    Iteration firstIter, void (*callback)(void *, int64_t, int64_t, int64_t),
+    void *user, int64_t numCores, int64_t chunkSize)
 {
+  DEBUG(printf("spawn_workers_callback\n"));
+  DEBUG(printf("numCores:%lu, chunkSize:%lu\n", numCores, chunkSize));
+
   Wid id = __specpriv_spawn_workers(firstIter);
   if( id == ~0U )
     return id; // parent
 
   // child
-  callback( user );
+  //callback( user );
+  callback( user, id, numCores, chunkSize);
 
-  // Should never return.
+ // Should never return.
   __specpriv_worker_finishes(0);
   return 0;
 }
-
 
 

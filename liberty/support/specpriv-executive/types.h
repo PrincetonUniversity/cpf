@@ -16,6 +16,5 @@ typedef uint8_t ReductionType;
 
 typedef int8_t SubHeap;
 
-
 #endif
 

@@ -4,16 +4,15 @@
 #include "api.h"
 #include "timer.h"
 
+// The INVOCATION number
+unsigned InvocationNumber = 0;
+
 // Timer variables -- per-invocation
 uint64_t main_begin_invocation, main_end_invocation;
 uint64_t worker_begin_invocation, worker_end_invocation;
 uint64_t worker_enter_loop, worker_exit_loop;
 uint64_t worker_begin_waitpid, worker_end_waitpid;
-
-#if JOIN == SPIN
-uint64_t main_begin_waitpid_spin_slow, main_end_waitpid_spin_slow;
-uint64_t main_begin_waitpid_spin_fast, main_end_waitpid_spin_fast;
-#endif
+uint64_t distill_into_liveout_start, distill_into_liveout_end;
 
 uint64_t worker_time_in_checkpoints=0;
 uint64_t worker_time_in_redux=0;
@@ -82,15 +81,6 @@ void __specpriv_print_worker_times(void)
     CheckpointRecord *rec = &checkpoints[i];
     printf(". %10ld w%ld + chkpt[%u]\n", rec->checkpoint_start - main_begin_invocation, myWorkerId, i);
 
-		printf(". %10ld w%ld + chkpt-find[%u]\n", rec->find_checkpoint_start - main_begin_invocation, myWorkerId, i);
-		printf(". %10ld w%ld - chkpt-find[%u]\n", rec->find_checkpoint_stop - main_begin_invocation, myWorkerId, i);
-
-		printf(". %10ld w%ld + chkpt-lock[%u]\n", rec->acquire_lock_start - main_begin_invocation, myWorkerId, i);
-		printf(". %10ld w%ld - chkpt-lock[%u]\n", rec->acquire_lock_stop - main_begin_invocation, myWorkerId, i);
-
-		printf(". %10ld w%ld + chkpt-map[%u]\n", rec->map_start - main_begin_invocation, myWorkerId, i);
-		printf(". %10ld w%ld - chkpt-map[%u]\n", rec->map_stop - main_begin_invocation, myWorkerId, i);
-
     printf(". %10ld w%ld + chkpt-pv[%u]\n", rec->private_start - main_begin_invocation, myWorkerId, i);
     printf(". %10ld w%ld - chkpt-pv[%u]\n", rec->private_stop - main_begin_invocation, myWorkerId, i);
 
@@ -102,12 +92,6 @@ void __specpriv_print_worker_times(void)
 
     printf(". %10ld w%ld + chkpt-ioc[%u]\n", rec->io_commit_start - main_begin_invocation, myWorkerId, i);
     printf(". %10ld w%ld - chkpt-ioc[%u]\n", rec->io_commit_stop - main_begin_invocation, myWorkerId, i);
-
-		printf(". %10ld w%ld + chkpt-unmap[%u]\n", rec->unmap_start - main_begin_invocation, myWorkerId, i);
-		printf(". %10ld w%ld - chkpt-unmap[%u]\n", rec->unmap_stop - main_begin_invocation, myWorkerId, i);
-
-		printf(". %10ld w%ld + chkpt-combine[%u]\n", rec->combine_start - main_begin_invocation, myWorkerId, i);
-		printf(". %10ld w%ld - chkpt-combine[%u]\n", rec->combine_stop - main_begin_invocation, myWorkerId, i);
 
     printf(". %10ld w%ld - chkpt[%u]\n", rec->checkpoint_stop - main_begin_invocation, myWorkerId, i);
   }
@@ -136,27 +120,22 @@ void __specpriv_print_main_times(void)
   printf(
        ". %10ld m + invoc\n"
        ". %10ld m + waitpid\n"
-       ". %10ld m + spin-slow\n"
-       ". %10ld m - spin-slow\n"
-       ". %10ld m + spin-fast\n"
-       ". %10ld m - spin-fast\n"
        ". %10ld m - waitpid\n"
        ". %10ld m + io\n"
        ". %10ld m - io\n"
+       ". %10ld m + distLO\n"
+       ". %10ld m - distLO\n"
        ". %10ld m - invoc\n",
 
        main_begin_invocation - main_begin_invocation,
        worker_begin_waitpid - main_begin_invocation,
-
-       main_begin_waitpid_spin_slow - main_begin_invocation,
-       main_end_waitpid_spin_slow - main_begin_invocation,
-       main_begin_waitpid_spin_fast - main_begin_invocation,
-       main_end_waitpid_spin_fast - main_begin_invocation,
-
        worker_end_waitpid - main_begin_invocation,
 
        worker_end_waitpid - main_begin_invocation,
        worker_end_waitpid - main_begin_invocation + worker_time_in_io,
+
+       distill_into_liveout_start - main_begin_invocation,
+       distill_into_liveout_end - main_begin_invocation,
 
        main_end_invocation - main_begin_invocation);
 #endif
