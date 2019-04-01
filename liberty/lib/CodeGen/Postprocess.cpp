@@ -1698,6 +1698,8 @@ private:
       Value *subheap_ok = ConstantInt::getTrue(ctx);
       if( subheap != -1 )
       {
+        // no subheaps currently used
+        /*
         ConstantInt *mask = ConstantInt::get(u64, Api::getSubHeapCodeMask());
         Instruction *masked = BinaryOperator::Create(
           BinaryOperator::And, cast, mask);
@@ -1707,6 +1709,7 @@ private:
         where << masked
               << spec_ok;
         subheap_ok = spec_ok;
+        */
       }
 
       BinaryOperator *conjunction =
