@@ -29,6 +29,6 @@ compile_manually: $(manual_bcs)
 #
 # Include Makefile.common so we know what to do.
 #
-# include $(LEVEL)/Makefile.common
+include $(LEVEL)/Makefile.common
 
 # specprivexecutive.bc
