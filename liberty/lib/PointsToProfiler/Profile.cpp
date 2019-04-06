@@ -1127,7 +1127,7 @@ private:
           continue;
         already.insert(arg);
 
-        DEBUG(errs() << "Instrumenting indeterminate base object in function argument\n");
+        DEBUG(errs() << "Instrumenting indeterminate base object in function argument " << *arg << "\n");
         instrumentArgumentForIndeterminateBase(arg, interesting);
         modified = true;
       }
