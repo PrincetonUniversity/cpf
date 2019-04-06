@@ -172,6 +172,11 @@ unsigned Selector::computeWeights(
     Function *fA = hA->getParent();
     //const Twine nA = fA->getName() + " :: " + hA->getName();
 
+    DEBUG(errs()
+          << "\n\n=--------------------------------------------------------"
+             "----------------------=\nCompute weight for loop "
+          << fA->getName() << " :: " << hA->getName() << "...\n");
+
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
