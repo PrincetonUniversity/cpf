@@ -130,7 +130,7 @@ enum DepResult { NoDep = 0, Dep = 1 };
 
 class Remediator {
 public:
-  Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
+  virtual Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
   struct RemedResp {
     DepResult depRes;

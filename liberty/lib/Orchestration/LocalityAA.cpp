@@ -11,7 +11,7 @@ using namespace llvm;
 
 STATISTIC(numQueries,    "Num queries");
 STATISTIC(numEligible,   "Num eligible queries");
-STATISTIC(numReduxLocalPrivatized, "Num privatized for redux and short-lived family");
+STATISTIC(numPrivatized, "Num privatized");
 STATISTIC(numSeparated,  "Num separated");
 STATISTIC(numSubSep,     "Num separated via subheaps");
 
@@ -23,15 +23,15 @@ LoopAA::AliasResult LocalityAA::aliasCheck(
 {
   ++numQueries;
 
-  if( !L || !asgn.isValidFor(L) )
-    return MayAlias;
+//  if( !L || !asgn.isValidFor(L) )
+//    return MayAlias;
 
   if( !isa<PointerType>( P1.ptr->getType() ) )
     return MayAlias;
   if( !isa<PointerType>( P2.ptr->getType() ) )
     return MayAlias;
 
-  const Ctx *ctx = read.getCtx(L);
+  //const Ctx *ctx = read.getCtx(L);
 
   ++numEligible;
 
@@ -51,20 +51,17 @@ LoopAA::AliasResult LocalityAA::aliasCheck(
   {
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
-    //
-    // dont consider privatization for now since it is hard implementation-wise
-    // to collect the set of required private reads and writes
+    //if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local || t1 == HeapAssignment::Private || t1 == HeapAssignment::LocalPriv )
     if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local || t1 == HeapAssignment::Private )
-    //if( t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local)
     {
-      ++numReduxLocalPrivatized;
+      ++numPrivatized;
       return NoAlias;
     }
 
+    //if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local || t2 == HeapAssignment::Private || t2 == HeapAssignment::LocalPriv )
     if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local || t2 == HeapAssignment::Private )
-    //if( t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local)
     {
-      ++numReduxLocalPrivatized;
+      ++numPrivatized;
       return NoAlias;
     }
   }

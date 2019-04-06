@@ -162,6 +162,21 @@ bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
   return this->privateI < sepRhs->privateI;
 }
 
+Remedies LocalityRemediator::satisfy(const PDG &pdg, Loop *loop,
+                                     const Criticisms &criticisms) {
+
+  const DataLayout &DL = loop->getHeader()->getModule()->getDataLayout();
+  const Ctx *ctx = read.getCtx(loop);
+  localityaa = new LocalityAA(read, asgn, ctx);
+  localityaa->InitializeLoopAA(&proxy, DL);
+
+  Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
+
+  delete localityaa;
+
+  return remedies;
+}
+
 Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
                                                  const Instruction *B,
                                                  bool LoopCarried, bool RAW,
@@ -172,6 +187,12 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   std::shared_ptr<LocalityRemedy> remedy =
       std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
   remedy->cost = DEFAULT_LOCALITY_REMED_COST;
+
+  remedy->privateI = nullptr;
+  remedy->reduxS = nullptr;
+  remedy->ptr1 = nullptr;
+  remedy->ptr2 = nullptr;
+
   remedResp.remedy = remedy;
 
   if (!L || !asgn.isValidFor(L))
@@ -180,7 +201,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   const DataLayout &DL = A->getModule()->getDataLayout();
   //localityaa->InitializeLoopAA(&proxy, DL);
   // This AA stack includes static analysis and separation speculation
-  //LoopAA *aa = localityaa->getTopAA();
+  LoopAA *aa = localityaa->getTopAA();
   //aa->dump();
 
   remedy->DL = &DL;
@@ -189,7 +210,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);
   if (!ptr1 || !ptr2) {
-    /*
     bool noDep =
         (LoopCarried)
             ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
@@ -198,7 +218,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       ++numLocalityAA;
       remedResp.depRes = DepResult::NoDep;
     }
-    */
     return remedResp;
   }
   if (!isa<PointerType>(ptr1->getType()))
@@ -234,23 +253,16 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
         ++numPrivatizedPriv;
         remedy->cost += PRIVATE_ACCESS_COST;
         remedy->privateI = const_cast<Instruction *>(A);
-        remedy->reduxS = nullptr;
       } else if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
-        remedy->privateI = nullptr;
-        remedy->reduxS = nullptr;
         //remedy->localI = A;
       } else {
         ++numPrivatizedRedux;
-        remedy->privateI = nullptr;
         if (auto sA = dyn_cast<StoreInst>(A))
           remedy->reduxS = const_cast<StoreInst *>(sA);
-        else
-          remedy->reduxS = nullptr;
       }
       remedy->ptr1 = const_cast<Value *>(ptr1);
-      remedy->ptr2 = nullptr;
       remedResp.remedy = remedy;
       return remedResp;
     }
@@ -262,21 +274,14 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
         ++numPrivatizedPriv;
         remedy->cost += PRIVATE_ACCESS_COST;
         remedy->privateI = const_cast<Instruction *>(B);
-        remedy->reduxS = nullptr;
       } else if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
-        remedy->privateI = nullptr;
-        remedy->reduxS = nullptr;
       } else {
         ++numPrivatizedRedux;
-        remedy->privateI = nullptr;
         if (auto sB = dyn_cast<StoreInst>(B))
           remedy->reduxS = const_cast<StoreInst *>(sB);
-        else
-          remedy->reduxS = nullptr;
       }
-      remedy->ptr1 = nullptr;
       remedy->ptr2 = const_cast<Value *>(ptr2);
       remedResp.remedy = remedy;
       return remedResp;
@@ -289,8 +294,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
     remedResp.depRes = DepResult::NoDep;
-    remedy->privateI = nullptr;
-    remedy->reduxS = nullptr;
     remedy->ptr1 = const_cast<Value *>(ptr1);
     remedy->ptr2 = const_cast<Value *>(ptr2);
     remedResp.remedy = remedy;
@@ -306,8 +309,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       if (subheap2 > 0 && subheap1 != subheap2) {
         ++numSubSep;
         remedResp.depRes = DepResult::NoDep;
-        remedy->privateI = nullptr;
-        remedy->reduxS = nullptr;
         remedy->ptr1 = const_cast<Value *>(ptr1);
         remedy->ptr2 = const_cast<Value *>(ptr2);
         remedResp.remedy = remedy;
@@ -317,7 +318,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   }
 
   // avoid usage of localityAA since the needed checks/remedies are not produced yet for localityAA
-  /*
   // check if collaboration of AA and LocalityAA achieves better accuracy
   bool noDep =
       (LoopCarried)
@@ -327,7 +327,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     ++numLocalityAA2;
     remedResp.depRes = DepResult::NoDep;
   }
-  */
 
   return remedResp;
 }
