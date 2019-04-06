@@ -5,6 +5,7 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/Critic.h"
+#include "liberty/Orchestration/PSDSWPCritic.h"
 #include "liberty/Orchestration/TXIORemed.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/ReduxRemed.h"
@@ -73,8 +74,8 @@ private:
                  SmtxSpeculationManager &smtxLampMan, const Read &rd,
                  const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA);
 
-  std::set<Critic_ptr> getCritics(PerformanceEstimator *perf,
-                                  unsigned threadBudget, LoopProfLoad *lpl);
+  std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
+                                     unsigned threadBudget, LoopProfLoad *lpl);
 
   void addressCriticisms(SelectedRemedies &selectedRemedies,
                          unsigned long &selectedRemediesCost,

@@ -109,13 +109,16 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   return remeds;
 }
 
-std::set<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
-                                              unsigned threadBudget,
-                                              LoopProfLoad *lpl) {
-  std::set<Critic_ptr> critics;
+std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
+                                                 unsigned threadBudget,
+                                                 LoopProfLoad *lpl) {
+  std::vector<Critic_ptr> critics;
 
   // DOALL critic
-  critics.insert(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
+  critics.push_back(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
+
+  // PS-DSWP critic
+  critics.push_back(std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl));
 
   return critics;
 }
@@ -227,7 +230,20 @@ bool Orchestrator::findBestStrategy(
     }
   }
 
+  #if 0
   // second level remediators, produce both remedies and criticisms
+  auto dswpPlusRemediator =
+      std::make_unique<DswpPlusRemediator>(loop, &pdg, perf);
+  Remediator::RemedCriticResp dswpPlusResp = dswpPlusRemediator->satisfy();
+  Remedy_ptr &r = dswpPlusResp.remedy;
+  for (Criticism *c : r->resolvedC) {
+    // one single remedy resolves this criticism
+    Remedies_ptr remedSet = std::make_shared<Remedies>();
+    remedSet->insert(r);
+    mapCriticismsToRemeds[c].insert(remedSet);
+    c->setRemovable(true);
+  }
+
   auto loopFissionRemediator =
       std::make_unique<LoopFissionRemediator>(loop, &pdg, perf);
 
@@ -267,9 +283,10 @@ bool Orchestrator::findBestStrategy(
     auto &remeds = loopFissionCriticismsToRemeds[c];
     mapCriticismsToRemeds[c].insert(remeds);
   }
+  #endif
 
   // receive actual criticisms from critics given the enhanced pdg
-  std::set<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
+  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     DEBUG(errs() << "Critic " << (*criticIt)->getCriticName() << "\n");
     CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);

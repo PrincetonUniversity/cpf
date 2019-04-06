@@ -74,9 +74,9 @@ unsigned long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
 void getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
 
   for (auto cr : criticisms) {
-    DEBUG(errs() << " Removing DOALL criticism loop-carried from "
-                 << *cr->getOutgoingT() << " to " << *cr->getIncomingT()
-                 << '\n');
+    //DEBUG(errs() << " Removing DOALL criticism loop-carried from "
+    //             << *cr->getOutgoingT() << " to " << *cr->getIncomingT()
+    //             << '\n');
 
     pdg.removeEdge(cr);
   }
@@ -188,8 +188,8 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   BasicBlock *loopH = loop->getHeader();
   Function *loopF = loopH->getParent();
   double percentageCovered = (100.0 * criticismsCovered) / criticismsTotal;
-  DEBUG(errs() << "\nCoverage of dependences for hot loop " << loopF->getName()
-               << " :: " << loopH->getName() << " "
+  DEBUG(errs() << "\nCoverage of loop-carried dependences for hot loop "
+               << loopF->getName() << " :: " << loopH->getName() << " "
                << "covered=" << criticismsCovered
                << ", total=" << criticismsTotal << " , percentage="
                << format("%.2f", percentageCovered) << "%\n\n");
