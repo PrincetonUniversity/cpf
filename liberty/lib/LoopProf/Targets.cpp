@@ -34,7 +34,7 @@ static cl::opt<unsigned> MinExecTimePercent(
   cl::desc("Target loops whose execution is at least N% of the total"));
 
 static cl::opt<unsigned> MinIterationsPerInvoc(
-  "target-min-iters", cl::init(50), cl::NotHidden,
+  "target-min-iters", cl::init(8), cl::NotHidden,
   cl::desc("Target loops which iterate at least N times per invocation on average"));
 
 Loop *header_to_loop_mapping_iterator::operator*() const
