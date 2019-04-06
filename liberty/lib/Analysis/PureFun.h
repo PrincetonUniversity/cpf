@@ -65,6 +65,8 @@
   "llvm.pow.f64",
   "llvm.fabs.f32",
   "llvm.fabs.f64",
+  "llvm.floor.f32",
+  "llvm.floor.f64",
 
 // New with llvm 135637
   "llvm.lifetime.start",
@@ -292,6 +294,9 @@
   "calloc",
   "malloc",
   "free",
+
+  "__isnan",
+  "__mulsc3",
 
 // string.h
   "memchr",
