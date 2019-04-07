@@ -44,6 +44,9 @@ public:
 
   void simplifyPDG(PDG *pdg);
 
+  void populateCriticisms(PipelineStrategy &ps, Criticisms &criticisms,
+                          PDG &pdg);
+
   bool doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
                         SCCDAG::SCCSet &all_sccs, PerformanceEstimator &perf,
                         PipelineStrategy::Stages &stages, unsigned threadBudget,
