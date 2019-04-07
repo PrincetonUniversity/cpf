@@ -114,11 +114,11 @@ std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
                                                  LoopProfLoad *lpl) {
   std::vector<Critic_ptr> critics;
 
-  // DOALL critic
-  critics.push_back(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
-
   // PS-DSWP critic
   critics.push_back(std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl));
+
+  // DOALL critic
+  critics.push_back(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
 
   return critics;
 }
@@ -288,7 +288,7 @@ bool Orchestrator::findBestStrategy(
   // receive actual criticisms from critics given the enhanced pdg
   std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
-    DEBUG(errs() << "Critic " << (*criticIt)->getCriticName() << "\n");
+    DEBUG(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
     CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
     Criticisms &criticisms = res.criticisms;
     unsigned long expSpeedup = res.expSpeedup;

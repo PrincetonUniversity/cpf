@@ -601,59 +601,122 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   writeGraph<SCCDAG>(sccdagDotName, optimisticSCCDAG);
 }
 
-// do not treat PS-DSWP as a remediator
-#if 0
-Remediator::RemedCriticResp DswpPlusRemediator::satisfy() {
-  BasicBlock *header = loop->getHeader();
-  Function *fcn = header->getParent();
+// There should be no dependence from an instruction in 'later'
+// to an instruction in 'earlier' stage
+void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
+                            const PipelineStage &lateStage,
+                            Criticisms &criticisms) {
 
-  Remediator::RemedCriticResp remedResp;
-  // conservative answer
-  remedResp.depRes = DepResult::Dep;
-  std::shared_ptr<DswpPlusRemedy> remedy =
-      std::shared_ptr<DswpPlusRemedy>(new DswpPlusRemedy());
-  remedy->cost = DEFAULT_DSWP_PLUS_REMED_COST;
-  remedResp.remedy = remedy;
+  PipelineStage::ISet all_early = earlyStage.instructions;
+  all_early.insert(earlyStage.replicated.begin(), earlyStage.replicated.end());
 
-  PipelineStrategy ps;
+  PipelineStage::ISet all_late = lateStage.instructions;
+  all_late.insert(lateStage.replicated.begin(), lateStage.replicated.end());
 
-  if (!doallAndPipeline(*optimisticPDG, *optimisticSCCDAG, perf, ps.stages,
-                        24 /*threadBudget*/, true /*includeReplicableStages*/,
-                        true /*includeParallelStages*/)) {
-    DEBUG(errs() << "PS-DSWP not applicable to " << fcn->getName()
-                 << "::" << header->getName()
-                 << ": no large parallel stage found (2)\n");
-    return remedResp;
-  }
+  // For each operation from an earlier stage
+  for (PipelineStage::ISet::const_iterator i = all_early.begin(),
+                                           e = all_early.end();
+       i != e; ++i) {
+    Instruction *early = *i;
+    auto *earlyNode = pdg.fetchConstNode(early);
 
-  ps.setValidFor(loop->getHeader());
-  //ps.assertConsistentWithIR(loop);
-  //ps.assertPipelineProperty(optimisticPDG);
+    // For each operation from a later stage
+    for (PipelineStage::ISet::const_iterator j = all_late.begin(),
+                                             z = all_late.end();
+         j != z; ++j) {
+      Instruction *late = *j;
+      auto *lateNode = pdg.fetchConstNode(late);
 
-  DEBUG(errs() << "PS-DSWP applicable to " << fcn->getName() << "::"
-               << header->getName() << ": large parallel stage found\n");
+      // There should be no backwards dependence
+      for (auto edge : make_range(lateNode->begin_outgoing_edges(),
+                                  lateNode->end_outgoing_edges())) {
+        if (edge->getIncomingNode() == earlyNode) {
+          if (edge->isRemovableDependence())
+            criticisms.insert(edge);
+          else {
+            errs() << "\n\nNon-removable criticism found\n"
+                   << "From: " << *late << '\n'
+                   << "  to: " << *early << '\n'
+                   << "From late stage:\n";
+            lateStage.print_txt(errs());
+            errs() << "To early stage:\n";
+            earlyStage.print_txt(errs());
 
-  DEBUG(ps.dump_pipeline(errs()));
-
-  ps.assertConsistentWithIR(loop);
-
-  // PS-DSWP was able to find large parallel stage. Populate the set of criticisms
-  // that are moved out of the way
-  for (auto edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
-    if (!pdg->isInternal(edge->getIncomingT()) ||
-        !pdg->isInternal(edge->getOutgoingT()))
-      continue;
-
-    if (edge->isLoopCarriedDependence() && !edge->isRemovableDependence()) {
-      remedy->resolvedC.insert(edge);
-      ++numDswpPlusNoDep;
+            assert(false && "Violated pipeline property");
+          }
+        }
+      }
     }
   }
-  remedResp.depRes = DepResult::NoDep;
-  remedResp.remedy = remedy;
-  return remedResp;
 }
-#endif
+
+// There should be no loop-carried edges within 'parallel' stage
+void critForParallelStageProperty(const PDG &pdg, const PipelineStage &parallel,
+                                  Criticisms &criticisms) {
+
+  for (PipelineStage::ISet::const_iterator i = parallel.instructions.begin(),
+                                           e = parallel.instructions.end();
+       i != e; ++i) {
+    Instruction *p = *i;
+    auto *pN = pdg.fetchConstNode(p);
+
+    for (PipelineStage::ISet::const_iterator j = parallel.instructions.begin(),
+                                             z = parallel.instructions.end();
+         j != z; ++j) {
+      Instruction *q = *j;
+      auto *qN = pdg.fetchConstNode(q);
+
+      // There should be no loop-carried edge
+      for (auto edge : make_range(pN->begin_outgoing_edges(), pN->end_outgoing_edges())) {
+        if (edge->getIncomingNode() == qN && edge->isLoopCarriedDependence()) {
+          if (edge->isRemovableDependence())
+            criticisms.insert(edge);
+          else {
+            errs() << "\n\nNon-removable criticism found\n"
+                   << "From: " << *p << '\n'
+                   << "  to: " << *q << '\n'
+                   << "Loop-carried in parallel stage:\n";
+            parallel.print_txt(errs());
+
+            assert(false && "Violated parallel stage property");
+          }
+        }
+      }
+    }
+  }
+}
+
+void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
+                                      Criticisms &criticisms, PDG &pdg) {
+  // Add to criticisms all deps which violate pipeline order.
+
+  // Foreach pair (earlier,later) of pipeline stages,
+  // where 'earlier' precedes 'later' in the pipeline
+  for (PipelineStrategy::Stages::const_iterator i = ps.stages.begin(), e = ps.stages.end(); i != e;
+       ++i) {
+    const PipelineStage &earlier = *i;
+    for (PipelineStrategy::Stages::const_iterator j = i + 1; j != e; ++j) {
+      const PipelineStage &later = *j;
+      critForPipelineProperty(pdg, earlier, later, criticisms);
+    }
+  }
+
+  // Add to criticisms all loop-carried deps in parallel stages
+
+  // Foreach parallel stage
+  for (PipelineStrategy::Stages::const_iterator i = ps.stages.begin(), e = ps.stages.end(); i != e;
+       ++i) {
+    const PipelineStage &pstage = *i;
+    if (pstage.type != PipelineStage::Parallel)
+      continue;
+
+    // If this is a parallel stage,
+    // assert that no instruction in this stage
+    // is incident on a loop-carried edge.
+
+    critForParallelStageProperty(pdg, pstage, criticisms);
+  }
+}
 
 CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
                                       LoopDependenceInfo &ldi) {
@@ -689,6 +752,8 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
                << header->getName() << ": large parallel stage found\n");
 
   DEBUG(ps->dump_pipeline(errs()));
+
+  populateCriticisms(*ps, res.criticisms, pdg);
 
   res.ps = std::move(ps);
 
