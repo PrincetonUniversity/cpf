@@ -68,8 +68,8 @@ struct Targets : public ModulePass
 
 private:
   void addLoopByName(Module &, const std::string &, const std::string &, unsigned long wt, bool minIterCheck = false);
-  bool expectsManyIterations(const Loop *loop) ;
-  //bool expectsManyIterations(const Loop *loop, const std::string&, const std::string &) ;
+  //bool expectsManyIterations(const Loop *loop) ;
+  bool expectsManyIterations(const Loop *loop, const std::string&, const std::string &) ;
 
   //sot
   ModuleLoops *mloops;
