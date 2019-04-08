@@ -78,8 +78,10 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
   }
 
   // set worker count
+  //LDI->maximumNumberOfCoresForTheParallelization = 10;
   LDI->maximumNumberOfCoresForTheParallelization = 24;
   // set chunk size
+  //LDI->DOALLChunkSize = 5000;
   LDI->DOALLChunkSize = 4;
 
   // doall should be applicable now
