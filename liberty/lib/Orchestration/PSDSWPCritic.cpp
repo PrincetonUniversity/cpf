@@ -86,21 +86,23 @@ struct IsParallel {
   }
 };
 
-// see if loop carried dep between SCCs can be removed with prematerialization
+/*
+// see if loop carried deps between SCCs can be removed with prematerialization
 bool checkIfRemateriazable(const DGEdge<SCC> *edge, const SCC &outgoingSCC) {
-  if (edge->isRAWDependence() && !edge->isMemoryDependence()) {
-    // this is remateriazable dependence.
-    // TODO: note down this edge and apply rematerialization in the
-    // application of PS-DSWP
-    // need also to check whether it is speculative or not.
-    // determines whether rematerialization will be part of transaction
-
-    DEBUG(errs() << "Remateriazable var found\n");
-
-    return true;
+  for (auto subEdge : make_range(edge->begin_sub_edges(), edge->end_sub_edges())) {
+    if (!subEdge->isRAWDependence() || subEdge->isMemoryDependence()) {
+      return false;
+    }
   }
-  return false;
+  // this is remateriazable dependence.
+  // TODO: note down this edge and apply rematerialization in the
+  // application of PS-DSWP
+  // need also to check whether it is speculative or not.
+  // determines whether rematerialization will be part of transaction
+  DEBUG(errs() << "Remateriazable variable(s) found\n");
+  return true;
 }
+*/
 
 // fetchNode should have a const version to avoid casting
 struct LoopCarriedBetweenSCCs {
@@ -112,16 +114,16 @@ struct LoopCarriedBetweenSCCs {
     for (auto edge : sccNode1->getIncomingEdges()) {
       if (edge->getOutgoingNode()->getT() == &scc2 &&
           edge->isLoopCarriedDependence()) {
-        if (checkIfRemateriazable(edge, scc2))
-          continue;
+        //if (checkIfRemateriazable(edge, scc2))
+        //  continue;
         return true;
       }
     }
     for (auto edge : sccNode1->getOutgoingEdges()) {
       if (edge->getIncomingNode()->getT() == &scc2 &&
           edge->isLoopCarriedDependence()) {
-        if (checkIfRemateriazable(edge, scc1))
-          continue;
+        //if (checkIfRemateriazable(edge, scc1))
+        //  continue;
         return true;
       }
     }
