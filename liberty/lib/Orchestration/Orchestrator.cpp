@@ -117,8 +117,8 @@ std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
   // PS-DSWP critic
   critics.push_back(std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl));
 
-  // DOALL critic
-  critics.push_back(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
+  // DOALL critic (covered by PS-DSWP critic)
+  //critics.push_back(std::make_shared<DOALLCritic>(perf, threadBudget, lpl));
 
   return critics;
 }
