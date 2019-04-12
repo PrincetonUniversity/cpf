@@ -2,6 +2,7 @@
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
@@ -809,6 +810,15 @@ bool Read::missingAUs(const Value *uo, const Ctx *ctx, Ptrs &aus) const
       // so we may as well ignore it.
       return true;
     }
+
+  if ( const Argument *arg = dyn_cast< Argument >(uo) ) {
+    if( ctrlspec->isSpeculativelyDead(&arg->getParent()->getEntryBlock()) )
+    {
+      // We're going to speculate this,
+      // so we may as well ignore it.
+      return true;
+    }
+  }
 
   // Make an educated guess.
   if( guess(uo,ctx,aus) )
