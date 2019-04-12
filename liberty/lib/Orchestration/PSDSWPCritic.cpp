@@ -78,6 +78,11 @@ struct IsParallel {
         continue;
 
       if (edge->isLoopCarriedDependence()) {
+
+        DEBUG(errs() << "loop-carried edge(s) found from "
+                     << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
+                     << '\n');
+
         return false;
       }
     }
@@ -582,16 +587,43 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   }
   optimisticPDG = pdg->createSubgraphFromValues(loopInternals, false);
 
+  unsigned lcDepTotal = 0;
+  unsigned lcDepNotCovered = 0;
+
   // remove all the removable edges and produce optimistic pdg
   for (auto edge :
        make_range(optimisticPDG->begin_edges(), optimisticPDG->end_edges())) {
+
+    if (edge->isLoopCarriedDependence()) {
+      ++lcDepTotal;
+
+      if (!edge->isRemovableDependence()) {
+        DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
+                     << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
+                     << '\n');
+        ++lcDepNotCovered;
+      }
+    }
+
     if (edge->isRemovableDependence()) {
+      // DEBUG(errs() << " Removing loop-carried from " << *edge->getOutgoingT()
+      //             << " to " << *edge->getIncomingT() << '\n');
+
       optimisticPDG->removeEdge(edge);
     }
   }
 
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
+
+  unsigned lcDepCovered = lcDepTotal - lcDepNotCovered;
+  double percentageCovered = (100.0 * lcDepCovered) / lcDepTotal;
+  DEBUG(errs() << "\nCoverage of loop-carried dependences for hot loop "
+               << fcn->getName() << " :: " << header->getName() << " "
+               << "covered=" << lcDepCovered << ", total=" << lcDepTotal
+               << " , percentage=" << format("%.2f", percentageCovered)
+               << "%\n\n");
+
   std::string pdgDotName = "optimistic_pdg_" + header->getName().str() + "_" +
                            fcn->getName().str() + ".dot";
   writeGraph<PDG>(pdgDotName, optimisticPDG);
