@@ -80,22 +80,22 @@ HeapAssignment &RemedSelector::getAssignment() { return assignment; }
 
 void RemedSelector::computeVertices(Vertices &vertices)
 {
-  ModuleLoops &mloops = getAnalysis< ModuleLoops >();
-  const Classify &classify = getAnalysis< Classify >();
-  for(Classify::iterator i=classify.begin(), e=classify.end(); i!=e; ++i)
-  {
-    const BasicBlock *header = i->first;
-    Function *fcn = const_cast< Function * >(header->getParent() );
+  ModuleLoops &mloops = getAnalysis<ModuleLoops>();
+  const Targets &targets = getAnalysis<Targets>();
+  const Classify &classify = getAnalysis<Classify>();
+  for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
+       i != e; ++i) {
+    Loop *loop = *i;
 
-    LoopInfo &li = mloops.getAnalysis_LoopInfo(fcn);
-    Loop *loop = li.getLoopFor(header);
-    assert( loop->getHeader() == header );
-
-    const HeapAssignment &asgn = i->second;
-    if( ! asgn.isValidFor(loop) )
+    const HeapAssignment &asgn = classify.getAssignmentFor(loop);
+    if (!asgn.isValidFor(loop)) {
+      DEBUG(errs() << "HeapAssignment invalid for loop "
+                   << loop->getHeader()->getParent()->getName()
+                   << "::" << loop->getHeader()->getName() << '\n');
       continue;
+    }
 
-    vertices.push_back( loop );
+    vertices.push_back(loop);
   }
 }
 
