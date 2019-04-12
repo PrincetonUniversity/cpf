@@ -10,6 +10,7 @@
 #include "liberty/Utilities/Timer.h"
 
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"
@@ -124,9 +125,14 @@ bool ProfileGuidedControlSpeculator::dominatesTargetHeader(const BasicBlock* bb)
 {
   const Function* fcn = bb->getParent();
   auto targetHeader = getLoopHeaderOfInterest();
+  if (fcn != targetHeader->getParent())
+    return false;
   DominatorTree&  dt = this->mloops->getAnalysis_DominatorTree( fcn );
-  if ( dt.dominates( bb, targetHeader ) )
+  if ( dt.dominates( bb, targetHeader ) ) {
+    DEBUG(errs() << "bb " << bb->getName() << " dominates target header "
+                 << targetHeader->getName() << "\n");
     return true;
+  }
   return false;
 }
 
@@ -147,7 +153,8 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   BranchProbabilityInfo &bpi = getAnalysis< BranchProbabilityInfoWrapperPass >(*non_const_fcn).getBPI();
 
   // How confident must we be before speculating?
-  const double MinSamples = 10.0;
+  //const double MinSamples = 10.0;
+  const double MinSamples = 5.0;
   const double MaxMisspec = 0.00001; // 0.001%
   const double MaxMisspecLoopExit = 0.0;
   const double MaxMisspecTargetLoopExit = 0.04; // 4%
@@ -160,13 +167,61 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   if (!fcn->getEntryCount().hasValue())
   {
     DEBUG(errs() << "CtrlSpec: function does not have profile data avaiable\n");
+
+    // sot
+    // In LLVM 5.0 getEntryCount will return none for zero counts. Thus no
+    // profile data vs never invoked functions are indistinguisable.
+    // Re-read metadata here to distuinguish the two cases.
+    MDNode *MD = fcn->getMetadata(LLVMContext::MD_prof);
+    if (MD && MD->getOperand(0))
+      if (MDString *MDS = dyn_cast<MDString>(MD->getOperand(0)))
+        if (MDS->getString().equals("function_entry_count")) {
+          ConstantInt *CI = mdconst::extract<ConstantInt>(MD->getOperand(1));
+          uint64_t Count = CI->getValue().getZExtValue();
+          if (Count == 0) {
+            // When a function is never invoked make all its basic blocks
+            // speculatively dead. This fix is required for privateer, where no
+            // profile data is collected for all speculatively dead code.
+            BlockSet &deadBlocks = loops[getLoopHeaderOfInterest()].deadBlocks;
+            for (Function::const_iterator i = fcn->begin(), e = fcn->end();
+                 i != e; ++i) {
+              const BasicBlock *bb = &*i;
+
+              DEBUG(errs() << "CtrlSpec " << fcn->getName() << ": block "
+                           << bb->getName() << " is speculatively dead.\n");
+
+              deadBlocks.insert(bb);
+              ++numSpecBlocks;
+            }
+          }
+        }
+    // sot. end
+
     return;
   }
 
   uint64_t fcnt = fcn->getEntryCount().getValue();
-  if( fcnt < 1 )
+  if( fcnt == 0 ) // not possible in LLVM 5.0
   {
     DEBUG(errs() << "CtrlSpec: function never executed\n");
+
+    // sot
+    // When a function is never invoked make all its basic blocks speculatively
+    // dead. This fix is required for privateer, where no profile data is
+    // collected for all speculatively dead code.
+    BlockSet &deadBlocks = loops[getLoopHeaderOfInterest()].deadBlocks;
+    for (Function::const_iterator i = fcn->begin(), e = fcn->end(); i != e;
+         ++i) {
+      const BasicBlock *bb = &*i;
+
+      DEBUG(errs() << "CtrlSpec " << fcn->getName() << ": block "
+                   << bb->getName() << " is speculatively dead.\n");
+
+      deadBlocks.insert(bb);
+      ++numSpecBlocks;
+    }
+    // sot. end
+
     return;
   }
 
