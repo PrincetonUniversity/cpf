@@ -137,9 +137,25 @@ void printRemedies(Remedies &rs) {
 void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism &cr) {
   DEBUG(errs() << "----------------------------------------------------\n");
   printRemedies(*selected);
-  DEBUG(errs() << " chosen to address criticicm:\n"
+  DEBUG(errs() << " chosen to address criticicm ";
+        if (cr.isControlDependence()) errs() << "(Control, "; else {
+          if (cr.isMemoryDependence())
+            errs() << "(Mem, ";
+          else
+            errs() << "(Reg, ";
+          if (cr.isWARDependence())
+            errs() << "WAR, ";
+          else if (cr.isWAWDependence())
+            errs() << "WAW, ";
+          else if (cr.isRAWDependence())
+            errs() << "RAW, ";
+        }
+        if (cr.isLoopCarriedDependence()) errs() << "LC)";
+        else errs() << "II)";
+
+        errs() << ":\n"
                << *cr.getOutgoingT() << " ->\n"
-               << *cr.getIncomingT() << "\n");
+               << *cr.getIncomingT() << "\n";);
   if (sors.size() > 1) {
     DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
     auto itR = sors.begin();
