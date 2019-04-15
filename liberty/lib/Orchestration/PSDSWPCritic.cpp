@@ -591,9 +591,8 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   unsigned lcDepNotCovered = 0;
 
   // remove all the removable edges and produce optimistic pdg
-  for (auto edge :
-       make_range(optimisticPDG->begin_edges(), optimisticPDG->end_edges())) {
-
+  std::vector<DGEdge<Value> *> toBeRemovedEdges;
+  for (auto edge : optimisticPDG->getEdges()) {
     if (edge->isLoopCarriedDependence()) {
       ++lcDepTotal;
 
@@ -605,12 +604,14 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
       }
     }
 
-    if (edge->isRemovableDependence()) {
-      // DEBUG(errs() << " Removing loop-carried from " << *edge->getOutgoingT()
-      //             << " to " << *edge->getIncomingT() << '\n');
+    if (edge->isRemovableDependence())
+      toBeRemovedEdges.push_back(edge);
+  }
 
-      optimisticPDG->removeEdge(edge);
-    }
+  for (auto edge : toBeRemovedEdges) {
+    // DEBUG(errs() << " Removing loop-carried from " << *edge->getOutgoingT()
+    //             << " to " << *edge->getIncomingT() << '\n');
+    optimisticPDG->removeEdge(edge);
   }
 
   BasicBlock *header = loop->getHeader();
