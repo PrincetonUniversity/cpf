@@ -79,9 +79,10 @@ struct IsParallel {
 
       if (edge->isLoopCarriedDependence()) {
 
-        DEBUG(errs() << "loop-carried edge(s) found from "
-                     << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
-                     << '\n');
+        // DEBUG(errs() << "loop-carried edge(s) found from "
+        //             << *edge->getOutgoingT() << " to " <<
+        //             *edge->getIncomingT()
+        //             << '\n');
 
         return false;
       }
@@ -597,9 +598,21 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
       ++lcDepTotal;
 
       if (!edge->isRemovableDependence()) {
-        DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
-                     << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
-                     << '\n');
+        DEBUG(errs() << "Cannot remove loop-carried ";
+              if (edge->isControlDependence()) errs() << "(Control)"; else {
+                if (edge->isMemoryDependence())
+                  errs() << "(Mem, ";
+                else
+                  errs() << "(Reg, ";
+                if (edge->isWARDependence())
+                  errs() << "WAR)";
+                else if (edge->isWAWDependence())
+                  errs() << "WAW)";
+                else if (edge->isRAWDependence())
+                  errs() << "RAW)";
+              } errs() << " edge(s) from "
+                       << *edge->getOutgoingT() << " to "
+                       << *edge->getIncomingT() << '\n';);
         ++lcDepNotCovered;
       }
     }
