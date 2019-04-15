@@ -103,8 +103,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::make_unique<MemVerRemediator>());
 
   // commutative libs remediator
-  //remeds.push_back(std::unique_ptr<CommutativeLibsRemediator>(
-  //    new CommutativeLibsRemediator()));
+  remeds.push_back(std::unique_ptr<CommutativeLibsRemediator>(
+      new CommutativeLibsRemediator()));
 
   return remeds;
 }
