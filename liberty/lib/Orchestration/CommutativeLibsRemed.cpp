@@ -31,21 +31,14 @@ const std::unordered_set<std::string>
 
 void CommutativeLibsRemedy::apply(Task *task) {
   // TODO: ask programmer. Programmer questions should be applied first before any transformation
+  // or just print warning message to programmer
 }
 
 bool CommutativeLibsRemedy::compare(const Remedy_ptr rhs) const {
-  // not using dynamic cast to avoid using RTTI. Use of static is safe here
-  // since we know that the two compared remedies are of the same subclass
-  // (already ensured that remedies names match)
-  //
-  // std::shared_ptr<CommutativeLibsRemedy> commLibsRhs =
-  //    std::dynamic_pointer_cast<CommutativeLibsRemedy>(rhs);
-  // assert(commLibsRhs);
   std::shared_ptr<CommutativeLibsRemedy> commLibsRhs =
       std::static_pointer_cast<CommutativeLibsRemedy>(rhs);
   return (this->functionName.compare(commLibsRhs->functionName) == -1);
 }
-
 
 /*
 TODO: add isMallocLike CHECK
