@@ -22,6 +22,7 @@
 #include <memory>
 #include <queue>
 #include <unordered_set>
+#include <vector>
 
 namespace liberty {
 using namespace llvm;
