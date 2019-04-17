@@ -68,8 +68,8 @@ const header_to_loop_mapping_iterator &header_to_loop_mapping_iterator::operator
 }
 
 
-bool Targets::expectsManyIterations(const Loop *loop, const std::string &fname, const std::string &hname)
-//bool Targets::expectsManyIterations(const Loop *loop)
+//bool Targets::expectsManyIterations(const Loop *loop, const std::string &fname, const std::string &hname)
+bool Targets::expectsManyIterations(const Loop *loop)
 {
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
@@ -116,8 +116,7 @@ bool Targets::expectsManyIterations(const Loop *loop, const std::string &fname, 
 
   const double totalIterations = totalInvocations + totalBackedgeCount;
 
-  DEBUG(errs() << "Loop edge profiling " << fname << "::" << hname << "\t totalIterations is : "  << totalIterations <<  ", totalInvocations is : " << totalInvocations <<  "\n");
-  //DEBUG(errs() << "Loop edge profiling, totalIterations is : "  << totalIterations <<  ", totalInvocations is : " << totalInvocations <<  "\n");
+  //DEBUG(errs() << "Loop edge profiling " << fname << "::" << hname << "\t totalIterations is : "  << totalIterations <<  ", totalInvocations is : " << totalInvocations <<  "\n");
   return (totalIterations > MinIterationsPerInvoc * totalInvocations);
 }
 
@@ -140,8 +139,8 @@ void Targets::addLoopByName(Module &mod, const std::string &fname, const std::st
       Loop *l = fringe.front();
       fringe.pop_front();
 
-      if( !minIterCheck || expectsManyIterations(l, fname, hname) )
-      //if( !minIterCheck || expectsManyIterations(l) )
+      //if( !minIterCheck || expectsManyIterations(l, fname, hname) )
+      if( !minIterCheck || expectsManyIterations(l) )
         Loops.push_back(l->getHeader());
 
       fringe.insert( fringe.end(),
@@ -165,8 +164,8 @@ void Targets::addLoopByName(Module &mod, const std::string &fname, const std::st
     assert( loop->getHeader() == bb && "The specified block is not a loop header");
 
     if( minIterCheck )
-      if( !expectsManyIterations(loop, fname, hname) )
-      //if( !expectsManyIterations(loop) )
+      //if( !expectsManyIterations(loop, fname, hname) )
+      if( !expectsManyIterations(loop) )
       {
         DEBUG(errs() << "Ignoring loop " << fname << "::" << hname << "\t(wt "<< wt <<") because too few iters/invoc\n");
         return;

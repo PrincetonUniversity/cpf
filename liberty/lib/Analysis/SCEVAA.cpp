@@ -228,6 +228,77 @@ public:
 		return true;
   }
 
+	static BasicBlock *GetBottom(DominatorTree &DT, const SCEV *S) {
+		struct FindBottom {
+			BasicBlock *Bottom = nullptr;
+			DominatorTree &DT;
+
+			FindBottom(DominatorTree &DT) : DT(DT) {}
+
+			// Process a BB: if it is dominated by Bottom, it becomes the new Bottom.
+			void CheckBB(BasicBlock *BB) {
+				if (!Bottom) {
+					Bottom = BB;
+					return;
+				}
+				if (DT.dominates(Bottom, BB))
+					Bottom = BB;
+				else
+					assert(DT.dominates(BB, Bottom) &&
+								 "SCEV expressions always have a dominance relationship");
+			}
+
+			bool checkSCEVUnknown(const SCEVUnknown *SU) {
+				if (auto *I = dyn_cast<Instruction>(SU->getValue()))
+					CheckBB(I->getParent());
+				return false;
+			}
+
+			bool checkSCEVAddRecExpr(const SCEVAddRecExpr *AddRec) {
+				// (Note that we don't need to recuse into AddRecs: the operands
+				// always dominate the loop.)
+				CheckBB(AddRec->getLoop()->getHeader());
+				return false;
+			}
+
+			bool follow(const SCEV *S) {
+				switch (static_cast<SCEVTypes>(S->getSCEVType())) {
+				case scConstant:
+					return false;
+				case scAddRecExpr:
+					return checkSCEVAddRecExpr(cast<SCEVAddRecExpr>(S));
+				case scTruncate:
+				case scZeroExtend:
+				case scSignExtend:
+				case scAddExpr:
+				case scMulExpr:
+				case scUMaxExpr:
+				case scSMaxExpr:
+				case scUDivExpr:
+					return true;
+				case scUnknown:
+					return checkSCEVUnknown(cast<SCEVUnknown>(S));
+				case scCouldNotCompute:
+					llvm_unreachable("Attempt to use a SCEVCouldNotCompute object!");
+				}
+				return false;
+			}
+			bool isDone() { return false; }
+		};
+		FindBottom FB(DT);
+		SCEVTraversal<FindBottom> ST(FB);
+		ST.visitAll(S);
+		return FB.Bottom;
+	}
+
+  static bool HasDominanceRelation(DominatorTree &DT, const SCEV *AS,
+                                   const SCEV *BS) {
+    BasicBlock *BottomA = GetBottom(DT, AS);
+    BasicBlock *BottomB = GetBottom(DT, BS);
+    return !BottomA || !BottomB || DT.dominates(BottomA, BottomB) ||
+           DT.dominates(BottomB, BottomA);
+  }
+
   virtual AliasResult aliasCheck(const Pointer &P1,
                                  TemporalRelation Rel,
                                  const Pointer &P2,
@@ -248,6 +319,7 @@ public:
     ModuleLoops &mloops = getAnalysis< ModuleLoops >();
     ScalarEvolution *SE = & mloops.getAnalysis_ScalarEvolution(fcn);
     //ScalarEvolution *SE = &getAnalysis< ScalarEvolutionWrapperPass>(*fcn).getSE();
+    DominatorTree &DT = mloops.getAnalysis_DominatorTree(fcn);
 
     if( !SE->isSCEVable( P1.ptr->getType() ) )
       return MayAlias;
@@ -282,6 +354,10 @@ public:
 
     if( SE->getEffectiveSCEVType(s1->getType()) != SE->getEffectiveSCEVType(s2->getType()) )
       return MayAlias;
+    
+    // fix dominance problem; may introduce more MayAlias
+    if (Rel == LoopAA::Same && !HasDominanceRelation(DT, s1, s2))
+      return MayAlias; 
 
     ++numEligible;
 
@@ -289,6 +365,67 @@ public:
     //  in pointers is greater than the access size during any iteration.
     if ( Rel == LoopAA::Same )
     {
+      //const BasicBlock* bb1 = NULL;
+      //const BasicBlock* bb2 = NULL;
+
+      //if (auto inst = dyn_cast<Instruction>(P1.ptr))
+      //  bb1 = inst->getParent();
+      //else
+      //  if (auto arg = dyn_cast<Argument>(P1.ptr))
+      //    bb1 = &(arg->getParent()->getEntryBlock());
+
+      //if (auto inst = dyn_cast<Instruction>(P2.ptr))
+      //  bb2 = inst->getParent();
+      //else
+      //  if (auto arg = dyn_cast<Argument>(P2.ptr))
+      //    bb2 = &(arg->getParent()->getEntryBlock());
+
+      //if (bb1 && bb2 && !DT.dominates(bb1, bb2) && !DT.dominates(bb2, bb1)){
+      //    //DEBUG(
+      //      errs() << "P1 and P2 not dominate\n";
+      //    //);
+      //    return MayAlias;
+      //}
+      /*
+      else{
+        DEBUG(
+            if (!P1.inst)
+              errs() << "P1 is not an instruction \n";
+            if (!P2.inst)
+              errs() << "P2 is not an instruction \n";
+        );
+      }
+      */
+
+      /*
+      const bool s2IsNotMinSigned = !SE->getSignedRangeMin(s2).isMinSignedValue();
+      auto NegFlags = s2IsNotMinSigned ? SCEV::FlagNSW : SCEV::FlagAnyWrap;
+      auto negS2 = SE->getNegativeSCEV(s2, NegFlags);
+
+      unsigned LType = s1->getSCEVType(), RType = negS2->getSCEVType();
+
+      errs() << "s1 is " << *s1 << "  and \n s2 is " << *negS2 << '\n';
+      errs() << "s1 is " << LType << "  and \n s2 is " << RType << '\n';
+
+      if (static_cast<SCEVTypes>(LType) == scAddRecExpr && static_cast<SCEVTypes>(RType) == scAddRecExpr) {
+        errs() << "it is scAddRecExpr\n";
+
+          const SCEVAddRecExpr *addRecS1 = cast<SCEVAddRecExpr>(s1);
+          const SCEVAddRecExpr *addRecS2 = cast<SCEVAddRecExpr>(negS2);
+          if (addRecS1 && addRecS2)
+            errs() << "add recurrences\n";
+
+          DominatorTree &DT = mloops.getAnalysis_DominatorTree(fcn);
+
+          const Loop *LLoop = addRecS1->getLoop(), *RLoop = addRecS2->getLoop();
+               if (LLoop != RLoop) {
+          const BasicBlock *LHead = LLoop->getHeader(), *RHead = RLoop->getHeader();
+          if (!DT.dominates(LHead, RHead) && !DT.dominates(RHead, LHead))
+            return MayAlias;
+          }
+      }
+      */
+     
       const SCEV *diff = SE->getMinusSCEV(s1,s2);
       if( alwaysGreaterThan(SE, diff, L,  size2, size1) )
       {
