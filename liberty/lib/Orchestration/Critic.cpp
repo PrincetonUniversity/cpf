@@ -84,8 +84,11 @@ void Critic::printInstDebugInfo(Instruction *I) {
   }
 }
 
-void getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
+PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
 
+  // instead of modifying pdg in-place, create new copy of the pdg without the
+  // removable loop-carried deps
+  /*
   for (auto cr : criticisms) {
     //DEBUG(errs() << " Removing DOALL criticism loop-carried from "
     //             << *cr->getOutgoingT() << " to " << *cr->getIncomingT()
@@ -93,6 +96,27 @@ void getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
 
     pdg.removeEdge(cr);
   }
+  */
+
+  std::vector<Value *> loopInternals;
+  for (auto internalNode : pdg.internalNodePairs()) {
+    loopInternals.push_back(internalNode.first);
+  }
+  PDG *expectedPDG = pdg.createSubgraphFromValues(loopInternals, false);
+
+  std::vector<DGEdge<Value> *> removableLCEdges;
+  for (auto edge : expectedPDG->getEdges()) {
+    if (edge->isLoopCarriedDependence() && edge->isRemovableDependence())
+      removableLCEdges.push_back(edge);
+  }
+
+  for (auto edge : removableLCEdges) {
+    // DEBUG(errs() << " Removing loop-carried dep from "
+    //             << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
+    //             << '\n');
+    expectedPDG->removeEdge(edge);
+  }
+  return expectedPDG;
 }
 
 std::unique_ptr<ParallelizationPlan>
@@ -215,14 +239,16 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   // available
   //
   // get expected pdg if all the criticisms are satisfied
-  getExpectedPdg(pdg, res.criticisms);
+  PDG *expectedPDG = getExpectedPdg(pdg, res.criticisms);
 
-  res.ps = getDOALLStrategy(pdg, loop);
+  res.ps = getDOALLStrategy(*expectedPDG, loop);
 
   if (res.ps)
-    res.expSpeedup = getExpPipelineSpeedup(*res.ps, pdg, loop);
+    res.expSpeedup = getExpPipelineSpeedup(*res.ps, *expectedPDG, loop);
   else
     res.expSpeedup = 0;
+
+  delete expectedPDG;
 
   return res;
 }
