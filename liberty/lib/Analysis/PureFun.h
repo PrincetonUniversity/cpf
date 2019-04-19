@@ -67,6 +67,8 @@
   "llvm.fabs.f64",
   "llvm.floor.f32",
   "llvm.floor.f64",
+  "llvm.ceil.f32",
+  "llvm.ceil.f64",
 
 // New with llvm 135637
   "llvm.lifetime.start",
@@ -88,6 +90,7 @@
 // llvm debug
   "llvm.dbg.value",
   "llvm.dbg.declare",
+  "llvm.dbg.addr",
 
 // math.h
   "acos",
