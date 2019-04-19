@@ -77,7 +77,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
 
   // header phi value prediction
-  remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
+  //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // Loop-Invariant Loaded-Value Prediction
   remeds.push_back(std::make_unique<LoadedValuePredRemediator>(loadedValuePred));
