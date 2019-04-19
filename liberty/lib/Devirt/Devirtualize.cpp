@@ -467,6 +467,8 @@ private:
      Instruction *new_call = CallInst::Create(
         target, ArrayRef<Value*>(actuals) );
 
+      new_call->setDebugLoc(inst->getDebugLoc());
+
       return_value = new_call;
 
       // Branch to 'after'
@@ -482,6 +484,8 @@ private:
       // Create a new invoke
       InvokeInst *new_invoke = InvokeInst::Create(
         target, after, exceptional, ArrayRef<Value*>(actuals) );
+
+      new_invoke->setDebugLoc(inst->getDebugLoc());
 
       // Update PHIs in the exceptional destination
       for(BasicBlock::iterator j=exceptional->begin(), z=exceptional->end(); j!=z; ++j)
