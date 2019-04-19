@@ -153,8 +153,14 @@ void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism 
         else errs() << "II)";
 
         errs() << ":\n"
-               << *cr.getOutgoingT() << " ->\n"
-               << *cr.getIncomingT() << "\n";);
+               << *cr.getOutgoingT();
+        if (Instruction *outgoingI = dyn_cast<Instruction>(cr.getOutgoingT()))
+            Critic::printInstDebugInfo(outgoingI);
+        errs() << " ->\n"
+               << *cr.getIncomingT();
+        if (Instruction *incomingI = dyn_cast<Instruction>(cr.getIncomingT()))
+            Critic::printInstDebugInfo(incomingI);
+        errs() << "\n";);
   if (sors.size() > 1) {
     DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
     auto itR = sors.begin();
