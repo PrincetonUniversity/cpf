@@ -611,8 +611,14 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
                 else if (edge->isRAWDependence())
                   errs() << "RAW)";
               } errs() << " edge(s) from "
-                       << *edge->getOutgoingT() << " to "
-                       << *edge->getIncomingT() << '\n';);
+                       << *edge->getOutgoingT();
+              if (Instruction *outgoingI = dyn_cast<Instruction>(
+                      edge->getOutgoingT())) printInstDebugInfo(outgoingI);
+              errs() << "\n    to " << *edge->getIncomingT();
+              if (Instruction *incomingI = dyn_cast<Instruction>(
+                      edge->getIncomingT())) printInstDebugInfo(incomingI);
+              errs() << '\n';);
+
         ++lcDepNotCovered;
       }
     }
