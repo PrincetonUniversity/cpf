@@ -3,6 +3,7 @@
 
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Utilities/PrintDebugInfo.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Orchestration/PSDSWPCritic.h"

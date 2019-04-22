@@ -70,19 +70,6 @@ unsigned long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
   */
   return wt;
 }
-void Critic::printInstDebugInfo(Instruction *I) {
-  const DebugLoc &debugLoc = I->getDebugLoc();
-  if (debugLoc) {
-    DIScope *scope = dyn_cast<DIScope>(debugLoc->getScope());
-    if (scope) {
-      std::string filename = scope->getFilename();
-      errs() << " (filename:" << filename << ", line:";
-    } else
-      errs() << " (line:";
-
-    errs() << debugLoc.getLine() << ", col:" << debugLoc.getCol() << ")";
-  }
-}
 
 PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
 
