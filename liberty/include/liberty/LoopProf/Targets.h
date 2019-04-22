@@ -8,6 +8,7 @@
 
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Utilities/PrintDebugInfo.h"
 
 #include <vector>
 #include <map>

@@ -155,11 +155,11 @@ void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism 
         errs() << ":\n"
                << *cr.getOutgoingT();
         if (Instruction *outgoingI = dyn_cast<Instruction>(cr.getOutgoingT()))
-            Critic::printInstDebugInfo(outgoingI);
+            liberty::printInstDebugInfo(outgoingI);
         errs() << " ->\n"
                << *cr.getIncomingT();
         if (Instruction *incomingI = dyn_cast<Instruction>(cr.getIncomingT()))
-            Critic::printInstDebugInfo(incomingI);
+            liberty::printInstDebugInfo(incomingI);
         errs() << "\n";);
   if (sors.size() > 1) {
     DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
@@ -216,7 +216,10 @@ bool Orchestrator::findBestStrategy(
   Function *fcn = header->getParent();
 
   DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
-               << "::" << header->getName() << "\n");
+               << "::" << header->getName();
+        Instruction *term = header->getTerminator();
+        if (term) liberty::printInstDebugInfo(term);
+        errs() << "\n";);
 
   /*
   // avoid computing internal pdg to reduce memory consumption

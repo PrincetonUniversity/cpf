@@ -613,10 +613,10 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
               } errs() << " edge(s) from "
                        << *edge->getOutgoingT();
               if (Instruction *outgoingI = dyn_cast<Instruction>(
-                      edge->getOutgoingT())) printInstDebugInfo(outgoingI);
+                      edge->getOutgoingT())) liberty::printInstDebugInfo(outgoingI);
               errs() << "\n    to " << *edge->getIncomingT();
               if (Instruction *incomingI = dyn_cast<Instruction>(
-                      edge->getIncomingT())) printInstDebugInfo(incomingI);
+                      edge->getIncomingT())) liberty::printInstDebugInfo(incomingI);
               errs() << '\n';);
 
         ++lcDepNotCovered;

@@ -271,8 +271,11 @@ bool Targets::runOnModule(Module &mod)
     const unsigned long loop_time = load.getLoopTime(header);
     snprintf(percent,10, "%.1f", 100.0 * loop_time / load.getTotTime());
 
-    errs() << " - " << fcn->getName() << " :: " << header->getName()
-           << "\tTime " << loop_time << " / " << load.getTotTime()
+    errs() << " - " << fcn->getName() << " :: " << header->getName();
+    Instruction *term = header->getTerminator();
+    if (term)
+      liberty::printInstDebugInfo(term);
+    errs() << "\tTime " << loop_time << " / " << load.getTotTime()
            << " Coverage: " << percent << "%\n";
   }
 

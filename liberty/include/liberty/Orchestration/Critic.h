@@ -1,10 +1,9 @@
 #ifndef LLVM_LIBERTY_CRITIC_H
 #define LLVM_LIBERTY_CRITIC_H
 
-#include "llvm/IR/DebugInfoMetadata.h"
-
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Utilities/PrintDebugInfo.h"
 #include "PDG.hpp"
 #include "SCC.hpp"
 #include "SCCDAG.hpp"
@@ -50,8 +49,6 @@ public:
 
   static const unsigned FixedPoint;
   static const unsigned PenalizeLoopNest;
-
-  static void printInstDebugInfo(Instruction *I);
 
 protected:
   PerformanceEstimator *perf;
