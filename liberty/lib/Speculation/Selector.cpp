@@ -544,7 +544,8 @@ void Selector::summarizeParallelizableLoops(const Vertices &vertices, const Vert
   {
     errs() << "*********************************************************************\n"
            << "Parallelizable loops:\n";
-    const unsigned tt = FixedPoint * lpl.getTotTime();
+    const unsigned tt = lpl.getTotTime();
+    // const unsigned tt = FixedPoint * lpl.getTotTime();
     for(unsigned i=0, N=vertices.size(); i<N; ++i)
     {
       Loop *loop = vertices[i];
@@ -556,8 +557,12 @@ void Selector::summarizeParallelizableLoops(const Vertices &vertices, const Vert
 
       Function *fcn = header->getParent();
 
-      const unsigned w = FixedPoint * lpl.getLoopTime(header);
-      errs() << "  - " << (100*w/std::max(FixedPoint,tt)) << "% " << fcn->getName() << " :: " << header->getName() << ' ';
+      const unsigned w = lpl.getLoopTime(header);
+      // const unsigned w = FixedPoint * lpl.getLoopTime(header);
+      errs() << "  - " << format("%.2f", ((float)(100 * w) / std::max(1u, tt)))
+             << "% " << fcn->getName() << " :: " << header->getName() << ' ';
+      //     errs() << "  - " << (100*w/std::max(FixedPoint,tt)) << "% " <<
+      //     fcn->getName() << " :: " << header->getName() << ' ';
       j->second->summary(errs());
 
       const double wt = weights[i];
