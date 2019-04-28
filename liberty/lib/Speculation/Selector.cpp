@@ -386,11 +386,12 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 
 void printOneLoopStrategy(raw_ostream &fout, Loop *loop, LoopParallelizationStrategy *strategy, LoopProfLoad &lpl, bool willTransform)
 {
-  const unsigned tt = lpl.getTotTime();
+  const unsigned FixedPoint(1000);
+  const unsigned long tt = FixedPoint * lpl.getTotTime();
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
-  const unsigned w = lpl.getLoopTime(loop);
+  const unsigned long w = FixedPoint * lpl.getLoopTime(loop);
 
   if( willTransform )
     fout << " - ";
@@ -398,7 +399,8 @@ void printOneLoopStrategy(raw_ostream &fout, Loop *loop, LoopParallelizationStra
     fout << " X ";
 
   // Loop coverage
-  fout << format("%.2f", ((float)(100*w)/std::max(1u,tt))) << "% ";
+  //fout << format("%.2f", ((double)(100*w)/std::max(1u,tt))) << "% ";
+  fout << format("%.2f", ((double)(100*w)/tt)) << "% ";
   // Loop depth
   fout << "depth " << loop->getLoopDepth();
 
@@ -544,8 +546,7 @@ void Selector::summarizeParallelizableLoops(const Vertices &vertices, const Vert
   {
     errs() << "*********************************************************************\n"
            << "Parallelizable loops:\n";
-    const unsigned tt = lpl.getTotTime();
-    // const unsigned tt = FixedPoint * lpl.getTotTime();
+    const unsigned long tt = FixedPoint * lpl.getTotTime();
     for(unsigned i=0, N=vertices.size(); i<N; ++i)
     {
       Loop *loop = vertices[i];
@@ -557,9 +558,8 @@ void Selector::summarizeParallelizableLoops(const Vertices &vertices, const Vert
 
       Function *fcn = header->getParent();
 
-      const unsigned w = lpl.getLoopTime(header);
-      // const unsigned w = FixedPoint * lpl.getLoopTime(header);
-      errs() << "  - " << format("%.2f", ((float)(100 * w) / std::max(1u, tt)))
+      const unsigned long w = FixedPoint * lpl.getLoopTime(header);
+      errs() << "  - " << format("%.2f", ((double)(100 * w) / tt))
              << "% " << fcn->getName() << " :: " << header->getName() << ' ';
       //     errs() << "  - " << (100*w/std::max(FixedPoint,tt)) << "% " <<
       //     fcn->getName() << " :: " << header->getName() << ' ';
