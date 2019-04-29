@@ -806,6 +806,11 @@ char* SLAMP___strdup(const char *s1)
   return SLAMP_strdup(s1);
 }
 
+void  SLAMP_cfree(void* ptr)
+{
+  SLAMP_free(ptr);
+}
+
 void  SLAMP_free(void* ptr)
 {
   slamp::bound_free(ptr);
@@ -1524,7 +1529,7 @@ static void touch_printf_args(const char *format, va_list vp) {
       void *void_ptr_arg  __attribute__ ((unused));
       void_ptr_arg = va_arg(vp_save, void *);
     } else if (IS_LEN(byte)){
-        fprintf(stderr, "IS LEN%%n\n");
+        // fprintf(stderr, "IS LEN%%n\n");
         // %n return the len of string
         // DON'T NEED TO DO ANYTHING
     }
@@ -1715,7 +1720,7 @@ static void touch_scanf_args(const char *format, va_list vp) {
       void **arg = va_arg(vp_save, void **);
       SLAMP_storen_ext(reinterpret_cast<uint64_t>(arg), 0, sizeof(*arg));
     } else if (IS_LEN(byte)){
-      fprintf(stderr, "IS LEN %%n\n");   
+      //fprintf(stderr, "IS LEN %%n\n");   
     }else {
       fprintf(stderr, "Unknown type\n");
       abort();

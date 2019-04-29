@@ -78,6 +78,7 @@ void* SLAMP_realloc(void* ptr, size_t size);
 char* SLAMP_strdup(const char *s1);
 char* SLAMP___strdup(const char *s1);
 void  SLAMP_free(void* ptr);
+void  SLAMP_cfree(void* ptr);
 int   SLAMP_brk(void *end_data_segment);
 void* SLAMP_sbrk(intptr_t increment);
 
