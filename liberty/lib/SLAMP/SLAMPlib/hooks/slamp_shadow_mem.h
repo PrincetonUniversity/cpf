@@ -74,6 +74,7 @@ public:
       return false;
   }
 
+  //void* allocate(void* addr, size_t size)
   void* allocate(void* addr, size_t size)
   {
     uint64_t a = reinterpret_cast<uint64_t>(addr);
@@ -128,6 +129,10 @@ public:
     memcpy(shadow_dst, shadow_src, shadow_size);
   }
 
+  // ZY APR24:
+  // change the default init stack size from the one in /maps to 8MB
+  // the stack in /proc/.../maps changes in runtime
+  // and cause bugs when the program uses more stack than the init one
   void init_stack(uint64_t begin, uint64_t stack_size)
   {
     char  filename[256];
@@ -146,6 +151,7 @@ public:
     while (fgets(buf, sizeof(buf), fp) != NULL) 
     {
       uint64_t start, end;
+      uint64_t size_8M = 0x800000; //8MB stack size for linux
       char name[5000];
 
       int n = sscanf(buf, "%lx-%lx %*c%*c%*c%*c %*llx %*x:%*x %*lu %s",
@@ -156,7 +162,8 @@ public:
       }
 
       if (!strcmp(name, "[stack]")) {
-        allocate(reinterpret_cast<void*>(start), end-start);
+        allocate(reinterpret_cast<void*>(end - size_8M), size_8M);
+        //allocate(reinterpret_cast<void*>(start), end-start);
         allocated = true;
       }
     }

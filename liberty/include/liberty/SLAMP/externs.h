@@ -24,6 +24,7 @@ std::string externs_str[] = {
 "strpbrk", 
 "malloc", 
 "free", 
+"cfree",
 "calloc", 
 "realloc", 
 "brk", 
