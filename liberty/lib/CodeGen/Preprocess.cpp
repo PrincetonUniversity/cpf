@@ -195,13 +195,6 @@ bool Preprocess::runOnModule(Module &module)
     // the code.
     for(RoI::FSet::iterator i=roi.fcns.begin(), e=roi.fcns.end(); i!=e; ++i)
       mloops.forget(*i);
-    /*
-    for(unsigned i=0; i<loops.size(); ++i)  {
-      Loop *loop = loops[i];
-      Function *F = loop->getHeader()->getParent();
-      mloops.forget(F);
-    }
-    */
 
     assert_strategies_consistent_with_ir();
     DEBUG(errs() << "Successfully applied speculation to sequential IR\n");

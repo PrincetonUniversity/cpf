@@ -37,8 +37,8 @@ struct Preprocess : public ModulePass
   Recovery &getRecovery() { return recovery; }
   const RecoveryFunction &getRecoveryFunction(Loop *loop) const;
 
-  //RoI &getRoI() { return roi; }
-  //const RoI &getRoI() const { return roi; }
+  RoI &getRoI() { return roi; }
+  const RoI &getRoI() const { return roi; }
 
   void addToLPS(Instruction *nI, Instruction *gravity);
   void replaceInLPS(Instruction *nI, Instruction *oI);
