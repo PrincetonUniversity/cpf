@@ -791,7 +791,7 @@ bool Read::missingAUs(const Value *uo, const Ctx *ctx, Ptrs &aus) const
       Function *callee = cs.getCalledFunction();
       if (callee &&
           (callee->getName() == "malloc" || callee->getName() == "calloc" ||
-           callee->getName() == "realloc")) {
+           callee->getName() == "realloc" || callee->getName() == "xalloc")) {
         const Ctx *ctx = getCtx( cs.getInstruction()->getParent()->getParent() );
         AU *au = new AU(AU_Heap);
         au->value = uo;
