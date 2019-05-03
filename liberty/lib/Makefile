@@ -16,6 +16,6 @@ endif
 
 DIRS= SLAMP LAMP Analysis PDGBuilder Strategy Speculation Orchestration Utilities Redux \
 LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler Exclusions GraphAlgorithms \
-AggrInliner CodeGen
+AggrInliner CodeGen DbgClean
 
 include $(LEVEL)/Makefile.common
