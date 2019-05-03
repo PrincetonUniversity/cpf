@@ -15,7 +15,7 @@
 
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Recovery.h"
-//#include "RoI.h"
+#include "liberty/CodeGen/RoI.h"
 
 #include <set>
 
@@ -51,7 +51,7 @@ struct Preprocess : public ModulePass
 private:
   typedef std::set<const Value*> VSet;
 
-  //RoI roi;
+  RoI roi;
   Module *mod;
   Recovery recovery;
   Type *voidty, *voidptr;

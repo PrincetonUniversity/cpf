@@ -214,8 +214,6 @@ unsigned Selector::computeWeights(
       std::unique_ptr<Orchestrator> orch =
           std::unique_ptr<Orchestrator>(new Orchestrator());
 
-      // TODO: make this unique_ptr (need to change strategies map and all its
-      // users)
       std::unique_ptr<PipelineStrategy> ps;
       std::unique_ptr<SelectedRemedies> sr;
       Critic_ptr sc;

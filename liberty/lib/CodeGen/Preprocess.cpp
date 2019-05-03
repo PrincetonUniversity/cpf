@@ -26,7 +26,7 @@
 #include "liberty/Speculation/Discriminator.h"
 //#include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
-#include "liberty/Speculation/Preprocess.h"
+#include "liberty/CodeGen/Preprocess.h"
 //#include "PrivateerSelector.h"
 #include "liberty/Speculation/RemedSelector.h"
 //#include "NoSpecSelector.h"
@@ -34,7 +34,7 @@
 //#include "SmtxSelector.h"
 //#include "Smtx2Selector.h"
 #include "liberty/Speculation/Recovery.h"
-//#include "RoI.h"
+#include "liberty/CodeGen/RoI.h"
 
 #include <set>
 
@@ -178,15 +178,12 @@ bool Preprocess::runOnModule(Module &module)
     modified = true;
   }
 
-  /*
   if( modified )
     assert_strategies_consistent_with_ir();
-  */
 
   // Duplicate code, as necessary, so that each instance
   // can be specialized according to parallel/non-parallel
   // regions
-  /*
   modified |= fixStaticContexts();
 
   if( modified )
@@ -196,18 +193,19 @@ bool Preprocess::runOnModule(Module &module)
   {
     // Invalidate LoopInfo-analysis, since we have changed
     // the code.
-    //for(RoI::FSet::iterator i=roi.fcns.begin(), e=roi.fcns.end(); i!=e; ++i)
-    //  mloops.forget(*i);
+    for(RoI::FSet::iterator i=roi.fcns.begin(), e=roi.fcns.end(); i!=e; ++i)
+      mloops.forget(*i);
+    /*
     for(unsigned i=0; i<loops.size(); ++i)  {
       Loop *loop = loops[i];
       Function *F = loop->getHeader()->getParent();
       mloops.forget(F);
     }
+    */
 
     assert_strategies_consistent_with_ir();
     DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
   }
-  */
 
   return modified;
 }
@@ -267,9 +265,6 @@ bool Preprocess::fixStaticContexts()
     DEBUG(errs() << asgn);
   }
 
-  // RoI is not used for now
-  /*
-
   // RoI: collect set of fcns/bbs reachable from the
   // parallel region.  This doesn't include the
   // fcns which contain the top-level loops (unless
@@ -300,7 +295,6 @@ bool Preprocess::fixStaticContexts()
     for(RoI::FSet::const_iterator i=roi.fcns.begin(), e=roi.fcns.end(); i!=e; ++i)
       errs() << "  - " << (*i)->getName() << '\n';
   );
-  */
 
   return modified;
 }
@@ -506,7 +500,6 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       }
   }
 
-  /*
   // The liveout structure must have private
   // semantics.  We rely on the runtime to accomplish
   // that.  With SMTX, this is automatic.
@@ -527,7 +520,6 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     for(Ptrs::iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
       privs.insert( i->au );
   }
-  */
 
   numLiveOuts += N;
   return true;
