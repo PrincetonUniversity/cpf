@@ -128,6 +128,9 @@ bool ReduxRemediator::isConditionalReductionPHI(const Instruction *I,
   if (!updateI->hasOneUse() || updateI->user_back() != (User *)phi)
     return false;
 
+  if (updateI->getTrueValue() != (Value *)phi && updateI->getFalseValue() != (Value *)phi)
+    return false;
+
   const Value *newV = (updateI->getTrueValue() == (Value *)phi)
                           ? updateI->getFalseValue()
                           : updateI->getTrueValue();
