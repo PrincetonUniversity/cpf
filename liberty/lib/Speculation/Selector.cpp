@@ -231,7 +231,7 @@ unsigned Selector::computeWeights(
         ++numApplicable;
         ps->setValidFor( hA );
 
-        unsigned long  estimatePipelineWeight = (long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
+        unsigned long  estimatePipelineWeight = (unsigned long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
         const long wt = adjLoopTime - estimatePipelineWeight;
         unsigned long scaledwt = 0;
 

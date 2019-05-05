@@ -13,9 +13,9 @@ namespace SpecPriv
   typedef std::vector<Vertex> VertexSet;
   typedef std::pair<Vertex,Vertex> Edge;
   typedef std::set<Edge> Edges;
-  typedef int VertexWeight;
+  typedef long VertexWeight;
   typedef std::vector<VertexWeight> VertexWeights;
-  typedef unsigned EdgeWeight;
+  typedef unsigned long EdgeWeight;
   typedef std::map<Edge,EdgeWeight> EdgeWeights;
 
   typedef std::map<Vertex,VertexSet> Adjacencies;
