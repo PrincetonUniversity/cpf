@@ -802,8 +802,44 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   ps->assertConsistentWithIR(loop);
   //ps->assertPipelineProperty(optimisticPDG);
 
+  if( ps->expandReplicatedStages() )
+  {
+    ps->assertConsistentWithIR(loop);
+    //ps->assertPipelineProperty(pdg);
+  }
+
   DEBUG(errs() << "PS-DSWP applicable to " << fcn->getName() << "::"
                << header->getName() << ": large parallel stage found\n");
+
+  // Compute the set of control dependences which
+  // span pipeline stages.
+
+  // Foreach stage
+  for (unsigned i = 0, N = ps->stages.size(); i < N; ++i) {
+    const PipelineStage &si = ps->stages[i];
+    // Foreach instruction src in that stage that may source control deps
+    for (PipelineStage::ISet::iterator j = si.instructions.begin(),
+                                       z = si.instructions.end();
+         j != z; ++j) {
+      Instruction *src = *j;
+      if (!isa<TerminatorInst>(src))
+        continue;
+
+      auto srcNode = pdg.fetchNode(src);
+      // Foreach control-dep successor of src
+      for (auto edge : srcNode->getOutgoingEdges()) {
+        if (!edge->isControlDependence())
+          continue;
+        Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
+        assert(dst &&
+               "dst of ctrl dep is not an instruction in crossStageDeps");
+
+        // That spans stages.
+        //        if( !si.instructions.count(dst) )
+        ps->crossStageDeps.push_back(CrossStageDependence(src, dst, edge));
+      }
+    }
+  }
 
   DEBUG(ps->dump_pipeline(errs()));
 
