@@ -538,8 +538,8 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
   __specpriv_commit_zero_or_more_checkpoints( &pcb->checkpoints );
 #endif
 
+  TIME( checkpoint_stop );
   TOUT(
-    TIME( checkpoint_stop );
     if( numCheckpoints < MAX_CHECKPOINTS )
     {
       CheckpointRecord *rec = &checkpoints[ numCheckpoints ];
