@@ -384,6 +384,7 @@ void PipelineStrategy::dump_pipeline(raw_ostream &fout, StringRef line_suffix) c
     fout << line_suffix;
   fout << '\n';
 
+  /*
   fout << "These deps cross pipeline stages:";
   if( line_suffix.empty() )
     fout << line_suffix;
@@ -410,6 +411,7 @@ void PipelineStrategy::dump_pipeline(raw_ostream &fout, StringRef line_suffix) c
   if( line_suffix.empty() )
     fout << line_suffix;
   fout << '\n';
+  */
 
 }
 
