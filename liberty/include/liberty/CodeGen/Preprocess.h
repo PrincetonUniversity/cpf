@@ -18,16 +18,13 @@
 #include "liberty/CodeGen/RoI.h"
 
 #include <set>
+#include <unordered_set>
 
-namespace liberty
-{
-namespace SpecPriv
-{
+namespace liberty {
+namespace SpecPriv {
 using namespace llvm;
 
-
-struct Preprocess : public ModulePass
-{
+struct Preprocess : public ModulePass {
   static char ID;
   Preprocess() : ModulePass(ID) {}
 
@@ -43,32 +40,34 @@ struct Preprocess : public ModulePass
   void addToLPS(Instruction *nI, Instruction *gravity);
   void replaceInLPS(Instruction *nI, Instruction *oI);
 
-  void getExecutingStages(Instruction* inst, std::vector<unsigned>& stages);
-  bool ifI2IsInI1IsIn(Instruction* i1, Instruction* i2);
+  void getExecutingStages(Instruction *inst, std::vector<unsigned> &stages);
+  bool ifI2IsInI1IsIn(Instruction *i1, Instruction *i2);
 
   void assert_strategies_consistent_with_ir();
 
+  std::unordered_set<const TerminatorInst *>
+  getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
+    return selectedCtrlSpecDeps;
+  }
+
 private:
-  typedef std::set<const Value*> VSet;
+  typedef std::set<const Value *> VSet;
 
   RoI roi;
   Module *mod;
   Recovery recovery;
   Type *voidty, *voidptr;
   IntegerType *u8, *u16, *u32, *u64;
-  std::vector<Loop*> loops;
+  std::vector<Loop *> loops;
+  std::unordered_set<const TerminatorInst *> selectedCtrlSpecDeps;
 
   void init(ModuleLoops &mloops);
 
   bool fixStaticContexts();
   bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts);
-
-
 };
 
-}
-}
-
+} // namespace SpecPriv
+} // namespace liberty
 
 #endif
-
