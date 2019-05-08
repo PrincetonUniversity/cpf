@@ -263,6 +263,7 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
 
   // ctrl dep is removable by control speculation
   ++numCtrlDepRem;
+  remedy->brI = A;
   remedResp.depRes = DepResult::NoDep;
   DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
                << "  and  " << *B << '\n');
