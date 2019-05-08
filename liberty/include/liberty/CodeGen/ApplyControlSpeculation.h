@@ -37,9 +37,11 @@ private:
 
   void init(ModuleLoops &mloops);
 
-  bool applyControlSpec();
-  bool applyControlSpecToLoop(const BasicBlock *loop_header,
-      std::set< std::pair<TerminatorInst*, unsigned> >& processed );
+  bool applyControlSpec(ModuleLoops &mloops);
+  bool applyControlSpecToLoop(
+      const BasicBlock *loop_header,
+      std::set<std::pair<TerminatorInst *, unsigned>> &processed,
+      ModuleLoops &mloops);
 };
 
 }

@@ -308,21 +308,39 @@ void Preprocess::init(ModuleLoops &mloops)
   u64 = Type::getInt64Ty(ctx);
   voidptr = PointerType::getUnqual(u8);
 
-  const Selector &selector = getAnalysis< Selector >();
+  Selector &selector = getAnalysis<Selector>();
 
   // Identify loops we will parallelize
-  for(Selector::strat_iterator i=selector.strat_begin(), e=selector.strat_end(); i!=e; ++i)
-  {
-    const BasicBlock *header = i->first;
-    Function *fcn = const_cast< Function *>( header->getParent() );
+  for (Selector::strat_iterator i = selector.strat_begin(),
+                                e = selector.strat_end();
+       i != e; ++i) {
+    BasicBlock *header = i->first;
+    Function *fcn = const_cast<Function *>(header->getParent());
 
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fcn);
     Loop *loop = li.getLoopFor(header);
-    assert( loop->getHeader() == header );
+    assert(loop->getHeader() == header);
 
     loops.push_back(loop);
 
-    DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName() << "\n");
+    DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName()
+                 << "\n");
+
+    // populate selectedCtrlSpecDeps
+    auto &loop2SelectedRemedies = selector.getLoop2SelectedRemedies();
+    SelectedRemedies *selectedRemeds = loop2SelectedRemedies[header].get();
+
+    for (auto &remed : *selectedRemeds) {
+      if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
+        ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
+        if (!ctrlSpecRemed->brI)
+          continue;
+        if (const TerminatorInst *term =
+                dyn_cast<TerminatorInst>(ctrlSpecRemed->brI)) {
+          selectedCtrlSpecDeps.insert(term);
+        }
+      }
+    }
   }
 }
 

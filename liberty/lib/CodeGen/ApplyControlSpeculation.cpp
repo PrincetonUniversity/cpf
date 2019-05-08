@@ -107,7 +107,7 @@ bool ApplyControlSpec::runOnModule(Module &module)
   }
 
   // Global processing
-  modified |= applyControlSpec();
+  modified |= applyControlSpec(mloops);
 
 
   if( modified )
@@ -152,7 +152,7 @@ void ApplyControlSpec::init(ModuleLoops &mloops)
 }
 
 
-bool ApplyControlSpec::applyControlSpec()
+bool ApplyControlSpec::applyControlSpec(ModuleLoops &mloops)
 {
   bool modified = false;
   std::set< std::pair<TerminatorInst*, unsigned> > processed;
@@ -162,14 +162,14 @@ bool ApplyControlSpec::applyControlSpec()
   {
     const BasicBlock *loop_header = i->first;
 
-    modified |= applyControlSpecToLoop( loop_header, processed );
+    modified |= applyControlSpecToLoop( loop_header, processed, mloops);
   }
 
   return modified;
 }
 
 bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
-  std::set< std::pair<TerminatorInst*, unsigned> >& processed )
+  std::set< std::pair<TerminatorInst*, unsigned> >& processed, ModuleLoops &mloops)
 {
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop_header);
@@ -181,8 +181,12 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
   Function *non_const_F = const_cast<Function*>(F);
   BranchProbabilityInfo &bpi = getAnalysis< BranchProbabilityInfoWrapperPass >(*non_const_F).getBPI();
 
+  LoopInfo &li = mloops.getAnalysis_LoopInfo(F);
+
   bool modified = false;
   RoI &roi = preprocess.getRoI();
+
+  auto selectedCtrlSpecDeps = preprocess.getSelectedCtrlSpecDeps(loop_header);
 
   // Cut speculatively dead incoming values of PHI nodes.
   // For each PHI node in the RoI:
@@ -219,6 +223,7 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
       continue;
 
     Function *fcn = pred->getParent();
+    Loop *lpred = li.getLoopFor(pred);
 
     for(unsigned sn=0; sn<N; ++sn)
       if( ctrlspec->isSpeculativelyDead(term,sn) )
@@ -230,6 +235,16 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
 
         // (pred) -> (succ) is a speculatively dead edge.
         BasicBlock *succ = term->getSuccessor(sn);
+
+        // speculating loop exits (for the loop of interest) only allows
+        // removal of ctrl deps. Need to check if control spec was chosen as
+        // the remedy for these to avoid unnecessary mis-speculation
+        bool loopOfInterestExit = lpred && !lpred->contains(succ) &&
+                                  lpred->getHeader() == loop_header;
+        bool selectedCtrlSpecDep = selectedCtrlSpecDeps.count(term);
+
+        if (loopOfInterestExit && !selectedCtrlSpecDep)
+          continue;
 
         DEBUG(errs() << "Speculating edge is dead: " << fcn->getName() << " :: " << pred->getName()  << " successor " << sn << '\n');
         std::string message = ("Control misspeculation at " + fcn->getName() + " :: " + pred->getName() + " successor " + succ->getName()).str();
