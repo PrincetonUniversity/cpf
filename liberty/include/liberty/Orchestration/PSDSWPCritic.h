@@ -39,14 +39,46 @@ public:
     delete optimisticSCCDAG;
   }
 
-  CriticRes getCriticisms(PDG &pdg, Loop *loop, LoopDependenceInfo &ldi);
-
   StringRef getCriticName() const { return "ps-dswp-critic"; }
 
-  void simplifyPDG(PDG *pdg);
+  CriticRes getCriticisms(PDG &pdg, Loop *loop, LoopDependenceInfo &ldi);
+
+  void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
+                               const PipelineStage &lateStage,
+                               Criticisms &criticisms, PipelineStrategy &ps,
+                               const EdgeWeight parallelStageWeight);
+
+  void critForParallelStageProperty(const PDG &pdg,
+                                    const PipelineStage &parallel,
+                                    Criticisms &criticisms,
+                                    PipelineStrategy &ps,
+                                    const EdgeWeight parallelStageWeight);
+
+  unsigned long moveOffStage(const PDG &pdg,
+                             std::queue<Instruction *> &worklist,
+                             unordered_set<Instruction *> &visited,
+                             set<Instruction *> *instsTgtSeq,
+                             unordered_set<Instruction *> &instsMovedTgtSeq,
+                             unordered_set<Instruction *> &instsMovedOtherSeq,
+                             set<Instruction *> *instsOtherSeq,
+                             unordered_set<DGEdge<Value> *> &edgesNotRemoved,
+                             EdgeWeight offPStageWeight,
+                             const EdgeWeight &parallelStageWeight,
+                             bool moveToFront);
+
+  bool avoidElimDep(const PDG &pdg, PipelineStrategy &ps, DGEdge<Value> *edge,
+                    unordered_set<Instruction *> &instsMovedToFront,
+                    unordered_set<Instruction *> &instsMovedToBack,
+                    unordered_set<DGEdge<Value> *> &edgesNotRemoved,
+                    EdgeWeight &offPStageWeight,
+                    const EdgeWeight &parallelStageWeight);
+
+  EdgeWeight getParalleStageWeight(PipelineStrategy &ps);
 
   void populateCriticisms(PipelineStrategy &ps, Criticisms &criticisms,
                           PDG &pdg);
+
+  void simplifyPDG(PDG *pdg);
 
   bool doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
                         SCCDAG::SCCSet &all_sccs, PerformanceEstimator &perf,

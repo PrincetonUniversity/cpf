@@ -2,6 +2,9 @@
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
 
+#include <unordered_set>
+#include <climits>
+
 namespace liberty {
 using namespace llvm;
 
@@ -655,11 +658,162 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   writeGraph<SCCDAG>(sccdagDotName, optimisticSCCDAG);
 }
 
+// move all instruction in worklist in the tgt seq stage from other seq or pstage
+unsigned long PSDSWPCritic::moveOffStage(
+    const PDG &pdg, std::queue<Instruction *> &worklist,
+    unordered_set<Instruction *> &visited, set<Instruction *> *instsTgtSeq,
+    unordered_set<Instruction *> &instsMovedTgtSeq,
+    unordered_set<Instruction *> &instsMovedOtherSeq,
+    set<Instruction *> *instsOtherSeq,
+    unordered_set<DGEdge<Value> *> &edgesNotRemoved, EdgeWeight offPStageWeight,
+    const EdgeWeight &parallelStageWeight, bool moveToFront) {
+  // percentage of weight moved off the parallel stage
+  unsigned OffPStagePercThreshold = 0.03;
+  EdgeWeight extraOffPStageWeight = 0;
+  while (!worklist.empty()) {
+    Instruction *inst = worklist.front();
+    worklist.pop();
+
+    // already moved to other seq stage, cannot be moved elsewhere
+    if (instsMovedOtherSeq.count(inst))
+      return ULONG_MAX;
+
+    if (instsMovedTgtSeq.count(inst))
+      continue;
+
+    if (instsTgtSeq && instsTgtSeq->count(inst))
+      continue;
+
+    if (visited.count(inst))
+      continue;
+    visited.insert(inst);
+
+    // check if the part moved to seq stage is more than threshold% of
+    // parallel stage weight. Ignore if not reducing pstage
+    if (!instsOtherSeq || !instsOtherSeq->count(inst)) { // ignore cost moving from seq to seq
+      extraOffPStageWeight += perf->estimate_weight(inst);
+      if (((extraOffPStageWeight + offPStageWeight) * 100.0) /
+              parallelStageWeight >
+          OffPStagePercThreshold) {
+        return ULONG_MAX;
+      }
+    }
+
+    auto pdgNode = pdg.fetchConstNode(const_cast<Instruction *>(inst));
+    auto edges = (moveToFront) ? make_range(pdgNode->begin_incoming_edges(),
+                                            pdgNode->end_incoming_edges())
+                               : make_range(pdgNode->begin_outgoing_edges(),
+                                            pdgNode->end_outgoing_edges());
+    for (auto edge : edges) {
+      if (edge->isRemovableDependence() && !edgesNotRemoved.count(edge))
+        continue;
+      Value *V = (moveToFront) ? edge->getOutgoingT() : edge->getIncomingT();
+      if (!pdg.isInternal(V))
+        continue;
+      Instruction *I = dyn_cast<Instruction>(V);
+      assert(I && "pdg node is not an instruction");
+      worklist.push(I);
+    }
+  }
+  return extraOffPStageWeight;
+}
+
+// consider avoid removing dep if it is cheap to move affected
+// insts to different stages
+bool PSDSWPCritic::avoidElimDep(const PDG &pdg, PipelineStrategy &ps,
+                                DGEdge<Value> *edge,
+                                unordered_set<Instruction *> &instsMovedToFront,
+                                unordered_set<Instruction *> &instsMovedToBack,
+                                unordered_set<DGEdge<Value> *> &edgesNotRemoved,
+                                EdgeWeight &offPStageWeight,
+                                const EdgeWeight &parallelStageWeight) {
+
+  unsigned costThreshold = 5;
+  if (edge->getMinRemovalCost() <= costThreshold)
+    return false;
+
+  // either move the src dep inst to the first seq stage (if any) or the dest
+  // dep inst to the last seq stage (if any).
+  // similarly proceed with the rest of the dependent instructions until the
+  // pstage is reduced below a threshold
+
+  unsigned numOfStages = ps.stages.size();
+  bool alreadyFrontSeqStage = ps.stages[0].type == PipelineStage::Sequential;
+  bool alreadyBackSeqStage =
+      numOfStages > 1 &&
+      ps.stages[numOfStages - 1].type == PipelineStage::Sequential;
+  set<Instruction *> *instsFrontSeqStage =
+      (alreadyFrontSeqStage) ? &ps.stages[0].instructions : nullptr;
+  set<Instruction *> *instsBackSeqStage =
+      (alreadyBackSeqStage) ? &ps.stages[numOfStages - 1].instructions
+                            : nullptr;
+
+  Value *inV = edge->getIncomingT();
+  unsigned long moveFrontCost = ULONG_MAX;
+  unordered_set<Instruction *> tmpInstsMovedToFront;
+  // TODO: probably requiring alreadyFrontSeqStage is not necessary
+  if (pdg.isInternal(inV) && alreadyFrontSeqStage) {
+    Instruction *inI = dyn_cast<Instruction>(inV);
+    assert(inI && "pdg node is not an instruction");
+    std::queue<Instruction*> worklist;
+    worklist.push(inI);
+    moveFrontCost = moveOffStage(
+        pdg, worklist, tmpInstsMovedToFront, instsFrontSeqStage,
+        instsMovedToFront, instsMovedToBack, instsBackSeqStage, edgesNotRemoved,
+        offPStageWeight, parallelStageWeight, true);
+  }
+
+  Value *outV = edge->getOutgoingT();
+  unsigned long moveBackCost = ULONG_MAX;
+  unordered_set<Instruction *> tmpInstsMovedToBack;
+  if (pdg.isInternal(outV) && alreadyBackSeqStage) {
+    Instruction *outI = dyn_cast<Instruction>(outV);
+    assert(outI && "pdg node is not an instruction");
+    std::queue<Instruction *> worklist;
+    worklist.push(outI);
+    moveBackCost = moveOffStage(
+        pdg, worklist, tmpInstsMovedToBack, instsBackSeqStage, instsMovedToBack,
+        instsMovedToFront, instsFrontSeqStage, edgesNotRemoved, offPStageWeight,
+        parallelStageWeight, false);
+  }
+
+  if (moveFrontCost != ULONG_MAX && moveFrontCost <= moveBackCost) {
+    for (Instruction *I : tmpInstsMovedToFront) {
+      instsMovedToFront.insert(I);
+    }
+    edgesNotRemoved.insert(edge);
+    offPStageWeight += moveFrontCost;
+    DEBUG(errs() << "Will not remove edge(s) (removal cost: "
+                 << edge->getMinRemovalCost() << " ) from "
+                 << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
+                 << '\n');
+    return true;
+  } else if (moveBackCost != ULONG_MAX && moveBackCost < moveFrontCost) {
+    for (Instruction *I : tmpInstsMovedToBack) {
+      instsMovedToBack.insert(I);
+    }
+    edgesNotRemoved.insert(edge);
+    offPStageWeight += moveBackCost;
+    DEBUG(errs() << "Will not remove edge(s) (removal cost: "
+                 << edge->getMinRemovalCost() << " ) from "
+                 << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
+                 << '\n');
+    return true;
+  }
+  return false;
+}
+
 // There should be no dependence from an instruction in 'later'
 // to an instruction in 'earlier' stage
-void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
-                            const PipelineStage &lateStage,
-                            Criticisms &criticisms) {
+void PSDSWPCritic::critForPipelineProperty(
+    const PDG &pdg, const PipelineStage &earlyStage,
+    const PipelineStage &lateStage, Criticisms &criticisms,
+    PipelineStrategy &ps, const EdgeWeight parallelStageWeight) {
+
+  unordered_set<Instruction *> instsMovedToFront;
+  unordered_set<Instruction *> instsMovedToBack;
+  unordered_set<DGEdge<Value> *> edgesNotRemoved;
+  EdgeWeight offPStageWeight = 0;
 
   PipelineStage::ISet all_early = earlyStage.instructions;
   all_early.insert(earlyStage.replicated.begin(), earlyStage.replicated.end());
@@ -685,9 +839,12 @@ void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
       for (auto edge : make_range(lateNode->begin_outgoing_edges(),
                                   lateNode->end_outgoing_edges())) {
         if (edge->getIncomingNode() == earlyNode) {
-          if (edge->isRemovableDependence())
-            criticisms.insert(edge);
-          else {
+          if (edge->isRemovableDependence()) {
+            if (!avoidElimDep(pdg, ps, edge, instsMovedToFront,
+                              instsMovedToBack, edgesNotRemoved,
+                              offPStageWeight, parallelStageWeight))
+              criticisms.insert(edge);
+          } else {
             errs() << "\n\nNon-removable criticism found\n"
                    << "From: " << *late << '\n'
                    << "  to: " << *early << '\n'
@@ -702,11 +859,34 @@ void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
       }
     }
   }
+
+  for (Instruction *I : instsMovedToFront) {
+    ps.stages[0].instructions.insert(I);
+    if (ps.stages[1].instructions.count(I))
+      ps.stages[1].instructions.erase(I);
+    else
+      ps.stages[2].instructions.erase(I);
+  }
+
+  unsigned numOfStages = ps.stages.size();
+  for (Instruction *I : instsMovedToBack) {
+    ps.stages[numOfStages - 1].instructions.insert(I);
+    if (ps.stages[numOfStages - 2].instructions.count(I))
+      ps.stages[numOfStages - 2].instructions.erase(I);
+    else
+      ps.stages[numOfStages - 3].instructions.erase(I);
+  }
 }
 
 // There should be no loop-carried edges within 'parallel' stage
-void critForParallelStageProperty(const PDG &pdg, const PipelineStage &parallel,
-                                  Criticisms &criticisms) {
+void PSDSWPCritic::critForParallelStageProperty(
+    const PDG &pdg, const PipelineStage &parallel, Criticisms &criticisms,
+    PipelineStrategy &ps, const EdgeWeight parallelStageWeight) {
+
+  unordered_set<Instruction *> instsMovedToFront;
+  unordered_set<Instruction *> instsMovedToBack;
+  unordered_set<DGEdge<Value> *> edgesNotRemoved;
+  EdgeWeight offPStageWeight = 0;
 
   for (PipelineStage::ISet::const_iterator i = parallel.instructions.begin(),
                                            e = parallel.instructions.end();
@@ -723,8 +903,12 @@ void critForParallelStageProperty(const PDG &pdg, const PipelineStage &parallel,
       // There should be no loop-carried edge
       for (auto edge : make_range(pN->begin_outgoing_edges(), pN->end_outgoing_edges())) {
         if (edge->getIncomingNode() == qN && edge->isLoopCarriedDependence()) {
-          if (edge->isRemovableDependence())
-            criticisms.insert(edge);
+          if (edge->isRemovableDependence()) {
+            if (!avoidElimDep(pdg, ps, edge, instsMovedToFront,
+                              instsMovedToBack, edgesNotRemoved,
+                              offPStageWeight, parallelStageWeight))
+              criticisms.insert(edge);
+          }
           else {
             errs() << "\n\nNon-removable criticism found\n"
                    << "From: " << *p << '\n'
@@ -738,11 +922,45 @@ void critForParallelStageProperty(const PDG &pdg, const PipelineStage &parallel,
       }
     }
   }
+
+  for (Instruction *I : instsMovedToFront) {
+    ps.stages[0].instructions.insert(I);
+    if (ps.stages[1].instructions.count(I))
+      ps.stages[1].instructions.erase(I);
+    else
+      ps.stages[2].instructions.erase(I);
+  }
+
+  unsigned numOfStages = ps.stages.size();
+  for (Instruction *I : instsMovedToBack) {
+    ps.stages[numOfStages - 1].instructions.insert(I);
+    if (ps.stages[numOfStages - 2].instructions.count(I))
+      ps.stages[numOfStages - 2].instructions.erase(I);
+    else
+      ps.stages[numOfStages - 3].instructions.erase(I);
+  }
+}
+
+EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
+  EdgeWeight parallelStageWeight = 0.0;
+  for (unsigned i = 0, N = ps.stages.size(); i < N; ++i) {
+    const PipelineStage &si = ps.stages[i];
+    if (si.type == PipelineStage::Parallel) {
+      for (PipelineStage::ISet::iterator j = si.instructions.begin(),
+                                         z = si.instructions.end();
+           j != z; ++j) {
+        Instruction *I = *j;
+        parallelStageWeight += perf->estimate_weight(I);
+      }
+    }
+  }
 }
 
 void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
                                       Criticisms &criticisms, PDG &pdg) {
   // Add to criticisms all deps which violate pipeline order.
+
+  EdgeWeight parallelStageWeight = getParalleStageWeight(ps);
 
   // Foreach pair (earlier,later) of pipeline stages,
   // where 'earlier' precedes 'later' in the pipeline
@@ -751,7 +969,8 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
     const PipelineStage &earlier = *i;
     for (PipelineStrategy::Stages::const_iterator j = i + 1; j != e; ++j) {
       const PipelineStage &later = *j;
-      critForPipelineProperty(pdg, earlier, later, criticisms);
+      critForPipelineProperty(pdg, earlier, later, criticisms,
+                              ps, parallelStageWeight);
     }
   }
 
@@ -768,7 +987,8 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
     // assert that no instruction in this stage
     // is incident on a loop-carried edge.
 
-    critForParallelStageProperty(pdg, pstage, criticisms);
+    critForParallelStageProperty(pdg, pstage, criticisms, ps,
+                                 parallelStageWeight);
   }
 }
 
@@ -798,17 +1018,20 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
     return res;
   }
 
+  populateCriticisms(*ps, res.criticisms, pdg);
+
   ps->setValidFor(loop->getHeader());
   ps->assertConsistentWithIR(loop);
   //ps->assertPipelineProperty(optimisticPDG);
 
-  if( ps->expandReplicatedStages() )
-  {
-    ps->assertConsistentWithIR(loop);
+  // TODO: check if expansion needs to happen before
+  // populateCriticisms, if replicable stages are introduced
+  if( ps->expandReplicatedStages() ) {
+  ps->assertConsistentWithIR(loop);
     //ps->assertPipelineProperty(pdg);
   }
 
-  DEBUG(errs() << "PS-DSWP applicable to " << fcn->getName() << "::"
+  DEBUG(errs() << "\nPS-DSWP applicable to " << fcn->getName() << "::"
                << header->getName() << ": large parallel stage found\n");
 
   // Compute the set of control dependences which
@@ -842,8 +1065,6 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   }
 
   DEBUG(ps->dump_pipeline(errs()));
-
-  populateCriticisms(*ps, res.criticisms, pdg);
 
   res.ps = std::move(ps);
 
