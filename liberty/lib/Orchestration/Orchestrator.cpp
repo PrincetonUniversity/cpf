@@ -250,6 +250,7 @@ bool Orchestrator::findBestStrategy(
         remedSet->insert(r);
         mapCriticismsToRemeds[c].insert(remedSet);
         c->setRemovable(true);
+        c->processNewRemovalCost(r->cost);
       }
     }
   }
