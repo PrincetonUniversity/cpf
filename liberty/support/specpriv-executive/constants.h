@@ -117,5 +117,10 @@
 // Last iteration
 #define LAST_ITERATION    ( INT32_MAX )
 
+// prefixing function names
+#define CAT(a,b) a##b
+#define PREFIX(x) CAT(__specpriv_, x)
+
+#define NOT_A_PARALLEL_STAGE (~(Wid)0)
 
 #endif

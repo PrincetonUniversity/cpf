@@ -12,6 +12,7 @@
 
 // Enable debug messages? 0 (off) or 1 (on)
 #define DEBUGGING         (0)
+#define DEBUG_ON          DEBUGGING
 
 // Print debug messages on misspeculation? 0 (off) or 1 (on)
 #define DEBUG_MISSPEC     (1)
