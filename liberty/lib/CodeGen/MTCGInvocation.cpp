@@ -45,7 +45,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
 
   preheader->getTerminator()->replaceUsesOfWith(header, should_invoc_bb);
 
-  Constant *numAvail = api.getNumAvailableWorkers(),
+  Constant *numAvail = api.getNumWorkers(),
            *begininvoc = api.getBeginInvocation(),
            *currentIter = api.getCurrentIter(),
            *spawn = api.getSpawn(),
@@ -75,6 +75,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   }
 
   IntegerType *u32 = api.getU32();
+  IntegerType *u64 = api.getU64();
   ConstantInt *zero   = ConstantInt::get(u32,0),
               *one    = ConstantInt::get(u32,1);
 //                *negOne = ConstantInt::get(u32,-1);
@@ -82,8 +83,11 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   Type *voidptr = PointerType::getUnqual( u8 );
 
   // Create a dispatch function, invoked by spawnWorkers
-  SmallVector<Type*,2> argTys;
+  SmallVector<Type*,4> argTys;
   argTys.push_back(voidptr);
+  argTys.push_back(u64);
+  argTys.push_back(u64);
+  argTys.push_back(u64);
   FunctionType *fty = FunctionType::get( api.getVoid(), ArrayRef<Type*>(argTys), false);
   Twine name = "__specpriv_pipeline__" + fcn->getName() + "__" + header->getName() + "_dispatch";
   Function *dispatch_function = Function::Create(fty, GlobalValue::InternalLinkage, name, mod);
@@ -168,15 +172,24 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   S = InstInsertPt::End(spawn_workers_bb);
 
   Instruction *calliter  = CallInst::Create(currentIter, "current.iter");
+  Instruction *numCores = new ZExtInst(callinvoc, u64);
+
+  // TODO: compiler should determine the chunk size based on some heuristics and
+  // profile info, e.g. PS-DSWP paper recommendation
+  auto chunkSize = ConstantInt::get(u64, 1);
+
   args.clear();
   args.push_back(calliter);
   args.push_back(dispatch_function);
   args.push_back( UndefValue::get(voidptr) );
+  args.push_back(numCores);
+  args.push_back(chunkSize);
   CallInst *callspawn = CallInst::Create(spawn, ArrayRef<Value*>(args));
 //    cmp = CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, callspawn, negOne, "is.main.process?");
 //    br = BranchInst::Create(join_workers_bb, invokeChain, cmp);
 
   S << calliter
+    << numCores
     << callspawn
     << BranchInst::Create(join_workers_bb);
 //      << cmp
