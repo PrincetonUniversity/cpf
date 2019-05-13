@@ -98,12 +98,17 @@ void __specpriv_advance_iter(Iteration i)
 {
   __specpriv_set_iter(i);
 
+  if (__specpriv_runOnEveryIter()) {
+    if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0)
+      __specpriv_worker_perform_checkpoint(0);
+
+    return;
+  }
 
   const Wid numWorkers = __specpriv_num_workers();
   Iteration prevI = i - numWorkers;
   Iteration prevR = (prevI - firstIteration) / checkpointGranularity;
   Iteration curR = (i - firstIteration) / checkpointGranularity;
-  //if( code8 == NUM_RESERVED_SHADOW_VALUES && i > 0 )
 
   //DEBUG(
   //    printf("PreI:%d, curI:%d, firstIteration:%d, checkpointGranularity:%d\n",
