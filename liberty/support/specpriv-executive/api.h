@@ -19,5 +19,7 @@ Iteration __specpriv_misspec_iter(void);
 
 void __specpriv_recovery_done(Exit);
 
+Bool __specpriv_runOnEveryIter(void);
+
 #endif
 

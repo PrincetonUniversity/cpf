@@ -54,6 +54,10 @@ static const int oscpu2physcore[NUM_PROCS] =
 static Wid numWorkers;
 static Wid myWorkerId;
 
+static Bool runOnEveryIter;
+
+// parallel stage replica id
+static Wid pstage_replica_id = NOT_A_PARALLEL_STAGE;
 
 // The global iteration number; maintained by
 // each worker.  Incremented by __specpriv_end_iter()
@@ -199,6 +203,9 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
   assert(wid < numWorkers);
   myWorkerId = wid;
 
+  // true by default
+  runOnEveryIter = 1;
+
 #if (AFFINITY & RRPUNT) != 0
   // 'rrpunt'
   // First, set affinity to a single processor != 0,
@@ -293,13 +300,20 @@ void __specpriv_worker_finishes(Exit exitTaken)
 
 Iteration __specpriv_current_iter(void)
 {
+  if (runOnEveryIter)
+    return currentIter;
+
   // Return global iteration count instead of thread-specific one
   if ( myWorkerId == MAIN_PROCESS)
     return (currentIter * numWorkers);
 
   Iteration globalCurIter = myWorkerId + (currentIter * numWorkers);
   return globalCurIter;
-  //return currentIter;
+}
+
+Bool __specpriv_runOnEveryIter()
+{
+  return runOnEveryIter;
 }
 
 Wid __specpriv_my_worker_id(void)
@@ -315,6 +329,12 @@ Bool __specpriv_i_am_main_process(void)
 Wid __specpriv_num_workers(void)
 {
   return numWorkers;
+}
+
+void __specpriv_set_pstage_replica_id(Wid rep_id)
+{
+  //DBG( "rep_id set to %u\n", rep_id );
+  pstage_replica_id = rep_id;
 }
 
 Iteration __specpriv_last_committed(void)
@@ -401,6 +421,10 @@ Wid __specpriv_spawn_workers(Iteration firstIter)
 #endif
 
   Wid wid;
+
+  // true by default
+  runOnEveryIter = 1;
+
   for(wid=0; wid<numWorkers; ++wid)
   {
 #if JOIN == SPIN
@@ -542,7 +566,10 @@ void __specpriv_end_iter(void)
     _exit(0);
 
   ++currentIter;
-  Iteration globalCurIter = myWorkerId + (currentIter * numWorkers);
+  Iteration globalCurIter = currentIter;
+  if (!runOnEveryIter)
+    globalCurIter = myWorkerId + (currentIter * numWorkers);
+
   //__specpriv_advance_iter(++currentIter);
   __specpriv_advance_iter(globalCurIter);
 }
