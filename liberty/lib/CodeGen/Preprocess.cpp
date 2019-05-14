@@ -130,6 +130,50 @@ bool Preprocess::ifI2IsInI1IsIn(Instruction* i1, Instruction* i2)
   return true;
 }
 
+bool Preprocess::addInitializationFunction()
+{
+  // OUTSIDE of parallel region
+  Function *init = Function::Create(fv2v, GlobalValue::InternalLinkage, "__specpriv_startup", mod);
+  LLVMContext &ctx = mod->getContext();
+  BasicBlock *entry = BasicBlock::Create(ctx, "entry", init);
+
+  Constant *beginfcn = Api(mod).getGenericBegin();
+  InstInsertPt::End(entry) << CallInst::Create(beginfcn);
+
+  // TODO: could possibly avoid calling this function if no speculation is needed
+  Constant *beginspecfcn = Api(mod).getBegin();
+  InstInsertPt::End(entry) << CallInst::Create(beginspecfcn);
+
+  auto retInst = ReturnInst::Create(ctx, entry);
+  initFcn = InstInsertPt::Before(retInst);
+  callBeforeMain( init );
+
+  return true;
+}
+
+bool Preprocess::addFinalizationFunction()
+{
+  // OUTSIDE of parallel region
+  Function *fini = Function::Create(fv2v, GlobalValue::InternalLinkage, "__specpriv_shutdown", mod);
+  LLVMContext &ctx = mod->getContext();
+  BasicBlock *entry = BasicBlock::Create(ctx, "entry", fini);
+
+  Constant *endfcn = Api(mod).getGenericEnd();
+  InstInsertPt::End(entry) << CallInst::Create(endfcn);
+
+  // TODO: could possibly avoid calling this function if no speculation is needed
+  Constant *endspecfcn = Api(mod).getEnd();
+  InstInsertPt::End(entry) << CallInst::Create(endspecfcn);
+
+  auto retInst = ReturnInst::Create(ctx, entry);
+  finiFcn = InstInsertPt::Before(retInst);
+  callAfterMain( fini );
+
+  return true;
+}
+
+
+
 void Preprocess::assert_strategies_consistent_with_ir()
 {
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
@@ -150,7 +194,6 @@ void Preprocess::assert_strategies_consistent_with_ir()
   }
 }
 
-
 bool Preprocess::runOnModule(Module &module)
 {
   DEBUG(errs() << "#################################################\n"
@@ -164,6 +207,10 @@ bool Preprocess::runOnModule(Module &module)
 
   assert_strategies_consistent_with_ir();
   bool modified = false;
+
+  // Make a global constructor function
+  modified |= addInitializationFunction();
+  modified |= addFinalizationFunction();
 
   // Modify the code so that all register live-outs
   // and all loop-carried deps are stored into a private AU.
@@ -307,6 +354,9 @@ void Preprocess::init(ModuleLoops &mloops)
   u32 = Type::getInt32Ty(ctx);
   u64 = Type::getInt64Ty(ctx);
   voidptr = PointerType::getUnqual(u8);
+
+  std::vector<Type *> formals;
+  fv2v = FunctionType::get(voidty, formals, false);
 
   Selector &selector = getAnalysis<Selector>();
 

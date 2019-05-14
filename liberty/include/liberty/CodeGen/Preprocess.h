@@ -50,6 +50,9 @@ struct Preprocess : public ModulePass {
     return selectedCtrlSpecDeps;
   }
 
+  InstInsertPt getInitFcn() { return initFcn; }
+  InstInsertPt getFiniFcn() { return finiFcn; }
+
 private:
   typedef std::set<const Value *> VSet;
 
@@ -58,6 +61,8 @@ private:
   Recovery recovery;
   Type *voidty, *voidptr;
   IntegerType *u8, *u16, *u32, *u64;
+  FunctionType *fv2v;
+  InstInsertPt initFcn, finiFcn;
   std::vector<Loop *> loops;
   std::unordered_set<const TerminatorInst *> selectedCtrlSpecDeps;
 
@@ -65,6 +70,9 @@ private:
 
   bool fixStaticContexts();
   bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts);
+
+  bool addInitializationFunction();
+  bool addFinalizationFunction();
 };
 
 } // namespace SpecPriv
