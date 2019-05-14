@@ -83,7 +83,7 @@ static Iteration simulateMisspeculationAtIter;
 // and iteration...
 
 // Called once on program startup by main process
-void __specpriv_begin(void)
+void __parallel_begin(void)
 {
   // We are in the main process.
   myWorkerId = MAIN_PROCESS;
@@ -99,6 +99,27 @@ void __specpriv_begin(void)
     numWorkers = (Wid) n;
   }
 
+  DEBUG(printf("Available workers: %u\n", numWorkers));
+
+  // Save old affinity
+  sched_getaffinity(0, sizeof(cpu_set_t), &old_affinity);
+
+  // Set affinitiy: only processor zero
+#if (AFFINITY & MP0STARTUP) != 0
+  cpu_set_t affinity;
+  CPU_ZERO( &affinity );
+  CPU_SET( CORE(0), &affinity );
+  sched_setaffinity(0, sizeof(cpu_set_t), &affinity );
+#endif
+}
+
+// Called once on program startup by main process
+// for separation speculation
+void __specpriv_begin(void)
+{
+  // We are in the main process.
+  myWorkerId = MAIN_PROCESS;
+
 #if SIMULATE_MISSPEC != 0
   simulateMisspeculationAtIter = ~0U;
   const char *smai = getenv("SIMULATE_MISSPEC_ITER");
@@ -112,17 +133,6 @@ void __specpriv_begin(void)
 
   __specpriv_initialize_main_heaps();
   __specpriv_init_private();
-
-  // Save old affinity
-  sched_getaffinity(0, sizeof(cpu_set_t), &old_affinity);
-
-  // Set affinitiy: only processor zero
-#if (AFFINITY & MP0STARTUP) != 0
-  cpu_set_t affinity;
-  CPU_ZERO( &affinity );
-  CPU_SET( CORE(0), &affinity );
-  sched_setaffinity(0, sizeof(cpu_set_t), &affinity );
-#endif
 
 #if JOIN == SPIN
   // Replace the SIGCHLD handler with SIG_IGN.
@@ -139,7 +149,7 @@ void __specpriv_begin(void)
 }
 
 // Called once by main process on program shutdown
-void __specpriv_end(void)
+void __parallel_end(void)
 {
   assert( myWorkerId == MAIN_PROCESS );
 
@@ -147,6 +157,13 @@ void __specpriv_end(void)
   // Reset affinity
   sched_setaffinity(0, sizeof(cpu_set_t), &old_affinity);
 #endif
+}
+
+// Called once by main process on program shutdown
+// for separation speculation
+void __specpriv_end(void)
+{
+  assert( myWorkerId == MAIN_PROCESS );
 
   __specpriv_destroy_main_heaps();
 }
