@@ -44,6 +44,8 @@ struct Api
     }
     queueTyPtr = PointerType::getUnqual( queueTy );
 
+    genericPersonality = "__parallel";
+
     std::vector<Type *> formals;
     fv2v = FunctionType::get(voidty, formals, false);
     fv2i = FunctionType::get(u32, formals, false);
@@ -405,6 +407,17 @@ struct Api
   Constant *getEnd()
   {
     std::string name = (Twine(personality) + "_end").str();
+    return mod->getOrInsertFunction(name, fv2v);
+  }
+
+  Constant *getGenericBegin()
+  {
+    std::string name = (Twine(genericPersonality) + "_begin").str();
+    return mod->getOrInsertFunction(name, fv2v);
+  }
+  Constant *getGenericEnd()
+  {
+    std::string name = (Twine(genericPersonality) + "_end").str();
     return mod->getOrInsertFunction(name, fv2v);
   }
 
@@ -990,6 +1003,7 @@ struct Api
 private:
   Module *mod;
   StringRef personality;
+  StringRef genericPersonality;
   Type *voidty, *voidptr, *queueTy;
   PointerType *queueTyPtr;
   IntegerType *u1, *u8, *u16, *u32, *u64;
