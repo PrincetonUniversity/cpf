@@ -46,6 +46,7 @@ struct LoopParallelizationStrategy
   // instructions.
   virtual void addInstruction(Instruction *newInst, Instruction *gravity) = 0;
   virtual void replaceInstruction(Instruction *newInst, Instruction *oldInst) = 0;
+  virtual void deleteInstruction(Instruction *inst) = 0;
 
   // collect the stages that the given instruction is executed in
   virtual void getExecutingStages(Instruction* inst, std::vector<unsigned>& stages) = 0;
@@ -78,6 +79,7 @@ struct DoallStrategy : public LoopParallelizationStrategy
   // Update strategies.
   virtual void addInstruction(Instruction *newInst, Instruction *gravity) {}
   virtual void replaceInstruction(Instruction *newInst, Instruction *oldInst) {}
+  virtual void deleteInstruction(Instruction *inst) {};
 
   virtual void getExecutingStages(Instruction* inst, std::vector<unsigned>& stages) {}
   virtual bool ifI2IsInI1IsIn(Instruction* i1, Instruction* i2) { return true; }
@@ -169,6 +171,7 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   // Update strategies
   virtual void addInstruction(Instruction *newInst, Instruction *gravity);
   virtual void replaceInstruction(Instruction *newInst, Instruction *oldInst);
+  virtual void deleteInstruction(Instruction *inst);
 
   virtual void getExecutingStages(Instruction* inst, std::vector<unsigned>& stages);
   // check if I1 is always in the stage that I2 is in
