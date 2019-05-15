@@ -620,6 +620,63 @@ void PipelineStrategy::replaceInstruction(Instruction *newInst, Instruction *old
     errs() << "Warning: pipeline does not include old instruction " << *oldInst << '\n';);
 }
 
+void PipelineStrategy::deleteInstruction(Instruction *inst)
+{
+  bool deleted = false;
+
+  // Search for the instruction;
+  // It is either in a stage, or in the replicated
+  // prefix of one or more stages.
+
+  for(unsigned i=0, N=stages.size(); i<N; ++i)
+  {
+    PipelineStage &stage = stages[i];
+
+    if( stage.replicated.count(inst) )
+    {
+      // The instruction exists in
+      // the replicated prefix of this stage.
+      // Delete the instruction here too.
+      stage.replicated.erase(inst);
+      deleted = true;
+      // And continue, since the instruction
+      // may also exist in other replicated
+      // prefices.
+    }
+
+    else if( stage.instructions.count(inst) )
+    {
+      // The inst instruction exists in this
+      // stage.
+      // Delete the instruction here too.
+      stage.instructions.erase(inst);
+      deleted = true;
+      // By construction, the stages are
+      // disjoint.  The inst instruction
+      // cannot exist elsewhere.  We are
+      // done.
+      break;
+    }
+  }
+
+  // Duplicate control dependences which may
+  // exist among the cross-iteration deps
+  for(unsigned i=0; i<crossStageDeps.size(); ++i)
+  {
+    const CrossStageDependence &dep = crossStageDeps[i];
+    if( dep.edge->isControlDependence() )
+      if( dep.dst == inst )
+      {
+        crossStageDeps.erase( crossStageDeps.begin() + i );
+        --i;
+        deleted = true;
+      }
+  }
+
+  DEBUG(if( !deleted)
+    errs() << "Warning: pipeline does not include inst instruction " << *inst << '\n';);
+}
+
 void PipelineStrategy::getExecutingStages(Instruction* inst, std::vector<unsigned>& executing_stages)
 {
   for (unsigned i=0, N=stages.size() ; i<N ; ++i)
@@ -755,6 +812,7 @@ void PipelineStrategy::assertConsistentWithIR(Loop *loop)
         errs() << "Instruction exists in parallelization streategy, but not in loop:\n";
 
         BasicBlock *upred = bb->getUniquePredecessor();
+        BasicBlock *usucc = bb->getUniqueSuccessor();
         if( upred && loop->contains(upred) )
         {
           // We allow this because the validation checks for control speculation
@@ -762,6 +820,13 @@ void PipelineStrategy::assertConsistentWithIR(Loop *loop)
           // cause a validation check OUTSIDE of the loop.  This is okay;
           // the transform must be aware of it.
           errs() << "  (Okay, since this is a loop exit...)\n";
+        }
+        else if (usucc && usucc == loop->getHeader() && !loop->contains(bb))
+        {
+          // sot: do not have in stages insts in the preheader or in a split BB
+          // between the original preheader and the target loop header
+          this->deleteInstruction(inst);
+          errs() << " Remove this inst from stages since this is a preheader to loop\n";
         }
         else
         {
