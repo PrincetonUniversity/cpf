@@ -1107,6 +1107,10 @@ bool ApplySeparationSpec::addUOChecks(Loop *loop)
   VSet alreadyInstrumented;
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
+
+  if (!preprocess.isSeparationSpecUsed(loop->getHeader()))
+    return modified;
+
   const RoI &roi = preprocess.getRoI();
 
   const HeapAssignment &asgn = getHeapAssignment();

@@ -387,8 +387,12 @@ void Preprocess::init(ModuleLoops &mloops)
           continue;
         if (const TerminatorInst *term =
                 dyn_cast<TerminatorInst>(ctrlSpecRemed->brI)) {
-          selectedCtrlSpecDeps.insert(term);
+          selectedCtrlSpecDeps[header].insert(term);
         }
+      }
+      if (remed->getRemedyName().equals("locality-remedy")) {
+        if (!separationSpecUsed.count(header))
+          separationSpecUsed.insert(header);
       }
     }
   }

@@ -19,6 +19,7 @@
 
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace liberty {
 namespace SpecPriv {
@@ -47,10 +48,16 @@ struct Preprocess : public ModulePass {
 
   std::unordered_set<const TerminatorInst *>
   getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
-    return selectedCtrlSpecDeps;
+    return selectedCtrlSpecDeps[loopHeader];
   }
 
-  InstInsertPt getInitFcn() { return initFcn; }
+  bool isSeparationSpecUsed(BasicBlock *loopHeader) {
+    return separationSpecUsed.count(loopHeader);
+  }
+
+  InstInsertPt getInitFcn() {
+    return initFcn;
+  }
   InstInsertPt getFiniFcn() { return finiFcn; }
 
 private:
@@ -64,7 +71,9 @@ private:
   FunctionType *fv2v;
   InstInsertPt initFcn, finiFcn;
   std::vector<Loop *> loops;
-  std::unordered_set<const TerminatorInst *> selectedCtrlSpecDeps;
+  std::unordered_map<const BasicBlock *, std::unordered_set<const TerminatorInst *>>
+      selectedCtrlSpecDeps;
+  std::unordered_set<const BasicBlock *> separationSpecUsed;
 
   void init(ModuleLoops &mloops);
 
