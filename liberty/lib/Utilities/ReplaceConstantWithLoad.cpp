@@ -81,6 +81,8 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
               phi->setIncomingValue(pn, cast);
 
               observer.addInstruction(cast, phi);
+              observer.addInstruction(splitedge->getTerminator(),
+                                      pred->getTerminator());
             }
           }
         }
@@ -140,6 +142,8 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
               InstInsertPt::Beginning(splitedge) << gep;
               phi->setIncomingValue(pn, gep);
               observer.addInstruction(gep, phi);
+              observer.addInstruction(splitedge->getTerminator(),
+                                      pred->getTerminator());
             }
           }
         }
