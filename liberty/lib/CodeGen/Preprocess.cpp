@@ -380,6 +380,7 @@ void Preprocess::init(ModuleLoops &mloops)
     auto &loop2SelectedRemedies = selector.getLoop2SelectedRemedies();
     SelectedRemedies *selectedRemeds = loop2SelectedRemedies[header].get();
 
+    bool specUsedFlag = false;
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
         ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
@@ -389,12 +390,21 @@ void Preprocess::init(ModuleLoops &mloops)
                 dyn_cast<TerminatorInst>(ctrlSpecRemed->brI)) {
           selectedCtrlSpecDeps[header].insert(term);
         }
+        specUsedFlag = true;
       }
       if (remed->getRemedyName().equals("locality-remedy")) {
         if (!separationSpecUsed.count(header))
           separationSpecUsed.insert(header);
+        specUsedFlag = true;
+      }
+      if (remed->getRemedyName().equals("smtx-slamp-remed") ||
+          remed->getRemedyName().equals("smtx-lamp-remed") ||
+          remed->getRemedyName().equals("loaded-value-pred-remed")) {
+        specUsedFlag = true;
       }
     }
+    if (specUsedFlag)
+      specUsed.insert(header);
   }
 }
 
@@ -422,10 +432,10 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // handle that specially.
   LiveoutStructure::PhiList &phis = liveoutStructure.phis;
   BasicBlock *header = loop->getHeader();
-  for(BasicBlock::iterator j=header->begin(), z=header->end(); j!=z; ++j)
-  {
-    PHINode *phi = dyn_cast< PHINode >( &*j );
-    if( !phi )
+  for (BasicBlock::iterator j = header->begin(), z = header->end(); j != z;
+       ++j) {
+    PHINode *phi = dyn_cast<PHINode>(&*j);
+    if (!phi)
       break;
 
     phis.push_back(phi);
@@ -480,29 +490,32 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
   // At each predecessor of the header
   // store the incoming value to the structure.
-  for(unsigned i=0; i<M; ++i)
-  {
+  for (unsigned i = 0; i < M; ++i) {
     PHINode *phi = phis[i];
 
-    Value *indices[] = { zero, ConstantInt::get(u32, N+i) };
+    Value *indices[] = {zero, ConstantInt::get(u32, N + i)};
 
-    for(unsigned j=0; j<phi->getNumIncomingValues(); ++j)
-    {
+    for (unsigned j = 0; j < phi->getNumIncomingValues(); ++j) {
       BasicBlock *pred = phi->getIncomingBlock(j);
 
-      GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(liveoutObject, ArrayRef<Value*>(&indices[0], &indices[2]));
-      gep->setName( "phi-incoming:" + phi->getName() );
+      // if no spec then no need for recovery; thus no need to store
+      // loop-carried values inside the loop
+      if (!specUsed.count(header) && loop->contains(pred))
+        continue;
+
+      GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(
+          liveoutObject, ArrayRef<Value *>(&indices[0], &indices[2]));
+      gep->setName("phi-incoming:" + phi->getName());
       Value *vdef = phi->getIncomingValue(j);
-      StoreInst *store = new StoreInst( vdef, gep );
+      StoreInst *store = new StoreInst(vdef, gep);
 
       InstInsertPt::End(pred) << gep << store;
 
       Instruction *gravity = phi;
-      if( Instruction *idef = dyn_cast<Instruction>( vdef ) )
+      if (Instruction *idef = dyn_cast<Instruction>(vdef))
         gravity = idef;
 
-      if( loop->contains(pred) )
-      {
+      if (loop->contains(pred)) {
         addToLPS(gep, gravity);
         addToLPS(store, gravity);
       }
