@@ -96,8 +96,7 @@ size_t __specpriv_debugprintf(const char* format, ...)
 #endif
 }
 
-/*
-void __specpriv_roidebug_init()
+void __specpriv_roidebug_init(void)
 {
 #if (DEBUG_ON)
   if ( debugfps[ 0 ] == NULL )
@@ -108,7 +107,6 @@ void __specpriv_roidebug_init()
   }
 #endif
 }
-*/
 
 size_t PROFDUMP(const char* format, ...)
 {
