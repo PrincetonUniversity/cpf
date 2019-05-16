@@ -55,6 +55,10 @@ struct Preprocess : public ModulePass {
     return separationSpecUsed.count(loopHeader);
   }
 
+  bool isSpecUsed(BasicBlock *loopHeader) {
+    return specUsed.count(loopHeader);
+  }
+
   InstInsertPt getInitFcn() {
     return initFcn;
   }
@@ -74,6 +78,7 @@ private:
   std::unordered_map<const BasicBlock *, std::unordered_set<const TerminatorInst *>>
       selectedCtrlSpecDeps;
   std::unordered_set<const BasicBlock *> separationSpecUsed;
+  std::unordered_set<const BasicBlock *> specUsed;
 
   void init(ModuleLoops &mloops);
 
