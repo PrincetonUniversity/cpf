@@ -49,6 +49,7 @@ struct Api
     std::vector<Type *> formals;
     fv2v = FunctionType::get(voidty, formals, false);
     fv2i = FunctionType::get(u32, formals, false);
+    fv2b = FunctionType::get(u8, formals, false);
 
     formals.push_back(u32);
     fi2v = FunctionType::get(voidty, formals,false);
@@ -79,6 +80,10 @@ struct Api
     formals.push_back(u32);
     formals.push_back(u32);
     fii2q = FunctionType::get(queueTyPtr, formals, false);
+    f2i2v = FunctionType::get(voidty, formals,false);
+    formals.push_back(u32);
+    formals.push_back(u32);
+    f4i2v = FunctionType::get(voidty, formals, false);
 
     formals.clear();
     formals.push_back(u32);
@@ -224,7 +229,8 @@ struct Api
   {
     std::string name = (Twine(personality) + "_worker_finishes").str();
     Function *cc = cast<Function>( mod->getOrInsertFunction(name, fi2v) );
-    cc->setDoesNotReturn();
+    // with spawning process just once worker_finishes returns
+    //cc->setDoesNotReturn();
     return cc;
   }
 
@@ -240,6 +246,11 @@ struct Api
     return mod->getOrInsertFunction(name, fi642v);
   }
 
+  Constant *getCkptCheck()
+  {
+    std::string name = (Twine(personality) + "_ckpt_check").str();
+    return mod->getOrInsertFunction(name, fv2b);
+  }
 
   Constant *getMisspeculate()
   {
@@ -421,6 +432,12 @@ struct Api
     return mod->getOrInsertFunction(name, fv2v);
   }
 
+  Constant *getSpawnWorkersBegin()
+  {
+    std::string name = "__spawn_workers_begin";
+    return mod->getOrInsertFunction(name, fv2v);
+  }
+
   Type *getQueueType()
   {
     return queueTyPtr;
@@ -481,7 +498,25 @@ struct Api
   Constant *getCreateQueue()
   {
     std::string name = (Twine(personality) + "_create_queue").str();
+    return mod->getOrInsertFunction(name, f4i2v);
+  }
+
+  Constant *getFetchQueue()
+  {
+    std::string name = (Twine(personality) + "_fetch_queue").str();
     return mod->getOrInsertFunction(name, fii2q);
+  }
+
+  Constant *getAllocQueues()
+  {
+    std::string name = (Twine(personality) + "_alloc_queues").str();
+    return mod->getOrInsertFunction(name, fi2v);
+  }
+
+  Constant *getAllocStageQueues()
+  {
+    std::string name = (Twine(personality) + "_alloc_stage_queues").str();
+    return mod->getOrInsertFunction(name, f2i2v);
   }
 
   Constant *getResetQueue()
@@ -494,6 +529,12 @@ struct Api
   {
     std::string name = (Twine(personality) + "_free_queue").str();
     return mod->getOrInsertFunction(name, fq2v);
+  }
+
+  Constant *getFreeQueues()
+  {
+    std::string name = (Twine(personality) + "_free_queues").str();
+    return mod->getOrInsertFunction(name, fv2v);
   }
 
   Constant *getEnablePrivate()
@@ -899,18 +940,31 @@ struct Api
   {
     std::string name = (Twine(personality) + "_inform_strategy").str();
 
-    std::vector<Type*> formals(2);
+    std::vector<Type*> formals(3);
     formals[0] = u32;
     formals[1] = u32;
+    formals[2] = u32;
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     return mod->getOrInsertFunction(name, fty);
+  }
+
+  Constant *getAllocStratInfo()
+  {
+    std::string name = (Twine(personality) + "_alloc_strategies_info").str();
+    return mod->getOrInsertFunction(name, fi2v);
   }
 
   Constant *getCleanupStrategy()
   {
     std::string name = (Twine(personality) + "_cleanup_strategy").str();
     return mod->getOrInsertFunction(name, fv2v);
+  }
+
+  Constant *getSetCurLoopStrat()
+  {
+    std::string name = (Twine(personality) + "_set_current_loop_strategy").str();
+    return mod->getOrInsertFunction(name, fi2v);
   }
 
   Constant *getLoopInvocation()
@@ -1007,8 +1061,8 @@ private:
   Type *voidty, *voidptr, *queueTy;
   PointerType *queueTyPtr;
   IntegerType *u1, *u8, *u16, *u32, *u64;
-  FunctionType *fv2v, *fv2i, *fi2i, *fi2v, *fii2v;
-  FunctionType *fqi2v, *fq2i, *fq2v, *fii2q;
+  FunctionType *fv2v, *fv2i, *fv2b, *fi2i, *fi2v, *fii2v;
+  FunctionType *fqi2v, *fq2i, *fq2v, *fii2q, *f4i2v, *f2i2v;
   FunctionType *ficvp2i;
   FunctionType *fvp2v, *fvpi2v, *fvpii2v, *fvpivp2v;
   FunctionType *fi2i64, *fi642v;
