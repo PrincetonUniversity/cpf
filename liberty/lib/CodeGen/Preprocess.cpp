@@ -140,12 +140,24 @@ bool Preprocess::addInitializationFunction()
   Constant *beginfcn = Api(mod).getGenericBegin();
   InstInsertPt::End(entry) << CallInst::Create(beginfcn);
 
-  // TODO: could possibly avoid calling this function if no speculation is needed
   Constant *beginspecfcn = Api(mod).getBegin();
   InstInsertPt::End(entry) << CallInst::Create(beginspecfcn);
 
+  Constant *allocQueues = Api(mod).getAllocQueues();
+  InstInsertPt::End(entry) << CallInst::Create(
+      allocQueues, ConstantInt::get(u32, loops.size()));
+
+  Constant *allocStrat = Api(mod).getAllocStratInfo();
+  InstInsertPt::End(entry) << CallInst::Create(
+      allocStrat, ConstantInt::get(u32, loops.size()));
+
+  Constant *beginspawnworkfcn = Api(mod).getSpawnWorkersBegin();
+  auto spawnworkersCall = CallInst::Create(beginspawnworkfcn);
+  InstInsertPt::End(entry) << spawnworkersCall;
+
+  initFcn = InstInsertPt::Before(spawnworkersCall);
+
   auto retInst = ReturnInst::Create(ctx, entry);
-  initFcn = InstInsertPt::Before(retInst);
   callBeforeMain( init );
 
   return true;
@@ -161,9 +173,13 @@ bool Preprocess::addFinalizationFunction()
   Constant *endfcn = Api(mod).getGenericEnd();
   InstInsertPt::End(entry) << CallInst::Create(endfcn);
 
-  // TODO: could possibly avoid calling this function if no speculation is needed
   Constant *endspecfcn = Api(mod).getEnd();
   InstInsertPt::End(entry) << CallInst::Create(endspecfcn);
+
+  Constant *freequeues = Api(mod).getFreeQueues();
+  InstInsertPt::End(entry) << CallInst::Create(freequeues);
+
+  InstInsertPt::End(entry) << CallInst::Create(Api(mod).getCleanupStrategy());
 
   auto retInst = ReturnInst::Create(ctx, entry);
   finiFcn = InstInsertPt::Before(retInst);

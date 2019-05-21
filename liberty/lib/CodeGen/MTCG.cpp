@@ -88,7 +88,7 @@ bool MTCG::runOnModule(Module &module)
     LoopInfo &li = mloops.getAnalysis_LoopInfo( header->getParent() );
     elaboratedStrategies[i].loop = li.getLoopFor(header);
 
-    createParallelInvocation( elaboratedStrategies[i] );
+    createParallelInvocation( elaboratedStrategies[i], i);
     modified = true;
   }
 
@@ -513,7 +513,9 @@ Function *MTCG::createFunction(
   Twine name = "__specpriv_pipeline__" + origFcn->getName() + "__" + header->getName()
     + (stage.type == PipelineStage::Parallel ? "__p" : "__s") + Twine(stageno);
   Function *fcn = Function::Create(fty, GlobalValue::InternalLinkage, name, mod);
-  fcn->setDoesNotReturn();
+
+  // when spawning processes once, stage exec fcns needs to return
+  //fcn->setDoesNotReturn();
 
   // Name the function arguments according to the scheme above.
   Function::arg_iterator ai = fcn->arg_begin();
@@ -839,7 +841,10 @@ BasicBlock *MTCG::copyInstructions(
       ConstantInt::get(u32,exitNumber),
       "",
       exitBB);
-    new UnreachableInst(ctx, exitBB);
+
+    // when spawning processes once, workers need to return
+    ReturnInst::Create(ctx, exitBB);
+    //new UnreachableInst(ctx, exitBB);
 
     vmap[ term->getSuccessor(i->first.second) ] = exitBB;
   }

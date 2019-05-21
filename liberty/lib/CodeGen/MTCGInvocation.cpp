@@ -13,7 +13,7 @@ using namespace llvm;
 /// This method replaces a loop invocation with a code sequence that will
 /// perform a parallel invocation and possibly perform non-speculative sequential
 /// recovery.
-void MTCG::createParallelInvocation(PreparedStrategy &strategy)
+void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
 {
   DEBUG(errs() << "-------------- Transform main entry -------------\n");
   Loop *loop = strategy.loop;
@@ -91,7 +91,9 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   FunctionType *fty = FunctionType::get( api.getVoid(), ArrayRef<Type*>(argTys), false);
   Twine name = "__specpriv_pipeline__" + fcn->getName() + "__" + header->getName() + "_dispatch";
   Function *dispatch_function = Function::Create(fty, GlobalValue::InternalLinkage, name, mod);
-  dispatch_function->setDoesNotReturn();
+
+  // when spawning processes once, dispatch needs to return
+  //dispatch_function->setDoesNotReturn();
 
   // In the spawn bb, call spawn, then branch either
   // to the loop header, or to the parent bb
@@ -112,16 +114,25 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   SmallVector<Value*,5> args;
   std::vector<Value*>   stage2rep( strategy.numStages() );
 
+  const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  InstInsertPt initFcn = preprocessor.getInitFcn();
+
   // Create all of the queues
   typedef std::map< PreparedStrategy::StagePair, Value *> QueueObjects;
   QueueObjects queueObjects;
+  ConstantInt *loopIDc = ConstantInt::get(u32, loopID);
+  Instruction *numWorkers = CallInst::Create(numAvail, "numWorkers");
+
+  // create queues at startup once
   {
-    Instruction *numParallelThreads = BinaryOperator::CreateNSWAdd(numThreads, ConstantInt::get(u32, -numSequential), "num.parallel.stage.threads");
+    Instruction *numParallelThreads = BinaryOperator::CreateNSWAdd(numWorkers, ConstantInt::get(u32, -numSequential), "num.parallel.stage.threads");
     ConstantInt *numParallelStages = ConstantInt::get(u32, M-numSequential);
     Instruction *threadsPerParallelStageRoundDown = BinaryOperator::Create(Instruction::UDiv, numParallelThreads, numParallelStages, "threads.per.parallel.stage.round.down");
     Instruction *remainder                        = BinaryOperator::Create(Instruction::URem, numParallelThreads, numParallelStages, "remainder");
     Instruction *threadsPerParallelStageRoundUp   = BinaryOperator::Create(Instruction::Add, threadsPerParallelStageRoundDown, remainder, "threads.per.parallel.stage.round.up");
-    S << numParallelThreads << threadsPerParallelStageRoundDown << remainder << threadsPerParallelStageRoundUp;
+    initFcn << numWorkers << numParallelThreads
+            << threadsPerParallelStageRoundDown << remainder
+            << threadsPerParallelStageRoundUp;
 
     const unsigned N = strategy.numStages();
     bool first = true;
@@ -140,31 +151,65 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
         stage2rep[i] = one;
     }
 
+    // allocate loop queues array
+    ConstantInt *queuesCnt = ConstantInt::get(u32, queues.size());
+    args.clear();
+    args.push_back(queuesCnt);
+    args.push_back(loopIDc);
+    Constant *allocStageQs = api.getAllocStageQueues();
+    Instruction *allocSQsCall =
+        CallInst::Create(allocStageQs, ArrayRef<Value *>(args));
+    initFcn << allocSQsCall;
+
+    // create all queues of loop once at startup
+    unsigned qID = 0;
     Constant *createQueue = api.getCreateQueue();
     for(PreparedStrategy::StagePairs::iterator i=queues.begin(), e=queues.end(); i!=e; ++i)
     {
+      ConstantInt *qIDc = ConstantInt::get(u32, qID);
       args.clear();
       args.push_back( stage2rep[ i->first ] );
       args.push_back( stage2rep[ i->second ] );
+      args.push_back( loopIDc );
+      args.push_back( qIDc );
       Instruction *create = CallInst::Create(createQueue, ArrayRef<Value*>(args));
-      create->setName("q_from_" + Twine(i->first) + "_to_" + Twine(i->second) + "." );
-      S << create;
-      queueObjects[ *i ] = create;
+      initFcn << create;
+      ++qID;
+    }
+  }
+
+  // fetch queues at start of loop invocation
+  {
+    unsigned qID = 0;
+    Constant *fetchQueue = api.getFetchQueue();
+    Constant *resetQueue = api.getResetQueue();
+    for(PreparedStrategy::StagePairs::iterator i=queues.begin(), e=queues.end(); i!=e; ++i)
+    {
+      ConstantInt *qIDc = ConstantInt::get(u32, qID);
+      args.clear();
+      args.push_back( loopIDc );
+      args.push_back( qIDc );
+      Instruction *fetch = CallInst::Create(fetchQueue, ArrayRef<Value*>(args));
+      fetch->setName("q_from_" + Twine(i->first) + "_to_" + Twine(i->second) + "." );
+      S << fetch;
+      queueObjects[ *i ] = fetch;
+      // reset queue before re-using it
+      S << CallInst::Create(resetQueue, fetch);
+      ++qID;
     }
   }
 
   // Inform runtime chosen strategy
   {
-    args.clear();
-    args.push_back( numThreads );
-
     const unsigned N = strategy.numStages();
+    args.clear();
+    args.push_back( numWorkers );
+    args.push_back( loopIDc );
     args.push_back( ConstantInt::get( u32, N ) );
-
     for (unsigned i=0; i<N; i++)
       args.push_back( stage2rep[i] );
 
-    S << CallInst::Create(api.getInformStrategy(), ArrayRef<Value*>(args));
+    initFcn << CallInst::Create(api.getInformStrategy(), ArrayRef<Value*>(args));
   }
 
   S << BranchInst::Create(spawn_workers_bb);
@@ -197,7 +242,6 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
 
   InstInsertPt saveLiveIns = InstInsertPt::Before(callspawn);
 
-  const Preprocess &preprocessor = getAnalysis< Preprocess >();
   const RecoveryFunction &recovery = preprocessor.getRecoveryFunction(loop);
   const unsigned N = recovery.liveoutStructure.liveouts.size();
   const LiveoutStructure::PhiList &phis = recovery.liveoutStructure.phis;
@@ -215,6 +259,10 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
     << threadsPerParallelStageRoundDown
     << remainder
     << threadsPerParallelStageRoundUp;
+
+  args.clear();
+  args.push_back( loopIDc );
+  S << CallInst::Create(api.getSetCurLoopStrat(), ArrayRef<Value*>(args));
 
   // TODO: replace loads from/stores to this structure with
   // API calls; allow the runtime to implement private semantics
@@ -312,7 +360,10 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
     }
 
     CallInst::Create(functions[i], ArrayRef<Value*>(args), "", invoke);
-    new UnreachableInst(ctx, invoke);
+
+    // when spawning processes once, workers need to return
+    ReturnInst::Create(ctx, invoke);
+    //new UnreachableInst(ctx, invoke);
 
     if( i == M-1 )
     {
@@ -451,11 +502,14 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   }
 
   InstInsertPt shutdown = InstInsertPt::End(end_invoc_bb);
+  // queues and strategy info are now cleaned-up at shutdown
+  /*
   Constant *freeQueue = api.getFreeQueue();
   for(QueueObjects::iterator i=queueObjects.begin(), e=queueObjects.end(); i!=e; ++i)
     shutdown << CallInst::Create(freeQueue, i->second);
   shutdown
     << CallInst::Create(api.getCleanupStrategy());
+  */
   shutdown
     << callend
     << sw;
@@ -502,6 +556,68 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   AllocaInst *liveinObject = new AllocaInst(liveinty, 0, "liveins.to." + header->getName());
   InstInsertPt::Beginning(fcn) << liveinObject;
 
+  //reallocate live-in structure in private heap (needs to be shared among processes)
+  InstInsertPt where = InstInsertPt::Beginning(fcn);
+
+  // Determine size of allocation
+  const DataLayout &td = fcn->getParent()->getDataLayout();
+  uint64_t size = td.getTypeStoreSize(liveinObject->getAllocatedType());
+  Value *sz = ConstantInt::get(u32, size);
+
+  Constant *subheap = ConstantInt::get(u8, -1);
+  Value *actualArgs[] = {sz, subheap};
+
+  // Add code to perform allocation
+  Constant *alloc = Api(mod).getAlloc(HeapAssignment::ReadOnly);
+  Instruction *allocate =
+      CallInst::Create(alloc, ArrayRef<Value *>(&actualArgs[0], &actualArgs[2]));
+  where << allocate;
+  Instruction *newLiveinObjectAU = allocate;
+
+  if (newLiveinObjectAU->getType() != liveinObject->getType()) {
+    Instruction *cast =
+        new BitCastInst(newLiveinObjectAU, liveinObject->getType());
+    where << cast;
+    newLiveinObjectAU = cast;
+  }
+
+  // Replace old allocation
+  newLiveinObjectAU->takeName(liveinObject);
+  liveinObject->eraseFromParent();
+
+  // Manually free stack variable
+  // At each function exit (return, unwind, or unreachable...)
+  for (Function::iterator j = fcn->begin(), z = fcn->end(); j != z; ++j) {
+    BasicBlock *bb = &*j;
+    TerminatorInst *term = bb->getTerminator();
+    InstInsertPt where;
+    if (isa<ReturnInst>(term))
+      where = InstInsertPt::Before(term);
+
+    else if (isa<UnreachableInst>(term)) {
+      where = InstInsertPt::Before(term);
+
+      // This unreachable terminator is probably prededed by
+      // a call to a noreturn function...
+      for (BasicBlock::iterator k = bb->begin(); k != bb->end(); ++k) {
+        CallSite cs = getCallSite(&*k);
+        if (!cs.getInstruction())
+          continue;
+
+        if (cs.doesNotReturn()) {
+          where = InstInsertPt::Before(cs.getInstruction());
+          break;
+        }
+      }
+    }
+    else
+      continue;
+
+    // Free the allocation
+    Constant *free = Api(mod).getFree(HeapAssignment::ReadOnly);
+    where << CallInst::Create(free, allocate);
+  }
+
   // cast the argument to the right type
   Instruction *liveinObjectArg = new BitCastInst( &*dispatch_function->arg_begin(), liveinObject->getType());
   liveinObjectArg->setName("live.in.values");
@@ -514,7 +630,8 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   for(VSet::iterator i=liveins.begin(), e=liveins.end(); i!=e; ++i, ++index)
   {
     Value *outside = *i;
-    storeIntoStructure(saveLiveIns, outside, liveinObject, index);
+    //storeIntoStructure(saveLiveIns, outside, liveinObject, index);
+    storeIntoStructure(saveLiveIns, outside, newLiveinObjectAU, index);
     Value *local = loadFromStructure(restoreLiveIns, liveinObjectArg, index);
     if( outside->hasName() )
       local->setName( outside->getName() );
@@ -522,7 +639,8 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy)
   }
 
   // Set this object as a parameter to
-  Instruction *castLivein = new BitCastInst(liveinObject, voidptr);
+  //Instruction *castLivein = new BitCastInst(liveinObject, voidptr);
+  Instruction *castLivein = new BitCastInst(newLiveinObjectAU, voidptr);
   saveLiveIns << castLivein;
   callspawn->setArgOperand(2, castLivein);
 }

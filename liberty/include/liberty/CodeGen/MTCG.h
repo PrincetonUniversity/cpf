@@ -7,6 +7,7 @@
 
 #include "liberty/Speculation/Api.h"
 #include "liberty/CodeGen/Preprocess.h"
+#include "liberty/Speculation/Classify.h"
 
 #define MTCG_VALUE_DEBUG 0
 #define MTCG_CTRL_DEBUG 0
@@ -214,7 +215,7 @@ private:
   /// This method replaces a loop invocation with a code sequence that will
   /// perform a parallel invocation and possibly perform non-speculative sequential
   /// recovery.
-  void createParallelInvocation(PreparedStrategy &strategy);
+  void createParallelInvocation(PreparedStrategy &strategy, unsigned loopID);
 
 #if MTCG_EXTRA_DEBUG
   void addDebugInstruction(Instruction* inst, Instruction* clone);
