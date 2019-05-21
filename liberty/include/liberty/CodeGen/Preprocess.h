@@ -59,10 +59,10 @@ struct Preprocess : public ModulePass {
     return specUsed.count(loopHeader);
   }
 
-  InstInsertPt getInitFcn() {
+  InstInsertPt getInitFcn() const {
     return initFcn;
   }
-  InstInsertPt getFiniFcn() { return finiFcn; }
+  InstInsertPt getFiniFcn() const { return finiFcn; }
 
 private:
   typedef std::set<const Value *> VSet;
