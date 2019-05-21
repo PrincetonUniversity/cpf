@@ -49,6 +49,7 @@ static ReductionInfo *first_reduction_info,
 
 
 static Len sizeof_private, sizeof_redux;
+static Len sizeof_ro;
 
 void *__specpriv_alloc_meta(Len len)
 {
@@ -91,7 +92,10 @@ void __specpriv_initialize_main_heaps(void)
   sizeof_private = sizeof_redux = 0;
 
   heap_map_shared(&shared, &mshared);
-  heap_map_cow(&ro,     &mro);
+
+  // ro needs to be shared, up until invocation when spawning once
+  heap_map_shared(&ro,     &mro);
+  //heap_map_cow(&ro,     &mro);
 
   // Map the /right/ version of the private, redux heaps.
   heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_priv, &mpriv0);
@@ -134,6 +138,21 @@ void __specpriv_destroy_main_heaps(void)
   heap_fini(&meta);
 }
 
+void __specpriv_worker_unmap_ro(void)
+{
+  if( mro.heap )
+    heap_unmap( &mro );
+}
+
+void __specpriv_worker_remap_ro(void)
+{
+  __specpriv_worker_unmap_ro();
+
+  heap_map_cow( &ro, &mro );
+  if( sizeof_ro )
+    heap_alloc( &mro, sizeof_ro );
+}
+
 void __specpriv_worker_unmap_private(void)
 {
   if( mpriv0.heap )
@@ -154,6 +173,7 @@ void __specpriv_fiveheaps_begin_invocation(void)
 {
   sizeof_private = heap_used( &mpriv0 );
   sizeof_redux = heap_used( &mredux0 );
+  sizeof_ro = heap_used( &mro );
 }
 
 void __specpriv_initialize_worker_heaps(void)
@@ -163,8 +183,13 @@ void __specpriv_initialize_worker_heaps(void)
   // re-map the committed version of heap 'priv' as copy-on-write
   __specpriv_worker_remap_private();
 
+  // re-map the committed version of heap 'ro' as copy-on-write
+  // added due to process spawning once at startup
+  __specpriv_worker_remap_ro();
+
   // re-map my a new independent heap as my 'redux' heap.
-  heap_unmap(&mredux0);
+  if (mredux0.heap)
+    heap_unmap(&mredux0);
   mapped_heap_init(&myRedux);
   heap_map_shared(&redux[myWorkerId], &myRedux);
   if( sizeof_redux )
@@ -179,8 +204,11 @@ void __specpriv_initialize_worker_heaps(void)
 
 void __specpriv_destroy_worker_heaps(void)
 {
-  heap_unmap(&mshared);
-  heap_unmap(&mro);
+  //heap_unmap(&mpriv0);
+  //heap_unmap(&mredux0);
+  ////heap_unmap(&mshared);
+  //heap_unmap(&mro);
+
   heap_unmap(&myLocal);
   heap_unmap(&myRedux);
   heap_unmap(&myShadow);
@@ -309,9 +337,30 @@ Len __specpriv_sizeof_private(void)
 {
   return sizeof_private;
 }
+
 Len __specpriv_sizeof_redux(void)
 {
   return sizeof_redux;
+}
+
+Len __specpriv_sizeof_ro(void)
+{
+  return sizeof_ro;
+}
+
+void __specpriv_set_sizeof_private(Len sp)
+{
+  sizeof_private = sp;
+}
+
+void __specpriv_set_sizeof_redux(Len sr)
+{
+  sizeof_redux = sr;
+}
+
+void __specpriv_set_sizeof_ro(Len sr)
+{
+  sizeof_ro = sr;
 }
 
 void *__specpriv_alloc_unclassified(Len size)

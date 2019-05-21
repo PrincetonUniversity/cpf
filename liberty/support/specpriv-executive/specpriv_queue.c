@@ -8,12 +8,17 @@
 #include "strategy.h"
 #include "types.h"
 #include "constants.h"
+#include "config.h"
 
 typedef union _box
 {
   int64_t i;
   double  d;
 } box;
+
+static __specpriv_queue ***specpriv_queues;
+static uint32_t n_loops; // # of parallelized loops
+static uint32_t *n_stageQs;
 
 static queue_t* get_queue(__specpriv_queue* specpriv_queue)
 {
@@ -26,7 +31,26 @@ static queue_t* get_queue(__specpriv_queue* specpriv_queue)
 // queue APIs
 //
 
-__specpriv_queue* __specpriv_create_queue(uint32_t N, uint32_t M)
+void __specpriv_alloc_queues(uint32_t nl)
+{
+  n_loops = nl;
+  specpriv_queues = (__specpriv_queue ***)mmap(
+      0, sizeof(__specpriv_queue **) * n_loops, PROT_WRITE | PROT_READ,
+      MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+  n_stageQs = (uint32_t *) malloc (sizeof(uint32_t) * n_loops);
+}
+
+void  __specpriv_alloc_stage_queues(uint32_t n_stageQ, uint32_t loopID)
+{
+  specpriv_queues[loopID] = (__specpriv_queue **)mmap(
+      0, sizeof(__specpriv_queue *) * n_stageQ, PROT_WRITE | PROT_READ,
+      MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+  n_stageQs[loopID] = n_stageQ;
+}
+
+void __specpriv_create_queue(uint32_t N, uint32_t M, uint32_t loopID, uint32_t qID)
 {
   DBG("__specpriv_create_queue: %u x %u\n", N, M);
 
@@ -37,8 +61,10 @@ __specpriv_queue* __specpriv_create_queue(uint32_t N, uint32_t M)
   unsigned i;
   unsigned n_queues = N*M;
 
-  __specpriv_queue* specpriv_queue = (__specpriv_queue*)mmap(0, sizeof(__specpriv_queue),
+  specpriv_queues[loopID][qID] = (__specpriv_queue*)mmap(0, sizeof(__specpriv_queue),
       PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+  __specpriv_queue* specpriv_queue = specpriv_queues[loopID][qID];
 
   specpriv_queue->queues = (queue_t**)mmap(0, sizeof(queue_t*)*n_queues,
       PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -48,8 +74,11 @@ __specpriv_queue* __specpriv_create_queue(uint32_t N, uint32_t M)
   specpriv_queue->n_queues = n_queues;
 
   DBG("__specpriv_create_queue: %u x %u queue created successfully, %p\n", N, M, specpriv_queue);
+}
 
-  return specpriv_queue;
+__specpriv_queue* __specpriv_fetch_queue(uint32_t loopID, uint32_t qID)
+{
+  return specpriv_queues[loopID][qID];
 }
 
 void __specpriv_produce(__specpriv_queue* specpriv_queue, int64_t value)
@@ -134,4 +163,18 @@ void __specpriv_free_queue(__specpriv_queue* specpriv_queue)
 
   munmap(specpriv_queue->queues, sizeof(queue_t*)*(specpriv_queue->n_queues));
   munmap(specpriv_queue, sizeof(__specpriv_queue));
+}
+
+void __specpriv_free_queues(void) {
+  for (unsigned i = 0; i < n_loops; ++i) {
+    for (unsigned j = 0; j < n_stageQs[i]; ++j) {
+      __specpriv_free_queue(specpriv_queues[i][j]);
+    }
+
+    munmap(specpriv_queues[i], sizeof(__specpriv_queue *) * n_stageQs[i]);
+  }
+
+  free(n_stageQs);
+
+  munmap(specpriv_queues, sizeof(__specpriv_queue **) * n_loops);
 }

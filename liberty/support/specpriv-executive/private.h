@@ -7,8 +7,11 @@
 
 void __specpriv_init_private(void);
 
-// Set the current iteration number
+// Set first iteration number
 void __specpriv_set_first_iter(Iteration);
+
+// Get first iteration number
+Iteration __specpriv_get_first_iter(void);
 
 // Set the current iteration number, and
 // possibly perform a checkpoint.
