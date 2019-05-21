@@ -45,6 +45,11 @@ ReductionInfo *__specpriv_first_reduction_info(void);
 unsigned __specpriv_sizeof_private(void);
 unsigned __specpriv_sizeof_redux(void);
 
+unsigned __specpriv_sizeof_ro(void);
+void __specpriv_set_sizeof_private(unsigned sp);
+void __specpriv_set_sizeof_redux(unsigned sr);
+void __specpriv_set_sizeof_ro(unsigned sr);
+
 // At any time, one of the two is committed, and one is partial
 
 void __specpriv_fiveheaps_begin_invocation(void);

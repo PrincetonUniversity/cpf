@@ -92,6 +92,11 @@ void __specpriv_set_first_iter(Iteration i)
   __specpriv_set_iter(i);
 }
 
+Iteration __specpriv_get_first_iter(void)
+{
+  return firstIteration;
+}
+
 // Called by __specpriv_worker_starts()
 // Called by __specpriv_end_iter()
 void __specpriv_advance_iter(Iteration i)

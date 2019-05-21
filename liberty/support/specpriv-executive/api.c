@@ -25,6 +25,7 @@
 #include "fiveheaps.h"
 #include "checkpoint.h"
 #include "api.h"
+#include "debug.h"
 
 #if (AFFINITY & OS2PHYS) != 0
 // Map of linux cpu number to physical core number
@@ -63,12 +64,16 @@ static Wid pstage_replica_id = NOT_A_PARALLEL_STAGE;
 // each worker.  Incremented by __specpriv_end_iter()
 static Iteration currentIter = 0;
 
+static Iteration checkpointGranularity;
+
 // Old CPU affinity
 static cpu_set_t old_affinity;
 
 #if JOIN == WAITPID
 static pid_t workerPids[ MAX_WORKERS ];
 #endif
+
+static int (*pipefds)[2];
 
 #if JOIN == SPIN
 struct sigaction old_sigchld;
@@ -77,6 +82,140 @@ struct sigaction old_sigchld;
 #if SIMULATE_MISSPEC != 0
 static Iteration simulateMisspeculationAtIter;
 #endif
+
+struct WorkerArgs {
+  Iteration firstIter;
+  void (*callback)(void *, int64_t, int64_t, int64_t);
+  void *user;
+  int64_t numCores;
+  int64_t chunkSize;
+  unsigned sizeof_private;
+  unsigned sizeof_redux;
+  unsigned sizeof_ro;
+  uint64_t main_begin_invocation;
+} workerArgs;
+
+static void __specpriv_worker_starts(Iteration firstIter, Wid wid);
+
+static void __specpriv_sig_helper(int sig, siginfo_t *siginfo, void *dummy)
+{
+  __specpriv_misspec("Segfault");
+}
+
+// Called by __specpriv_begin on each worker after spawned
+static void __specpriv_worker_setup(Wid wid)
+{
+  // First, a policy to make the spawn work better...
+#if (AFFINITY & SLEEP0) != 0
+  // 'sleep0'
+  sleep(0);
+#endif
+
+  assert(wid != MAIN_PROCESS );
+  assert(wid < numWorkers);
+  myWorkerId = wid;
+
+  // true by default
+  runOnEveryIter = 1;
+
+  checkpointGranularity = MAX_CHECKPOINT_GRANULARITY - (MAX_CHECKPOINT_GRANULARITY % numWorkers);
+
+#if (AFFINITY & RRPUNT) != 0
+  // 'rrpunt'
+  // First, set affinity to a single processor != 0,
+  // selected uniformly according to wid.
+  // This will punt this worker OFF of the
+  // main-process' processor.
+  cpu_set_t affinity;
+  CPU_ZERO(&affinity);
+  CPU_SET( CORE( 1 + (myWorkerId % (NUM_PROCS-1) ) ), &affinity );
+  sched_setaffinity( 0, sizeof(cpu_set_t), &affinity );
+#endif
+#if (AFFINITY & RRPUNT0) != 0
+  // 'rrpunt0'
+  // First, set affinity to a single processor
+  // selected uniformly according to wid.
+  // This will punt this worker OFF of the
+  // main-process' processor.
+  cpu_set_t affinity;
+  CPU_ZERO(&affinity);
+  CPU_SET( CORE( (myWorkerId+1) % NUM_PROCS ), &affinity );
+  sched_setaffinity( 0, sizeof(cpu_set_t), &affinity );
+#endif
+
+#if (AFFINITY & ALLBUT1) != 0
+  // 'allbut1'
+  // Next, relax the affinity so it can run on many processors.
+  // Since this set is a superset of the previous, it does
+  // not force a migration.
+  // The first N can run on any except proc 0.
+  // The later ones can run on any processor.
+  memcpy( &affinity, &old_affinity, sizeof(cpu_set_t) );
+  if( myWorkerId + 1 < NUM_PROCS )
+    CPU_CLR( CORE(0), &affinity );
+  sched_setaffinity( 0, sizeof(cpu_set_t), &affinity );
+#endif
+#if (AFFINITY & ANY) != 0
+  //'any'
+  // relax affinity to ANY processor
+  sched_setaffinity( 0, sizeof(cpu_set_t), &old_affinity);
+#endif
+#if (AFFINITY & FIX) != 0
+  // 'fix'
+  // Do not relax affinity; the worker is bound to a single proc.
+#endif
+
+  // capture SIGSEGV signal -> misspeculate
+  struct sigaction replacement;
+  replacement.sa_flags = SA_SIGINFO;
+  sigemptyset( &replacement.sa_mask );
+  replacement.sa_sigaction = &__specpriv_sig_helper;
+  sigaction( SIGSEGV, &replacement, 0 );
+
+  ssize_t workerArgsSize = sizeof(struct WorkerArgs);
+
+  // wait and read from pipe until killed
+  while (1) {
+
+    DEBUG(fflush(stdout));
+
+    ssize_t bytesRead = 0;
+    while (bytesRead != workerArgsSize) {
+      ssize_t r = read(pipefds[myWorkerId][0], &workerArgs + bytesRead,
+               workerArgsSize - bytesRead);
+      if (r == -1) {
+        perror("child read from pipe");
+        _exit(0);
+      }
+      else if (r == 0) {
+        // nothing to read, main process closed the pipe
+        // time to exit
+        _exit(0);
+      }
+      bytesRead += r;
+    }
+
+    __specpriv_set_sizeof_private(workerArgs.sizeof_private);
+    __specpriv_set_sizeof_redux(workerArgs.sizeof_redux);
+    __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
+
+    main_begin_invocation = workerArgs.main_begin_invocation;
+
+    __specpriv_worker_starts(workerArgs.firstIter, myWorkerId);
+
+    DEBUG(printf(
+        "calling callback with workerId %u, numCores: %ld, chunkSize: %ld \n",
+        myWorkerId, workerArgs.numCores, workerArgs.chunkSize));
+
+    workerArgs.callback(workerArgs.user, myWorkerId, workerArgs.numCores,
+                  workerArgs.chunkSize);
+
+    DEBUG(printf("returned from callback with workerId %u, numCores: %ld, "
+                 "chunkSize: %ld \n",
+                 myWorkerId, workerArgs.numCores, workerArgs.chunkSize));
+    DEBUG(fflush(stdout));
+  }
+}
 
 // ---------------------------------------------------------
 // Scope management: program, parallel region, worker,
@@ -98,6 +237,8 @@ void __parallel_begin(void)
     assert( 1 <= n && n <= MAX_WORKERS );
     numWorkers = (Wid) n;
   }
+
+  init_debug(numWorkers);
 
   DEBUG(printf("Available workers: %u\n", numWorkers));
 
@@ -145,7 +286,46 @@ void __specpriv_begin(void)
   new_sigchld.sa_flags = SA_NOCLDWAIT;
   sigaction(SIGCHLD, &new_sigchld, &old_sigchld);
 #endif
+}
 
+// Called once on program startup by main process, last func call before main
+// function
+void __spawn_workers_begin(void) {
+
+  DEBUG(fflush(stdout));
+
+  pipefds = (int(*)[2])malloc(numWorkers * sizeof(int[2]));
+
+  // spawn worker processes with fork
+  for(Wid wid=0; wid<numWorkers; ++wid)
+  {
+    if (pipe(pipefds[wid])) {
+      perror("create pipe");
+      _exit(0);
+    }
+    pid_t pid = fork();
+    if( pid == 0 )
+    {
+      // child
+
+      DEBUG(printf("worker %u spawn\n", wid));
+
+      // close write ends of pipes of prior children and current wid
+      for(unsigned j=0; j<=wid; ++j) {
+        close(pipefds[j][1]);
+      }
+
+      __specpriv_worker_setup(wid);
+      return; // unreachable, __specpriv_worker_setup does not return
+    }
+
+    // close read side of wid's pipe
+    close(pipefds[wid][0]);
+
+    #if JOIN == WAITPID
+    workerPids[ wid ] = pid;
+    #endif
+  }
 }
 
 // Called once by main process on program shutdown
@@ -164,6 +344,16 @@ void __parallel_end(void)
 void __specpriv_end(void)
 {
   assert( myWorkerId == MAIN_PROCESS );
+
+  for (Wid wid = 0; wid < numWorkers; ++wid) {
+    close(pipefds[wid][1]);
+  }
+
+  for (Wid wid = 0; wid < numWorkers; ++wid) {
+    wait(NULL);
+  }
+
+  free(pipefds);
 
   __specpriv_destroy_main_heaps();
 }
@@ -199,88 +389,33 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
   _exit(0);
 }
 
-static void __specpriv_sig_helper(int sig, siginfo_t *siginfo, void *dummy)
-{
-  __specpriv_misspec("Segfault");
-}
-
 // Called by __specpriv_spawn_workers on each worker
-// after they are spawned
+// in the beginning of loop invocation
 static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
 {
+
+  DEBUG(printf("__specpriv_worker_starts, %u worker\n", wid));
+
+  // reset timers
+  TOUT(
+    ++InvocationNumber;
+    worker_time_in_checkpoints=0;
+    worker_time_in_priv_write=0;
+    worker_time_in_priv_read=0;
+    worker_time_in_io=0;
+    numCheckpoints = 0;
+    worker_private_bytes_read=0;
+    worker_private_bytes_written=0;
+  );
+
   TIME(worker_begin_invocation);
-
-  // First, a policy to make the spawn work better...
-#if (AFFINITY & SLEEP0) != 0
-  // 'sleep0'
-  sleep(0);
-#endif
-
-  assert(wid != MAIN_PROCESS );
-  assert(wid < numWorkers);
-  myWorkerId = wid;
-
-  // true by default
-  runOnEveryIter = 1;
-
-#if (AFFINITY & RRPUNT) != 0
-  // 'rrpunt'
-  // First, set affinity to a single processor != 0,
-  // selected uniformly according to wid.
-  // This will punt this worker OFF of the
-  // main-process' processor.
-  cpu_set_t affinity;
-  CPU_ZERO(&affinity);
-  CPU_SET( CORE( 1 + (myWorkerId % (NUM_PROCS-1) ) ), &affinity );
-  sched_setaffinity( 0, sizeof(cpu_set_t), &affinity );
-#endif
-#if (AFFINITY & RRPUNT0) != 0
-  // 'rrpunt0'
-  // First, set affinity to a single processor
-  // selected uniformly according to wid.
-  // This will punt this worker OFF of the
-  // main-process' processor.
-  cpu_set_t affinity;
-  CPU_ZERO(&affinity);
-  CPU_SET( CORE( (myWorkerId+1) % NUM_PROCS ), &affinity );
-  sched_setaffinity( 0, sizeof(cpu_set_t), &affinity );
-#endif
-
-#if (AFFINITY & ALLBUT1) != 0
-  // 'allbut1'
-  // Next, relax the affinity so it can run on many processors.
-  // Since this set is a superset of the previous, it does
-  // not force a migration.
-  // The first N can run on any except proc 0.
-  // The later ones can run on any processor.
-  memcpy( &affinity, &old_affinity, sizeof(cpu_set_t) );
-  if( myWorkerId + 1 < NUM_PROCS )
-    CPU_CLR( CORE(0), &affinity );
-  sched_setaffinity( 0, sizeof(cpu_set_t), &affinity );
-#endif
-#if (AFFINITY & ANY) != 0
-  //'any'
-  // relax affinity to ANY processor
-  sched_setaffinity( 0, sizeof(cpu_set_t), &old_affinity);
-#endif
-#if (AFFINITY & FIX) != 0
-  // 'fix'
-  // Do not relax affinity; the worker is bound to a single proc.
-#endif
-
   __specpriv_initialize_worker_heaps();
 
+  currentIter = firstIter;
   __specpriv_set_first_iter(firstIter);
 
   // Initialize structure for deferred IO.
   __specpriv_reset_worker_io();
-
-  // capture all signals -> misspeculate
-  struct sigaction replacement;
-  replacement.sa_flags = SA_SIGINFO;
-  sigemptyset( &replacement.sa_mask );
-  replacement.sa_sigaction = &__specpriv_sig_helper;
-  sigaction( SIGSEGV, &replacement, 0 );
 
   TIME(worker_enter_loop);
 }
@@ -312,7 +447,9 @@ void __specpriv_worker_finishes(Exit exitTaken)
   TOUT( __specpriv_print_worker_times() );
 
   DEBUG(printf("Worker %u finished.\n", myWorkerId));
-  _exit(0);
+
+  // should not exit when spawning processes just once
+  //_exit(0);
 }
 
 Iteration __specpriv_current_iter(void)
@@ -328,7 +465,7 @@ Iteration __specpriv_current_iter(void)
   return globalCurIter;
 }
 
-Bool __specpriv_runOnEveryIter()
+Bool __specpriv_runOnEveryIter(void)
 {
   return runOnEveryIter;
 }
@@ -350,6 +487,7 @@ Wid __specpriv_num_workers(void)
 
 void __specpriv_set_pstage_replica_id(Wid rep_id)
 {
+  DEBUG(printf("Worker %u, rep_id %u.\n", myWorkerId, rep_id));
   //DBG( "rep_id set to %u\n", rep_id );
   pstage_replica_id = rep_id;
 }
@@ -426,6 +564,56 @@ uint32_t __specpriv_begin_invocation(void)
   return numWorkers;
 }
 
+
+// Spawn workers
+static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(void *, int64_t, int64_t, int64_t), void *user, int64_t numCores, int64_t chunkSize)
+{
+  assert( myWorkerId == MAIN_PROCESS );
+
+#if JOIN == SPIN
+  ParallelControlBlock *pcb = __specpriv_get_pcb();
+#endif
+
+  Wid wid;
+
+  // true by default
+  runOnEveryIter = 1;
+
+  workerArgs.firstIter = firstIter;
+  workerArgs.callback = callback;
+  workerArgs.user = user;
+  workerArgs.numCores = numCores;
+  workerArgs.chunkSize = chunkSize;
+  workerArgs.sizeof_private = __specpriv_sizeof_private();
+  workerArgs.sizeof_redux = __specpriv_sizeof_redux();
+  workerArgs.sizeof_ro = __specpriv_sizeof_ro();
+  workerArgs.main_begin_invocation = main_begin_invocation;
+  ssize_t workerArgsSize = sizeof(struct WorkerArgs);
+
+  DEBUG(fflush(stdout));
+
+  for(wid=0; wid<numWorkers; ++wid)
+  {
+#if JOIN == SPIN
+    // Child is not done yet.
+    pcb->workerDoneFlags[ wid ] = 0;
+#endif
+
+    // write to workers to start work
+    ssize_t bytesWritten = 0;
+    while (bytesWritten != workerArgsSize) {
+      ssize_t w = write(pipefds[wid][1], &workerArgs + bytesWritten,
+                        workerArgsSize - bytesWritten);
+      if (w == -1) {
+        perror("parent write to pipe");
+        _exit(0);
+      }
+      bytesWritten += w;
+    }
+  }
+}
+
+
 // Spawn workers.  Returns worker ID
 // if you are a child, or ~0UL if
 // you are the parent.
@@ -449,6 +637,7 @@ Wid __specpriv_spawn_workers(Iteration firstIter)
     pcb->workerDoneFlags[ wid ] = 0;
 #endif
 
+  /*
     pid_t pid = fork();
     if( pid == 0 )
     {
@@ -460,6 +649,7 @@ Wid __specpriv_spawn_workers(Iteration firstIter)
 #if JOIN == WAITPID
     workerPids[ wid ] = pid;
 #endif
+  */
   }
 
   return MAIN_PROCESS;
@@ -591,6 +781,29 @@ void __specpriv_end_iter(void)
   __specpriv_advance_iter(globalCurIter);
 }
 
+// check whether we will checkpoint at the end of current iteration
+Bool __specpriv_ckpt_check(void)
+{
+  Iteration firstIter = __specpriv_get_first_iter();
+  Iteration i = currentIter + 1;
+  uint8_t code8 =
+      ((uint8_t)(((i - firstIter) % checkpointGranularity) +
+                 NUM_RESERVED_SHADOW_VALUES));
+
+  if (runOnEveryIter) {
+    if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0)
+    return 1;
+  }
+  else {
+    Iteration prevI = i - numWorkers;
+    Iteration prevR = (prevI - firstIter) / checkpointGranularity;
+    Iteration curR = (i - firstIter) / checkpointGranularity;
+    if (prevI >= firstIter && prevR + 1 == curR)
+      return 1;
+  }
+  return 0;
+}
+
 void __specpriv_final_iter_ckpt_check(uint64_t rem, uint64_t chunkSize) {
   uint64_t chunkedRem = rem / chunkSize;
   if (rem % chunkSize)
@@ -623,6 +836,7 @@ void __specpriv_predict(uint64_t observed, uint64_t expected)
     __specpriv_misspec("Value prediction failed");
 }
 
+
 //Wid __specpriv_spawn_workers_callback(Iteration firstIter, void (*callback)(void*), void *user)
 Wid __specpriv_spawn_workers_callback(
     Iteration firstIter, void (*callback)(void *, int64_t, int64_t, int64_t),
@@ -631,6 +845,11 @@ Wid __specpriv_spawn_workers_callback(
   DEBUG(printf("spawn_workers_callback\n"));
   DEBUG(printf("numCores:%lu, chunkSize:%lu\n", numCores, chunkSize));
 
+  __specpriv_trigger_workers(firstIter, callback, user, numCores, chunkSize);
+
+  return myWorkerId;
+
+  /*
   Wid id = __specpriv_spawn_workers(firstIter);
   if( id == ~0U )
     return id; // parent
@@ -642,6 +861,7 @@ Wid __specpriv_spawn_workers_callback(
  // Should never return.
   __specpriv_worker_finishes(0);
   return 0;
+  */
 }
 
 
