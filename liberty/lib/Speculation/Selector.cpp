@@ -185,7 +185,8 @@ unsigned Selector::computeWeights(
 
     const unsigned long loopTime = perf.estimate_loop_weight(A);
     const unsigned long scaledLoopTime = FixedPoint*loopTime;
-    const unsigned depthPenalty = PenalizeLoopNest*A->getLoopDepth(); // break ties with nested loops
+    assert(A->getLoopDepth() > 0 && "Target loop is not inside a loop???");
+    const unsigned depthPenalty = PenalizeLoopNest*(A->getLoopDepth()-1); // break ties with nested loops
 
     unsigned long adjLoopTime = scaledLoopTime;
     if( scaledLoopTime > depthPenalty )

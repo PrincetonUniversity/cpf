@@ -65,11 +65,11 @@ struct PerformanceEstimator
   // By default, this method uses the simple pipeline model,
   // which ignores pipeline fill, communication costs, etc:
   //  weight(pipeline) = max_{s in stages} weight(s)
-  virtual unsigned long estimate_pipeline_weight(const PipelineStrategy::Stages &stages);
-  virtual unsigned long estimate_pipeline_weight(const PipelineStrategy::Stages &stages, const Loop *loop);
-  unsigned long estimate_pipeline_weight(const PipelineStrategy &strategy)
+  virtual double estimate_pipeline_weight(const PipelineStrategy::Stages &stages);
+  virtual double estimate_pipeline_weight(const PipelineStrategy::Stages &stages, const Loop *loop);
+  double estimate_pipeline_weight(const PipelineStrategy &strategy)
     { return estimate_pipeline_weight( strategy.stages ); }
-  unsigned long estimate_pipeline_weight(const PipelineStrategy &strategy, const Loop *loop)
+  double estimate_pipeline_weight(const PipelineStrategy &strategy, const Loop *loop)
     { return estimate_pipeline_weight( strategy.stages, loop ); }
 
 };

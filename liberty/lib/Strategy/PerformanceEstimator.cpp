@@ -8,21 +8,21 @@ namespace SpecPriv
 {
 using namespace llvm;
 
-unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::Stages &stages)
+double PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::Stages &stages)
 {
-  unsigned long max = 0;
+  double max = 0;
   for(unsigned i=0, N=stages.size(); i<N; ++i)
   {
     const PipelineStage &stage = stages[i];
     assert( stage.type != PipelineStage::Replicable && "Must expand replicated stages before estimation");
 
-    unsigned long wt = estimate_weight( stage.instructions.begin(), stage.instructions.end() );
+    double wt = estimate_weight( stage.instructions.begin(), stage.instructions.end() );
 
     const unsigned rep = stage.parallel_factor;
     if( rep > 1 )
       wt = (wt + rep - 1) / rep;
 
-    const unsigned long rep_wt = estimate_weight( stage.replicated.begin(), stage.replicated.end() );
+    const double rep_wt = estimate_weight( stage.replicated.begin(), stage.replicated.end() );
     wt += rep_wt;
 
     if( wt > max )
@@ -31,18 +31,18 @@ unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrat
   return max;
 }
 
-unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::Stages &stages, const Loop *loop)
+double PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::Stages &stages, const Loop *loop)
 {
   errs() << "\t*** estimate pipeline weights\n";
 
-  unsigned long max = 0;
+  double max = 0;
   for(unsigned i=0, N=stages.size(); i<N; ++i)
   {
     const PipelineStage &stage = stages[i];
     assert( stage.type != PipelineStage::Replicable && "Must expand replicated stages before estimation");
 
-    unsigned long wt = estimate_weight( stage.instructions.begin(), stage.instructions.end() );
-    unsigned long seq_wt = wt;
+    double wt = estimate_weight( stage.instructions.begin(), stage.instructions.end() );
+    double seq_wt = wt;
 
     unsigned rep = stage.parallel_factor;
     if( rep > 1 )
@@ -69,14 +69,14 @@ unsigned long PerformanceEstimator::estimate_pipeline_weight(const PipelineStrat
            << " Weight " << format("%6.2f", 100.0 * (double)seq_wt / estimate_loop_weight(loop))
            << " P-Factor " << format("%4d", rep)
            << " Speedup " << format("%6.2f", speedup)
-           << " Absolute P-Weight " << wt
+           << " Absolute P-Weight " << format("%6.2f", wt)
            << "\n";
 
     if( wt > max )
       max = wt;
   }
 
-  errs() << "\t\t- Weight " << max << "\n";
+  errs() << "\t\t- Weight " << format("%6.2f", max) << "\n";
   return max;
 }
 
