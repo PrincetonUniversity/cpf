@@ -63,7 +63,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA);
+  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
   reduxRemed->setLoopOfInterest(A);
   remeds.push_back(std::move(reduxRemed));
 

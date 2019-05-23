@@ -12,6 +12,7 @@
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Redux/Reduction.h"
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Analysis/ReductionDetection.h"
 
 #include "LoopDependenceInfo.hpp"
 
@@ -35,8 +36,9 @@ public:
 
 class ReduxRemediator : public Remediator {
 public:
-  ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi, LoopAA *aa)
-      : Remediator(), mloops(ml), loopDepInfo(ldi), loopAA(aa) {}
+  ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi, LoopAA *aa,
+                  PDG *lpdg)
+      : Remediator(), mloops(ml), loopDepInfo(ldi), loopAA(aa), pdg(lpdg) {}
 
   void setLoopOfInterest(Loop *l) {
     Function *f = l->getHeader()->getParent();
@@ -45,11 +47,13 @@ public:
     regReductions.clear();
     memReductions.clear();
     findMemReductions(l);
+    findMinMaxRegReductions(l);
   }
 
   StringRef getRemediatorName() const { return "redux-remediator"; }
 
   void findMemReductions(Loop *l);
+  void findMinMaxRegReductions(Loop *l);
 
   RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried,
                    const Loop *L);
@@ -68,6 +72,8 @@ private:
   ScalarEvolution *se;
   LoopDependenceInfo *loopDepInfo;
   LoopAA *loopAA;
+  PDG *pdg;
+  ReductionDetection reduxdet;
 };
 
 } // namespace liberty

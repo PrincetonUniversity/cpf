@@ -10,7 +10,6 @@
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
 #include "liberty/Orchestration/ReduxRemed.h"
-#include "liberty/Analysis/ReductionDetection.h"
 
 #define DEFAULT_REDUX_REMED_COST 2
 
@@ -141,6 +140,10 @@ bool ReduxRemediator::isConditionalReductionPHI(const Instruction *I,
   return true;
 }
 
+void ReduxRemediator::findMinMaxRegReductions(Loop *l) {
+  reduxdet.findMinMaxRegReductions(l, pdg);
+}
+
 void ReduxRemediator::findMemReductions(Loop *l) {
 
   std::set<Value *> visitedAccums;
@@ -267,7 +270,6 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     return remedResp;
   }
 
-  ReductionDetection reduxdet;
   if (reduxdet.isSumReduction(L, A, B, loopCarried)) {
     ++numRegDepsRemovedSumRedux;
     DEBUG(errs() << "Resolved by liberty sumRedux\n");
