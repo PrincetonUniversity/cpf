@@ -175,35 +175,26 @@ bool ReductionDetection::isSumReduction(const Loop *loop, const Instruction *src
   return false;
 }
 
-
-/*
 // For branch-type min/max, src is the branch and dst is the phi.
 // For select-type min/max, src is the cmp and dst is the select.
 // Either way, check that src depends on dst, and dst has the same operands
 // as the cmp.
-bool MinMaxReduction::findDependenceCycle(Instruction *src, Instruction *dst,
-                                          DenseSet<PDGNode *> &liveOuts,
-                                          bool &isFirstOperand) {
+bool findDependenceCycle(
+    const Instruction *src, const Instruction *dst, bool &isFirstOperand,
+    std::unordered_set<const Instruction *> &minMaxReductions, Loop *loop) {
+
   // DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
   // << *dst << "\n");
 
-  // DEBUG(errs() << "liveouts:");
-  // for (DenseSet<PDGNode*>::iterator i = liveOuts.begin(), e = liveOuts.end();
-  // i != e; ++i) {
-  // DEBUG(errs() << " " << *i << " " <<
-  // *((InstructionNode*)(*i))->getInstruction());
-  //}
-  // DEBUG(errs() << "\n");
-
-  std::vector<Instruction *> stack;
+  std::vector<const Instruction *> stack;
   stack.push_back(dst);
 
-  DenseSet<Instruction *> visited;
+  DenseSet<const Instruction *> visited;
 
-  Instruction *cmpInst = NULL;
+  const Instruction *cmpInst = NULL;
 
   while (!stack.empty()) {
-    Instruction *inst = stack.back();
+    const Instruction *inst = stack.back();
     stack.pop_back();
     visited.insert(inst);
 
@@ -212,7 +203,7 @@ bool MinMaxReduction::findDependenceCycle(Instruction *src, Instruction *dst,
       assert(cmpInst && "Cycle should contain a CmpInst");
 
       // Check that operands of the cmp are the same as those of the sel/phi
-      if (SelectInst *sel = dyn_cast<SelectInst>(dst)) {
+      if (const SelectInst *sel = dyn_cast<SelectInst>(dst)) {
         if (cmpInst->getOperand(0) != sel->getTrueValue() &&
             cmpInst->getOperand(0) != sel->getFalseValue())
           return false;
@@ -220,7 +211,7 @@ bool MinMaxReduction::findDependenceCycle(Instruction *src, Instruction *dst,
             cmpInst->getOperand(1) != sel->getFalseValue())
           return false;
       } else {
-        PHINode *phi = cast<PHINode>(dst);
+        const PHINode *phi = cast<PHINode>(dst);
         // DEBUG(errs() << "PHI: " << *phi << '\n');
         bool found0 = false, found1 = false;
         for (unsigned val = 0; val < phi->getNumIncomingValues(); ++val) {
@@ -233,51 +224,124 @@ bool MinMaxReduction::findDependenceCycle(Instruction *src, Instruction *dst,
           return false;
       }
 
+      DEBUG(errs() << "Dependence cycle found for " << *src << " , " << *dst
+                   << "\n");
       return true;
     }
 
-    PDGNode *node = pdg->getPDGNodeForInst(inst);
-
-    if (liveOuts.count(node))
+    if (!loop->contains(inst))
       continue;
 
     if (inst != dst && !isa<PHINode>(inst) && !isa<CmpInst>(inst)) {
-      // DEBUG(errs() << "Shouldn't have a non-PHI/cmp use: " << *inst << "\n");
+      DEBUG(errs() << "Shouldn't have a non-PHI/cmp use: " << *inst << "\n");
+      return false;
+  }
+
+  for (Value::const_user_iterator U = inst->user_begin(), E = inst->user_end();
+       U != E; ++U) {
+    const Instruction *user = dyn_cast<Instruction>(*U);
+    if (!user) {
+      DEBUG(errs() << "User is not an instruction\n");
       return false;
     }
+    if (!visited.count(user)) {
+      stack.push_back(user);
 
-    for (Value::use_iterator U = inst->use_begin(), E = inst->use_end(); U != E;
-         ++U) {
-      Instruction *use = cast<Instruction>(*U);
-      if (!visited.count(use)) {
-        stack.push_back(use);
-
-        if (isa<CmpInst>(use)) {
-          cmpInst = use;
-          if (use->getOperand(0) == inst)
-            isFirstOperand = true;
-          else {
-            assert(use->getOperand(1) == inst);
-            isFirstOperand = false;
-          }
+      if (isa<CmpInst>(user)) {
+        if (cmpInst) {
+          DEBUG(errs() << "More than one compare inst in the cycle\n");
+          return false; // there should only be one compare inst in the cycle
+        }
+        cmpInst = user;
+        if (user->getOperand(0) == inst)
+          isFirstOperand = true;
+        else {
+          assert(user->getOperand(1) == inst);
+          isFirstOperand = false;
         }
       }
     }
   }
+}
 
-  return false;
+return false;
+} // namespace liberty
+
+// This function should be called on all selects (could be extented for PHIs for
+// branch min/max) in the same basic block as the dst of the reduction edge.
+void sameBBMinMaxRedux(
+    const Instruction *dst, MinMaxReductionInfo *info,
+    std::unordered_set<const Instruction *> &minMaxReductions, Loop *loop) {
+
+  // DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
+  // << *dst << "\n");
+
+  const SelectInst *sel = dyn_cast<SelectInst>(dst);
+  if (!sel || sel->getCondition() != info->cmpInst)
+    return;
+
+  std::vector<const Instruction *> stack;
+  stack.push_back(dst);
+
+  DenseSet<const Instruction *> visited;
+
+  const Instruction *liveOutV = NULL;
+  bool depCycleCompleted = false;
+
+  while (!stack.empty()) {
+    const Instruction *inst = stack.back();
+    stack.pop_back();
+
+    visited.insert(inst);
+
+    if (!loop->contains(inst))
+      continue;
+
+    const CmpInst *ci = dyn_cast<CmpInst>(inst);
+    if (ci && ci == info->cmpInst)
+      continue;
+
+    if (!isa<PHINode>(inst) && inst != dst ) {
+      DEBUG(errs() << "Shouldn't have a non-PHI use: " << *inst << "\n");
+      return;
+    }
+
+    for (Value::const_user_iterator U = inst->user_begin(), E = inst->user_end(); U != E;
+         ++U) {
+      const Instruction *user = dyn_cast<Instruction>(*U);
+      if (!user) {
+        DEBUG(errs() << "User is not an instruction\n");
+        return;
+      }
+      if (!visited.count(user)) {
+        stack.push_back(user);
+
+        if (info && inst->hasOneUse() && user->getParent() == loop->getHeader())
+          liveOutV = inst;
+      } else if (user == dst)
+        depCycleCompleted = true;
+    }
+  }
+
+  if (liveOutV && depCycleCompleted) {
+    DEBUG(errs() << "MinMax redux for " << *liveOutV << "\n");
+    minMaxReductions.insert(liveOutV);
+  }
 }
 
 // Find a candidate edge.  This can be a control dependence edge from branch
 // to phi, or a dataflow edge from compare to select.
-MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
-    const Instruction *src, const Instruction *dst,
-
-    const bool controlDep) {
+MinMaxReductionInfo *
+areCandidateInsts(const Instruction *src, const Instruction *dst,
+                  const bool controlDep, PDG *pdg,
+                  std::unordered_set<const Instruction *> &minMaxReductions,
+                  Loop *loop) {
 
   if (!src || !dst)
     return NULL;
 
+  // TODO: sot: if branch and phi case not sure it would be captured. select are
+  // almost always used making it hard to test this case
   if (controlDep) {
 
     // 1. Check dst is move (PHI op)
@@ -285,7 +349,7 @@ MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
       return NULL;
 
     // 2. check comparison code
-    BranchInst *branchInst = dyn_cast<BranchInst>(src);
+    const BranchInst *branchInst = dyn_cast<BranchInst>(src);
     if (!branchInst)
       return NULL;
 
@@ -293,14 +357,14 @@ MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
     if (branchInst->isUnconditional())
       return NULL;
 
-    CmpInst *cmpInst = dyn_cast<CmpInst>(branchInst->getCondition());
+    const CmpInst *cmpInst = dyn_cast<CmpInst>(branchInst->getCondition());
     if (!cmpInst)
       return NULL;
 
-    if (ICmpInst *icmpInst = dyn_cast<ICmpInst>(cmpInst)) {
+    if (const ICmpInst *icmpInst = dyn_cast<ICmpInst>(cmpInst)) {
       if (!icmpInst->isRelational())
         return NULL;
-    } else if (FCmpInst *fcmpInst = dyn_cast<FCmpInst>(cmpInst)) {
+    } else if (const FCmpInst *fcmpInst = dyn_cast<FCmpInst>(cmpInst)) {
       if (!fcmpInst->isRelational())
         return NULL;
     } else
@@ -311,7 +375,7 @@ MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
     // 3. check def of dst is use of src
     // if (calTransitiveDependence(loopPDG, src, dst, cmpInst)) {
     bool isFirst;
-    if (findDependenceCycle(src, dst, liveOuts, isFirst)) {
+    if (findDependenceCycle(src, dst, isFirst, minMaxReductions, loop)) {
       MinMaxReductionInfo *info = new MinMaxReductionInfo;
       info->cmpInst = cmpInst;
       info->minMaxValue = dst;
@@ -340,15 +404,15 @@ MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
     } else {
       DEBUG(errs() << "findDependenceCycle() returned false\n");
     }
-  } else if (SelectInst *sel = dyn_cast<SelectInst>(dst)) {
+  } else if (const SelectInst *sel = dyn_cast<SelectInst>(dst)) {
 
     if (!src)
       return NULL;
 
-    if (ICmpInst *icmpInst = dyn_cast<ICmpInst>(src)) {
+    if (const ICmpInst *icmpInst = dyn_cast<ICmpInst>(src)) {
       if (!icmpInst->isRelational())
         return NULL;
-    } else if (FCmpInst *fcmpInst = dyn_cast<FCmpInst>(src)) {
+    } else if (const FCmpInst *fcmpInst = dyn_cast<FCmpInst>(src)) {
       if (!fcmpInst->isRelational())
         return NULL;
     } else
@@ -357,8 +421,8 @@ MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
     // check def of dst is use of src
     // if (calTransitiveDependence(loopPDG, src, dst, src)) {
     bool isFirst;
-    if (findDependenceCycle(src, dst, liveOuts, isFirst)) {
-      CmpInst *cmpInst = cast<CmpInst>(src);
+    if (findDependenceCycle(src, dst, isFirst, minMaxReductions, loop)) {
+      const CmpInst *cmpInst = cast<CmpInst>(src);
       MinMaxReductionInfo *info = new MinMaxReductionInfo;
       info->cmpInst = cmpInst;
       info->minMaxValue = sel;
@@ -385,59 +449,69 @@ MinMaxReductionInfo *ReductionDetection::MinMaxReduction::areCandidateInsts(
 
   return NULL;
 }
-*/
 
 bool ReductionDetection::isMinMaxReduction(const Loop *loop,
                                            const Instruction *src,
                                            const Instruction *dst,
-    //                                       const bool controlDep,
                                            const bool loopCarried) {
-  /*
-  DEBUG(errs() << "Testing PDG Edge for
-min/max reduction: " << *src << " -> " << *dst << "\n");
+  DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
+               << *dst << "\n";);
 
-  // Find an edge corresponding to a min/max reduction.
-  //
-  // TODO There is an issue with this code. If LLVM decides to
-  // specialize a loop by creating a path where an inner loop is
-  // executed and one path where it isn't, a reduction edge could
-  // become cloned on either side. Then while exploring one side or the
-  // other, the opposite side will prevent dependences from being removed
-  // properly. As of June 5th, 2012 this is happening with KS if you inline
-  // the CAiBj function.
-  if (MinMaxReductionInfo *info =
-      areCandidateInsts(loopPDG, liveIns, liveOuts, edge)) {
+  if (minMaxReductions.count(src) && loopCarried)
+    return true;
 
-    Instruction *src = edge->getSrcInst(); // src is br or cmp
-    Instruction *dst = edge->getDstInst();
-    DEBUG(errs() << "CandidateInsts:"
-        << "\n      src = " << *src
-        << "\n      dst = " << *dst
-        << "\n      edge type = " << format("0x%x\n", edge->getDepType()));
-
-    // MIN/MAX Reduction Candidate!!
-
-    // Annotate edges corresponding to other reduction live-outs
-    BasicBlock *bb = dst->getParent();
-    for (BasicBlock::iterator bi = bb->begin(), ei = bb->end(); bi != ei; bi++) {
-      Instruction *itmp = &(*bi);
-      // Should only check moves (PHIs and selects).
-      // NOTE: Should selects be more restrictive (i.e. only allowed if
-      // original min/max used a select with the same condition?)
-      if (isa<PHINode>(itmp) || isa<SelectInst>(itmp)) {
-        PDGNode *ptmp = loopPDG->getPDGNodeForInst(itmp);
-        DenseSet<PDGNode *> checked;
-        annotateWAWEdges(loopPDG, loop, info, ptmp, ptmp, liveIns, checked);
-      }
-    }
-
-    ++numMinMax;
-  }
-
-  //loopPDG->writePDG("loopafter");
-  */
-  DEBUG(errs() << "\t- Finishing min/max reduction check.\n");
   return false;
+}
+
+void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
+  minMaxReductions.clear();
+  DEBUG(errs() << "\t- Starting min/max reduction check.\n");
+  for (auto edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
+    if (!pdg->isInternal(edge->getIncomingT()) ||
+        !pdg->isInternal(edge->getOutgoingT()))
+      continue;
+
+    // Find an edge corresponding to a min/max reduction.
+    //
+    // TODO There is an issue with this code. If LLVM decides to
+    // specialize a loop by creating a path where an inner loop is
+    // executed and one path where it isn't, a reduction edge could
+    // become cloned on either side. Then while exploring one side or the
+    // other, the opposite side will prevent dependences from being removed
+    // properly. As of June 5th, 2012 this is happening with KS if you inline
+    // the CAiBj function.
+
+    Instruction *src =
+        dyn_cast<Instruction>(edge->getOutgoingT()); // src is br or cmp
+    Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
+
+    if (MinMaxReductionInfo *info =
+            areCandidateInsts(src, dst, edge->isControlDependence(), pdg,
+                              minMaxReductions, loop)) {
+      DEBUG(errs() << "CandidateReduxInsts:"
+                   << "\n      src = " << *src
+                   << "\n      dst = " << *dst << "\n");
+
+      // MIN/MAX Reduction Candidate!!
+
+      // Detect edges corresponding to other reduction live-outs
+      BasicBlock *bb = dst->getParent();
+      for (BasicBlock::iterator bi = bb->begin(), ei = bb->end(); bi != ei;
+           bi++) {
+        Instruction *itmp = &(*bi);
+        // Should only check moves (PHIs and selects).
+        // NOTE: Should selects be more restrictive (i.e. only allowed if
+        // original min/max used a select with the same condition?)
+        //if (isa<PHINode>(itmp) || isa<SelectInst>(itmp)) {
+        if (isa<SelectInst>(itmp) && itmp != src) {
+          errs() << "Same BB inst: " << *itmp << "\n";
+          sameBBMinMaxRedux(itmp, info, minMaxReductions, loop);
+        }
+      }
+      delete info;
+    }
+  }
+  DEBUG(errs() << "\t- Finishing min/max reduction check.\n");
 }
 
 } // namespace liberty
