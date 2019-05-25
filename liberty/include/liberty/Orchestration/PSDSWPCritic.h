@@ -12,6 +12,7 @@
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Orchestration/ReduxRemed.h"
 
 #include "PDG.hpp"
 #include "SCC.hpp"
