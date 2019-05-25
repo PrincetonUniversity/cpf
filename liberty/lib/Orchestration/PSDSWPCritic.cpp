@@ -633,7 +633,19 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   for (auto edge : toBeRemovedEdges) {
     // DEBUG(errs() << " Removing loop-carried from " << *edge->getOutgoingT()
     //             << " to " << *edge->getIncomingT() << '\n');
-    optimisticPDG->removeEdge(edge);
+
+    // all pdg nodes involved in a reduction should remain in the same scc (and
+    // stage). Loop-carried deps handled by reduction cannot be removed
+    // completely since the reduction cycle will be broken. These cycles should
+    // remain but they can belong in a parallel stage. Thus, loop-carried deps
+    // handled by reduction are marked as intra-iteration to allow integration
+    // in parallel stage and avoid cross-stage distribution.
+    if (edge->getMinRemovalCost() == DEFAULT_REDUX_REMED_COST &&
+        edge->isLoopCarriedDependence()) {
+      edge->setLoopCarried(false);
+    } else {
+      optimisticPDG->removeEdge(edge);
+    }
   }
 
   BasicBlock *header = loop->getHeader();
@@ -705,7 +717,9 @@ unsigned long PSDSWPCritic::moveOffStage(
                                : make_range(pdgNode->begin_outgoing_edges(),
                                             pdgNode->end_outgoing_edges());
     for (auto edge : edges) {
-      if (edge->isRemovableDependence() && !edgesNotRemoved.count(edge))
+      if ((edge->isRemovableDependence() &&
+           edge->getMinRemovalCost() != DEFAULT_REDUX_REMED_COST) &&
+          !edgesNotRemoved.count(edge))
         continue;
       Value *V = (moveToFront) ? edge->getOutgoingT() : edge->getIncomingT();
       if (!pdg.isInternal(V))
