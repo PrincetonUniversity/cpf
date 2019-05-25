@@ -746,10 +746,20 @@ bool PSDSWPCritic::avoidElimDep(const PDG &pdg, PipelineStrategy &ps,
   if (edge->getMinRemovalCost() <= costThreshold)
     return false;
 
+  Value *inV = edge->getIncomingT();
+  Instruction *inI = dyn_cast<Instruction>(inV);
+  Value *outV = edge->getOutgoingT();
+  Instruction *outI = dyn_cast<Instruction>(outV);
+
   // either move the src dep inst to the first seq stage (if any) or the dest
   // dep inst to the last seq stage (if any).
   // similarly proceed with the rest of the dependent instructions until the
   // pstage is reduced below a threshold
+
+  // if one of the inst is already moved to the appropriate stage, dep can be
+  // avoided with no additional movement
+  if (inI && outI && (instsMovedToFront.count(outI) || instsMovedToBack.count(inI)))
+    return true;
 
   unsigned numOfStages = ps.stages.size();
   bool alreadyFrontSeqStage = ps.stages[0].type == PipelineStage::Sequential;
@@ -762,29 +772,25 @@ bool PSDSWPCritic::avoidElimDep(const PDG &pdg, PipelineStrategy &ps,
       (alreadyBackSeqStage) ? &ps.stages[numOfStages - 1].instructions
                             : nullptr;
 
-  Value *inV = edge->getIncomingT();
   unsigned long moveFrontCost = ULONG_MAX;
   unordered_set<Instruction *> tmpInstsMovedToFront;
   // TODO: probably requiring alreadyFrontSeqStage is not necessary
-  if (pdg.isInternal(inV) && alreadyFrontSeqStage) {
-    Instruction *inI = dyn_cast<Instruction>(inV);
-    assert(inI && "pdg node is not an instruction");
+  if (pdg.isInternal(outV) && alreadyFrontSeqStage) {
+    assert(outI && "pdg node is not an instruction");
     std::queue<Instruction*> worklist;
-    worklist.push(inI);
+    worklist.push(outI);
     moveFrontCost = moveOffStage(
         pdg, worklist, tmpInstsMovedToFront, instsFrontSeqStage,
         instsMovedToFront, instsMovedToBack, instsBackSeqStage, edgesNotRemoved,
         offPStageWeight, parallelStageWeight, true);
   }
 
-  Value *outV = edge->getOutgoingT();
   unsigned long moveBackCost = ULONG_MAX;
   unordered_set<Instruction *> tmpInstsMovedToBack;
-  if (pdg.isInternal(outV) && alreadyBackSeqStage) {
-    Instruction *outI = dyn_cast<Instruction>(outV);
-    assert(outI && "pdg node is not an instruction");
+  if (pdg.isInternal(inV) && alreadyBackSeqStage) {
+    assert(inI && "pdg node is not an instruction");
     std::queue<Instruction *> worklist;
-    worklist.push(outI);
+    worklist.push(inI);
     moveBackCost = moveOffStage(
         pdg, worklist, tmpInstsMovedToBack, instsBackSeqStage, instsMovedToBack,
         instsMovedToFront, instsFrontSeqStage, edgesNotRemoved, offPStageWeight,
