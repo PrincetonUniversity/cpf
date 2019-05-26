@@ -49,7 +49,6 @@ struct Api
     std::vector<Type *> formals;
     fv2v = FunctionType::get(voidty, formals, false);
     fv2i = FunctionType::get(u32, formals, false);
-    fv2b = FunctionType::get(u8, formals, false);
 
     formals.push_back(u32);
     fi2v = FunctionType::get(voidty, formals,false);
@@ -249,7 +248,7 @@ struct Api
   Constant *getCkptCheck()
   {
     std::string name = (Twine(personality) + "_ckpt_check").str();
-    return mod->getOrInsertFunction(name, fv2b);
+    return mod->getOrInsertFunction(name, fv2i);
   }
 
   Constant *getMisspeculate()
@@ -1061,7 +1060,7 @@ private:
   Type *voidty, *voidptr, *queueTy;
   PointerType *queueTyPtr;
   IntegerType *u1, *u8, *u16, *u32, *u64;
-  FunctionType *fv2v, *fv2i, *fv2b, *fi2i, *fi2v, *fii2v;
+  FunctionType *fv2v, *fv2i, *fi2i, *fi2v, *fii2v;
   FunctionType *fqi2v, *fq2i, *fq2v, *fii2q, *f4i2v, *f2i2v;
   FunctionType *ficvp2i;
   FunctionType *fvp2v, *fvpi2v, *fvpii2v, *fvpivp2v;
