@@ -246,6 +246,8 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   const unsigned N = recovery.liveoutStructure.liveouts.size();
   const LiveoutStructure::PhiList &phis = recovery.liveoutStructure.phis;
   Value *object = recovery.liveoutStructure.object;
+  const LiveoutStructure::IList &reduxLiveouts = recovery.liveoutStructure.reduxLiveouts;
+  const LiveoutStructure::ReduxGVList &reduxObjects = recovery.liveoutStructure.reduxObjects;
 
   BasicBlock *invokeChain = BasicBlock::Create(ctx, "invoke.chain.", dispatch_function);
 
@@ -286,6 +288,20 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     load->setName("initial:" + phi->getName() );
 
     S << gep << load;
+
+    initialValues[ phi ] = load;
+  }
+
+  for(unsigned i=0; i<reduxLiveouts.size(); ++i)
+  {
+    Instruction *phiI = reduxLiveouts[i];
+    PHINode *phi = dyn_cast<PHINode>(phiI);
+    assert(phi && "Redux variable not a phi?");
+
+    LoadInst *load = new LoadInst( reduxObjects[i] );
+    load->setName("initial:" + phi->getName() );
+
+    S << load;
 
     initialValues[ phi ] = load;
   }
@@ -444,6 +460,12 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
       LoadInst *load = new LoadInst(gep);
 
       recover << gep << load;
+      actuals.push_back(load);
+    }
+    for (unsigned i = 0; i < reduxLiveouts.size(); ++i) {
+      LoadInst *load = new LoadInst(reduxObjects[i]);
+
+      recover << load;
       actuals.push_back(load);
     }
   }

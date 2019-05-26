@@ -16,6 +16,9 @@
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Recovery.h"
 #include "liberty/CodeGen/RoI.h"
+#include "liberty/Redux/Reduction.h"
+
+#include "PDG.hpp"
 
 #include <set>
 #include <unordered_set>
@@ -46,6 +49,10 @@ struct Preprocess : public ModulePass {
 
   void assert_strategies_consistent_with_ir();
 
+  void replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
+                           StringRef name, Instruction *object,
+                           GlobalVariable *gv);
+
   std::unordered_set<const TerminatorInst *>
   getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
     return selectedCtrlSpecDeps[loopHeader];
@@ -55,7 +62,7 @@ struct Preprocess : public ModulePass {
     return separationSpecUsed.count(loopHeader);
   }
 
-  bool isSpecUsed(BasicBlock *loopHeader) {
+  bool isSpecUsed(BasicBlock *loopHeader) const {
     return specUsed.count(loopHeader);
   }
 
@@ -79,11 +86,15 @@ private:
       selectedCtrlSpecDeps;
   std::unordered_set<const BasicBlock *> separationSpecUsed;
   std::unordered_set<const BasicBlock *> specUsed;
+  std::unordered_set<const Instruction *> reduxV;
+  std::unordered_map<const Instruction *, Reduction::Type> redux2Type;
+  const Instruction *indVarPhi;
 
   void init(ModuleLoops &mloops);
 
   bool fixStaticContexts();
-  bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts);
+  bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts,
+                             ModuleLoops &mloops);
 
   bool addInitializationFunction();
   bool addFinalizationFunction();
