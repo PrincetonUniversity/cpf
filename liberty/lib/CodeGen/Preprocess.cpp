@@ -44,7 +44,8 @@ namespace SpecPriv
 {
 using namespace llvm;
 
-STATISTIC(numLiveOuts,    "Live-out values demoted to private memory");
+STATISTIC(numLiveOuts,      "Live-out values demoted to private memory");
+STATISTIC(numReduxLiveOuts, "Redux live-out values demoted to redux memory");
 
 void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
 {
@@ -236,7 +237,7 @@ bool Preprocess::runOnModule(Module &module)
 
     LiveoutStructure liveouts;
 
-    modified |= demoteLiveOutsAndPhis(loop, liveouts);
+    modified |= demoteLiveOutsAndPhis(loop, liveouts, mloops);
     recovery.getRecoveryFunction(loop, mloops, liveouts);
     modified = true;
   }
@@ -418,17 +419,85 @@ void Preprocess::init(ModuleLoops &mloops)
           remed->getRemedyName().equals("loaded-value-pred-remed")) {
         specUsedFlag = true;
       }
+      if (remed->getRemedyName().equals("redux-remedy")) {
+        ReduxRemedy *reduxRemed = (ReduxRemedy *)&*remed;
+        const Instruction *liveOutV = reduxRemed->liveOutV;
+        reduxV.insert(liveOutV);
+        redux2Type[liveOutV] = reduxRemed->type;
+      }
     }
     if (specUsedFlag)
       specUsed.insert(header);
   }
 }
 
-bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStructure)
+void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
+                                     StringRef name, Instruction *object, GlobalVariable *gv) {
+
+  Value *zero = ConstantInt::get(u32, 0);
+  Value *indices[] = {zero, ConstantInt::get(u32, i)};
+  std::vector<User *> users(def->user_begin(), def->user_end());
+  for (unsigned j = 0; j < users.size(); ++j)
+    if (Instruction *user = dyn_cast<Instruction>(users[j])) {
+      if (loop->contains(user))
+        continue;
+
+      LoadInst *load;
+      // Either the use is a PHI, or not.
+      if (PHINode *phi = dyn_cast<PHINode>(user)) {
+        // It is a phi; we must split an edge :(
+        for (unsigned k = 0; k < phi->getNumIncomingValues(); ++k) {
+          if (phi->getIncomingValue(k) != def)
+            continue;
+
+          BasicBlock *pred = phi->getIncomingBlock(k);
+          BasicBlock *succ = phi->getParent();
+
+          BasicBlock *splitedge = split(pred, succ, (".unspill-" + Twine(name) + ".").str());
+
+          LoadInst *load;
+          if (object) {
+            GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(
+                object, ArrayRef<Value *>(&indices[0], &indices[2]));
+            gep->setName(name + ":" + def->getName());
+            load = new LoadInst(gep);
+            InstInsertPt::Before(user) << gep;
+          } else {
+            load = new LoadInst(gv);
+          }
+
+          InstInsertPt::Beginning(splitedge) << load;
+          phi->setIncomingValue(k, load);
+        }
+      } else {
+        if (object) {
+          GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(
+              object, ArrayRef<Value *>(&indices[0], &indices[2]));
+          gep->setName(name + ":" + def->getName());
+          load = new LoadInst(gep);
+          InstInsertPt::Before(user) << gep;
+        } else {
+          load = new LoadInst(gv);
+        }
+
+        // Simple case: not a phi.
+        InstInsertPt::Before(user) << load;
+        user->replaceUsesOfWith(def, load);
+      }
+    }
+}
+
+bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStructure, ModuleLoops &mloops)
 {
   // Identify a unique set of instructions within this loop
   // whose value is used outside of the loop.
   std::set<Instruction*> liveoutSet;
+
+  // keep reduxLiveOuts as a subset of reduxV just in case some redux variables
+  // are actually not live-out but for some reason were not eliminated as dead
+  // code
+  std::unordered_set<Instruction*> reduxLiveoutSet;
+
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
@@ -437,8 +506,12 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       Instruction *inst = &*j;
       for(Value::user_iterator k=inst->user_begin(), f=inst->user_end(); k!=f; ++k)
         if( Instruction *user = dyn_cast< Instruction >( *k ) )
-          if( ! loop->contains(user) )
-            liveoutSet.insert(inst);
+          if( ! loop->contains(user) ) {
+            if (reduxV.count(inst))
+              reduxLiveoutSet.insert(inst);
+            else
+              liveoutSet.insert(inst);
+          }
     }
   }
 
@@ -454,7 +527,10 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     if (!phi)
       break;
 
-    phis.push_back(phi);
+    // exclude induction variable and reduction variables
+    if (indVarPhi != phi && !reduxLiveoutSet.count(phi))
+      phis.push_back(phi);
+
   }
 
   liveoutStructure.type = 0;
@@ -462,7 +538,8 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
   const unsigned N = liveoutSet.size();
   const unsigned M = phis.size();
-  if( N + M < 1 )
+  const unsigned K = reduxLiveoutSet.size();
+  if( N + M + K < 1 )
     return false;
 
   // The liveouts, in a fixed order.
@@ -472,6 +549,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
   // Allocate a structure on the stack to hold all live-outs.
   LLVMContext &ctx = mod->getContext();
+  Value *zero = ConstantInt::get(u32, 0);
   std::vector<Type *> fields( N + M );
   for(unsigned i=0; i<N; ++i)
     fields[i] = liveouts[i]->getType();
@@ -480,14 +558,54 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   StructType *structty = liveoutStructure.type = StructType::get(ctx, fields);
 
   Function *fcn = loop->getHeader()->getParent();
-  AllocaInst *liveoutObject = new AllocaInst(structty, 0, "liveouts.from." + loop->getHeader()->getName());
+  AllocaInst *liveoutObject = new AllocaInst(
+      structty, 0, "liveouts.from." + loop->getHeader()->getName());
   liveoutStructure.object = liveoutObject;
   InstInsertPt::Beginning(fcn) << liveoutObject;
 
-  DEBUG(errs() << "Adding a liveout object " << *liveoutObject << " to function " << fcn->getName() << '\n');
+  DEBUG(errs() << "Adding a liveout object " << *liveoutObject
+               << " to function " << fcn->getName() << '\n');
+
+  // The reducible liveouts, in a fixed order.
+  LiveoutStructure::IList &reduxLiveouts = liveoutStructure.reduxLiveouts;
+  reduxLiveouts.insert( reduxLiveouts.end(),
+    reduxLiveoutSet.begin(), reduxLiveoutSet.end() );
+
+  // Allocate a global variable to hold each reducible live-out
+  for(unsigned i=0; i<K; ++i) {
+    //PointerType *pty = PointerType::getUnqual(reduxLiveouts[i]->getType());
+    Type *pty = reduxLiveouts[i]->getType();
+    Twine name = "reduxLiveout_" + reduxLiveouts[i]->getName();
+    GlobalVariable *gvptr =
+        new GlobalVariable(*mod, pty, false, GlobalValue::InternalLinkage,
+                           Constant::getNullValue(pty), name);
+    liveoutStructure.reduxObjects.push_back(gvptr);
+  }
+
+  // Identify the edges at the end of an iteration
+  // == loop backedges, loop exits.
+  typedef std::vector< RecoveryFunction::CtrlEdge > CtrlEdges;
+  CtrlEdges iterationBounds;
+  CtrlEdges loopBounds;
+  for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
+  {
+    BasicBlock *bb = *i;
+    TerminatorInst *term = bb->getTerminator();
+    for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
+    {
+      BasicBlock *dest = term->getSuccessor(sn);
+
+      // Loop back edge
+      if( dest == header )
+        iterationBounds.push_back( RecoveryFunction::CtrlEdge(term,sn) );
+
+      // Loop exit
+      else if( ! loop->contains(dest) )
+        loopBounds.push_back( RecoveryFunction::CtrlEdge(term,sn) );
+    }
+  }
 
   // After each definition of a live-out value, store it into the structure.
-  Value *zero = ConstantInt::get(u32,0);
   for(unsigned i=0; i<N; ++i)
   {
     Instruction *def = liveouts[i];
@@ -504,11 +622,52 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     addToLPS(store, def);
   }
 
-  // At each predecessor of the header
-  // store the incoming value to the structure.
+  LoopInfo &li = mloops.getAnalysis_LoopInfo(fcn);
+
+  // store incoming values to header for all phis and redux variables
+  //
+  // MTCG will limit stores inside the loop only when checkpoint is imminent.
+  // isolate stores within the loop in a new basic block.
+  //
+  // if no spec or no reducible variables then no reason to store whatsover
+  if (K > 0 || (M > 0 && specUsed.count(header))) {
+    for (unsigned i = 0, Nib = iterationBounds.size(); i < Nib; ++i) {
+      TerminatorInst *term = iterationBounds[i].first;
+      BasicBlock *source = term->getParent();
+      unsigned sn = iterationBounds[i].second;
+      BasicBlock *dest = term->getSuccessor(sn);
+
+      BasicBlock *save_redux_lc = BasicBlock::Create(ctx, "save.redux.lc", fcn);
+
+      // Update PHIs in dest
+      for (BasicBlock::iterator j = dest->begin(), z = dest->end(); j != z;
+           ++j) {
+        PHINode *phi = dyn_cast<PHINode>(&*j);
+        if (!phi)
+          break;
+
+        int idx = phi->getBasicBlockIndex(source);
+        if (idx != -1)
+          phi->setIncomingBlock(idx, save_redux_lc);
+      }
+
+      term->setSuccessor(sn, save_redux_lc);
+      save_redux_lc->moveAfter(source);
+      Instruction *br = BranchInst::Create(dest, save_redux_lc);
+
+      loop->addBasicBlockToLoop(save_redux_lc, li);
+
+      Instruction *gravity;
+      if (K > 0)
+        gravity = reduxLiveouts[0];
+      else
+        gravity = phis[0];
+      addToLPS(br, gravity);
+    }
+  }
+
   for (unsigned i = 0; i < M; ++i) {
     PHINode *phi = phis[i];
-
     Value *indices[] = {zero, ConstantInt::get(u32, N + i)};
 
     for (unsigned j = 0; j < phi->getNumIncomingValues(); ++j) {
@@ -524,7 +683,6 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       gep->setName("phi-incoming:" + phi->getName());
       Value *vdef = phi->getIncomingValue(j);
       StoreInst *store = new StoreInst(vdef, gep);
-
       InstInsertPt::End(pred) << gep << store;
 
       Instruction *gravity = phi;
@@ -533,6 +691,27 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
       if (loop->contains(pred)) {
         addToLPS(gep, gravity);
+        addToLPS(store, gravity);
+      }
+    }
+  }
+  for (unsigned i = 0; i < K; ++i) {
+    Instruction *reduxI = reduxLiveouts[i];
+    PHINode *phi = dyn_cast<PHINode>(reduxI);
+    assert(phi && "Redux variable not a phi?");
+
+    for (unsigned j = 0; j < phi->getNumIncomingValues(); ++j) {
+      BasicBlock *pred = phi->getIncomingBlock(j);
+
+      Value *vdef = phi->getIncomingValue(j);
+      StoreInst *store = new StoreInst(vdef, liveoutStructure.reduxObjects[i]);
+      InstInsertPt::End(pred) << store;
+
+      Instruction *gravity = phi;
+      if (Instruction *idef = dyn_cast<Instruction>(vdef))
+        gravity = idef;
+
+      if (loop->contains(pred)) {
         addToLPS(store, gravity);
       }
     }
@@ -549,49 +728,55 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   for(unsigned i=0; i<N; ++i)
   {
     Instruction *def = liveouts[i];
-    std::vector< User* > users( def->user_begin(), def->user_end() );
+    replaceLiveOutUsage(def, i, loop, "liveout", liveoutObject, nullptr);
+  }
+  // redux live-out values
+  for(unsigned i=0; i<K; ++i)
+  {
+    Instruction *def = reduxLiveouts[i];
+    replaceLiveOutUsage(def, i, loop, "reduxLiveout", nullptr, liveoutStructure.reduxObjects[i]);
+  }
 
-    for(unsigned j=0; j<users.size(); ++j)
-      if( Instruction *user = dyn_cast< Instruction >( users[j] ) )
-      {
-        if( loop->contains(user) )
-          continue;
+  // store reducible live-outs on loop exits
+  for (unsigned i = 0; i < loopBounds.size(); ++i) {
+    TerminatorInst *term = loopBounds[i].first;
+    BasicBlock *source = term->getParent();
+    unsigned sn = loopBounds[i].second;
+    BasicBlock *dest = term->getSuccessor(sn);
 
-        Value *indices[] = { zero, ConstantInt::get(u32, i) };
+    {
+      Twine bbname = "end.loop." + Twine(i);
+      BasicBlock *split = BasicBlock::Create(ctx, bbname, fcn);
 
-        // Either the use is a PHI, or not.
-        if( PHINode *phi = dyn_cast< PHINode >(user) )
-        {
-          // It is a phi; we must split an edge :(
-          for(unsigned k=0; k<phi->getNumIncomingValues(); ++k)
-          {
-            if( phi->getIncomingValue(k) != def )
-              continue;
+      // Update PHIs in dest
+      for (BasicBlock::iterator j = dest->begin(), z = dest->end(); j != z;
+           ++j) {
+        PHINode *phi = dyn_cast<PHINode>(&*j);
+        if (!phi)
+          break;
 
-            BasicBlock *pred = phi->getIncomingBlock(k);
-            BasicBlock *succ = phi->getParent();
-
-            BasicBlock *splitedge = split(pred,succ,".unspill-liveouts.");
-
-            GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(liveoutObject, ArrayRef<Value*>(&indices[0], &indices[2]) );
-            gep->setName( "liveout:" + def->getName() );
-            LoadInst *load = new LoadInst(gep);
-
-            InstInsertPt::Beginning(splitedge) << gep << load;
-            phi->setIncomingValue(k, load);
-          }
-        }
-        else
-        {
-          GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(liveoutObject, ArrayRef<Value*>(&indices[0], &indices[2]) );
-          gep->setName( "liveout:" + def->getName() );
-          LoadInst *load = new LoadInst(gep);
-
-          // Simple case: not a phi.
-          InstInsertPt::Before(user) << gep << load;
-          user->replaceUsesOfWith(def, load);
-        }
+        int idx = phi->getBasicBlockIndex(source);
+        if (idx != -1)
+          phi->setIncomingBlock(idx, split);
       }
+      term->setSuccessor(sn, split);
+      split->moveAfter(source);
+
+      for (unsigned k = 0; k < K; ++k) {
+        Instruction *def = reduxLiveouts[k];
+
+        StoreInst *store = new StoreInst(def, liveoutStructure.reduxObjects[k]);
+
+        InstInsertPt::End(split) << store;
+
+        // Add these new instructions to the partition
+        addToLPS(store, def);
+      }
+
+      BranchInst::Create(dest, split);
+      if (K > 0)
+        addToLPS(split->getTerminator(), reduxLiveouts[0]);
+    }
   }
 
   // The liveout structure must have private
@@ -599,23 +784,38 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // that.  With SMTX, this is automatic.
   // With Specpriv, we must mark that structure
   // as a member of the PRIVATE heap.
+  // The redux liveout structure needs to be a member of the redux heap
   ReadPass *rp = getAnalysisIfAvailable< ReadPass >();
   Selector *sps = getAnalysisIfAvailable< Selector >();
   if( rp && sps )
   {
     const Read &spresults = rp->getProfileInfo();
-    Ptrs aus;
     Ctx *fcn_ctx = spresults.getCtx(fcn);
-    assert( spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus)
-    && "Failed to create AU objects for the live-out object?!");
-
     HeapAssignment &asgn = sps->getAssignment();
+
+    // liveout (non-redux) -> private
+    Ptrs aus;
+    assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
+           "Failed to create AU objects for the live-out object?!");
     HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
-    for(Ptrs::iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
-      privs.insert( i->au );
+    for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+      privs.insert(i->au);
+
+    // redux liveout -> redux
+    HeapAssignment::ReduxAUSet &reduxs = asgn.getReductionAUs();
+    for (unsigned i = 0; i < K; ++i) {
+      Ptrs reduxaus;
+      assert(spresults.getUnderlyingAUs(liveoutStructure.reduxObjects[i],
+                                        fcn_ctx, reduxaus) &&
+             "Failed to create AU objects for the redux live-out object?!");
+      for (Ptrs::iterator p = reduxaus.begin(), e = reduxaus.end(); p != e; ++p)
+        reduxs[p->au] = redux2Type[reduxLiveouts[i]];
+    }
   }
 
   numLiveOuts += N;
+  numReduxLiveOuts += K;
+
   return true;
 }
 

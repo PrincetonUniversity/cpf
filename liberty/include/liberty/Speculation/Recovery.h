@@ -21,12 +21,17 @@ struct LiveoutStructure
 {
   typedef std::vector<Instruction*> IList;
   typedef std::vector<PHINode*> PhiList;
+  typedef std::vector<GlobalVariable*> ReduxGVList;
 
   IList liveouts;
   PhiList phis;
 
+  IList reduxLiveouts;
+
   StructType *type;
   Instruction *object;
+
+  ReduxGVList reduxObjects;
 
   void replaceAllUsesOfWith(Value *oldv, Value *newv);
   void print(raw_ostream &fout) const;

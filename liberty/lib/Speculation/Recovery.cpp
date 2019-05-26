@@ -191,6 +191,16 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
         preimage = const_cast< Value* >(j->first);
         break;
       }
+    if (!preimage) {
+      // TODO: properly handle live-outs. Allocas are produced in
+      // lib/Transforms/Utils/CodeExtractor.cpp in llvm (line 694)
+      // In the past all live-outs were demoted to memory, so all arguments were live-ins
+      if (image && isa<AllocaInst>(image)) {
+        DEBUG(errs() << "preimage of arg in getRecovery " << *image
+                     << " is not found. Arg refers to a live-out.\n");
+        continue;
+      }
+    }
     assert( preimage && "What is the argument?");
 //    errs() << "Livein: " << *preimage << '\n';
     recovery.liveins.push_back(preimage);
@@ -213,6 +223,10 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
   // initial values for the PHIs
   for(LiveoutStructure::PhiList::const_iterator i=liveoutStructure.phis.begin(), e=liveoutStructure.phis.end(); i!=e; ++i)
     formals.push_back( (*i)->getType() );
+
+  for(LiveoutStructure::IList::const_iterator i=liveoutStructure.reduxLiveouts.begin(), e=liveoutStructure.reduxLiveouts.end(); i!=e; ++i)
+    formals.push_back( (*i)->getType() );
+
   // other live-ins
   FunctionType *old_fty = loop_fcn->getFunctionType();
   formals.insert( formals.end(),
@@ -237,6 +251,9 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
   ++new_i;
 
   for(LiveoutStructure::PhiList::const_iterator j=liveoutStructure.phis.begin(), z=liveoutStructure.phis.end(); j!=z; ++j, ++new_i)
+    new_i->setName("initial:" + (*j)->getName() );
+
+  for(LiveoutStructure::IList::const_iterator j=liveoutStructure.reduxLiveouts.begin(), z=liveoutStructure.reduxLiveouts.end(); j!=z; ++j, ++new_i)
     new_i->setName("initial:" + (*j)->getName() );
 
   ValueToValueMapTy clone2recovery;
@@ -289,9 +306,13 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
       assert( termInRecovery->getNumSuccessors() == N && "Cloning messed up exiting edges?!");
       BasicBlock *succInRecovery = termInRecovery->getSuccessor(sn);
 
-      assert( succInRecovery->size() == 1 && "Exit block in recovery should contain nothing but a return");
+      // TODO: make sure that removing this next assertion is correct.
+      // need to remove this assertion since now the live-outs are stored
+      // to memory on loop exits and not on every iteration
+      //assert( succInRecovery->size() == 1 && "Exit block in recovery should contain nothing but a return");
+
       ReturnInst *returnInRecovery = dyn_cast< ReturnInst >( succInRecovery->getTerminator() );
-      assert( returnInRecovery && "Exit block in recovery should contain nothing but a return");
+      assert( returnInRecovery && "Exit block's terminator in recovery should be a return");
 
       // Change it to return our code.
       Constant *rval = ConstantInt::get(u32,id);
@@ -339,7 +360,23 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
       new_phi->setIncomingValue(pn, &*i);
     }
   }
+  for(LiveoutStructure::IList::const_iterator j=liveoutStructure.reduxLiveouts.begin(), z=liveoutStructure.reduxLiveouts.end(); j!=z; ++j, ++i)
+  {
+    PHINode *old_phi = dyn_cast<PHINode>(*j);
+    assert(old_phi && "Redux variable not a phi?");
+    PHINode *middle_phi = dyn_cast< PHINode >( &*orig2clone[old_phi] );
+    assert( middle_phi );
+    PHINode *new_phi = dyn_cast< PHINode >( &*clone2recovery[ middle_phi ] );
+    assert( new_phi );
 
+    for(unsigned pn=0, N=new_phi->getNumIncomingValues(); pn<N; ++pn)
+    {
+      if( new_phi->getIncomingBlock(pn) != & rcvy->getEntryBlock() )
+        continue;
+
+      new_phi->setIncomingValue(pn, &*i);
+    }
+  }
 
   // Find or create a canonical induction variable.
   PHINode *civ = PHINode::Create(u32, 2,"civ", rcvy_header->getFirstNonPHI() );
