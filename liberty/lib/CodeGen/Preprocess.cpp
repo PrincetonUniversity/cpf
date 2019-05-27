@@ -432,7 +432,8 @@ void Preprocess::init(ModuleLoops &mloops)
 }
 
 void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
-                                     StringRef name, Instruction *object, GlobalVariable *gv) {
+                                     StringRef name, Instruction *object,
+                                     bool redux) {
 
   Value *zero = ConstantInt::get(u32, 0);
   Value *indices[] = {zero, ConstantInt::get(u32, i)};
@@ -456,28 +457,28 @@ void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
           BasicBlock *splitedge = split(pred, succ, (".unspill-" + Twine(name) + ".").str());
 
           LoadInst *load;
-          if (object) {
+          if (!redux) {
             GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(
                 object, ArrayRef<Value *>(&indices[0], &indices[2]));
             gep->setName(name + ":" + def->getName());
             load = new LoadInst(gep);
             InstInsertPt::Before(user) << gep;
           } else {
-            load = new LoadInst(gv);
+            load = new LoadInst(object);
           }
 
           InstInsertPt::Beginning(splitedge) << load;
           phi->setIncomingValue(k, load);
         }
       } else {
-        if (object) {
+        if (!redux) {
           GetElementPtrInst *gep = GetElementPtrInst::CreateInBounds(
               object, ArrayRef<Value *>(&indices[0], &indices[2]));
           gep->setName(name + ":" + def->getName());
           load = new LoadInst(gep);
           InstInsertPt::Before(user) << gep;
         } else {
-          load = new LoadInst(gv);
+          load = new LoadInst(object);
         }
 
         // Simple case: not a phi.
@@ -498,6 +499,9 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // code
   std::unordered_set<Instruction*> reduxLiveoutSet;
 
+  // The reducible liveouts, in a fixed order.
+  LiveoutStructure::IList &reduxLiveouts = liveoutStructure.reduxLiveouts;
+
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
@@ -507,9 +511,10 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       for(Value::user_iterator k=inst->user_begin(), f=inst->user_end(); k!=f; ++k)
         if( Instruction *user = dyn_cast< Instruction >( *k ) )
           if( ! loop->contains(user) ) {
-            if (reduxV.count(inst))
+            if (reduxV.count(inst)) {
               reduxLiveoutSet.insert(inst);
-            else
+              reduxLiveouts.push_back(inst);
+            } else
               liveoutSet.insert(inst);
           }
     }
@@ -566,20 +571,15 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   DEBUG(errs() << "Adding a liveout object " << *liveoutObject
                << " to function " << fcn->getName() << '\n');
 
-  // The reducible liveouts, in a fixed order.
-  LiveoutStructure::IList &reduxLiveouts = liveoutStructure.reduxLiveouts;
-  reduxLiveouts.insert( reduxLiveouts.end(),
-    reduxLiveoutSet.begin(), reduxLiveoutSet.end() );
-
   // Allocate a global variable to hold each reducible live-out
   for(unsigned i=0; i<K; ++i) {
-    //PointerType *pty = PointerType::getUnqual(reduxLiveouts[i]->getType());
     Type *pty = reduxLiveouts[i]->getType();
-    Twine name = "reduxLiveout_" + reduxLiveouts[i]->getName();
-    GlobalVariable *gvptr =
-        new GlobalVariable(*mod, pty, false, GlobalValue::InternalLinkage,
-                           Constant::getNullValue(pty), name);
-    liveoutStructure.reduxObjects.push_back(gvptr);
+    AllocaInst *reduxObject =
+        new AllocaInst(pty, 0,
+                       "reduxLiveout.from." + loop->getHeader()->getName() +
+                           "." + reduxLiveouts[i]->getName());
+    liveoutStructure.reduxObjects.push_back(reduxObject);
+    InstInsertPt::Beginning(fcn) << reduxObject;
   }
 
   // Identify the edges at the end of an iteration
@@ -728,13 +728,13 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   for(unsigned i=0; i<N; ++i)
   {
     Instruction *def = liveouts[i];
-    replaceLiveOutUsage(def, i, loop, "liveout", liveoutObject, nullptr);
+    replaceLiveOutUsage(def, i, loop, "liveout", liveoutObject, false);
   }
   // redux live-out values
   for(unsigned i=0; i<K; ++i)
   {
     Instruction *def = reduxLiveouts[i];
-    replaceLiveOutUsage(def, i, loop, "reduxLiveout", nullptr, liveoutStructure.reduxObjects[i]);
+    replaceLiveOutUsage(def, i, loop, "reduxLiveout", liveoutStructure.reduxObjects[i], true);
   }
 
   // store reducible live-outs on loop exits

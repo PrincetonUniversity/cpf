@@ -1063,9 +1063,22 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 
         else if( isa<UnreachableInst>(term) )
         {
-          errs() << "Not yet implemented: handle unreachable correctly.\n"
-                 << " - If 'unreachable' is reached, some memory will not be freed.\n";
-          continue;
+          where = InstInsertPt::Before(term);
+
+          // This unreachable terminator is probably prededed by
+          // a call to a noreturn function...
+          for(BasicBlock::iterator k=bb->begin(); k!=bb->end(); ++k)
+          {
+            CallSite cs = getCallSite( &*k );
+            if( !cs.getInstruction() )
+              continue;
+
+            if( cs.doesNotReturn() )
+            {
+              where = InstInsertPt::Before( cs.getInstruction() );
+              break;
+            }
+          }
         }
 
         else

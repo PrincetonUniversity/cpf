@@ -31,7 +31,7 @@ struct LiveoutStructure
   StructType *type;
   Instruction *object;
 
-  ReduxGVList reduxObjects;
+  IList reduxObjects;
 
   void replaceAllUsesOfWith(Value *oldv, Value *newv);
   void print(raw_ostream &fout) const;
@@ -63,9 +63,14 @@ struct RecoveryFunction
   // function.
   VList liveins;
 
-  // There are never live-out values,
+  // Not true anymore: There are never live-out values,
   // since those are demoted to private
   // memory by the preprocessor.
+  //
+  // Preprocessor does not demote all lc regs to memory.
+  // There are zero or more live-out
+  // values, the reducible live-outs(reduxLiveouts, found in the
+  // liveoutStructure)
 
   // Finally, that function returns
   // an integer code.
