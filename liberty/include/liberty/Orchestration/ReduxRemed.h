@@ -18,6 +18,8 @@
 
 #include <unordered_set>
 
+#define DEFAULT_REDUX_REMED_COST 2
+
 namespace liberty
 {
 

@@ -53,6 +53,12 @@ LoopAA::AliasResult LLVMAAResults::alias(
     const Value *ptrB, unsigned sizeB,
     const Loop *L) {
 
+  // ZY: LLVM AA seems only applicable for II deps
+  // sot: mustAlias from standard LLVM AA could be misleading for loop carried deps
+  if (rel != LoopAA::Same)
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L);
+
+
   // only handles intra-iteration mem queries
   auto *funA = getParent(ptrA);
   if (!funA || !notDifferentParent(ptrA, ptrB))
@@ -74,10 +80,6 @@ LoopAA::AliasResult LLVMAAResults::alias(
   else  //aaRes == llvm::MustAlias
     aaLoopAARes = LoopAA::MustAlias;
 
-  // mustAlias from standard LLVM AA could be misleading for loop carried deps
-  if (rel != LoopAA::Same)
-    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L);
-
   return LoopAA::AliasResult(aaLoopAARes &
                              LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L));
 }
@@ -86,6 +88,9 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
                                            TemporalRelation rel,
                                            const Value *ptrB, unsigned sizeB,
                                            const Loop *L) {
+  // ZY: LLVM AA seems only applicable for II deps
+  if (rel != LoopAA::Same)
+    return LoopAA::modref(A, rel, ptrB, sizeB, L);
 
   auto *funA = A->getParent()->getParent();
   auto *funB = getParent(ptrB);
@@ -99,6 +104,7 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
   auto aaRes = aa->getModRefInfo(A, ptrB, sizeB);
 
   if (aaRes == llvm::MRI_NoModRef) {
+    // DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }
@@ -110,6 +116,10 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
                                            TemporalRelation rel,
                                            const Instruction *B,
                                            const Loop *L) {
+  // ZY: LLVM AA seems only applicable for II deps
+  if (rel != LoopAA::Same)
+    return LoopAA::modref(A, rel, B, L);
+
   auto *funA = A->getParent()->getParent();
   auto *funB = B->getParent()->getParent();
 
@@ -131,14 +141,27 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
         aa->getModRefInfo(ImmutableCallSite(callA), ImmutableCallSite(callB));
   else if (callB)
     aaRes = aa->getModRefInfo(nA, ImmutableCallSite(callB));
-  else
+  else{
     aaRes = aa->getModRefInfo(A, MemoryLocation::get(B));
+    //switch (aa->alias(MemoryLocation::get(A), MemoryLocation::get(B))) {
+    //  case PartialAlias:
+    //  case MayAlias:
+    //  case MustAlias:
+    //    break;
+    //  case NoAlias:
+    //    DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+    //    ++numNoModRef;
+    //    return LoopAA::NoModRef;
+    //}
+  }
 
   if (aaRes == llvm::MRI_NoModRef) {
+    // DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }
 
+  //return LoopAA::ModRefResult(LoopAA::modref(A, rel, B, L));
   return LoopAA::ModRefResult(aaRes & LoopAA::modref(A, rel, B, L));
 }
 
