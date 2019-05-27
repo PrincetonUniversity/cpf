@@ -5,6 +5,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 
 #include "typedefs.h"
+#include "liberty/Redux/Reduction.h"
 
 #include "PDG.hpp"
 
@@ -13,10 +14,13 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace SpecPriv;
 
 struct MinMaxReductionInfo {
   const CmpInst *cmpInst;
   const Value *minMaxValue;
+
+  Reduction::Type type;
 
   // Is the running min/max the first or second operand of the compare?
   bool isFirstOperand;
@@ -35,14 +39,24 @@ struct MinMaxReductionInfo {
 struct ReductionDetection {
 
   bool isSumReduction(const Loop *loop, const Instruction *src,
-                      const Instruction *dst, const bool loopCarried);
+                      const Instruction *dst, const bool loopCarried,
+                      Reduction::Type &type);
   bool isMinMaxReduction(const Loop *loop, const Instruction *src,
-                         const Instruction *dst, const bool loopCarried);
+                         const Instruction *dst, const bool loopCarried,
+                         Reduction::Type &type);
 
   void findMinMaxRegReductions(Loop *loop, PDG *pdg);
 
+  ~ReductionDetection() {
+    for (auto i: minMaxReductions) {
+      if (i.second)
+        delete i.second;
+    }
+  }
+
 private:
-  std::unordered_set<const Instruction *> minMaxReductions;
+  std::unordered_map<const Instruction *, MinMaxReductionInfo *>
+      minMaxReductions;
 };
 }
 
