@@ -421,9 +421,9 @@ void Preprocess::init(ModuleLoops &mloops)
       }
       if (remed->getRemedyName().equals("redux-remedy")) {
         ReduxRemedy *reduxRemed = (ReduxRemedy *)&*remed;
-        const Instruction *liveOutV = reduxRemed->liveOutV;
-        reduxV.insert(liveOutV);
-        redux2Type[liveOutV] = reduxRemed->type;
+        // const Instruction *liveOutV = reduxRemed->liveOutV;
+        // reduxV.insert(liveOutV);
+        // redux2Type[liveOutV] = reduxRemed->type;
       }
     }
     if (specUsedFlag)
