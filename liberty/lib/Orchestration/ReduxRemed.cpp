@@ -11,8 +11,6 @@
 
 #include "liberty/Orchestration/ReduxRemed.h"
 
-#define DEFAULT_REDUX_REMED_COST 2
-
 namespace liberty
 {
 using namespace llvm;
@@ -34,12 +32,12 @@ void ReduxRemedy::apply(Task *task) {
 bool ReduxRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<ReduxRemedy> reduxRhs =
       std::static_pointer_cast<ReduxRemedy>(rhs);
-  if (this->reduxI == nullptr && reduxRhs->reduxI == nullptr)
+  if (this->liveOutV == nullptr && reduxRhs->liveOutV == nullptr)
     return this->reduxSCC < reduxRhs->reduxSCC;
-  else if (this->reduxI != nullptr && reduxRhs->reduxI != nullptr)
-    return this->reduxI < reduxRhs->reduxI;
+  else if (this->liveOutV != nullptr && reduxRhs->liveOutV != nullptr)
+    return this->liveOutV < reduxRhs->liveOutV;
   else
-    return (this->reduxI == nullptr);
+    return (this->liveOutV == nullptr);
 }
 
 bool ReduxRemediator::isRegReductionPHI(Instruction *I, Loop *l) {
@@ -61,8 +59,8 @@ bool ReduxRemediator::isRegReductionPHI(Instruction *I, Loop *l) {
       *se, l, phi, nullptr, ignore, type, opcode, phis, binops, cmps, brs,
       liveOuts, initVal) )
   {
-    Instruction *reduxI = phi;
-    regReductions.insert(reduxI);
+    Instruction *liveOutV = phi;
+    regReductions.insert(liveOutV);
 
     errs() << "Found a register reduction:\n"
            << "          PHI: " << *phi << '\n'
@@ -240,6 +238,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   Instruction *ncA = const_cast<Instruction*>(A);
   Instruction *ncB = const_cast<Instruction*>(B);
   Loop *ncL = const_cast<Loop *>(L);
+  Reduction::Type type;
 
   /*
   Function *F = ncA->getParent()->getParent();
@@ -256,6 +255,31 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   //errs() << "  Redux remed examining edge(s) from " << *A << " to " << *B
   //       << '\n';
 
+  if (reduxdet.isSumReduction(L, A, B, loopCarried, type)) {
+    ++numRegDepsRemovedSumRedux;
+    DEBUG(errs() << "Resolved by liberty sumRedux\n");
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->liveOutV = B;
+    remedy->type = type;
+    remedy->reduxSCC = nullptr;
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+  if (reduxdet.isMinMaxReduction(L, A, B, loopCarried, type)) {
+    ++numRegDepsRemovedMinMaxRedux;
+    DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->liveOutV = B;
+    remedy->type = type;
+    remedy->reduxSCC = nullptr;
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
   auto aSCC = loopDepInfo->loopSCCDAG->sccOfValue(ncA);
   auto bSCC = loopDepInfo->loopSCCDAG->sccOfValue(ncB);
   if (aSCC == bSCC && loopDepInfo->sccdagAttrs.canExecuteReducibly(aSCC)) {
@@ -265,30 +289,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
                  << "  and  " << *B << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxSCC = aSCC;
-    remedy->reduxI = nullptr;
-    remedResp.remedy = remedy;
-    return remedResp;
-  }
-
-  if (reduxdet.isSumReduction(L, A, B, loopCarried)) {
-    ++numRegDepsRemovedSumRedux;
-    DEBUG(errs() << "Resolved by liberty sumRedux\n");
-    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
-                 << '\n');
-    remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = A;
-    remedy->reduxSCC = nullptr;
-    remedResp.remedy = remedy;
-    return remedResp;
-  }
-  if (reduxdet.isMinMaxReduction(L, A, B, loopCarried)) {
-    ++numRegDepsRemovedMinMaxRedux;
-    DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
-    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
-                 << '\n');
-    remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = A;
-    remedy->reduxSCC = nullptr;
+    remedy->liveOutV = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
   }
@@ -303,7 +304,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = A;
+    remedy->liveOutV = B;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
@@ -333,7 +334,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                      << '\n');
         remedResp.depRes = DepResult::NoDep;
-        remedy->reduxI = A;
+        remedy->liveOutV = B;
         remedy->reduxSCC = nullptr;
         remedResp.remedy = remedy;
         return remedResp;
@@ -347,7 +348,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = A;
+    remedy->liveOutV = B;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
@@ -377,7 +378,7 @@ Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
     DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = A;
+    remedy->liveOutV = A;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
@@ -388,7 +389,7 @@ Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
     DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
-    remedy->reduxI = B;
+    remedy->liveOutV = B;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
