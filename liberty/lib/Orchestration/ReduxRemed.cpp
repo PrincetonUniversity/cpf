@@ -11,6 +11,8 @@
 
 #include "liberty/Orchestration/ReduxRemed.h"
 
+#define DEFAULT_REDUX_REMED_COST 2
+
 namespace liberty
 {
 using namespace llvm;
