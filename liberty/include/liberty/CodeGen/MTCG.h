@@ -9,6 +9,8 @@
 #include "liberty/CodeGen/Preprocess.h"
 #include "liberty/Speculation/Classify.h"
 
+#include <stack>
+
 #define MTCG_VALUE_DEBUG 0
 #define MTCG_CTRL_DEBUG 0
 

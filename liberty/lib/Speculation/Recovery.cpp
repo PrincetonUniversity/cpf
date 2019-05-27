@@ -102,11 +102,21 @@ void LiveoutStructure::replaceAllUsesOfWith(Value *oldv, Value *newv)
   if( PHINode *newphi = dyn_cast< PHINode >(newv) )
     for(unsigned i=0; i<phis.size(); ++i)
       if( oldv == phis[i] )
-        liveouts[i] = newphi;
+        phis[i] = newphi;
+
+  if( Instruction *newinst = dyn_cast< Instruction >(newv) )
+    for(unsigned i=0; i<reduxLiveouts.size(); ++i)
+      if( oldv == reduxLiveouts[i] )
+        reduxLiveouts[i] = newinst;
 
   if( Instruction *newinst = dyn_cast< Instruction >(newv) )
     if( oldv == object )
       object = newinst;
+
+  if( Instruction *newinst = dyn_cast< Instruction >(newv) )
+    for(unsigned i=0; i<reduxObjects.size();++i)
+    if( oldv == reduxObjects[i] )
+      reduxObjects[i] = newinst;
 }
 
 void RecoveryFunction::replaceAllUsesOfWith(Value *oldv, Value *newv)
@@ -194,7 +204,9 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
     if (!preimage) {
       // TODO: properly handle live-outs. Allocas are produced in
       // lib/Transforms/Utils/CodeExtractor.cpp in llvm (line 694)
-      // In the past all live-outs were demoted to memory, so all arguments were live-ins
+      // In the past all live-outs were demoted to memory, so all arguments were
+      // live-ins. Now some of the args are liveouts transformed to allocas
+      // (around the call sites)
       if (image && isa<AllocaInst>(image)) {
         DEBUG(errs() << "preimage of arg in getRecovery " << *image
                      << " is not found. Arg refers to a live-out.\n");
@@ -231,6 +243,12 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
   FunctionType *old_fty = loop_fcn->getFunctionType();
   formals.insert( formals.end(),
     old_fty->param_begin(), old_fty->param_end() );
+
+  DEBUG(errs() << "formals.size: " << formals.size() << "\n";
+        for (auto f
+             : formals) errs()
+        << "formal: " << *f << "\n";);
+
   FunctionType *new_fty = FunctionType::get(u32, formals, false);
   // errs() << "Fty: " << *new_fty << '\n';
 
