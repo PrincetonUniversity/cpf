@@ -272,39 +272,38 @@ BasicBlock *MTCG::stitchLoops(
 
     if( !phi_off )
     {
-      // Create a dummy PHI whose incoming values are all 'undef'
-      phi_off = PHINode::Create( phi_on->getType(), 0, "phi_off.undef", &*(header_off->getFirstInsertionPt()) );
+      Value *incoming_v = NULL;
 
-      Value* incoming_v = NULL;
-
-      for (unsigned i = 0 ; i < phi->getNumIncomingValues() ; i++)
-      {
-        if ( i == 0 )
+      for (unsigned i = 0; i < phi->getNumIncomingValues(); i++) {
+        if (i == 0)
           incoming_v = phi->getIncomingValue(i);
         else if (incoming_v != phi->getIncomingValue(i))
           incoming_v = NULL;
       }
 
-      if ( incoming_v == NULL || !liveIns.count(incoming_v) )
-        incoming_v = UndefValue::get( phi->getType() );
-      else
-      {
-        // all incoming values are idential, and live-ins, thus it is okay to take any operand from
-        // phi_on instruction as an incoming value of phi_off
+      if (incoming_v != NULL && liveIns.count(incoming_v)) {
+        // all incoming values are idential, and live-ins, thus it is okay to
+        // take any operand from phi_on instruction as an incoming value of
+        // phi_off
+
+        // Create a dummy PHI whose incoming values are all 'undef'
+        phi_off = PHINode::Create(phi_on->getType(), 0, "phi_off.undef",
+                                  &*(header_off->getFirstInsertionPt()));
 
         incoming_v = phi_on->getIncomingValue(0);
-      }
 
-      for(pred_iterator i=pred_begin(header_off), e=pred_end(header_off); i!=e; ++i)
-      {
-        BasicBlock *pred = *i;
-        phi_off->addIncoming(incoming_v, pred);
+        for (pred_iterator i = pred_begin(header_off), e = pred_end(header_off);
+             i != e; ++i) {
+          BasicBlock *pred = *i;
+          phi_off->addIncoming(incoming_v, pred);
+        }
       }
     }
 
+    /*
     if( !phi_on || !phi_off )
     {
-      // This is an error.
+      // This is an error. -> not true if lc reg deps not demoted to memory
 
       errs() << "PHI Node: " << *phi << '\n';
       if( phi_on )
@@ -320,7 +319,7 @@ BasicBlock *MTCG::stitchLoops(
       assert( phi_on && phi_off
       && "PHI node should appear in neither ON nor OFF, or both ON and OFF.");
     }
-
+    */
 
     PHINode *newPhi = PHINode::Create(
       phi->getType(),
@@ -332,6 +331,24 @@ BasicBlock *MTCG::stitchLoops(
 
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
+    else {
+      // Create a dummy PHI whose incoming value is the phi in the new stitch
+      // loop header (OFF iteration does not change the value, just passes on
+      // the one it received)
+      phi_off =
+          PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
+                          &*(header_off->getFirstInsertionPt()));
+
+      phi_off->addIncoming(newPhi, preheader_off);
+
+      for (pred_iterator i = pred_begin(header_off), e = pred_end(header_off);
+           i != e; ++i) {
+        BasicBlock *pred = *i;
+
+        if (newPhi->getBasicBlockIndex(pred) == -1 && pred != preheader_off)
+          newPhi->addIncoming(phi_off, pred);
+      }
+    }
   }
 
   replaceIncomingEdgesExcept(header_off,preheader_off,newHeader);
@@ -1293,12 +1310,14 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
 
       // remove all instructions from source BB (aka save_redux_lc) and add them
       // to a newly created save.redux.lc BB that will be invoked conditionally
-      std::vector<Instruction *> storeRxLCInsts;
+      std::stack<Instruction *> storeRxLCInsts;
       for (Instruction &I : *splitCkpt) {
         if (!I.isTerminator())
-          storeRxLCInsts.push_back(&I);
+          storeRxLCInsts.push(&I);
       }
-      for (Instruction *I : storeRxLCInsts) {
+      while (!storeRxLCInsts.empty()) {
+        Instruction *I = storeRxLCInsts.top();
+        storeRxLCInsts.pop();
         I->removeFromParent();
         InstInsertPt::Beginning(save_redux_lc) << I;
       }

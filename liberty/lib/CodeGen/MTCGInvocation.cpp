@@ -247,7 +247,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   const LiveoutStructure::PhiList &phis = recovery.liveoutStructure.phis;
   Value *object = recovery.liveoutStructure.object;
   const LiveoutStructure::IList &reduxLiveouts = recovery.liveoutStructure.reduxLiveouts;
-  const LiveoutStructure::ReduxGVList &reduxObjects = recovery.liveoutStructure.reduxObjects;
+  const LiveoutStructure::IList &reduxObjects = recovery.liveoutStructure.reduxObjects;
 
   BasicBlock *invokeChain = BasicBlock::Create(ctx, "invoke.chain.", dispatch_function);
 
@@ -471,6 +471,17 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   }
   actuals.insert( actuals.end(),
     recovery.liveins.begin(), recovery.liveins.end() );
+
+  // pass reference to for all liveouts
+  for (unsigned i = 0; i < reduxLiveouts.size(); ++i) {
+    actuals.push_back(reduxObjects[i]);
+  }
+
+  DEBUG(errs() << "actuals.size: " << actuals.size() << "\n";
+        for (auto f
+             : actuals) errs()
+        << "actual: " << *f->getType() << "\n";);
+
   Instruction *callRecover = CallInst::Create(recoveryFcn, ArrayRef<Value*>(actuals) );
 
   Constant *recoverDone = api.getRecoverDone();
@@ -509,6 +520,11 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
 
   BasicBlock *unreachable_bb = BasicBlock::Create(ctx, "error.exit.loop", fcn);
   SwitchInst *sw = SwitchInst::Create(callend, unreachable_bb, 0);
+
+  // TODO: modify recovery and properly handle the end.loop.* BBs that store all
+  // the redux variables. In non-parallel exec there is actually no need for
+  // this BB. could be cleaned-up from here
+  std::string end_loop_bb_name = "end.loop.";
   for(;i!=e; ++i)
   {
     const RecoveryFunction::CtrlEdge &edge = i->first;
@@ -519,6 +535,15 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     RecoveryFunction::CtrlEdgeDestinations::const_iterator fnd =  recovery.exitDests.find(edge);
     assert( fnd != recovery.exitDests.end() && "Not in map");
     BasicBlock *dest = fnd->second;
+
+    // check if dest is the BB that stores all reducible live-outs from the
+    // loop. If so, the successor should be the subsequent BB since the
+    // live-outs are defined in the loop header and these definitions would not
+    // dominate dest.
+    std::string destBBName = dest->getName().str();
+    if (destBBName.find(end_loop_bb_name) != std::string::npos)
+      if (BasicBlock *nextDest = dest->getUniqueSuccessor())
+        dest = nextDest;
 
     sw->addCase(guard, dest);
   }
