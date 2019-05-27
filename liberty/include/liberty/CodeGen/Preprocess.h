@@ -50,8 +50,7 @@ struct Preprocess : public ModulePass {
   void assert_strategies_consistent_with_ir();
 
   void replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
-                           StringRef name, Instruction *object,
-                           GlobalVariable *gv);
+                           StringRef name, Instruction *object, bool redux);
 
   std::unordered_set<const TerminatorInst *>
   getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
