@@ -408,22 +408,22 @@ void Preprocess::init(ModuleLoops &mloops)
           selectedCtrlSpecDeps[header].insert(term);
         }
         specUsedFlag = true;
-      }
-      if (remed->getRemedyName().equals("locality-remedy")) {
+      } else if (remed->getRemedyName().equals("locality-remedy")) {
         if (!separationSpecUsed.count(header))
           separationSpecUsed.insert(header);
         specUsedFlag = true;
-      }
-      if (remed->getRemedyName().equals("smtx-slamp-remed") ||
-          remed->getRemedyName().equals("smtx-lamp-remed") ||
-          remed->getRemedyName().equals("loaded-value-pred-remed")) {
+      } else if (remed->getRemedyName().equals("smtx-slamp-remed") ||
+                 remed->getRemedyName().equals("smtx-lamp-remed") ||
+                 remed->getRemedyName().equals("loaded-value-pred-remed")) {
         specUsedFlag = true;
-      }
-      if (remed->getRemedyName().equals("redux-remedy")) {
+      } else if (remed->getRemedyName().equals("redux-remedy")) {
         ReduxRemedy *reduxRemed = (ReduxRemedy *)&*remed;
         const Instruction *liveOutV = reduxRemed->liveOutV;
         reduxV.insert(liveOutV);
         redux2Type[liveOutV] = reduxRemed->type;
+      } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
+        CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
+        indVarPhi = indVarRemed->ivPHI;
       }
     }
     if (specUsedFlag)

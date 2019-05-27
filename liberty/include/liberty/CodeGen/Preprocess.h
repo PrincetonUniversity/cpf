@@ -87,7 +87,7 @@ private:
   std::unordered_set<const BasicBlock *> specUsed;
   std::unordered_set<const Instruction *> reduxV;
   std::unordered_map<const Instruction *, Reduction::Type> redux2Type;
-  const Instruction *indVarPhi;
+  const PHINode *indVarPhi;
 
   void init(ModuleLoops &mloops);
 

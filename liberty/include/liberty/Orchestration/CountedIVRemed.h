@@ -13,6 +13,7 @@ using namespace llvm;
 class CountedIVRemedy : public Remedy {
 public:
   const SCC *ivSCC;
+  const PHINode *ivPHI;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;

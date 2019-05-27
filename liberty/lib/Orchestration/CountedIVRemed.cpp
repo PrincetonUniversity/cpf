@@ -44,6 +44,9 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
           loopDepInfo->sccdagAttrs.sccIVBounds.end()) {
     ++numNoRegDep;
     remedy->ivSCC = aSCC;
+    const PHINode *phiB = dyn_cast<PHINode>(B);
+    assert(phiB && "Dest inst in CountedIVRemediator::regdep not a phiNode??");
+    remedy->ivPHI = phiB;
     remedResp.depRes = DepResult::NoDep;
     DEBUG(errs() << "CountedIVRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
