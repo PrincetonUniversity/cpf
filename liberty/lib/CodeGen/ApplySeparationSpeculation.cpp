@@ -1000,17 +1000,45 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 }
 
 // TODO: generalize and merge with the other version of reallocateInst.
-bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus)
+bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus, const HeapAssignment::ReduxDepAUSet depAUs)
 {
   bool modified = false;
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
 
   std::set<const Value *> already;
+  std::map<AU *, Value *> newAUs;
+  std::map<AU *, Value *> ausSize;
   for(HeapAssignment::ReduxAUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
   {
     AU *au = i->first;
     Reduction::Type redty = i->second;
+
+    // if there is a redux that 'i' redux depends on, make sure it is already
+    // available, if not, process it first
+    Value *depSz; // defaults to 0
+    Value *depAllocAU; // defaults to null
+    depSz = ConstantInt::get(u32, 0);
+    Instruction *I =
+        const_cast<Instruction *>(dyn_cast<Instruction>(au->value));
+    assert(I);
+    LLVMContext &ctx = I->getModule()->getContext();
+    PointerType *voidptr = PointerType::getUnqual(Type::getInt8Ty(ctx));
+    depAllocAU = ConstantPointerNull::get(voidptr);
+
+    auto f = depAUs.find(au);
+    if (f != depAUs.end()) {
+      AU *depAU = f->second.depAU;
+      if (!newAUs.count(depAU)) {
+        au = depAU;
+        redty = f->second.depType;
+        --i; // process this au again in the next iteration
+      } else {
+        depSz = ausSize[depAU];
+        depAllocAU = newAUs[depAU];
+      }
+    }
+
     if( au->type != AU_Stack && au->type != AU_Heap )
       continue;
 
@@ -1024,6 +1052,11 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 
     Function *fcn = inst->getParent()->getParent();
     InstInsertPt where = InstInsertPt::After(inst);
+    if (depAUs.find(au) != depAUs.end()) {
+      Instruction *depAllocAUI = dyn_cast<Instruction>(depAllocAU);
+      assert(depAllocAUI);
+      where = InstInsertPt::After(depAllocAUI);
+    }
 
     // Determine size of allocation
     Value *sz = determineSize(inst, where, inst);
@@ -1031,10 +1064,13 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 
     // Add code to perform allocation
     Constant *alloc = Api(mod).getAlloc( HeapAssignment::Redux );
-    Value *actuals[] = { sz, subheap, ConstantInt::get(u8, redty) };
-    Instruction *allocate = CallInst::Create(alloc, ArrayRef<Value*>(&actuals[0], &actuals[3]) );
+    Value *actuals[] = { sz, subheap, ConstantInt::get(u8, redty), depAllocAU, depSz};
+    Instruction *allocate = CallInst::Create(alloc, ArrayRef<Value*>(&actuals[0], &actuals[5]) );
     where << allocate;
     Value *newAU = allocate;
+
+    newAUs[au] = newAU;
+    ausSize[au] = sz;
 
     if( newAU->getType() != inst->getType() )
     {
@@ -1108,7 +1144,7 @@ bool ApplySeparationSpec::reallocateDynamicAUs()
   modified |= reallocateInst(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
   modified |= reallocateInst(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
-  modified |= reallocateInst(asgn, asgn.getReductionAUs() );
+  modified |= reallocateInst(asgn, asgn.getReductionAUs(), asgn.getReduxDepAUs());
 
   return modified;
 }
