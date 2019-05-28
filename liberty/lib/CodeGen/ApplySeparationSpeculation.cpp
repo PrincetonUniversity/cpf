@@ -1009,6 +1009,7 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
   std::set<const Value *> already;
   std::map<AU *, Value *> newAUs;
   std::map<AU *, Value *> ausSize;
+  std::map<AU *, Value *> ausType;
   for(HeapAssignment::ReduxAUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
   {
     AU *au = i->first;
@@ -1018,6 +1019,7 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
     // available, if not, process it first
     Value *depSz; // defaults to 0
     Value *depAllocAU; // defaults to null
+    Value *depType;
     depSz = ConstantInt::get(u32, 0);
     Instruction *I =
         const_cast<Instruction *>(dyn_cast<Instruction>(au->value));
@@ -1025,6 +1027,7 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
     LLVMContext &ctx = I->getModule()->getContext();
     PointerType *voidptr = PointerType::getUnqual(Type::getInt8Ty(ctx));
     depAllocAU = ConstantPointerNull::get(voidptr);
+    depType = ConstantInt::get(u8, 0);
 
     auto f = depAUs.find(au);
     if (f != depAUs.end()) {
@@ -1036,6 +1039,7 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
       } else {
         depSz = ausSize[depAU];
         depAllocAU = newAUs[depAU];
+        depType = ausType[depAU];
       }
     }
 
@@ -1064,13 +1068,23 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 
     // Add code to perform allocation
     Constant *alloc = Api(mod).getAlloc( HeapAssignment::Redux );
-    Value *actuals[] = { sz, subheap, ConstantInt::get(u8, redty), depAllocAU, depSz};
-    Instruction *allocate = CallInst::Create(alloc, ArrayRef<Value*>(&actuals[0], &actuals[5]) );
+    Value *actuals[] = { sz, subheap, ConstantInt::get(u8, redty), depAllocAU, depSz, depType};
+    Instruction *allocate = CallInst::Create(alloc, ArrayRef<Value*>(&actuals[0], &actuals[6]) );
     where << allocate;
     Value *newAU = allocate;
 
     newAUs[au] = newAU;
     ausSize[au] = sz;
+    PointerType *pty = dyn_cast<PointerType>(inst->getType());
+    assert(pty && "Alloc inst not a pointer?!");
+    if (pty->getElementType()->isPointerTy())
+      ausType[au] = ConstantInt::get(u8, 0);
+    else if (pty->getElementType()->isIntegerTy())
+      ausType[au] = ConstantInt::get(u8, 1);
+    else if (pty->getElementType()->isFloatingPointTy())
+      ausType[au] = ConstantInt::get(u8, 2);
+    else
+      assert(0 && "Not yet implemented");
 
     if( newAU->getType() != inst->getType() )
     {
