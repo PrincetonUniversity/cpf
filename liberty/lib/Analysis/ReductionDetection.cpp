@@ -331,8 +331,10 @@ Reduction::Type getDependentType(const Instruction *I,
       return Reduction::Max_f32;
     else if( I->getType()->isDoubleTy() )
       return Reduction::Max_f64;
+    else if( I->getType()->isPointerTy() )
+      return Reduction::Max_u64;
     else {
-      assert("Not yet implemented case for dependent type");
+      assert(0 && "Not yet implemented case for dependent type");
       return Reduction::NotReduction;
     }
   } else if (depType == Reduction::Min_f32 || depType == Reduction::Min_f64 ||
@@ -349,6 +351,8 @@ Reduction::Type getDependentType(const Instruction *I,
       return Reduction::Min_f32;
     else if (I->getType()->isDoubleTy())
       return Reduction::Min_f64;
+    else if( I->getType()->isPointerTy() )
+      return Reduction::Min_u64;
     else {
       assert(0 && "Not yet implemented case for dependent type");
       return Reduction::NotReduction;
