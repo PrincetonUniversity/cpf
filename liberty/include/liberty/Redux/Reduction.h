@@ -64,6 +64,12 @@ struct Reduction
             };
   static StringRef names[];
 
+  struct ReduxInfo {
+    Reduction::Type type;
+    const Instruction *depInst;
+    Reduction::Type depType;
+  };
+
   static Type isReductionLoad(
     const LoadInst *load,
     /* optional output parameters */

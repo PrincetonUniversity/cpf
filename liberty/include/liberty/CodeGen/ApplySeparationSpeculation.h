@@ -67,7 +67,7 @@ private:
   bool reallocateStaticAUs();
   Value *determineSize(Instruction *gravity, InstInsertPt &where, Instruction *inst);
   bool reallocateInst(const HeapAssignment &asgn, const HeapAssignment::AUSet &aus, const HeapAssignment::Type heap);
-  bool reallocateInst(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus);
+  bool reallocateInst(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus, const HeapAssignment::ReduxDepAUSet depAUs);
   bool reallocateDynamicAUs();
 
   bool addUOChecks(Loop *loop);

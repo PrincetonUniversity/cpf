@@ -315,13 +315,57 @@ bool findDependenceCycle(
 return false;
 } // namespace liberty
 
+Reduction::Type getDependentType(const Instruction *I,
+                                 Reduction::Type depType) {
+  if (depType == Reduction::Max_f32 || depType == Reduction::Max_f64 ||
+      depType == Reduction::Max_i32 || depType == Reduction::Max_i64) {
+    if (I->getType()->isIntegerTy(8))
+      return Reduction::Max_i8;
+    else if( I->getType()->isIntegerTy(16) )
+      return Reduction::Max_i16;
+    else if( I->getType()->isIntegerTy(32) )
+      return Reduction::Max_i32;
+    else if( I->getType()->isIntegerTy(64) )
+      return Reduction::Max_i64;
+    else if( I->getType()->isFloatTy() )
+      return Reduction::Max_f32;
+    else if( I->getType()->isDoubleTy() )
+      return Reduction::Max_f64;
+    else {
+      assert("Not yet implemented case for dependent type");
+      return Reduction::NotReduction;
+    }
+  } else if (depType == Reduction::Min_f32 || depType == Reduction::Min_f64 ||
+             depType == Reduction::Min_i32 || depType == Reduction::Min_i64) {
+    if (I->getType()->isIntegerTy(8))
+      return Reduction::Min_i8;
+    else if (I->getType()->isIntegerTy(16))
+      return Reduction::Min_i16;
+    else if (I->getType()->isIntegerTy(32))
+      return Reduction::Min_i32;
+    else if (I->getType()->isIntegerTy(64))
+      return Reduction::Min_i64;
+    else if (I->getType()->isFloatTy())
+      return Reduction::Min_f32;
+    else if (I->getType()->isDoubleTy())
+      return Reduction::Min_f64;
+    else {
+      assert(0 && "Not yet implemented case for dependent type");
+      return Reduction::NotReduction;
+    }
+  } else {
+    assert(0 && "Not yet implemented case for dependent type");
+    return Reduction::NotReduction;
+  }
+}
+
 // This function should be called on all selects (could be extented for PHIs for
 // branch min/max) in the same basic block as the dst of the reduction edge.
 bool sameBBMinMaxRedux(
     const Instruction *dst, MinMaxReductionInfo *info,
     std::unordered_map<const Instruction *, MinMaxReductionInfo *>
         &minMaxReductions,
-    Loop *loop) {
+    Loop *loop, bool isMinMaxV) {
 
   // DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
   // << *dst << "\n");
@@ -366,7 +410,7 @@ bool sameBBMinMaxRedux(
       if (!visited.count(user)) {
         stack.push_back(user);
 
-        if (info && inst->hasOneUse() && user->getParent() == loop->getHeader())
+        if (info && inst->getParent() == loop->getHeader())
           liveOutV = inst;
       } else if (user == dst)
         depCycleCompleted = true;
@@ -375,8 +419,21 @@ bool sameBBMinMaxRedux(
 
   if (liveOutV && depCycleCompleted) {
     DEBUG(errs() << "MinMax redux for " << *liveOutV << "\n");
-    info->type = SpecPriv::Reduction::isAssocAndCommut(info->cmpInst);
-    minMaxReductions[liveOutV] = info;
+
+    if (isMinMaxV) {
+      info->minMaxInst = liveOutV;
+      info->type = SpecPriv::Reduction::isAssocAndCommut(info->cmpInst);
+      info->depInst = nullptr;
+      info->depType = Reduction::NotReduction;
+      minMaxReductions[liveOutV] = info;
+    } else {
+      MinMaxReductionInfo *newinfo = new MinMaxReductionInfo;
+      newinfo->depInst = info->minMaxInst;
+      newinfo->depType = info->type;
+      newinfo->type = getDependentType(liveOutV, newinfo->depType);
+      minMaxReductions[liveOutV] = newinfo;
+    }
+
     return true;
   }
   return false;
@@ -504,16 +561,17 @@ areCandidateInsts(const Instruction *src, const Instruction *dst,
   return NULL;
 }
 
-bool ReductionDetection::isMinMaxReduction(const Loop *loop,
-                                           const Instruction *src,
-                                           const Instruction *dst,
-                                           const bool loopCarried,
-                                           SpecPriv::Reduction::Type &type) {
+bool ReductionDetection::isMinMaxReduction(
+    const Loop *loop, const Instruction *src, const Instruction *dst,
+    const bool loopCarried, SpecPriv::Reduction::Type &type,
+    const Instruction **depInst, SpecPriv::Reduction::Type &depType) {
   DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
                << *dst << "\n";);
 
-  if (minMaxReductions.count(src) && loopCarried) {
-    type = minMaxReductions[src]->type;
+  if (minMaxReductions.count(dst) && loopCarried) {
+    type = minMaxReductions[dst]->type;
+    *depInst = minMaxReductions[dst]->depInst;
+    depType = minMaxReductions[dst]->depType;
     return true;
   }
 
@@ -551,6 +609,7 @@ void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
 
       // MIN/MAX Reduction Candidate!!
       bool infoUsed = false;
+      infoUsed |= sameBBMinMaxRedux(dst, info, minMaxReductions, loop, true);
       // Detect edges corresponding to other reduction live-outs
       BasicBlock *bb = dst->getParent();
       for (BasicBlock::iterator bi = bb->begin(), ei = bb->end(); bi != ei;
@@ -560,8 +619,9 @@ void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
         // NOTE: Should selects be more restrictive (i.e. only allowed if
         // original min/max used a select with the same condition?)
         //if (isa<PHINode>(itmp) || isa<SelectInst>(itmp)) {
-        if (isa<SelectInst>(itmp) && itmp != src) {
-          infoUsed |= sameBBMinMaxRedux(itmp, info, minMaxReductions, loop);
+        if (isa<SelectInst>(itmp) && itmp != src && itmp != dst) {
+          infoUsed |=
+              sameBBMinMaxRedux(itmp, info, minMaxReductions, loop, false);
         }
       }
       if (!infoUsed)

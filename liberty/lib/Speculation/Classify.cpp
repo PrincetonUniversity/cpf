@@ -976,12 +976,14 @@ HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
 HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() { return privs; }
 HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() { return ros; }
 HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() { return reduxs; }
+HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() { return reduxdeps; }
 
 const HeapAssignment::AUSet &HeapAssignment::getSharedAUs() const { return shareds; }
 const HeapAssignment::AUSet &HeapAssignment::getLocalAUs() const { return locals; }
 const HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() const { return privs; }
 const HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() const { return ros; }
 const HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() const { return reduxs; }
+const HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() const { return reduxdeps; }
 
 bool HeapAssignment::compatibleWith(const HeapAssignment &other) const
 {

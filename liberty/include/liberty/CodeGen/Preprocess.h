@@ -85,8 +85,9 @@ private:
       selectedCtrlSpecDeps;
   std::unordered_set<const BasicBlock *> separationSpecUsed;
   std::unordered_set<const BasicBlock *> specUsed;
+
   std::unordered_set<const Instruction *> reduxV;
-  std::unordered_map<const Instruction *, Reduction::Type> redux2Type;
+  std::unordered_map<const Instruction *, Reduction::ReduxInfo> redux2Info;
   const PHINode *indVarPhi;
 
   void init(ModuleLoops &mloops);

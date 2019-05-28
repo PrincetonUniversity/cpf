@@ -420,7 +420,11 @@ void Preprocess::init(ModuleLoops &mloops)
         ReduxRemedy *reduxRemed = (ReduxRemedy *)&*remed;
         const Instruction *liveOutV = reduxRemed->liveOutV;
         reduxV.insert(liveOutV);
-        redux2Type[liveOutV] = reduxRemed->type;
+        Reduction::ReduxInfo reduxInfo;
+        reduxInfo.type = reduxRemed->type;
+        reduxInfo.depInst = reduxRemed->depInst;
+        reduxInfo.depType = reduxRemed->depType;
+        redux2Info[liveOutV] = reduxInfo;
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
@@ -462,7 +466,7 @@ void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
                 object, ArrayRef<Value *>(&indices[0], &indices[2]));
             gep->setName(name + ":" + def->getName());
             load = new LoadInst(gep);
-            InstInsertPt::Before(user) << gep;
+            InstInsertPt::Beginning(splitedge) << gep;
           } else {
             load = new LoadInst(object);
           }
@@ -803,13 +807,37 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
     // redux liveout -> redux
     HeapAssignment::ReduxAUSet &reduxs = asgn.getReductionAUs();
+    HeapAssignment::ReduxDepAUSet &reduxdeps = asgn.getReduxDepAUs();
     for (unsigned i = 0; i < K; ++i) {
       Ptrs reduxaus;
       assert(spresults.getUnderlyingAUs(liveoutStructure.reduxObjects[i],
                                         fcn_ctx, reduxaus) &&
              "Failed to create AU objects for the redux live-out object?!");
-      for (Ptrs::iterator p = reduxaus.begin(), e = reduxaus.end(); p != e; ++p)
-        reduxs[p->au] = redux2Type[reduxLiveouts[i]];
+      for (Ptrs::iterator p = reduxaus.begin(), e = reduxaus.end(); p != e;
+           ++p) {
+        reduxs[p->au] = redux2Info[reduxLiveouts[i]].type;
+
+        const Instruction *depInst = redux2Info[reduxLiveouts[i]].depInst;
+        if (depInst) {
+          HeapAssignment::ReduxDepInfo reduxDepAUInfo;
+          unsigned k;
+          for (k = 0; k < K; ++k) {
+            if (reduxLiveouts[k] == depInst)
+              break;
+          }
+          assert(k != K &&
+                 "Dependent redux variable not found in reduxLiveouts?");
+          Ptrs reduxdepaus;
+          assert(spresults.getUnderlyingAUs(liveoutStructure.reduxObjects[k],
+                                            fcn_ctx, reduxdepaus) &&
+                 "Failed to create AU objects for the redux live-out object?!");
+          assert(reduxdepaus.size() == 1 &&
+                 "Dependent redux variable has more than one AUs?!");
+          reduxDepAUInfo.depAU = reduxdepaus.begin()->au;
+          reduxDepAUInfo.depType = redux2Info[reduxLiveouts[i]].depType;
+          reduxdeps[p->au] = reduxDepAUInfo;
+        }
+      }
     }
   }
 
