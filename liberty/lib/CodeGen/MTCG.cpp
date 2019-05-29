@@ -251,6 +251,9 @@ BasicBlock *MTCG::stitchLoops(
 
   replaceIncomingEdgesExcept(header_on,preheader_on,newHeader);
 
+  std::vector<BasicBlock *> offIterStageExitBBs;
+  std::vector<BasicBlock *> saveRxLCBBs;
+
   // For each PHI node which appears in both the ON and OFF versions of this stage.
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
   {
@@ -348,6 +351,124 @@ BasicBlock *MTCG::stitchLoops(
         if (newPhi->getBasicBlockIndex(pred) == -1 && pred != preheader_off)
           newPhi->addIncoming(phi_off, pred);
       }
+
+      // if these phis are reducible live-outs store them on loop exits and
+      // before checkpoints
+
+      // find the reduxObject to store the phi of the off-iteration from the
+      // on-iteration
+      Value *reduxObject = nullptr;
+      for (auto U : phi_on->users()) {
+        // find a store on a loop exit. The mem loc in the store is the target
+        // reduxObject we are looking for
+        if (auto *sU = dyn_cast<StoreInst>(U)) {
+          bool loopExit = isa<ReturnInst>(sU->getParent()->getTerminator());
+          if (loopExit) {
+            reduxObject = sU->getPointerOperand();
+          }
+        }
+      }
+
+      if (reduxObject) {
+        // 1: store phi_off to reduxObject before return of the stage
+        // 2: store phi_off to reduxObject before checkpoint at iteration end
+
+        // find BBs exiting the off_iteration and create BBs to save lc at
+        // iteration end (if not already there)
+        if (offIterStageExitBBs.empty()) {
+          std::unordered_set<BasicBlock *> visitedBBs;
+          std::queue<BasicBlock *> worklist;
+          worklist.push(header_off);
+          while (!worklist.empty()) {
+            BasicBlock *BB = worklist.front();
+            worklist.pop();
+            if (visitedBBs.count(BB))
+              continue;
+            visitedBBs.insert(BB);
+            for (auto SI = succ_begin(BB), SE = succ_end(BB); SI != SE; ++SI) {
+              BasicBlock *succ = *SI;
+              if (succ == header_off) {
+                // add BBs to check for checkpoint and save redux,lc
+                BasicBlock *pred = BB;
+
+                TerminatorInst *term = pred->getTerminator();
+                unsigned sn, N;
+                for (sn = 0, N = term->getNumSuccessors(); sn < N; ++sn)
+                  if (term->getSuccessor(sn) == succ)
+                    break;
+                assert(sn != N);
+
+                BasicBlock *splitCkpt =
+                    BasicBlock::Create(ctx, "ckpt.check", fcn);
+                splitCkpt->moveAfter(BB);
+
+                term->setSuccessor(sn, splitCkpt);
+
+                BasicBlock *dummy =
+                    BasicBlock::Create(ctx, "dummy", fcn);
+                BasicBlock *save_redux_lc =
+                    BasicBlock::Create(ctx, "save.redux.lc", fcn);
+                save_redux_lc->moveAfter(splitCkpt);
+                BranchInst::Create(succ, dummy);
+                BranchInst::Create(dummy, save_redux_lc);
+                dummy->moveAfter(save_redux_lc);
+
+                // Update PHIs in header_off and newHeader
+                for (BasicBlock::iterator j = header_off->begin(),
+                                          z = header_off->end();
+                     j != z; ++j) {
+                  PHINode *phiH = dyn_cast<PHINode>(&*j);
+                  if (!phiH)
+                    break;
+
+                  int idx = phiH->getBasicBlockIndex(pred);
+                  if (idx != -1)
+                    phiH->setIncomingBlock(idx, dummy);
+                }
+                for (BasicBlock::iterator j = newHeader->begin(),
+                                          z = newHeader->end();
+                     j != z; ++j) {
+                  PHINode *phiH = dyn_cast<PHINode>(&*j);
+                  if (!phiH)
+                    break;
+
+                  int idx = phiH->getBasicBlockIndex(pred);
+                  if (idx != -1)
+                    phiH->setIncomingBlock(idx, dummy);
+                }
+
+                saveRxLCBBs.push_back(save_redux_lc);
+
+                IntegerType *u32 = Type::getInt32Ty(ctx);
+                Value *zero = ConstantInt::get(u32, 0);
+                Constant *ckptcheck = api.getCkptCheck();
+                Instruction *callckptcheck = CallInst::Create(ckptcheck);
+                Instruction *cmp =
+                    new ICmpInst(ICmpInst::ICMP_EQ, callckptcheck, zero);
+                Instruction *br = BranchInst::Create(dummy, save_redux_lc, cmp);
+                InstInsertPt::End(splitCkpt) << callckptcheck << cmp << br;
+
+              } else if (isa<ReturnInst>(succ->getTerminator())) {
+                offIterStageExitBBs.push_back(succ);
+              } else {
+                worklist.push(succ);
+              }
+            }
+          }
+        }
+
+        for (BasicBlock *BB : offIterStageExitBBs) {
+          StoreInst *store = new StoreInst(phi_off, reduxObject);
+          InstInsertPt::Beginning(BB) << store;
+        }
+        for (BasicBlock *BB : saveRxLCBBs) {
+          StoreInst *store = new StoreInst(phi_off, reduxObject);
+          InstInsertPt::Beginning(BB) << store;
+        }
+      }
+
+      // TODO: need to also store loop-carried deps that are not live-out at end
+      // of iteration when checkpoint is imminent
     }
   }
 
