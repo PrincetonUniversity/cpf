@@ -246,6 +246,16 @@ bool PreparedStrategy::rematerializeOnce(
   for(ISet::iterator i=insts.begin(), e=insts.end(); i!=e; ++i)
   {
     Instruction *inst = *i;
+
+    // If inst in the replicable stage then the replicable stage might not be
+    // able to rematerialize as well. Thus, it will communicate instead, but
+    // there will be no replicable produce
+    // TODO: be less conservative by calling studyStage on the off iteration
+    // before the on_iteration (aka the regular study[parallel stage no]) and
+    // note the ones that the replicable part cannot rematerialize
+    // TODO: maybe delete off_iterations whatsover
+    if (stages[stageno].replicated.count(inst))
+      continue;
     for(User::op_iterator j=inst->op_begin(), jj=inst->op_end(); j!=jj; ++j)
     {
       Instruction *operand = dyn_cast<Instruction>( &**j );
@@ -268,6 +278,9 @@ bool PreparedStrategy::rematerializeOnce(
       }
       if( !allOperandsAreAvailable )
         continue; // NO. Not all operands are available.
+
+      DEBUG(errs() << "rematerialized operand, used but not available: "
+                   << *operand << "\n");
 
       // This instruction may be rematerialized.
       addInstToStage(insts,avail,rel, operand);
@@ -296,6 +309,9 @@ bool PreparedStrategy::communicateOnce(
       if( !operand || avail.count(operand) )
         continue;
       // 'operand' is used, but not available.
+
+      DEBUG(errs() << "communicated operand, used but not available: "
+                   << *operand << "\n");
 
       // Communicate it!
       unsigned sourceStage=0;
