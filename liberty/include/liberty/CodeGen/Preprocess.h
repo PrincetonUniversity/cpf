@@ -41,7 +41,8 @@ struct Preprocess : public ModulePass {
   RoI &getRoI() { return roi; }
   const RoI &getRoI() const { return roi; }
 
-  void addToLPS(Instruction *nI, Instruction *gravity);
+  void addToLPS(Instruction *nI, Instruction *gravity,
+                bool forceReplication = false);
   void replaceInLPS(Instruction *nI, Instruction *oI);
 
   void getExecutingStages(Instruction *inst, std::vector<unsigned> &stages);

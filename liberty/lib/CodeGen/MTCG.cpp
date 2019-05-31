@@ -92,6 +92,8 @@ bool MTCG::runOnModule(Module &module)
     modified = true;
   }
 
+  errs() << "\n" << module << "\n";
+
   return modified;
 }
 
@@ -335,28 +337,16 @@ BasicBlock *MTCG::stitchLoops(
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
     else {
-      // Create a dummy PHI whose incoming value is the phi in the new stitch
-      // loop header (OFF iteration does not change the value, just passes on
-      // the one it received)
-      phi_off =
-          PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
-                          &*(header_off->getFirstInsertionPt()));
-
-      phi_off->addIncoming(newPhi, preheader_off);
-
-      for (pred_iterator i = pred_begin(header_off), e = pred_end(header_off);
-           i != e; ++i) {
-        BasicBlock *pred = *i;
-
-        if (newPhi->getBasicBlockIndex(pred) == -1 && pred != preheader_off)
-          newPhi->addIncoming(phi_off, pred);
-      }
-
-      // if these phis are reducible live-outs store them on loop exits and
-      // before checkpoints
+      // For reducible live-outs create a dummy PHI whose incoming value is the
+      // phi in the new stitch loop header (OFF iteration does not change the
+      // value, just passes on the one it received).
+      // Do not create dummy phi for non-reducible loop-carried since that will
+      // lead to incorrect execution (not allowed to skip iterations in this
+      // case). These LC should already have phis (replicated on both on and off
+      // iteration) so they should not be found here
 
       // find the reduxObject to store the phi of the off-iteration from the
-      // on-iteration
+      // on-iteration and verify that these phis are indeed reducible
       Value *reduxObject = nullptr;
       for (auto U : phi_on->users()) {
         // find a store on a loop exit. The mem loc in the store is the target
@@ -370,6 +360,22 @@ BasicBlock *MTCG::stitchLoops(
       }
 
       if (reduxObject) {
+        // reducible live-out found
+
+        phi_off =
+            PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
+                            &*(header_off->getFirstInsertionPt()));
+
+        phi_off->addIncoming(newPhi, preheader_off);
+
+        for (pred_iterator i = pred_begin(header_off), e = pred_end(header_off);
+             i != e; ++i) {
+          BasicBlock *pred = *i;
+
+          if (newPhi->getBasicBlockIndex(pred) == -1 && pred != preheader_off)
+            newPhi->addIncoming(phi_off, pred);
+        }
+
         // 1: store phi_off to reduxObject before return of the stage
         // 2: store phi_off to reduxObject before checkpoint at iteration end
 
@@ -465,10 +471,13 @@ BasicBlock *MTCG::stitchLoops(
           StoreInst *store = new StoreInst(phi_off, reduxObject);
           InstInsertPt::Beginning(BB) << store;
         }
+      } else {
+        assert(0 && "Loop-carried dep that is not reducible "
+                    "should already have a phi node in both on,off iteration "
+                    "(replicable inst)");
       }
-
-      // TODO: need to also store loop-carried deps that are not live-out at end
-      // of iteration when checkpoint is imminent
+      // TODO: loop-carried deps that are not live-out and non reducible
+      // should still be stored before checkpoints on OFF iteration
     }
   }
 
