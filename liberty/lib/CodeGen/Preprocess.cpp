@@ -398,6 +398,7 @@ void Preprocess::init(ModuleLoops &mloops)
     SelectedRemedies *selectedRemeds = loop2SelectedRemedies[header].get();
 
     bool specUsedFlag = false;
+    bool memVerUsed = false;
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
         ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
@@ -428,10 +429,14 @@ void Preprocess::init(ModuleLoops &mloops)
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
+      } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
+        memVerUsed = true;
       }
     }
     if (specUsedFlag)
       specUsed.insert(header);
+    if (memVerUsed || specUsedFlag)
+      checkpointNeeded.insert(header);
   }
 }
 
@@ -636,8 +641,9 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // MTCG will limit stores inside the loop only when checkpoint is imminent.
   // isolate stores within the loop in a new basic block.
   //
-  // if no spec or no reducible variables then no reason to store whatsover
-  if (K > 0 || (M > 0 && specUsed.count(header))) {
+  // check that checkpoints are needed. If not, then storing incoming to header
+  // values is not necessary
+  if ((K > 0 || (M > 0)) && checkpointNeeded.count(header)) {
     for (unsigned i = 0, Nib = iterationBounds.size(); i < Nib; ++i) {
       TerminatorInst *term = iterationBounds[i].first;
       BasicBlock *source = term->getParent();

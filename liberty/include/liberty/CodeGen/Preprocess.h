@@ -66,6 +66,10 @@ struct Preprocess : public ModulePass {
     return specUsed.count(loopHeader);
   }
 
+  bool isCheckpointingNeeded(BasicBlock *loopHeader) const {
+    return checkpointNeeded.count(loopHeader);
+  }
+
   InstInsertPt getInitFcn() const {
     return initFcn;
   }
@@ -86,6 +90,7 @@ private:
       selectedCtrlSpecDeps;
   std::unordered_set<const BasicBlock *> separationSpecUsed;
   std::unordered_set<const BasicBlock *> specUsed;
+  std::unordered_set<const BasicBlock *> checkpointNeeded;
 
   std::unordered_set<const Instruction *> reduxV;
   std::unordered_map<const Instruction *, Reduction::ReduxInfo> redux2Info;

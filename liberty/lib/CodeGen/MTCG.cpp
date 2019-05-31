@@ -255,6 +255,8 @@ BasicBlock *MTCG::stitchLoops(
 
   std::vector<BasicBlock *> offIterStageExitBBs;
   std::vector<BasicBlock *> saveRxLCBBs;
+  const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
 
   // For each PHI node which appears in both the ON and OFF versions of this stage.
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
@@ -394,66 +396,67 @@ BasicBlock *MTCG::stitchLoops(
             for (auto SI = succ_begin(BB), SE = succ_end(BB); SI != SE; ++SI) {
               BasicBlock *succ = *SI;
               if (succ == header_off) {
-                // add BBs to check for checkpoint and save redux,lc
-                BasicBlock *pred = BB;
+                if (checkpointNeeded) {
+                  // add BBs to check for checkpoint and save redux,lc
+                  BasicBlock *pred = BB;
 
-                TerminatorInst *term = pred->getTerminator();
-                unsigned sn, N;
-                for (sn = 0, N = term->getNumSuccessors(); sn < N; ++sn)
-                  if (term->getSuccessor(sn) == succ)
-                    break;
-                assert(sn != N);
+                  TerminatorInst *term = pred->getTerminator();
+                  unsigned sn, N;
+                  for (sn = 0, N = term->getNumSuccessors(); sn < N; ++sn)
+                    if (term->getSuccessor(sn) == succ)
+                      break;
+                  assert(sn != N);
 
-                BasicBlock *splitCkpt =
-                    BasicBlock::Create(ctx, "ckpt.check", fcn);
-                splitCkpt->moveAfter(BB);
+                  BasicBlock *splitCkpt =
+                      BasicBlock::Create(ctx, "ckpt.check", fcn);
+                  splitCkpt->moveAfter(BB);
 
-                term->setSuccessor(sn, splitCkpt);
+                  term->setSuccessor(sn, splitCkpt);
 
-                BasicBlock *dummy =
-                    BasicBlock::Create(ctx, "dummy", fcn);
-                BasicBlock *save_redux_lc =
-                    BasicBlock::Create(ctx, "save.redux.lc", fcn);
-                save_redux_lc->moveAfter(splitCkpt);
-                BranchInst::Create(succ, dummy);
-                BranchInst::Create(dummy, save_redux_lc);
-                dummy->moveAfter(save_redux_lc);
+                  BasicBlock *dummy = BasicBlock::Create(ctx, "dummy", fcn);
+                  BasicBlock *save_redux_lc =
+                      BasicBlock::Create(ctx, "save.redux.lc", fcn);
+                  save_redux_lc->moveAfter(splitCkpt);
+                  BranchInst::Create(succ, dummy);
+                  BranchInst::Create(dummy, save_redux_lc);
+                  dummy->moveAfter(save_redux_lc);
 
-                // Update PHIs in header_off and newHeader
-                for (BasicBlock::iterator j = header_off->begin(),
-                                          z = header_off->end();
-                     j != z; ++j) {
-                  PHINode *phiH = dyn_cast<PHINode>(&*j);
-                  if (!phiH)
-                    break;
+                  // Update PHIs in header_off and newHeader
+                  for (BasicBlock::iterator j = header_off->begin(),
+                                            z = header_off->end();
+                       j != z; ++j) {
+                    PHINode *phiH = dyn_cast<PHINode>(&*j);
+                    if (!phiH)
+                      break;
 
-                  int idx = phiH->getBasicBlockIndex(pred);
-                  if (idx != -1)
-                    phiH->setIncomingBlock(idx, dummy);
+                    int idx = phiH->getBasicBlockIndex(pred);
+                    if (idx != -1)
+                      phiH->setIncomingBlock(idx, dummy);
+                  }
+                  for (BasicBlock::iterator j = newHeader->begin(),
+                                            z = newHeader->end();
+                       j != z; ++j) {
+                    PHINode *phiH = dyn_cast<PHINode>(&*j);
+                    if (!phiH)
+                      break;
+
+                    int idx = phiH->getBasicBlockIndex(pred);
+                    if (idx != -1)
+                      phiH->setIncomingBlock(idx, dummy);
+                  }
+
+                  saveRxLCBBs.push_back(save_redux_lc);
+
+                  IntegerType *u32 = Type::getInt32Ty(ctx);
+                  Value *zero = ConstantInt::get(u32, 0);
+                  Constant *ckptcheck = api.getCkptCheck();
+                  Instruction *callckptcheck = CallInst::Create(ckptcheck);
+                  Instruction *cmp =
+                      new ICmpInst(ICmpInst::ICMP_EQ, callckptcheck, zero);
+                  Instruction *br =
+                      BranchInst::Create(dummy, save_redux_lc, cmp);
+                  InstInsertPt::End(splitCkpt) << callckptcheck << cmp << br;
                 }
-                for (BasicBlock::iterator j = newHeader->begin(),
-                                          z = newHeader->end();
-                     j != z; ++j) {
-                  PHINode *phiH = dyn_cast<PHINode>(&*j);
-                  if (!phiH)
-                    break;
-
-                  int idx = phiH->getBasicBlockIndex(pred);
-                  if (idx != -1)
-                    phiH->setIncomingBlock(idx, dummy);
-                }
-
-                saveRxLCBBs.push_back(save_redux_lc);
-
-                IntegerType *u32 = Type::getInt32Ty(ctx);
-                Value *zero = ConstantInt::get(u32, 0);
-                Constant *ckptcheck = api.getCkptCheck();
-                Instruction *callckptcheck = CallInst::Create(ckptcheck);
-                Instruction *cmp =
-                    new ICmpInst(ICmpInst::ICMP_EQ, callckptcheck, zero);
-                Instruction *br = BranchInst::Create(dummy, save_redux_lc, cmp);
-                InstInsertPt::End(splitCkpt) << callckptcheck << cmp << br;
-
               } else if (isa<ReturnInst>(succ->getTerminator())) {
                 offIterStageExitBBs.push_back(succ);
               } else {
@@ -467,9 +470,11 @@ BasicBlock *MTCG::stitchLoops(
           StoreInst *store = new StoreInst(phi_off, reduxObject);
           InstInsertPt::Beginning(BB) << store;
         }
-        for (BasicBlock *BB : saveRxLCBBs) {
-          StoreInst *store = new StoreInst(phi_off, reduxObject);
-          InstInsertPt::Beginning(BB) << store;
+        if (checkpointNeeded) {
+          for (BasicBlock *BB : saveRxLCBBs) {
+            StoreInst *store = new StoreInst(phi_off, reduxObject);
+            InstInsertPt::Beginning(BB) << store;
+          }
         }
       } else {
         assert(0 && "Loop-carried dep that is not reducible "
