@@ -44,7 +44,8 @@ struct LoopParallelizationStrategy
   // Instructions have 'gravity', which means that the
   // added instructions should be placed near the existing
   // instructions.
-  virtual void addInstruction(Instruction *newInst, Instruction *gravity) = 0;
+  virtual void addInstruction(Instruction *newInst, Instruction *gravity,
+                              bool forceReplication = false) = 0;
   virtual void replaceInstruction(Instruction *newInst, Instruction *oldInst) = 0;
   virtual void deleteInstruction(Instruction *inst) = 0;
 
@@ -77,7 +78,8 @@ struct DoallStrategy : public LoopParallelizationStrategy
   }
 
   // Update strategies.
-  virtual void addInstruction(Instruction *newInst, Instruction *gravity) {}
+  virtual void addInstruction(Instruction *newInst, Instruction *gravity,
+                              bool forceReplication = false) {}
   virtual void replaceInstruction(Instruction *newInst, Instruction *oldInst) {}
   virtual void deleteInstruction(Instruction *inst) {};
 
@@ -169,7 +171,8 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   bool maybeAntiParallelStageDependence(const Instruction *src, const Instruction *dst) const;
 
   // Update strategies
-  virtual void addInstruction(Instruction *newInst, Instruction *gravity);
+  virtual void addInstruction(Instruction *newInst, Instruction *gravity,
+                              bool forceReplication = false);
   virtual void replaceInstruction(Instruction *newInst, Instruction *oldInst);
   virtual void deleteInstruction(Instruction *inst);
 

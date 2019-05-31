@@ -71,13 +71,13 @@ void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
 }
 
 
-void Preprocess::addToLPS(Instruction *newInst, Instruction *gravity)
+void Preprocess::addToLPS(Instruction *newInst, Instruction *gravity, bool forceReplication)
 {
   Selector &selector = getAnalysis< Selector >();
   for(Selector::strat_iterator i=selector.strat_begin(), e=selector.strat_end(); i!=e; ++i)
   {
     LoopParallelizationStrategy *lps = i->second.get();
-    lps->addInstruction(newInst,gravity);
+    lps->addInstruction(newInst, gravity, forceReplication);
   }
 }
 
@@ -466,12 +466,12 @@ void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
                 object, ArrayRef<Value *>(&indices[0], &indices[2]));
             gep->setName(name + ":" + def->getName());
             load = new LoadInst(gep);
-            InstInsertPt::Beginning(splitedge) << gep;
+            InstInsertPt::Beginning(splitedge) << gep << load;
           } else {
             load = new LoadInst(object);
+            InstInsertPt::Beginning(splitedge) << load;
           }
 
-          InstInsertPt::Beginning(splitedge) << load;
           phi->setIncomingValue(k, load);
         }
       } else {
@@ -575,7 +575,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   DEBUG(errs() << "Adding a liveout object " << *liveoutObject
                << " to function " << fcn->getName() << '\n');
 
-  // Allocate a global variable to hold each reducible live-out
+  // Allocate a local variable to hold each reducible live-out
   for(unsigned i=0; i<K; ++i) {
     Type *pty = reduxLiveouts[i]->getType();
     AllocaInst *reduxObject =
@@ -584,6 +584,9 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
                            "." + reduxLiveouts[i]->getName());
     liveoutStructure.reduxObjects.push_back(reduxObject);
     InstInsertPt::Beginning(fcn) << reduxObject;
+
+    DEBUG(errs() << "Adding a reducible liveout object " << *reduxObject
+                 << " to function " << fcn->getName() << '\n');
   }
 
   // Identify the edges at the end of an iteration
@@ -673,6 +676,11 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   for (unsigned i = 0; i < M; ++i) {
     PHINode *phi = phis[i];
     Value *indices[] = {zero, ConstantInt::get(u32, N + i)};
+
+    // add non-reducible phi as replicated (if it belongs to a parallel stage). The off-iteration need to keep this
+    // value up-to-date. Skipping the off-iteration will lead to incorrect
+    // execution
+    addToLPS(phi, phi, true/*forceReplication*/);
 
     for (unsigned j = 0; j < phi->getNumIncomingValues(); ++j) {
       BasicBlock *pred = phi->getIncomingBlock(j);
