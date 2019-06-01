@@ -1362,6 +1362,10 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   LoopInfo &li = mloops.getAnalysis_LoopInfo( fcn );
   Loop *loop = li.getLoopFor(header);
 
+  const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
+  unsigned ckptNeeded = (checkpointNeeded) ? 1 : 0;
+
   // Identify the edges at the end of an iteration
   // == loop backedges, loop exits.
   typedef std::vector< RecoveryFunction::CtrlEdge > CtrlEdges;
@@ -1418,7 +1422,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       term->setSuccessor(sn, split);
       split->moveAfter(source);
 
-      CallInst::Create(enditer, "", split);
+      CallInst::Create(enditer, ConstantInt::get(u32, ckptNeeded), "", split);
       BranchInst::Create(dest, split);
 
       // for loop-carried and reducible live-outs store before checkpoints at
