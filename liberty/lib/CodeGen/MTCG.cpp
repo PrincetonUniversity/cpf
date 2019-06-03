@@ -581,7 +581,7 @@ BasicBlock *MTCG::createOffIteration(
   PreparedStrategy::studyStage(
     stages,xdeps,
     liveIns, available,
-    stageno,
+    stageno, loop,
     off_insts,off_avail,off_rel,off_cons);
 
 /* Removing this unnecessary restriction.  Instead, we need a new variant of
