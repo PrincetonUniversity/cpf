@@ -21,7 +21,7 @@ struct ProfilePerformanceEstimator : public ModulePass, public PerformanceEstima
 
   bool runOnModule(Module &mod);
 
-  virtual unsigned long estimate_weight(const Instruction *inst);
+  virtual double estimate_weight(const Instruction *inst);
 
   virtual double estimate_parallelization_weight(const Instruction *inst, const Loop* target_loop);
 
