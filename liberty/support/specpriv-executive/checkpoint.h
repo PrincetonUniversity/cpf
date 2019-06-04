@@ -46,6 +46,10 @@ struct s_checkpoint
 
   Len             redux_used;
 
+  // iteration of last update for min/max reduction that depends on another
+  // reduction. Found in KS benchmark
+  Iteration       lastUpdateIteration;
+
   Iteration       iteration;
   unsigned        num_workers;
 

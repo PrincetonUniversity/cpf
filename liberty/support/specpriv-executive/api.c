@@ -66,6 +66,11 @@ static Iteration currentIter = 0;
 
 static Iteration checkpointGranularity;
 
+// used for min/max redux with dependent redux, as found in KS
+static Iteration lastReduxUpdateIter;
+
+static Bool ckpt_check;
+
 // Old CPU affinity
 static cpu_set_t old_affinity;
 
@@ -93,6 +98,7 @@ struct WorkerArgs {
   unsigned sizeof_redux;
   unsigned sizeof_ro;
   uint64_t main_begin_invocation;
+  ReductionInfo *first_reduction_info;
 } workerArgs;
 
 static void __specpriv_worker_starts(Iteration firstIter, Wid wid);
@@ -200,6 +206,7 @@ static void __specpriv_worker_setup(Wid wid)
     __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
 
     main_begin_invocation = workerArgs.main_begin_invocation;
+    __specpriv_set_first_reduction_info(workerArgs.first_reduction_info);
 
     __specpriv_worker_starts(workerArgs.firstIter, myWorkerId);
 
@@ -588,6 +595,7 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
   workerArgs.sizeof_redux = __specpriv_sizeof_redux();
   workerArgs.sizeof_ro = __specpriv_sizeof_ro();
   workerArgs.main_begin_invocation = main_begin_invocation;
+  workerArgs.first_reduction_info = __specpriv_first_reduction_info();
   ssize_t workerArgsSize = sizeof(struct WorkerArgs);
 
   DEBUG(fflush(stdout));
@@ -758,7 +766,7 @@ void __specpriv_begin_iter(void)
 // Called by a worker at the end of an iteration.
 // A worker should call this during ALL iterations,
 // even during those it does not execute.
-void __specpriv_end_iter(void)
+void __specpriv_end_iter(uint32_t ckptUsed)
 {
   if( __specpriv_num_local() > 0 )
     __specpriv_misspec("Object lifetime misspeculation");
@@ -778,30 +786,42 @@ void __specpriv_end_iter(void)
     globalCurIter = myWorkerId + (currentIter * numWorkers);
 
   //__specpriv_advance_iter(++currentIter);
-  __specpriv_advance_iter(globalCurIter);
+  __specpriv_advance_iter(globalCurIter, ckptUsed);
 }
 
 // check whether we will checkpoint at the end of current iteration
-Bool __specpriv_ckpt_check(void)
+uint32_t __specpriv_ckpt_check(void)
 {
   Iteration firstIter = __specpriv_get_first_iter();
   Iteration i = currentIter + 1;
+  if (!runOnEveryIter)
+    i = myWorkerId + (currentIter * numWorkers);
+
   uint8_t code8 =
       ((uint8_t)(((i - firstIter) % checkpointGranularity) +
                  NUM_RESERVED_SHADOW_VALUES));
 
   if (runOnEveryIter) {
-    if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0)
-    return 1;
+    if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0) {
+      ckpt_check = 1;
+      return 1;
+    }
   }
   else {
     Iteration prevI = i - numWorkers;
     Iteration prevR = (prevI - firstIter) / checkpointGranularity;
     Iteration curR = (i - firstIter) / checkpointGranularity;
-    if (prevI >= firstIter && prevR + 1 == curR)
+    if (prevI >= firstIter && prevR + 1 == curR) {
+      ckpt_check = 1;
       return 1;
+    }
   }
+  ckpt_check = 0;
   return 0;
+}
+
+uint32_t __specpriv_get_ckpt_check(void){
+  return ckpt_check;
 }
 
 void __specpriv_final_iter_ckpt_check(uint64_t rem, uint64_t chunkSize) {
@@ -813,8 +833,19 @@ void __specpriv_final_iter_ckpt_check(uint64_t rem, uint64_t chunkSize) {
     DEBUG(printf("worker_id:%u\n", myWorkerId));
 
     __specpriv_begin_iter();
-    __specpriv_end_iter();
+    __specpriv_end_iter(1);
   }
+}
+
+void __specpriv_set_last_redux_update_iter(uint32_t set) {
+  if (set) {
+    DEBUG(printf("set_last_redux_update_iter to %u\n", currentIter));
+    lastReduxUpdateIter = currentIter;
+  }
+}
+
+Iteration __specpriv_last_redux_update_iter(void) {
+  return lastReduxUpdateIter;
 }
 
 // Perform a UO test.  Specifically, this ensures
