@@ -19,7 +19,7 @@ struct PerformanceEstimator
   // Give a numeric value which represents the total time
   // spent executing this instruction.  Units are unimportant
   // so long as they are consistent.  Bigger means heavier.
-  virtual unsigned long estimate_weight(const Instruction *inst) = 0;
+  virtual double estimate_weight(const Instruction *inst) = 0;
 
   // Give a numeric value which represents the benefit of parallelization of given instruction.
   // Computed by dividing the # of iterations that execute the instruction with the total iteration
@@ -28,11 +28,16 @@ struct PerformanceEstimator
 
   // Estimate the weight of some collection of instructions
   template <class InstIter>
-  unsigned long estimate_weight(const InstIter &begin, const InstIter &end)
+  double estimate_weight(const InstIter &begin, const InstIter &end)
   {
-    unsigned long sum = 0;
-    for(InstIter i=begin; i!=end; ++i)
-      sum += estimate_weight( MakePointer(*i) );
+    errs() << "Estimated Weight Distribution\n";
+    double sum = 0;
+    double wt = 0;
+    for(InstIter i=begin; i!=end; ++i){
+      wt = estimate_weight( MakePointer(*i) );
+      sum += wt;
+      errs() << format("%.2f", wt) << "\t|\t" << *MakePointer(*i) << "\n";
+    }
     return sum;
   }
 
@@ -80,7 +85,7 @@ struct FlatPerformanceEstimator : public PerformanceEstimator
   /// Each instruction is worth 1.
   /// No matter what kind of instruction.
   /// No matter how much it executes.
-  virtual unsigned long estimate_weight(const Instruction *inst) { return 1ul; }
+  virtual double estimate_weight(const Instruction *inst) { return 1ul; }
   virtual double estimate_parallelization_weight(const Instruction *inst, const Loop* loop)
   {
     return 1.0;

@@ -222,10 +222,10 @@ std::string LoopProfLoad::getCallSiteName(const Instruction *inst) const
   const BasicBlock *bb = inst->getParent();
   const Function *fcn = bb->getParent();
 
-  llvm::Twine name = "!callsite " + fcn->getName() + " " + bb->getName() + " ";
+  const std::string name = "!callsite " + fcn->getName().str() + " " + bb->getName().str() + " ";
 
   if( inst->hasName() )
-    return ( name + inst->getName() ).str();
+    return ( name + inst->getName().str() );
 
   else
   {
@@ -234,7 +234,7 @@ std::string LoopProfLoad::getCallSiteName(const Instruction *inst) const
     for(BasicBlock::const_iterator i=bb->begin(), e=bb->end(); i!=e; ++i, ++offset)
       if( inst == &*i )
         break;
-    return ( name + llvm::Twine("$") + llvm::Twine(offset) ).str();
+    return ( name + llvm::Twine("$").str() + llvm::Twine(offset).str() );
   }
 }
 

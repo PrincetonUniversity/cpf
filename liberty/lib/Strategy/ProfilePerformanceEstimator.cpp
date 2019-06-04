@@ -85,11 +85,12 @@ unsigned long ProfilePerformanceEstimator::relative_weight(const Instruction *in
     const double bbcnt = bfi.getBlockProfileCount(bb).getValue();
     const unsigned long bbicnt = (unsigned) (100 * bbcnt);
 
+    // errs() << "bbcnt, bbicnt: " << bbcnt << " " << bbicnt << "\n";
     return bbicnt * instruction_type_weight(inst);
   }
 }
 
-unsigned long ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
+double ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
 {
   //EPLoad& epload = getAnalysis< EPLoad >();
   //return epload.getCost(inst);
@@ -97,6 +98,7 @@ unsigned long ProfilePerformanceEstimator::estimate_weight(const Instruction *in
   if( isa<CallInst>(inst) || isa<InvokeInst>(inst) )
   {
     LoopProfLoad &lprof = getAnalysis< LoopProfLoad >();
+    // errs() << "Assume call or invoke\n";
     return lprof.getCallSiteTime(inst)*100;
   }
 
@@ -116,7 +118,8 @@ unsigned long ProfilePerformanceEstimator::estimate_weight(const Instruction *in
 
   const unsigned long relative = relative_weight(inst);
 
-  return local_weight * relative / sum_local_relative;
+  // errs() << "local, relative, sum: " << local_weight << " " << relative << " " << sum_local_relative << "\n"; 
+  return local_weight * (double)relative / (double)sum_local_relative;
 }
 
 double ProfilePerformanceEstimator::estimate_parallelization_weight(const Instruction *inst, const Loop* target_loop)
@@ -248,7 +251,10 @@ void ProfilePerformanceEstimator::visit(const Function *fcn, const Loop *loop, c
 
   const unsigned long local_time = outside_weight - sum_nested_loops - sum_nested_callsites;
 
-//  errs() << "Fcn " << fcn->getName() << " :: " << loop->getHeader()->getName() << " local_time " << local_time << ", sum_rel_wt_locals " << sum_relative_weights_of_locals << "\n";
+  // if (loop) 
+  //   errs() << "Fcn " << fcn->getName() << " :: " << loop->getHeader()->getName() << " local_time " << local_time << ", sum_rel_wt_locals " << sum_relative_weights_of_locals << "\n";
+  // else
+  //   errs() << "Fcn " << fcn->getName() << " local_time " << local_time << ", sum_rel_wt_locals " << sum_relative_weights_of_locals << "\n";
   ctx2timeAndWeight[ Context(fcn,loop) ] = TimeAndWeight(local_time, sum_relative_weights_of_locals);
 }
 
