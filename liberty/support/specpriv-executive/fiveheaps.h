@@ -28,7 +28,8 @@ void __specpriv_free_priv(void *ptr);
 void *__specpriv_alloc_unclassified(Len size);
 void __specpriv_free_unclassified(void *ptr);
 
-void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type);
+void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type,
+                             void *depAU, Len depSize, uint8_t depType);
 void __specpriv_free_redux(void *ptr);
 
 void *__specpriv_alloc_worker_redux(Len size);
@@ -39,6 +40,7 @@ unsigned __specpriv_num_local(void);
 
 
 ReductionInfo *__specpriv_first_reduction_info(void);
+void __specpriv_set_first_reduction_info(ReductionInfo *frI);
 
 // Determine the size allocated in the private
 // and redux heaps BEFORE the invocation began.

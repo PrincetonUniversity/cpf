@@ -41,7 +41,8 @@ struct Preprocess : public ModulePass {
   RoI &getRoI() { return roi; }
   const RoI &getRoI() const { return roi; }
 
-  void addToLPS(Instruction *nI, Instruction *gravity);
+  void addToLPS(Instruction *nI, Instruction *gravity,
+                bool forceReplication = false);
   void replaceInLPS(Instruction *nI, Instruction *oI);
 
   void getExecutingStages(Instruction *inst, std::vector<unsigned> &stages);
@@ -65,6 +66,10 @@ struct Preprocess : public ModulePass {
     return specUsed.count(loopHeader);
   }
 
+  bool isCheckpointingNeeded(BasicBlock *loopHeader) const {
+    return checkpointNeeded.count(loopHeader);
+  }
+
   InstInsertPt getInitFcn() const {
     return initFcn;
   }
@@ -85,9 +90,11 @@ private:
       selectedCtrlSpecDeps;
   std::unordered_set<const BasicBlock *> separationSpecUsed;
   std::unordered_set<const BasicBlock *> specUsed;
+  std::unordered_set<const BasicBlock *> checkpointNeeded;
 
   std::unordered_set<const Instruction *> reduxV;
   std::unordered_map<const Instruction *, Reduction::ReduxInfo> redux2Info;
+  std::unordered_map<const BasicBlock *, const Instruction *> reduxUpdateInst;
   const PHINode *indVarPhi;
 
   void init(ModuleLoops &mloops);

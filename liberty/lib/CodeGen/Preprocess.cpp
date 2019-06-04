@@ -71,13 +71,13 @@ void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
 }
 
 
-void Preprocess::addToLPS(Instruction *newInst, Instruction *gravity)
+void Preprocess::addToLPS(Instruction *newInst, Instruction *gravity, bool forceReplication)
 {
   Selector &selector = getAnalysis< Selector >();
   for(Selector::strat_iterator i=selector.strat_begin(), e=selector.strat_end(); i!=e; ++i)
   {
     LoopParallelizationStrategy *lps = i->second.get();
-    lps->addInstruction(newInst,gravity);
+    lps->addInstruction(newInst, gravity, forceReplication);
   }
 }
 
@@ -398,6 +398,7 @@ void Preprocess::init(ModuleLoops &mloops)
     SelectedRemedies *selectedRemeds = loop2SelectedRemedies[header].get();
 
     bool specUsedFlag = false;
+    bool memVerUsed = false;
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
         ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
@@ -425,13 +426,27 @@ void Preprocess::init(ModuleLoops &mloops)
         reduxInfo.depInst = reduxRemed->depInst;
         reduxInfo.depType = reduxRemed->depType;
         redux2Info[liveOutV] = reduxInfo;
+        if (reduxRemed->depUpdateInst) {
+          if (reduxUpdateInst.count(header)) {
+            assert(reduxRemed->depUpdateInst == reduxUpdateInst[header] &&
+                   "No runtime support for "
+                   "more than 1 min/max redux's "
+                   "dependent inst per loop");
+          } else {
+            reduxUpdateInst[header] = reduxRemed->depUpdateInst;
+          }
+        }
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
+      } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
+        memVerUsed = true;
       }
     }
     if (specUsedFlag)
       specUsed.insert(header);
+    if (memVerUsed || specUsedFlag)
+      checkpointNeeded.insert(header);
   }
 }
 
@@ -466,12 +481,12 @@ void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
                 object, ArrayRef<Value *>(&indices[0], &indices[2]));
             gep->setName(name + ":" + def->getName());
             load = new LoadInst(gep);
-            InstInsertPt::Beginning(splitedge) << gep;
+            InstInsertPt::Beginning(splitedge) << gep << load;
           } else {
             load = new LoadInst(object);
+            InstInsertPt::Beginning(splitedge) << load;
           }
 
-          InstInsertPt::Beginning(splitedge) << load;
           phi->setIncomingValue(k, load);
         }
       } else {
@@ -575,7 +590,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   DEBUG(errs() << "Adding a liveout object " << *liveoutObject
                << " to function " << fcn->getName() << '\n');
 
-  // Allocate a global variable to hold each reducible live-out
+  // Allocate a local variable to hold each reducible live-out
   for(unsigned i=0; i<K; ++i) {
     Type *pty = reduxLiveouts[i]->getType();
     AllocaInst *reduxObject =
@@ -584,6 +599,9 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
                            "." + reduxLiveouts[i]->getName());
     liveoutStructure.reduxObjects.push_back(reduxObject);
     InstInsertPt::Beginning(fcn) << reduxObject;
+
+    DEBUG(errs() << "Adding a reducible liveout object " << *reduxObject
+                 << " to function " << fcn->getName() << '\n');
   }
 
   // Identify the edges at the end of an iteration
@@ -633,8 +651,9 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // MTCG will limit stores inside the loop only when checkpoint is imminent.
   // isolate stores within the loop in a new basic block.
   //
-  // if no spec or no reducible variables then no reason to store whatsover
-  if (K > 0 || (M > 0 && specUsed.count(header))) {
+  // check that checkpoints are needed. If not, then storing incoming to header
+  // values is not necessary
+  if ((K > 0 || (M > 0)) && checkpointNeeded.count(header)) {
     for (unsigned i = 0, Nib = iterationBounds.size(); i < Nib; ++i) {
       TerminatorInst *term = iterationBounds[i].first;
       BasicBlock *source = term->getParent();
@@ -673,6 +692,11 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   for (unsigned i = 0; i < M; ++i) {
     PHINode *phi = phis[i];
     Value *indices[] = {zero, ConstantInt::get(u32, N + i)};
+
+    // add non-reducible phi as replicated (if it belongs to a parallel stage). The off-iteration need to keep this
+    // value up-to-date. Skipping the off-iteration will lead to incorrect
+    // execution
+    addToLPS(phi, phi, true/*forceReplication*/);
 
     for (unsigned j = 0; j < phi->getNumIncomingValues(); ++j) {
       BasicBlock *pred = phi->getIncomingBlock(j);
@@ -719,6 +743,25 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
         addToLPS(store, gravity);
       }
     }
+  }
+
+  // add API call to update the last min/max iter change if we have a
+  // dependent min/max redux
+  if (reduxUpdateInst.count(header)) {
+    Constant *setLastReduxUpIter = Api(mod).getSetLastReduxUpIter();
+    Instruction *updateInst =
+        const_cast<Instruction *>(reduxUpdateInst[header]);
+    SelectInst *updateInstS = dyn_cast<SelectInst>(updateInst);
+    assert(updateInstS && "Redux update inst with dependent redux is not a "
+                          "select. Cond + branch not supported yet");
+    // check if there was an update of min/max or not
+    SelectInst *setBool = SelectInst::Create(
+        updateInstS->getCondition(), ConstantInt::get(u32, 1),
+        ConstantInt::get(u32, 0), "min.max.changed");
+    CallInst *callSetLastUpI = CallInst::Create(setLastReduxUpIter, setBool);
+    InstInsertPt::End(updateInst->getParent()) << setBool << callSetLastUpI;
+    addToLPS(setBool, updateInst);
+    addToLPS(callSetLastUpI, updateInst);
   }
 
   // TODO: replace loads from/stores to this structure with

@@ -15,7 +15,7 @@ Iteration __specpriv_get_first_iter(void);
 
 // Set the current iteration number, and
 // possibly perform a checkpoint.
-void __specpriv_advance_iter(Iteration);
+void __specpriv_advance_iter(Iteration, uint32_t);
 
 
 // partial <-- later(worker,partial)

@@ -92,6 +92,8 @@ bool MTCG::runOnModule(Module &module)
     modified = true;
   }
 
+  errs() << "\n" << module << "\n";
+
   return modified;
 }
 
@@ -251,6 +253,11 @@ BasicBlock *MTCG::stitchLoops(
 
   replaceIncomingEdgesExcept(header_on,preheader_on,newHeader);
 
+  std::vector<BasicBlock *> offIterStageExitBBs;
+  std::vector<BasicBlock *> saveRxLCBBs;
+  const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
+
   // For each PHI node which appears in both the ON and OFF versions of this stage.
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
   {
@@ -332,22 +339,150 @@ BasicBlock *MTCG::stitchLoops(
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
     else {
-      // Create a dummy PHI whose incoming value is the phi in the new stitch
-      // loop header (OFF iteration does not change the value, just passes on
-      // the one it received)
-      phi_off =
-          PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
-                          &*(header_off->getFirstInsertionPt()));
+      // For reducible live-outs create a dummy PHI whose incoming value is the
+      // phi in the new stitch loop header (OFF iteration does not change the
+      // value, just passes on the one it received).
+      // Do not create dummy phi for non-reducible loop-carried since that will
+      // lead to incorrect execution (not allowed to skip iterations in this
+      // case). These LC should already have phis (replicated on both on and off
+      // iteration) so they should not be found here
 
-      phi_off->addIncoming(newPhi, preheader_off);
-
-      for (pred_iterator i = pred_begin(header_off), e = pred_end(header_off);
-           i != e; ++i) {
-        BasicBlock *pred = *i;
-
-        if (newPhi->getBasicBlockIndex(pred) == -1 && pred != preheader_off)
-          newPhi->addIncoming(phi_off, pred);
+      // find the reduxObject to store the phi of the off-iteration from the
+      // on-iteration and verify that these phis are indeed reducible
+      Value *reduxObject = nullptr;
+      for (auto U : phi_on->users()) {
+        // find a store on a loop exit. The mem loc in the store is the target
+        // reduxObject we are looking for
+        if (auto *sU = dyn_cast<StoreInst>(U)) {
+          bool loopExit = isa<ReturnInst>(sU->getParent()->getTerminator());
+          if (loopExit) {
+            reduxObject = sU->getPointerOperand();
+          }
+        }
       }
+
+      if (reduxObject) {
+        // reducible live-out found
+
+        phi_off =
+            PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
+                            &*(header_off->getFirstInsertionPt()));
+
+        phi_off->addIncoming(newPhi, preheader_off);
+
+        for (pred_iterator i = pred_begin(header_off), e = pred_end(header_off);
+             i != e; ++i) {
+          BasicBlock *pred = *i;
+
+          if (newPhi->getBasicBlockIndex(pred) == -1 && pred != preheader_off)
+            newPhi->addIncoming(phi_off, pred);
+        }
+
+        // 1: store phi_off to reduxObject before return of the stage
+        // 2: store phi_off to reduxObject before checkpoint at iteration end
+
+        // find BBs exiting the off_iteration and create BBs to save lc at
+        // iteration end (if not already there)
+        if (offIterStageExitBBs.empty()) {
+          std::unordered_set<BasicBlock *> visitedBBs;
+          std::queue<BasicBlock *> worklist;
+          worklist.push(header_off);
+          while (!worklist.empty()) {
+            BasicBlock *BB = worklist.front();
+            worklist.pop();
+            if (visitedBBs.count(BB))
+              continue;
+            visitedBBs.insert(BB);
+            for (auto SI = succ_begin(BB), SE = succ_end(BB); SI != SE; ++SI) {
+              BasicBlock *succ = *SI;
+              if (succ == header_off) {
+                if (checkpointNeeded) {
+                  // add BBs to check for checkpoint and save redux,lc
+                  BasicBlock *pred = BB;
+
+                  TerminatorInst *term = pred->getTerminator();
+                  unsigned sn, N;
+                  for (sn = 0, N = term->getNumSuccessors(); sn < N; ++sn)
+                    if (term->getSuccessor(sn) == succ)
+                      break;
+                  assert(sn != N);
+
+                  BasicBlock *splitCkpt =
+                      BasicBlock::Create(ctx, "ckpt.check", fcn);
+                  splitCkpt->moveAfter(BB);
+
+                  term->setSuccessor(sn, splitCkpt);
+
+                  BasicBlock *dummy = BasicBlock::Create(ctx, "dummy", fcn);
+                  BasicBlock *save_redux_lc =
+                      BasicBlock::Create(ctx, "save.redux.lc", fcn);
+                  save_redux_lc->moveAfter(splitCkpt);
+                  BranchInst::Create(succ, dummy);
+                  BranchInst::Create(dummy, save_redux_lc);
+                  dummy->moveAfter(save_redux_lc);
+
+                  // Update PHIs in header_off and newHeader
+                  for (BasicBlock::iterator j = header_off->begin(),
+                                            z = header_off->end();
+                       j != z; ++j) {
+                    PHINode *phiH = dyn_cast<PHINode>(&*j);
+                    if (!phiH)
+                      break;
+
+                    int idx = phiH->getBasicBlockIndex(pred);
+                    if (idx != -1)
+                      phiH->setIncomingBlock(idx, dummy);
+                  }
+                  for (BasicBlock::iterator j = newHeader->begin(),
+                                            z = newHeader->end();
+                       j != z; ++j) {
+                    PHINode *phiH = dyn_cast<PHINode>(&*j);
+                    if (!phiH)
+                      break;
+
+                    int idx = phiH->getBasicBlockIndex(pred);
+                    if (idx != -1)
+                      phiH->setIncomingBlock(idx, dummy);
+                  }
+
+                  saveRxLCBBs.push_back(save_redux_lc);
+
+                  IntegerType *u32 = Type::getInt32Ty(ctx);
+                  Value *zero = ConstantInt::get(u32, 0);
+                  Constant *ckptcheck = api.getCkptCheck();
+                  Instruction *callckptcheck = CallInst::Create(ckptcheck);
+                  Instruction *cmp =
+                      new ICmpInst(ICmpInst::ICMP_EQ, callckptcheck, zero);
+                  Instruction *br =
+                      BranchInst::Create(dummy, save_redux_lc, cmp);
+                  InstInsertPt::End(splitCkpt) << callckptcheck << cmp << br;
+                }
+              } else if (isa<ReturnInst>(succ->getTerminator())) {
+                offIterStageExitBBs.push_back(succ);
+              } else {
+                worklist.push(succ);
+              }
+            }
+          }
+        }
+
+        for (BasicBlock *BB : offIterStageExitBBs) {
+          StoreInst *store = new StoreInst(phi_off, reduxObject);
+          InstInsertPt::Beginning(BB) << store;
+        }
+        if (checkpointNeeded) {
+          for (BasicBlock *BB : saveRxLCBBs) {
+            StoreInst *store = new StoreInst(phi_off, reduxObject);
+            InstInsertPt::Beginning(BB) << store;
+          }
+        }
+      } else {
+        assert(0 && "Loop-carried dep that is not reducible "
+                    "should already have a phi node in both on,off iteration "
+                    "(replicable inst)");
+      }
+      // TODO: loop-carried deps that are not live-out and non reducible
+      // should still be stored before checkpoints on OFF iteration
     }
   }
 
@@ -446,7 +581,7 @@ BasicBlock *MTCG::createOffIteration(
   PreparedStrategy::studyStage(
     stages,xdeps,
     liveIns, available,
-    stageno,
+    stageno, loop,
     off_insts,off_avail,off_rel,off_cons);
 
 /* Removing this unnecessary restriction.  Instead, we need a new variant of
@@ -1227,6 +1362,10 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   LoopInfo &li = mloops.getAnalysis_LoopInfo( fcn );
   Loop *loop = li.getLoopFor(header);
 
+  const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
+  unsigned ckptNeeded = (checkpointNeeded) ? 1 : 0;
+
   // Identify the edges at the end of an iteration
   // == loop backedges, loop exits.
   typedef std::vector< RecoveryFunction::CtrlEdge > CtrlEdges;
@@ -1283,7 +1422,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       term->setSuccessor(sn, split);
       split->moveAfter(source);
 
-      CallInst::Create(enditer, "", split);
+      CallInst::Create(enditer, ConstantInt::get(u32, ckptNeeded), "", split);
       BranchInst::Create(dest, split);
 
       // for loop-carried and reducible live-outs store before checkpoints at

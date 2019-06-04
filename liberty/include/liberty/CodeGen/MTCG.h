@@ -80,11 +80,13 @@ struct PreparedStrategy
 
   unsigned numStages() const { return lps->stages.size(); }
 
-  static void studyStage(
-    const PipelineStrategy::Stages &stages, const PipelineStrategy::CrossStageDependences &xdeps,
-    const VSet &liveIns, const Stage2VSet &available, unsigned stageno,
-    // Outputs
-    ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons);
+  static void studyStage(const PipelineStrategy::Stages &stages,
+                         const PipelineStrategy::CrossStageDependences &xdeps,
+                         const VSet &liveIns, const Stage2VSet &available,
+                         unsigned stageno, Loop *loop,
+                         // Outputs
+                         ISet &insts, VSet &avail, BBSet &rel,
+                         ConsumeFrom &cons);
   //
   /// Update instructions, value availability, and relevant basic blocks.
   static void addInstsToStage(ISet &insts, VSet &avail, BBSet &rel, const ISet &is);
@@ -101,10 +103,13 @@ private:
   static void computeProducesAndQueues(const ConsumeFrom &cons, unsigned stageno, Stage2ProduceTo &produces, StagePairs &queues);
 
   /// Add additional instructions to stage 'stageno' to satisfy register and control dependences.
-  static void fillOutStage(
-    const PipelineStrategy::Stages &stages, const PipelineStrategy::CrossStageDependences &xdeps, const PreparedStrategy::Stage2VSet &available, unsigned stageno,
-    // Outputs
-    ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons);
+  static void fillOutStage(const PipelineStrategy::Stages &stages,
+                           const PipelineStrategy::CrossStageDependences &xdeps,
+                           const PreparedStrategy::Stage2VSet &available,
+                           unsigned stageno, Loop *loop,
+                           // Outputs
+                           ISet &insts, VSet &avail, BBSet &rel,
+                           ConsumeFrom &cons);
 
   /// Augment a stage with communication, rematerialization, and duplication of control flow.
   static void addCommunication(VSet &avail, BBSet &rel, ConsumeFrom &cons, unsigned srcStage, unsigned dstStage, Instruction *value, bool consumeOccursInReplicatedStage);
@@ -118,7 +123,9 @@ private:
     ISet &insts, VSet &avail, BBSet &rel);
 
   /// Satisfy register deps by rematerializing side-effect-free computations.
-  static bool rematerialize(const PipelineStrategy::Stages &stages, unsigned stageno, ISet &insts, VSet &avail, BBSet &rel);
+  static bool rematerialize(const PipelineStrategy::Stages &stages,
+                            unsigned stageno, Loop *loop, ISet &insts,
+                            VSet &avail, BBSet &rel);
 
   /// Satisfy register deps with communication.
   static bool communicateOnce(
@@ -126,10 +133,10 @@ private:
     const PreparedStrategy::Stage2VSet &available,
     // Outputs
     ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons);
-  static bool rematerializeOnce(
-    const PipelineStrategy::Stages &stages, unsigned stageno,
-    // Outputs
-    ISet &insts, VSet &avail, BBSet &rel);
+  static bool rematerializeOnce(const PipelineStrategy::Stages &stages,
+                                unsigned stageno, Loop *loop,
+                                // Outputs
+                                ISet &insts, VSet &avail, BBSet &rel);
 };
 
 

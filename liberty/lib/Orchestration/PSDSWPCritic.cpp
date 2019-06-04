@@ -976,6 +976,66 @@ EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
   }
 }
 
+void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
+  // Foreach parallel stage
+  // if there is a loop-carried reg dep from a seq stage to parallel stage, then
+  // the destination of this dep needs to be moved to the sequential stage. The
+  // incoming value to the phi from loop backedge in the parallel stage will be
+  // produced by the sequential stage and consumed by the parallel stage in the
+  // previous iteration. But each worker will not be executing the previous
+  // iteration (except for 1 worker in parallel stage or when within a chunk).
+  // Thus, it will never receive the correct value and the incoming to the phi
+  // node value will be a stale one. This case was first observed in ks
+  // benchmark with phi node on mrPrevA variable.
+  PipelineStage *prevStage = nullptr;
+  for (PipelineStrategy::Stages::iterator i = ps.stages.begin(),
+                                          e = ps.stages.end();
+       i != e; ++i) {
+    PipelineStage &pstage = *i;
+
+    if (!prevStage) {
+      prevStage = &pstage;
+      continue;
+    }
+
+    if (pstage.type != PipelineStage::Parallel)
+      continue;
+
+    std::vector<Instruction *> moveToSeqInsts;
+    for (PipelineStage::ISet::const_iterator j = pstage.instructions.begin(),
+                                             z = pstage.instructions.end();
+         j != z; ++j) {
+      Instruction *inst = *j;
+      auto *pdgNode = pdg.fetchConstNode(inst);
+
+      // There should be no loop-carried edge
+      for (auto edge :
+           make_range(pdgNode->begin_incoming_edges(), pdgNode->end_incoming_edges())) {
+
+        if (edge->isLoopCarriedDependence() && !edge->isControlDependence() &&
+            !edge->isMemoryDependence() && edge->isRAWDependence() &&
+            !edge->isRemovableDependence()) {
+          moveToSeqInsts.push_back(inst);
+        }
+      }
+    }
+
+    // move selected insts from the parallel stage to the previous seq stage
+    for (auto *inst : moveToSeqInsts) {
+      pstage.instructions.erase(inst);
+      prevStage->instructions.insert(inst);
+      DEBUG(
+          errs()
+              << "Moved inst from parallel to previous sequential stage due to "
+                 "a loop-carried, reg, RAW, non-removable dependence crossing "
+                 "the two stages:\n    "
+              << *inst << "\n";);
+    }
+
+    prevStage = &pstage;
+  }
+}
+
 void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
                                       Criticisms &criticisms, PDG &pdg) {
   // Add to criticisms all deps which violate pipeline order.
@@ -1037,6 +1097,8 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
     res.ps = nullptr;
     return res;
   }
+
+  adjustPipeline(*ps, pdg);
 
   populateCriticisms(*ps, res.criticisms, pdg);
 
