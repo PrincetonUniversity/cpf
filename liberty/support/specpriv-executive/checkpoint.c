@@ -238,8 +238,24 @@ static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, Mapped
   partial->shadow_lowest_inclusive = (uint8_t*) (SHADOW_ADDR + (1UL<<POINTER_BITS));
   partial->shadow_highest_exclusive = (uint8_t*) (SHADOW_ADDR);
 
-  // TODO: identity
+  // initialize with identity reductions in the checkpoint object
+  //
+  // initialize at first  all memory to zero.
+  // Suitable for sum reduction and max reduction with unsigned.
+  // For the other types of reduction special handling required.
   memset((void*)redux->base, 0, redux_used);
+
+  ReductionInfo *info = __specpriv_first_reduction_info();
+  for (; info; info = info->next) {
+    DEBUG(printf(" initialize next info __specpriv_distill_worker_redux_into_partial\n"));
+    void *native_au = info->au;
+    void *dst_au = heap_translate(native_au, redux);
+
+    if (info->depSize)
+      continue;
+
+    __specpriv_initialize_reductions(dst_au, info);
+  }
 }
 
 
@@ -333,7 +349,8 @@ static Bool __specpriv_combine_redux(Checkpoint *older, Checkpoint *newer)
 
   // combine them.
   misspec = __specpriv_distill_committed_redux_into_partial(
-    &commit_redux, &partial_redux);
+      &commit_redux, &partial_redux, older->lastUpdateIteration,
+      &newer->lastUpdateIteration);
 
   if( misspec )
     newer->type = CL_Broken;
@@ -475,7 +492,8 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
   // Commit /my/ reduction values to the partial heap
   TOUT( if(rec) TIME(rec->redux_start); );
   {
-    __specpriv_distill_worker_redux_into_partial(&partial_redux);
+    __specpriv_distill_worker_redux_into_partial(&partial_redux,
+                                                 &chkpt->lastUpdateIteration);
   }
   TOUT( if(rec) TIME(rec->redux_stop); );
 
@@ -582,7 +600,8 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
 
     __specpriv_commit_io( &chkpt->io_events, &commit_redux );
     __specpriv_distill_committed_private_into_main( chkpt, &commit_priv, &commit_shadow );
-    __specpriv_distill_committed_redux_into_main( &commit_redux );
+    __specpriv_distill_committed_redux_into_main(&commit_redux,
+                                                 chkpt->lastUpdateIteration);
     mgr->main_checkpoint->iteration = chkpt->iteration;
 
     heap_unmap( &commit_redux );

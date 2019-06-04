@@ -99,9 +99,20 @@ Iteration __specpriv_get_first_iter(void)
 
 // Called by __specpriv_worker_starts()
 // Called by __specpriv_end_iter()
-void __specpriv_advance_iter(Iteration i)
+void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
 {
   __specpriv_set_iter(i);
+
+  /*
+  // cannot use __specpriv_get_ckpt_check unless we check if ckpt_check was
+  performed for iteration i
+  //
+  if (__specpriv_get_ckpt_check())
+    __specpriv_worker_perform_checkpoint(0);
+  */
+
+  if (ckptUsed == 0)
+    return;
 
   if (__specpriv_runOnEveryIter()) {
     if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0)
