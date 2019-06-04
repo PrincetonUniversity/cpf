@@ -241,6 +241,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   Reduction::Type type;
   remedy->depInst = nullptr;
   remedy->depType = Reduction::NotReduction;
+  remedy->depUpdateInst = nullptr;
 
   /*
   Function *F = ncA->getParent()->getParent();
@@ -271,8 +272,9 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   }
   const Instruction *depInst;
   Reduction::Type depType;
+  const Instruction *depUpdateInst;
   if (reduxdet.isMinMaxReduction(L, A, B, loopCarried, type, &depInst,
-                                 depType)) {
+                                 depType, &depUpdateInst)) {
     ++numRegDepsRemovedMinMaxRedux;
     DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
     DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
@@ -282,6 +284,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     remedy->type = type;
     remedy->depInst = depInst;
     remedy->depType = depType;
+    remedy->depUpdateInst = depUpdateInst;
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;

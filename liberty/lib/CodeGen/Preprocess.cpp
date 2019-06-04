@@ -426,6 +426,16 @@ void Preprocess::init(ModuleLoops &mloops)
         reduxInfo.depInst = reduxRemed->depInst;
         reduxInfo.depType = reduxRemed->depType;
         redux2Info[liveOutV] = reduxInfo;
+        if (reduxRemed->depUpdateInst) {
+          if (reduxUpdateInst.count(header)) {
+            assert(reduxRemed->depUpdateInst == reduxUpdateInst[header] &&
+                   "No runtime support for "
+                   "more than 1 min/max redux's "
+                   "dependent inst per loop");
+          } else {
+            reduxUpdateInst[header] = reduxRemed->depUpdateInst;
+          }
+        }
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
@@ -733,6 +743,25 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
         addToLPS(store, gravity);
       }
     }
+  }
+
+  // add API call to update the last min/max iter change if we have a
+  // dependent min/max redux
+  if (reduxUpdateInst.count(header)) {
+    Constant *setLastReduxUpIter = Api(mod).getSetLastReduxUpIter();
+    Instruction *updateInst =
+        const_cast<Instruction *>(reduxUpdateInst[header]);
+    SelectInst *updateInstS = dyn_cast<SelectInst>(updateInst);
+    assert(updateInstS && "Redux update inst with dependent redux is not a "
+                          "select. Cond + branch not supported yet");
+    // check if there was an update of min/max or not
+    SelectInst *setBool = SelectInst::Create(
+        updateInstS->getCondition(), ConstantInt::get(u32, 1),
+        ConstantInt::get(u32, 0), "min.max.changed");
+    CallInst *callSetLastUpI = CallInst::Create(setLastReduxUpIter, setBool);
+    InstInsertPt::End(updateInst->getParent()) << setBool << callSetLastUpI;
+    addToLPS(setBool, updateInst);
+    addToLPS(callSetLastUpI, updateInst);
   }
 
   // TODO: replace loads from/stores to this structure with

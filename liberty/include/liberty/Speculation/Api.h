@@ -408,6 +408,12 @@ struct Api
     return mod->getOrInsertFunction(name, fi2v);
   }
 
+   Constant *getSetLastReduxUpIter()
+  {
+    std::string name = (Twine(personality) + "_set_last_redux_update_iter").str();
+    return mod->getOrInsertFunction(name, fi2v);
+  }
+
 
   Constant *getBegin()
   {
