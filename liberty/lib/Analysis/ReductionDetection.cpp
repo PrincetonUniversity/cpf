@@ -429,12 +429,16 @@ bool sameBBMinMaxRedux(
       info->type = SpecPriv::Reduction::isAssocAndCommut(info->cmpInst);
       info->depInst = nullptr;
       info->depType = Reduction::NotReduction;
+      info->depUpdateInst = nullptr;
       minMaxReductions[liveOutV] = info;
     } else {
       MinMaxReductionInfo *newinfo = new MinMaxReductionInfo;
       newinfo->depInst = info->minMaxInst;
       newinfo->depType = info->type;
       newinfo->type = getDependentType(liveOutV, newinfo->depType);
+      const Instruction *depUpdateInst = dyn_cast<Instruction>(info->minMaxValue);
+      assert(depUpdateInst);
+      newinfo->depUpdateInst = depUpdateInst;
       minMaxReductions[liveOutV] = newinfo;
     }
 
@@ -568,7 +572,8 @@ areCandidateInsts(const Instruction *src, const Instruction *dst,
 bool ReductionDetection::isMinMaxReduction(
     const Loop *loop, const Instruction *src, const Instruction *dst,
     const bool loopCarried, SpecPriv::Reduction::Type &type,
-    const Instruction **depInst, SpecPriv::Reduction::Type &depType) {
+    const Instruction **depInst, SpecPriv::Reduction::Type &depType,
+    const Instruction **depUpdateInst) {
   DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
                << *dst << "\n";);
 
@@ -576,6 +581,7 @@ bool ReductionDetection::isMinMaxReduction(
     type = minMaxReductions[dst]->type;
     *depInst = minMaxReductions[dst]->depInst;
     depType = minMaxReductions[dst]->depType;
+    *depUpdateInst = minMaxReductions[dst]->depUpdateInst;
     return true;
   }
 

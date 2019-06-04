@@ -26,6 +26,7 @@ struct MinMaxReductionInfo {
 
   const Instruction *depInst;
   Reduction::Type depType;
+  const Instruction *depUpdateInst;
 
   // Is the running min/max the first or second operand of the compare?
   bool isFirstOperand;
@@ -49,7 +50,8 @@ struct ReductionDetection {
   bool isMinMaxReduction(const Loop *loop, const Instruction *src,
                          const Instruction *dst, const bool loopCarried,
                          Reduction::Type &type, const Instruction **depInst,
-                         SpecPriv::Reduction::Type &depType);
+                         SpecPriv::Reduction::Type &depType,
+                         const Instruction **depUpdateInst);
 
   void findMinMaxRegReductions(Loop *loop, PDG *pdg);
 

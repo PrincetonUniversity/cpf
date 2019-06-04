@@ -495,7 +495,9 @@ void PipelineStrategy::summary(raw_ostream &fout) const
   fout << ']';
 }
 
-void PipelineStrategy::addInstruction(Instruction *newInst, Instruction *gravity)
+void PipelineStrategy::addInstruction(Instruction *newInst,
+                                      Instruction *gravity,
+                                      bool forceReplication)
 {
   bool added = false;
 
@@ -527,7 +529,13 @@ void PipelineStrategy::addInstruction(Instruction *newInst, Instruction *gravity
       // The gravity instruction exists in this
       // stage.
       // Insert the new instruction here too.
-      stage.instructions.insert(newInst);
+      if (!forceReplication || stage.type != PipelineStage::Parallel)
+        stage.instructions.insert(newInst);
+      else {
+        stage.replicated.insert(newInst);
+        if (gravity == newInst)
+          stage.instructions.erase(newInst);
+      }
       added = true;
       // By construction, the stages are
       // disjoint.  The gravity instruction
@@ -539,15 +547,16 @@ void PipelineStrategy::addInstruction(Instruction *newInst, Instruction *gravity
 
   // Duplicate control dependences which may
   // exist among the cross-iteration deps
-  for(unsigned i=0; i<crossStageDeps.size(); ++i)
-  {
-    const CrossStageDependence &dep = crossStageDeps[i];
-    if( dep.edge->isControlDependence() )
-      if( dep.dst == gravity )
-      {
-        crossStageDeps.push_back( CrossStageDependence(dep.src, newInst, dep.edge) );
-        added = true;
-      }
+  if (gravity != newInst) {
+    for (unsigned i = 0; i < crossStageDeps.size(); ++i) {
+      const CrossStageDependence &dep = crossStageDeps[i];
+      if (dep.edge->isControlDependence())
+        if (dep.dst == gravity) {
+          crossStageDeps.push_back(
+              CrossStageDependence(dep.src, newInst, dep.edge));
+          added = true;
+        }
+    }
   }
 
   DEBUG(if( !added )
@@ -819,6 +828,7 @@ void PipelineStrategy::assertConsistentWithIR(Loop *loop)
           // occur in the branch target, and speculatively dead loop exits
           // cause a validation check OUTSIDE of the loop.  This is okay;
           // the transform must be aware of it.
+          // storing redux registers also occurs on loop exits
           errs() << "  (Okay, since this is a loop exit...)\n";
         }
         else if (usucc && usucc == loop->getHeader() && !loop->contains(bb))

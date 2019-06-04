@@ -405,7 +405,13 @@ struct Api
   Constant *getEndIter()
   {
     std::string name = (Twine(personality) + "_end_iter").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    return mod->getOrInsertFunction(name, fi2v);
+  }
+
+   Constant *getSetLastReduxUpIter()
+  {
+    std::string name = (Twine(personality) + "_set_last_redux_update_iter").str();
+    return mod->getOrInsertFunction(name, fi2v);
   }
 
 

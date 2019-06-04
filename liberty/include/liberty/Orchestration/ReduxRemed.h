@@ -35,6 +35,7 @@ public:
   // Min/max reductions could depend on comparison of another inst
   const Instruction *depInst;
   Reduction::Type depType;
+  const Instruction *depUpdateInst;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;

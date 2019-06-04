@@ -21,5 +21,9 @@ void __specpriv_recovery_done(Exit);
 
 Bool __specpriv_runOnEveryIter(void);
 
+uint32_t __specpriv_get_ckpt_check(void);
+
+Iteration __specpriv_last_redux_update_iter(void);
+
 #endif
 

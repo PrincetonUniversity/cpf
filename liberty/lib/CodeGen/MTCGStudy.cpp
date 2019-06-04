@@ -114,22 +114,23 @@ void PreparedStrategy::study(unsigned stageno)
 
   // This stage includes instructions specified in the partition.
   addInstsToStage( insts,avail,rel, stage.instructions );
-  studyStage(lps->stages,lps->crossStageDeps,liveIns, available, stageno,
-                  insts,avail,rel,cons);
+  studyStage(lps->stages, lps->crossStageDeps, liveIns, available, stageno,
+             loop, insts, avail, rel, cons);
   computeProducesAndQueues(cons, stageno, produces, queues);
   assert( !insts.empty() && "How can there be NO instructions in this stage?");
   assert( !rel.empty() && "How can there be NO relevant BBs?");
 }
 
 void PreparedStrategy::studyStage(
-  const PipelineStrategy::Stages &stages, const PipelineStrategy::CrossStageDependences &xdeps,
-  const VSet &liveIns, const Stage2VSet &available, unsigned stageno,
-  // Outputs
-  ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons)
-{
+    const PipelineStrategy::Stages &stages,
+    const PipelineStrategy::CrossStageDependences &xdeps, const VSet &liveIns,
+    const Stage2VSet &available, unsigned stageno, Loop *loop,
+    // Outputs
+    ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons) {
   addInstsToStage( insts,avail,rel, stages[stageno].replicated );
   avail.insert( liveIns.begin(), liveIns.end() );
-  fillOutStage(stages, xdeps, available, stageno, insts,avail,rel,cons);
+  fillOutStage(stages, xdeps, available, stageno, loop, insts, avail, rel,
+               cons);
 }
 
 void PreparedStrategy::computeProducesAndQueues(
@@ -180,14 +181,13 @@ void PreparedStrategy::addCommunication(
 }
 
 void PreparedStrategy::fillOutStage(
-  const PipelineStrategy::Stages &stages,
-  const PipelineStrategy::CrossStageDependences &xdeps,
-  const Stage2VSet &available, unsigned stageno,
-  // Outputs
-  ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons)
-{
+    const PipelineStrategy::Stages &stages,
+    const PipelineStrategy::CrossStageDependences &xdeps,
+    const Stage2VSet &available, unsigned stageno, Loop *loop,
+    // Outputs
+    ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons) {
   while( handleControlDeps(xdeps,cons, stageno, insts, avail, rel)
-  ||     rematerialize(stages,stageno, insts, avail, rel)
+  ||     rematerialize(stages,stageno, loop, insts, avail, rel)
   ||     communicateOnce(stages,stageno, available, insts, avail, rel, cons) )
   { /* Iterate until convergence */ }
 }
@@ -227,25 +227,34 @@ bool PreparedStrategy::handleControlDeps(
   return changed;
 }
 
-bool PreparedStrategy::rematerialize(
-  const PipelineStrategy::Stages &stages, unsigned stageno,
-  ISet &insts, VSet &avail, BBSet &rel)
-{
+bool PreparedStrategy::rematerialize(const PipelineStrategy::Stages &stages,
+                                     unsigned stageno, Loop *loop, ISet &insts,
+                                     VSet &avail, BBSet &rel) {
   bool changed = false;
-  while( rematerializeOnce(stages,stageno,insts,avail,rel) )
+  while (rematerializeOnce(stages, stageno, loop, insts, avail, rel))
     changed = true;
   return changed;
 }
 
-bool PreparedStrategy::rematerializeOnce(
-  const PipelineStrategy::Stages &stages, unsigned stageno,
-  // Outputs
-  ISet &insts, VSet &avail, BBSet &rel)
-{
+bool PreparedStrategy::rematerializeOnce(const PipelineStrategy::Stages &stages,
+                                         unsigned stageno, Loop *loop,
+                                         // Outputs
+                                         ISet &insts, VSet &avail, BBSet &rel) {
   // Foreach value which is used, but which is not available.
   for(ISet::iterator i=insts.begin(), e=insts.end(); i!=e; ++i)
   {
     Instruction *inst = *i;
+
+    // If inst in the replicable stage then the replicable stage might not be
+    // able to rematerialize as well. Thus, it will communicate instead, but
+    // there will be no replicable produce
+    // TODO: be less conservative by calling studyStage on the off iteration
+    // before the on_iteration (aka the regular study[parallel stage no]) and
+    // note the ones that the replicable part cannot rematerialize
+    // TODO: maybe delete off_iterations whatsover
+    if (stages[stageno].replicated.count(inst))
+      continue;
+
     for(User::op_iterator j=inst->op_begin(), jj=inst->op_end(); j!=jj; ++j)
     {
       Instruction *operand = dyn_cast<Instruction>( &**j );
@@ -268,6 +277,16 @@ bool PreparedStrategy::rematerializeOnce(
       }
       if( !allOperandsAreAvailable )
         continue; // NO. Not all operands are available.
+
+      // If operand is phi node in header and stage is parallel do not
+      // rematerialize since parallel workers do not execute all iterations.
+      // Stale values (from older than the previous iteration, will possibly be
+      // feeded to the phi node if rematerialized.
+      if (isa<PHINode>(operand) && operand->getParent() == loop->getHeader())
+        continue;
+
+      DEBUG(errs() << "rematerialized operand, used but not available: "
+                   << *operand << "\n");
 
       // This instruction may be rematerialized.
       addInstToStage(insts,avail,rel, operand);
@@ -296,6 +315,9 @@ bool PreparedStrategy::communicateOnce(
       if( !operand || avail.count(operand) )
         continue;
       // 'operand' is used, but not available.
+
+      DEBUG(errs() << "communicated operand, used but not available: "
+                   << *operand << "\n");
 
       // Communicate it!
       unsigned sourceStage=0;
