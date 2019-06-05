@@ -1,5 +1,3 @@
-#define DEBUG_TYPE "pipeline"
-
 #include "liberty/Strategy/PerformanceEstimator.h"
 
 namespace liberty

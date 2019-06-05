@@ -2,9 +2,12 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_PERFORMANCE_ESTIMATOR_H
 #define LLVM_LIBERTY_SPEC_PRIV_PERFORMANCE_ESTIMATOR_H
 
+#define DEBUG_TYPE "pipeline"
+
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Utilities/MakePtr.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/Debug.h" 
 
 namespace liberty
 {
@@ -30,13 +33,13 @@ struct PerformanceEstimator
   template <class InstIter>
   double estimate_weight(const InstIter &begin, const InstIter &end)
   {
-    errs() << "Estimated Weight Distribution\n";
+    DEBUG(errs() << "Estimated Weight Distribution\n");
     double sum = 0;
     double wt = 0;
     for(InstIter i=begin; i!=end; ++i){
       wt = estimate_weight( MakePointer(*i) );
       sum += wt;
-      errs() << format("%.2f", wt) << "\t|\t" << *MakePointer(*i) << "\n";
+      DEBUG(errs() << format("%.2f", wt) << "\t|\t" << *MakePointer(*i) << "\n");
     }
     return sum;
   }
