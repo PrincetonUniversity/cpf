@@ -227,7 +227,7 @@ bool Targets::runOnModule(Module &mod)
 
     // Add all loops whose execution time is at least 10% of program runtime.
     // and which iterate at least N times.
-    unsigned long min = load.getTotTime() * MinExecTimePercent / 100;
+    double min = load.getTotTime() * (double)MinExecTimePercent / 100;
     for(LoopProfLoad::iterator i=load.begin(), e=load.end(); i!=e; ++i)
     {
       const std::string &name = i->first;
