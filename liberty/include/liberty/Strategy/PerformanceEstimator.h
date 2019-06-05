@@ -2,12 +2,14 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_PERFORMANCE_ESTIMATOR_H
 #define LLVM_LIBERTY_SPEC_PRIV_PERFORMANCE_ESTIMATOR_H
 
+#ifndef DEBUG_TYPE
 #define DEBUG_TYPE "pipeline"
+#endif
 
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Utilities/MakePtr.h"
 #include "llvm/Support/Format.h"
-#include "llvm/Support/Debug.h" 
+#include "llvm/Support/Debug.h"
 
 namespace liberty
 {
