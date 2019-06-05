@@ -99,7 +99,7 @@ double ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
   {
     LoopProfLoad &lprof = getAnalysis< LoopProfLoad >();
     // errs() << "Assume call or invoke\n";
-    return lprof.getCallSiteTime(inst)*100;
+    return lprof.getCallSiteTime(inst);
   }
 
   const BasicBlock *bb = inst->getParent();
