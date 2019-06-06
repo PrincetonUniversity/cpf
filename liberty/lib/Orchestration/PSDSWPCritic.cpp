@@ -6,12 +6,13 @@
 #include <climits>
 
 #define OffPStagePercThreshold 3
+#define FIXED_POINT 1000
 
 namespace liberty {
 using namespace llvm;
 
 static EdgeWeight estimate_weight(PerformanceEstimator &perf, SCC *scc) {
-  EdgeWeight sum_weight = 0;
+  double sum_weight = 0.0;
 
   for (auto instPair : scc->internalNodePairs()) {
     Instruction *inst = dyn_cast<Instruction>(instPair.first);
@@ -20,7 +21,7 @@ static EdgeWeight estimate_weight(PerformanceEstimator &perf, SCC *scc) {
     sum_weight += perf.estimate_weight(inst);
   }
 
-  return sum_weight;
+  return FIXED_POINT * sum_weight;
 }
 
 /*
@@ -704,7 +705,7 @@ unsigned long PSDSWPCritic::moveOffStage(
     // check if the part moved to seq stage is more than threshold% of
     // parallel stage weight. Ignore if not reducing pstage
     if (!instsOtherSeq || !instsOtherSeq->count(inst)) { // ignore cost moving from seq to seq
-      extraOffPStageWeight += perf->estimate_weight(inst);
+      extraOffPStageWeight += FIXED_POINT * perf->estimate_weight(inst);
       if (((extraOffPStageWeight + offPStageWeight) * 100.0) /
               parallelStageWeight >
           OffPStagePercThreshold) {
@@ -979,7 +980,7 @@ EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
       }
     }
   }
-  return parallelStageWeight;
+  return FIXED_POINT * parallelStageWeight;
 }
 
 void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
