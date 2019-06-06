@@ -333,9 +333,14 @@ void __specpriv_reset_local(void)
   numLocalAUs = 0;
 }
 
-unsigned __specpriv_num_local(void)
+int __specpriv_num_local(void)
 {
   return numLocalAUs;
+}
+
+void __specpriv_add_num_local(int n)
+{
+  numLocalAUs += n;
 }
 
 ReductionInfo *__specpriv_first_reduction_info(void)
