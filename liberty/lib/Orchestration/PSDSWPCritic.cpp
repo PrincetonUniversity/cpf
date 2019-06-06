@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <climits>
 
+#define OffPStagePercThreshold 3
+
 namespace liberty {
 using namespace llvm;
 
@@ -680,7 +682,6 @@ unsigned long PSDSWPCritic::moveOffStage(
     unordered_set<DGEdge<Value> *> &edgesNotRemoved, EdgeWeight offPStageWeight,
     const EdgeWeight &parallelStageWeight, bool moveToFront) {
   // percentage of weight moved off the parallel stage
-  unsigned OffPStagePercThreshold = 0.03;
   EdgeWeight extraOffPStageWeight = 0;
   while (!worklist.empty()) {
     Instruction *inst = worklist.front();
@@ -741,6 +742,10 @@ bool PSDSWPCritic::avoidElimDep(const PDG &pdg, PipelineStrategy &ps,
                                 unordered_set<DGEdge<Value> *> &edgesNotRemoved,
                                 EdgeWeight &offPStageWeight,
                                 const EdgeWeight &parallelStageWeight) {
+
+  // check if we surpassed the threshold of offPStage movement already
+  if ((offPStageWeight * 100.0) / parallelStageWeight > OffPStagePercThreshold)
+    return false;
 
   unsigned costThreshold = 5;
   if (edge->getMinRemovalCost() <= costThreshold)
@@ -976,7 +981,8 @@ EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
   }
 }
 
-void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
+void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
+                                  EdgeWeight &offPStageWeight) {
   // Foreach parallel stage
   // if there is a loop-carried reg dep from a seq stage to parallel stage, then
   // the destination of this dep needs to be moved to the sequential stage. The
@@ -1037,11 +1043,11 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
 }
 
 void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
-                                      Criticisms &criticisms, PDG &pdg) {
+                                      Criticisms &criticisms, PDG &pdg,
+                                      EdgeWeight &offPStageWeight) {
   // Add to criticisms all deps which violate pipeline order.
 
   EdgeWeight parallelStageWeight = getParalleStageWeight(ps);
-  EdgeWeight offPStageWeight = 0;
 
   // Foreach pair (earlier,later) of pipeline stages,
   // where 'earlier' precedes 'later' in the pipeline
@@ -1099,9 +1105,11 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
     return res;
   }
 
-  adjustPipeline(*ps, pdg);
+  EdgeWeight offPStageWeight = 0;
 
-  populateCriticisms(*ps, res.criticisms, pdg);
+  adjustPipeline(*ps, pdg, offPStageWeight);
+
+  populateCriticisms(*ps, res.criticisms, pdg, offPStageWeight);
 
   ps->setValidFor(loop->getHeader());
   ps->assertConsistentWithIR(loop);
