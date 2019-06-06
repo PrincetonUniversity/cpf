@@ -828,12 +828,12 @@ bool PSDSWPCritic::avoidElimDep(const PDG &pdg, PipelineStrategy &ps,
 void PSDSWPCritic::critForPipelineProperty(
     const PDG &pdg, const PipelineStage &earlyStage,
     const PipelineStage &lateStage, Criticisms &criticisms,
-    PipelineStrategy &ps, const EdgeWeight parallelStageWeight) {
+    PipelineStrategy &ps, EdgeWeight &offPStageWeight,
+    const EdgeWeight parallelStageWeight) {
 
   unordered_set<Instruction *> instsMovedToFront;
   unordered_set<Instruction *> instsMovedToBack;
   unordered_set<DGEdge<Value> *> edgesNotRemoved;
-  EdgeWeight offPStageWeight = 0;
 
   PipelineStage::ISet all_early = earlyStage.instructions;
   all_early.insert(earlyStage.replicated.begin(), earlyStage.replicated.end());
@@ -901,12 +901,12 @@ void PSDSWPCritic::critForPipelineProperty(
 // There should be no loop-carried edges within 'parallel' stage
 void PSDSWPCritic::critForParallelStageProperty(
     const PDG &pdg, const PipelineStage &parallel, Criticisms &criticisms,
-    PipelineStrategy &ps, const EdgeWeight parallelStageWeight) {
+    PipelineStrategy &ps, EdgeWeight &offPStageWeight,
+    const EdgeWeight parallelStageWeight) {
 
   unordered_set<Instruction *> instsMovedToFront;
   unordered_set<Instruction *> instsMovedToBack;
   unordered_set<DGEdge<Value> *> edgesNotRemoved;
-  EdgeWeight offPStageWeight = 0;
 
   for (PipelineStage::ISet::const_iterator i = parallel.instructions.begin(),
                                            e = parallel.instructions.end();
@@ -1041,6 +1041,7 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
   // Add to criticisms all deps which violate pipeline order.
 
   EdgeWeight parallelStageWeight = getParalleStageWeight(ps);
+  EdgeWeight offPStageWeight = 0;
 
   // Foreach pair (earlier,later) of pipeline stages,
   // where 'earlier' precedes 'later' in the pipeline
@@ -1049,8 +1050,8 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
     const PipelineStage &earlier = *i;
     for (PipelineStrategy::Stages::const_iterator j = i + 1; j != e; ++j) {
       const PipelineStage &later = *j;
-      critForPipelineProperty(pdg, earlier, later, criticisms,
-                              ps, parallelStageWeight);
+      critForPipelineProperty(pdg, earlier, later, criticisms, ps,
+                              offPStageWeight, parallelStageWeight);
     }
   }
 
@@ -1067,7 +1068,7 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
     // assert that no instruction in this stage
     // is incident on a loop-carried edge.
 
-    critForParallelStageProperty(pdg, pstage, criticisms, ps,
+    critForParallelStageProperty(pdg, pstage, criticisms, ps, offPStageWeight,
                                  parallelStageWeight);
   }
 }
