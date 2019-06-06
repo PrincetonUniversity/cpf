@@ -13,6 +13,7 @@
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Orchestration/ReduxRemed.h"
+#include "liberty/Orchestration/TXIORemed.h"
 
 #include "PDG.hpp"
 #include "SCC.hpp"
@@ -79,10 +80,12 @@ public:
   EdgeWeight getParalleStageWeight(PipelineStrategy &ps);
 
   void adjustPipeline(PipelineStrategy &ps, PDG &pdg,
-                      EdgeWeight &offPStageWeight);
+                      EdgeWeight &offPStageWeight,
+                      const EdgeWeight &parallelStageWeight);
 
   void populateCriticisms(PipelineStrategy &ps, Criticisms &criticisms,
-                          PDG &pdg, EdgeWeight &offPStageWeight);
+                          PDG &pdg, EdgeWeight &offPStageWeight,
+                          const EdgeWeight &parallelStageWeight);
 
   void simplifyPDG(PDG *pdg);
 

@@ -967,7 +967,7 @@ void PSDSWPCritic::critForParallelStageProperty(
 }
 
 EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
-  EdgeWeight parallelStageWeight = 0.0;
+  double parallelStageWeight = 0.0;
   for (unsigned i = 0, N = ps.stages.size(); i < N; ++i) {
     const PipelineStage &si = ps.stages[i];
     if (si.type == PipelineStage::Parallel) {
@@ -979,10 +979,13 @@ EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
       }
     }
   }
+  return parallelStageWeight;
 }
 
 void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
-                                  EdgeWeight &offPStageWeight) {
+                                  EdgeWeight &offPStageWeight,
+                                  const EdgeWeight &parallelStageWeight) {
+
   // Foreach parallel stage
   // if there is a loop-carried reg dep from a seq stage to parallel stage, then
   // the destination of this dep needs to be moved to the sequential stage. The
@@ -994,6 +997,9 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
   // node value will be a stale one. This case was first observed in ks
   // benchmark with phi node on mrPrevA variable.
   PipelineStage *prevStage = nullptr;
+  PipelineStage *parallelStage = nullptr;
+  PipelineStage *lastSeqStage = nullptr;
+  PipelineStage *firstStage = nullptr;
   for (PipelineStrategy::Stages::iterator i = ps.stages.begin(),
                                           e = ps.stages.end();
        i != e; ++i) {
@@ -1001,11 +1007,16 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
 
     if (!prevStage) {
       prevStage = &pstage;
+      firstStage = &pstage;
       continue;
     }
 
-    if (pstage.type != PipelineStage::Parallel)
+    if (pstage.type != PipelineStage::Parallel) {
+      if (parallelStage)
+        lastSeqStage = &pstage;
       continue;
+    }
+    parallelStage = &pstage;
 
     std::vector<Instruction *> moveToSeqInsts;
     for (PipelineStage::ISet::const_iterator j = pstage.instructions.begin(),
@@ -1040,14 +1051,81 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
 
     prevStage = &pstage;
   }
+
+  // if a last sequential stage exists, consider moving all output I/O
+  // operations from P-stage to the last seq stage
+  if (lastSeqStage && parallelStage) {
+    std::unordered_set<Instruction *> moveIOToLastSeq;
+    bool movedAllIO = true;
+    EdgeWeight tmpOffPStageWeight = offPStageWeight;
+    for (PipelineStage::ISet::const_iterator
+             j = parallelStage->instructions.begin(),
+             z = parallelStage->instructions.end();
+         j != z; ++j) {
+      Instruction *inst = *j;
+
+      // check if IO deferral inst
+      if (!TXIORemediator::isTXIOFcn(inst))
+        continue;
+
+      if (!pdg.isInternal(inst))
+        continue;
+
+      set<Instruction *> *instsFrontSeqStage =
+          (firstStage && firstStage->type != PipelineStage::Parallel)
+              ? &firstStage->instructions
+              : nullptr;
+      set<Instruction *> *instsBackSeqStage = &lastSeqStage->instructions;
+
+      std::unordered_set<Instruction *> tmpInstsMovedToBack;
+      std::unordered_set<Instruction *> instsMovedToFront;
+      std::unordered_set<DGEdge<Value> *> edgesNotRemoved;
+      std::queue<Instruction *> worklist;
+      worklist.push(inst);
+      unsigned long moveBackCost = moveOffStage(
+          pdg, worklist, tmpInstsMovedToBack, instsBackSeqStage, moveIOToLastSeq,
+          instsMovedToFront, instsFrontSeqStage, edgesNotRemoved,
+          tmpOffPStageWeight, parallelStageWeight, false);
+
+      if (moveBackCost != ULONG_MAX) {
+        tmpOffPStageWeight += moveBackCost;
+        DEBUG(errs() << "Movable output I/O inst along with dependent insts to "
+                        "last sequential stage, "
+                     << *inst << '\n');
+        for (auto *inst : tmpInstsMovedToBack) {
+          moveIOToLastSeq.insert(inst);
+        }
+      } else {
+        DEBUG(errs()
+              << "Not movable output I/O inst along with dependent insts to "
+                 "last sequential stage, "
+              << *inst << '\n');
+        for (auto *inst : tmpInstsMovedToBack) {
+          DEBUG(errs() << "Part of non-movable insts: " << *inst << "\n";);
+        }
+        movedAllIO = false;
+        break;
+      }
+    }
+    // only make changes if all IO output insts were movable to last stage
+    if (movedAllIO) {
+      offPStageWeight = tmpOffPStageWeight;
+      for (auto *inst : moveIOToLastSeq) {
+        DEBUG(errs()
+              << "Moved output I/O or dependent inst to last sequential stage: "
+              << *inst << '\n');
+        parallelStage->instructions.erase(inst);
+        lastSeqStage->instructions.insert(inst);
+      }
+    }
+  }
 }
 
 void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
                                       Criticisms &criticisms, PDG &pdg,
-                                      EdgeWeight &offPStageWeight) {
+                                      EdgeWeight &offPStageWeight,
+                                      const EdgeWeight &parallelStageWeight) {
   // Add to criticisms all deps which violate pipeline order.
-
-  EdgeWeight parallelStageWeight = getParalleStageWeight(ps);
 
   // Foreach pair (earlier,later) of pipeline stages,
   // where 'earlier' precedes 'later' in the pipeline
@@ -1106,10 +1184,12 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   }
 
   EdgeWeight offPStageWeight = 0;
+  EdgeWeight parallelStageWeight = getParalleStageWeight(*ps);
 
-  adjustPipeline(*ps, pdg, offPStageWeight);
+  adjustPipeline(*ps, pdg, offPStageWeight, parallelStageWeight);
 
-  populateCriticisms(*ps, res.criticisms, pdg, offPStageWeight);
+  populateCriticisms(*ps, res.criticisms, pdg, offPStageWeight,
+                     parallelStageWeight);
 
   ps->setValidFor(loop->getHeader());
   ps->assertConsistentWithIR(loop);
