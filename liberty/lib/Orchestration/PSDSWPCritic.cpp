@@ -1054,58 +1054,70 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
   }
 
   // if a last sequential stage exists, consider moving all output I/O
-  // operations from P-stage to the last seq stage
-  if (lastSeqStage && parallelStage) {
+  // operations from other stages to the last seq stage
+  // Note that output I/O are not expected to source any non-removable
+  // dependences. Thus, they could be moved to last seq stage without any check,
+  // but they are moved in a generic fashion using the moveOffStage function,
+  // just to avoid unexpected errors.
+  if (lastSeqStage) {
     std::unordered_set<Instruction *> moveIOToLastSeq;
     bool movedAllIO = true;
     EdgeWeight tmpOffPStageWeight = offPStageWeight;
-    for (PipelineStage::ISet::const_iterator
-             j = parallelStage->instructions.begin(),
-             z = parallelStage->instructions.end();
-         j != z; ++j) {
-      Instruction *inst = *j;
-
-      // check if IO deferral inst
-      if (!TXIORemediator::isTXIOFcn(inst))
+    std::vector<PipelineStage *> earlyStages;
+    earlyStages.push_back(parallelStage);
+    if (parallelStage != firstStage)
+      earlyStages.push_back(firstStage);
+    for (auto *st : earlyStages) {
+      if (!st)
         continue;
+      for (PipelineStage::ISet::const_iterator j = st->instructions.begin(),
+                                               z = st->instructions.end();
+           j != z; ++j) {
+        Instruction *inst = *j;
 
-      if (!pdg.isInternal(inst))
-        continue;
+        // check if IO deferral inst
+        if (!TXIORemediator::isTXIOFcn(inst))
+          continue;
 
-      set<Instruction *> *instsFrontSeqStage =
-          (firstStage && firstStage->type != PipelineStage::Parallel)
-              ? &firstStage->instructions
-              : nullptr;
-      set<Instruction *> *instsBackSeqStage = &lastSeqStage->instructions;
+        if (!pdg.isInternal(inst))
+          continue;
 
-      std::unordered_set<Instruction *> tmpInstsMovedToBack;
-      std::unordered_set<Instruction *> instsMovedToFront;
-      std::unordered_set<DGEdge<Value> *> edgesNotRemoved;
-      std::queue<Instruction *> worklist;
-      worklist.push(inst);
-      unsigned long moveBackCost = moveOffStage(
-          pdg, worklist, tmpInstsMovedToBack, instsBackSeqStage, moveIOToLastSeq,
-          instsMovedToFront, instsFrontSeqStage, edgesNotRemoved,
-          tmpOffPStageWeight, parallelStageWeight, false);
+        set<Instruction *> *instsFrontSeqStage =
+            (firstStage && firstStage->type != PipelineStage::Parallel)
+                ? &firstStage->instructions
+                : nullptr;
+        set<Instruction *> *instsBackSeqStage = &lastSeqStage->instructions;
 
-      if (moveBackCost != ULONG_MAX) {
-        tmpOffPStageWeight += moveBackCost;
-        DEBUG(errs() << "Movable output I/O inst along with dependent insts to "
+        std::unordered_set<Instruction *> tmpInstsMovedToBack;
+        std::unordered_set<Instruction *> instsMovedToFront;
+        std::unordered_set<DGEdge<Value> *> edgesNotRemoved;
+        std::queue<Instruction *> worklist;
+        worklist.push(inst);
+        unsigned long moveBackCost = moveOffStage(
+            pdg, worklist, tmpInstsMovedToBack, instsBackSeqStage,
+            moveIOToLastSeq, instsMovedToFront, instsFrontSeqStage,
+            edgesNotRemoved, tmpOffPStageWeight, parallelStageWeight, false);
+
+        if (moveBackCost != ULONG_MAX) {
+          tmpOffPStageWeight += moveBackCost;
+          DEBUG(
+              errs() << "Movable output I/O inst along with dependent insts to "
                         "last sequential stage, "
                      << *inst << '\n');
-        for (auto *inst : tmpInstsMovedToBack) {
-          moveIOToLastSeq.insert(inst);
+          for (auto *inst : tmpInstsMovedToBack) {
+            moveIOToLastSeq.insert(inst);
+          }
+        } else {
+          DEBUG(errs()
+                << "Not movable output I/O inst along with dependent insts to "
+                   "last sequential stage, "
+                << *inst << '\n');
+          for (auto *inst : tmpInstsMovedToBack) {
+            DEBUG(errs() << "Part of non-movable insts: " << *inst << "\n";);
+          }
+          movedAllIO = false;
+          break;
         }
-      } else {
-        DEBUG(errs()
-              << "Not movable output I/O inst along with dependent insts to "
-                 "last sequential stage, "
-              << *inst << '\n');
-        for (auto *inst : tmpInstsMovedToBack) {
-          DEBUG(errs() << "Part of non-movable insts: " << *inst << "\n";);
-        }
-        movedAllIO = false;
-        break;
       }
     }
     // only make changes if all IO output insts were movable to last stage
@@ -1115,7 +1127,10 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg,
         DEBUG(errs()
               << "Moved output I/O or dependent inst to last sequential stage: "
               << *inst << '\n');
-        parallelStage->instructions.erase(inst);
+        if (parallelStage->instructions.count(inst))
+          parallelStage->instructions.erase(inst);
+        else
+          firstStage->instructions.erase(inst);
         lastSeqStage->instructions.insert(inst);
       }
     }
