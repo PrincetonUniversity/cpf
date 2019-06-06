@@ -36,7 +36,8 @@ void *__specpriv_alloc_worker_redux(Len size);
 void __specpriv_free_worker_redux(void *ptr);
 
 void __specpriv_reset_local(void);
-unsigned __specpriv_num_local(void);
+void __specpriv_add_num_local(int n);
+int __specpriv_num_local(void);
 
 
 ReductionInfo *__specpriv_first_reduction_info(void);

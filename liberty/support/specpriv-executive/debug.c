@@ -31,6 +31,7 @@ static inline FILE* get_debug_fp(void)
 }
 #endif
 
+// initialize debug file for each worker
 void init_debug(unsigned num_all_workers)
 {
 #if (DEBUG_ON || PROFILE || PROFILE_MEMOPS || PROFILE_WEIGHT)
