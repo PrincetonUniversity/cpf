@@ -26,6 +26,7 @@
 #include "checkpoint.h"
 #include "api.h"
 #include "debug.h"
+#include "strategy.h"
 
 #if (AFFINITY & OS2PHYS) != 0
 // Map of linux cpu number to physical core number
@@ -79,6 +80,13 @@ static pid_t workerPids[ MAX_WORKERS ];
 #endif
 
 static int (*pipefds)[2];
+
+// pipes for sending/receiving AU values from stages
+// might use pipefds later if it's not too hard to get the timing right
+static int (*AU_pipefds)[2];
+
+// AU count for each thread
+static int AU_count;
 
 #if JOIN == SPIN
 struct sigaction old_sigchld;
@@ -310,6 +318,11 @@ void __spawn_workers_begin(void) {
       perror("create pipe");
       _exit(0);
     }
+    if ( pipe(AU_pipefds[wid]) )
+    {
+      perror("create AU pipe");
+      _exit(0);
+    }
     pid_t pid = fork();
     if( pid == 0 )
     {
@@ -320,6 +333,10 @@ void __spawn_workers_begin(void) {
       // close write ends of pipes of prior children and current wid
       for(unsigned j=0; j<=wid; ++j) {
         close(pipefds[j][1]);
+
+        // don't close this pipe because we might be sending to next stage
+        if ( j != wid )
+          close(AU_pipefds[j][1]);
       }
 
       __specpriv_worker_setup(wid);
@@ -328,6 +345,11 @@ void __spawn_workers_begin(void) {
 
     // close read side of wid's pipe
     close(pipefds[wid][0]);
+    close( AU_pipefds[wid][0] );
+
+    // close all the AU write pipes except those to 2nd stage
+    if ( wid != 0 )
+      close( AU_pipefds[wid][1] );
 
     #if JOIN == WAITPID
     workerPids[ wid ] = pid;
@@ -766,9 +788,22 @@ void __specpriv_begin_iter(void)
 // Called by a worker at the end of an iteration.
 // A worker should call this during ALL iterations,
 // even during those it does not execute.
+// XXX: gc14: assumes workers are allocated to stages sequentially
 void __specpriv_end_iter(uint32_t ckptUsed)
 {
-  if( __specpriv_num_local() > 0 )
+  int prev_num_locals;
+  int this_num_locals = __specpriv_num_local();
+  int num_workers_in_stage = GET_REPLICATION_FACTOR( GET_MY_STAGE(myWorkerId) );
+
+  // if not first stage consume previous stage's local AU
+  if ( GET_MY_STAGE(myWorkerId) != 0 )
+  {
+    read(AU_pipefds[myWorkerId][0], &prev_num_locals, sizeof(int));
+    __specpriv_add_num_local(prev_num_locals);
+  }
+
+  // only misspec on locals if last stage
+  if( __specpriv_num_local() > 0 && GET_MY_STAGE(myWorkerId) == GET_NUM_STAGES()-1 )
     __specpriv_misspec("Object lifetime misspeculation");
 
 #if SIMULATE_MISSPEC != 0
@@ -784,6 +819,23 @@ void __specpriv_end_iter(uint32_t ckptUsed)
   Iteration globalCurIter = currentIter;
   if (!runOnEveryIter)
     globalCurIter = myWorkerId + (currentIter * numWorkers);
+
+  this_num_locals = __specpriv_num_local();
+
+  // communicate this num locals for this stage's iteration to next stage
+  int mystage = GET_MY_STAGE(myWorkerId);
+  if ( mystage < GET_NUM_STAGES()-1 )
+  {
+    int next_worker_offset;
+
+    // if next stage is parallel send to write pipe
+    if ( GET_REPLICATION_FACTOR(mystage+1) > 1 )
+      next_worker_offset = GET_WID_OFFSET_IN_STAGE( globalCurIter, mystage+1 );
+    else
+      next_worker_offset = GET_FIRST_WID_OF_STAGE( mystage+1 );
+
+    write( AU_pipefds[next_worker_offset][1], &this_num_locals, sizeof(int) );
+  }
 
   //__specpriv_advance_iter(++currentIter);
   __specpriv_advance_iter(globalCurIter, ckptUsed);
