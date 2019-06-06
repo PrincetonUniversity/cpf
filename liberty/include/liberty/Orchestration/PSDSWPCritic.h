@@ -78,10 +78,11 @@ public:
 
   EdgeWeight getParalleStageWeight(PipelineStrategy &ps);
 
-  void adjustPipeline(PipelineStrategy &ps, PDG &pdg);
+  void adjustPipeline(PipelineStrategy &ps, PDG &pdg,
+                      EdgeWeight &offPStageWeight);
 
   void populateCriticisms(PipelineStrategy &ps, Criticisms &criticisms,
-                          PDG &pdg);
+                          PDG &pdg, EdgeWeight &offPStageWeight);
 
   void simplifyPDG(PDG *pdg);
 
