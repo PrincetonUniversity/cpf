@@ -33,7 +33,7 @@ double PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::St
 {
   errs() << "\t*** estimate pipeline weights\n";
 
-  unsigned long estimate_loop_wt = estimate_loop_weight(loop);
+  double estimate_loop_wt = estimate_loop_weight(loop);
   double max = 0;
   for(unsigned i=0, N=stages.size(); i<N; ++i)
   {
