@@ -1,5 +1,3 @@
-#define DEBUG_TYPE "pipeline"
-
 #include "liberty/Strategy/PerformanceEstimator.h"
 
 namespace liberty
@@ -35,6 +33,7 @@ double PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::St
 {
   errs() << "\t*** estimate pipeline weights\n";
 
+  unsigned long estimate_loop_wt = estimate_loop_weight(loop);
   double max = 0;
   for(unsigned i=0, N=stages.size(); i<N; ++i)
   {
@@ -58,7 +57,7 @@ double PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::St
       wt = (wt + rep - 1) / rep;
     }
 
-    const unsigned long rep_wt = estimate_weight( stage.replicated.begin(), stage.replicated.end() );
+    const double rep_wt = estimate_weight( stage.replicated.begin(), stage.replicated.end() );
 
     wt += rep_wt;
     seq_wt += rep_wt;
@@ -66,7 +65,7 @@ double PerformanceEstimator::estimate_pipeline_weight(const PipelineStrategy::St
     double speedup = wt ? (seq_wt / wt) : 0;
 
     errs() << "\t\t- Stage " << format("%2d", i)
-           << " Weight " << format("%6.2f", 100.0 * (double)seq_wt / estimate_loop_weight(loop))
+           << " Weight " << format("%6.2f", 100.0 * (double)seq_wt / estimate_loop_wt)
            << " P-Factor " << format("%4d", rep)
            << " Speedup " << format("%6.2f", speedup)
            << " Absolute P-Weight " << format("%6.2f", wt)
