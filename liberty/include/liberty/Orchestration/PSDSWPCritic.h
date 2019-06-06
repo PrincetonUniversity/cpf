@@ -47,12 +47,14 @@ public:
   void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
                                const PipelineStage &lateStage,
                                Criticisms &criticisms, PipelineStrategy &ps,
+                               EdgeWeight &offPStageWeight,
                                const EdgeWeight parallelStageWeight);
 
   void critForParallelStageProperty(const PDG &pdg,
                                     const PipelineStage &parallel,
                                     Criticisms &criticisms,
                                     PipelineStrategy &ps,
+                                    EdgeWeight &offPStageWeight,
                                     const EdgeWeight parallelStageWeight);
 
   unsigned long moveOffStage(const PDG &pdg,
