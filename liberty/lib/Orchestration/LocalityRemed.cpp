@@ -17,6 +17,7 @@ STATISTIC(numPrivatizedPriv,  "Num privatized (Private)");
 STATISTIC(numPrivatizedRedux, "Num privatized (Redux)");
 STATISTIC(numPrivatizedShort, "Num privatized (Short-lived)");
 STATISTIC(numSeparated,       "Num separated");
+STATISTIC(numReusedPriv,      "Num avoid extra private inst");
 STATISTIC(numLocalityAA,      "Num removed via LocalityAA");
 STATISTIC(numLocalityAA2,     "Num removed via LocalityAA (non-removable by LocalityRemed)");
 STATISTIC(numSubSep,          "Num separated via subheaps");
@@ -246,14 +247,9 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   if (LoopCarried) {
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
-    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
-        t1 == HeapAssignment::Private) {
+    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local) {
       remedResp.depRes = DepResult::NoDep;
-      if (t1 == HeapAssignment::Private) {
-        ++numPrivatizedPriv;
-        remedy->cost += PRIVATE_ACCESS_COST;
-        remedy->privateI = const_cast<Instruction *>(A);
-      } else if (t1 == HeapAssignment::Local) {
+      if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         //remedy->localI = A;
@@ -267,14 +263,9 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       return remedResp;
     }
 
-    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
-        t2 == HeapAssignment::Private) {
+    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local) {
       remedResp.depRes = DepResult::NoDep;
-      if (t2 == HeapAssignment::Private) {
-        ++numPrivatizedPriv;
-        remedy->cost += PRIVATE_ACCESS_COST;
-        remedy->privateI = const_cast<Instruction *>(B);
-      } else if (t2 == HeapAssignment::Local) {
+      if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
       } else {
@@ -298,6 +289,34 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     remedy->ptr2 = const_cast<Value *>(ptr2);
     remedResp.remedy = remedy;
     return remedResp;
+  }
+
+  // if one of the memory accesses is private, then there is no loop-carried.
+  // Validation for private accesses is more expensive than read-only and local
+  // and thus private accesses are checked last
+  if (LoopCarried) {
+    // if memory access in instruction B was already identified as private,
+    // re-use it instead of introducing another private inst.
+    if (t1 == HeapAssignment::Private && !privateInsts.count(B)) {
+      ++numPrivatizedPriv;
+      remedy->cost += PRIVATE_ACCESS_COST;
+      remedy->privateI = const_cast<Instruction *>(A);
+      remedResp.depRes = DepResult::NoDep;
+      remedResp.remedy = remedy;
+      privateInsts.insert(A);
+      return remedResp;
+    } else if (t2 == HeapAssignment::Private) {
+      if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
+        ++numReusedPriv;
+      }
+      ++numPrivatizedPriv;
+      remedy->cost += PRIVATE_ACCESS_COST;
+      remedy->privateI = const_cast<Instruction *>(B);
+      remedResp.depRes = DepResult::NoDep;
+      remedResp.remedy = remedy;
+      privateInsts.insert(B);
+      return remedResp;
+    }
   }
 
   // They are assigned to the same heap.
