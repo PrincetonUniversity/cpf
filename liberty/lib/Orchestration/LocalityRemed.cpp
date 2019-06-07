@@ -18,6 +18,7 @@ STATISTIC(numPrivatizedRedux, "Num privatized (Redux)");
 STATISTIC(numPrivatizedShort, "Num privatized (Short-lived)");
 STATISTIC(numSeparated,       "Num separated");
 STATISTIC(numReusedPriv,      "Num avoid extra private inst");
+STATISTIC(numUnclassifiedPtrs,"Num of unclassified pointers");
 STATISTIC(numLocalityAA,      "Num removed via LocalityAA");
 STATISTIC(numLocalityAA2,     "Num removed via LocalityAA (non-removable by LocalityRemed)");
 STATISTIC(numSubSep,          "Num separated via subheaps");
@@ -242,6 +243,15 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
 
   // errs() << "Instruction A: " << *A << "\n  type: " << t1 << "\nInstruction
   // B: " << *B << "\n  type: " << t2 << '\n';
+
+  if (t1 == HeapAssignment::Unclassified) {
+    ++numUnclassifiedPtrs;
+    errs() << "Pointer to unclassified heap: " << *ptr1 << "\n";
+  }
+  if (t2 == HeapAssignment::Unclassified) {
+    ++numUnclassifiedPtrs;
+    errs() << "Pointer to unclassified heap: " << *ptr2 << "\n";
+  }
 
   // Loop-carried queries:
   if (LoopCarried) {
