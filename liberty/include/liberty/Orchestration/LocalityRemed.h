@@ -91,6 +91,8 @@ private:
   //std::unique_ptr<LocalityAA> localityaa;
   LocalityAA *localityaa;
   //VSet alreadyInstrumented;
+
+  unordered_set<const Instruction *> privateInsts;
 };
 
 } // namespace liberty
