@@ -14,6 +14,7 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/TXIORemed.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
 
 #include "PDG.hpp"
 #include "SCC.hpp"
