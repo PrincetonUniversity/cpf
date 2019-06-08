@@ -248,11 +248,11 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
 
   if (t1 == HeapAssignment::Unclassified) {
     ++numUnclassifiedPtrs;
-    errs() << "Pointer to unclassified heap: " << *ptr1 << "\n";
+    DEBUG(errs() << "Pointer to unclassified heap: " << *ptr1 << "\n");
   }
   if (t2 == HeapAssignment::Unclassified) {
     ++numUnclassifiedPtrs;
-    errs() << "Pointer to unclassified heap: " << *ptr2 << "\n";
+    DEBUG(errs() << "Pointer to unclassified heap: " << *ptr2 << "\n");
   }
 
   // Loop-carried queries:
