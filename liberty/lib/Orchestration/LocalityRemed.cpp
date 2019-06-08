@@ -219,6 +219,8 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     if (noDep) {
       ++numLocalityAA;
       remedResp.depRes = DepResult::NoDep;
+      remedy->type = LocalityRemedy::LocalityAA;
+      remedResp.remedy = remedy;
     }
     return remedResp;
   }
@@ -262,13 +264,15 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
+        remedy->type = LocalityRemedy::Local;
         //remedy->localI = A;
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
           remedy->reduxS = const_cast<StoreInst *>(sA);
+        remedy->type = LocalityRemedy::Redux;
       }
-      remedy->ptr1 = const_cast<Value *>(ptr1);
+      remedy->ptr = const_cast<Value *>(ptr1);
       remedResp.remedy = remedy;
       return remedResp;
     }
@@ -278,12 +282,14 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
+        remedy->type = LocalityRemedy::Local;
       } else {
         ++numPrivatizedRedux;
         if (auto sB = dyn_cast<StoreInst>(B))
           remedy->reduxS = const_cast<StoreInst *>(sB);
+        remedy->type = LocalityRemedy::Redux;
       }
-      remedy->ptr2 = const_cast<Value *>(ptr2);
+      remedy->ptr = const_cast<Value *>(ptr2);
       remedResp.remedy = remedy;
       return remedResp;
     }
@@ -297,6 +303,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     remedResp.depRes = DepResult::NoDep;
     remedy->ptr1 = const_cast<Value *>(ptr1);
     remedy->ptr2 = const_cast<Value *>(ptr2);
+    remedy->type = LocalityRemedy::Separated;
     remedResp.remedy = remedy;
     return remedResp;
   }
@@ -312,6 +319,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedy->cost += PRIVATE_ACCESS_COST;
       remedy->privateI = const_cast<Instruction *>(A);
       remedResp.depRes = DepResult::NoDep;
+      remedy->type = LocalityRemedy::Private;
       remedResp.remedy = remedy;
       privateInsts.insert(A);
       return remedResp;
@@ -323,6 +331,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedy->cost += PRIVATE_ACCESS_COST;
       remedy->privateI = const_cast<Instruction *>(B);
       remedResp.depRes = DepResult::NoDep;
+      remedy->type = LocalityRemedy::Private;
       remedResp.remedy = remedy;
       privateInsts.insert(B);
       return remedResp;
@@ -340,6 +349,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
         remedResp.depRes = DepResult::NoDep;
         remedy->ptr1 = const_cast<Value *>(ptr1);
         remedy->ptr2 = const_cast<Value *>(ptr2);
+        remedy->type = LocalityRemedy::Subheaps;
         remedResp.remedy = remedy;
         return remedResp;
       }
@@ -355,6 +365,8 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   if (noDep) {
     ++numLocalityAA2;
     remedResp.depRes = DepResult::NoDep;
+    remedy->type = LocalityRemedy::LocalityAA;
+    remedResp.remedy = remedy;
   }
 
   return remedResp;
