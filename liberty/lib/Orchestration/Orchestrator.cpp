@@ -122,20 +122,39 @@ std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
   return critics;
 }
 
-void printRemedies(Remedies &rs) {
+void Orchestrator::printRemediatorSelectionCnt() {
+  DEBUG(errs() << "Selected Remediators:\n\n");
+  for (auto const &it : remediatorSelectionCnt) {
+    DEBUG(errs() << it.first << " was selected " << it.second << " times\n");
+  }
+}
+
+void Orchestrator::printRemedies(Remedies &rs, bool selected) {
   DEBUG(errs() << "( ");
   auto itRs = rs.begin();
   while(itRs != rs.end()) {
-    DEBUG(errs() << (*itRs)->getRemedyName());
+    StringRef remedyName = (*itRs)->getRemedyName();
+    if (remedyName.equals("locality-remedy")) {
+      LocalityRemedy *localityRemed = (LocalityRemedy *)&*(*itRs);
+      remedyName = localityRemed->getLocalityRemedyName();
+    }
+    DEBUG(errs() << remedyName);
+    if (selected) {
+      if (remediatorSelectionCnt.count(remedyName.str()))
+        ++remediatorSelectionCnt[remedyName.str()];
+      else
+        remediatorSelectionCnt[remedyName.str()] = 1;
+    }
     if ((++itRs) != rs.end())
       DEBUG(errs() << ", ");
   }
   DEBUG(errs() << " )");
 }
 
-void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism &cr) {
+void Orchestrator::printSelected(SetOfRemedies &sors,
+                                 const Remedies_ptr &selected, Criticism &cr) {
   DEBUG(errs() << "----------------------------------------------------\n");
-  printRemedies(*selected);
+  printRemedies(*selected, true);
   DEBUG(errs() << " chosen to address criticicm ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
@@ -169,7 +188,7 @@ void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected, Criticism 
         ++itR;
         continue;
       }
-      printRemedies(**itR);
+      printRemedies(**itR, false);
       if ((++itR) != sors.end())
         DEBUG(errs() << ", ");
       else
@@ -199,6 +218,8 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
     printSelected(sors, cheapestR, *cr);
   }
   DEBUG(errs() << "-====================================================-\n\n");
+  printRemediatorSelectionCnt();
+  DEBUG(errs() << "\n-====================================================-\n\n");
 }
 
 bool Orchestrator::findBestStrategy(
