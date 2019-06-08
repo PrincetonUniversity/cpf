@@ -5,7 +5,7 @@
 
 #include "liberty/Orchestration/LocalityRemed.h"
 
-#define DEFAULT_LOCALITY_REMED_COST 40
+#define DEFAULT_LOCALITY_REMED_COST 50
 #define PRIVATE_ACCESS_COST 100
 #define LOCAL_ACCESS_COST 5
 
