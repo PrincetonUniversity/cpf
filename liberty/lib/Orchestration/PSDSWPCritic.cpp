@@ -1183,9 +1183,10 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
         for (auto edge : edges) {
           if (edge->isControlDependence() && edge->isRemovableDependence() &&
               edge->isLoopCarriedDependence() &&
-              edge->getMinRemovalCost() == DEFAULT_CTRL_REMED_COST)
+              edge->getMinRemovalCost() == DEFAULT_CTRL_REMED_COST) {
             ctrlSpecNeeded = true;
-          break;
+            break;
+          }
         }
 
         if (!ctrlSpecNeeded)
@@ -1205,9 +1206,10 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
 
         if (moveFrontCost != ULONG_MAX) {
           offPStageWeight += moveFrontCost;
-          DEBUG(errs() << "Move loop exit branch to first sequential stage to "
-                          "avoid control spec remedy on loop exit, "
-                       << *inst << '\n');
+          DEBUG(
+              errs() << "\nMove loop exit branch to first sequential stage to "
+                        "avoid control spec remedy on loop exit, "
+                     << *inst << '\n');
           for (auto *I : tmpInstsMovedToFront) {
             DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
                             "branch inst to first "
@@ -1220,7 +1222,7 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
             firstStage->instructions.insert(I);
           }
         } else {
-          DEBUG(errs() << "Not movable loop exit branch inst along with "
+          DEBUG(errs() << "\nNot movable loop exit branch inst along with "
                           "dependent insts to first sequential stage, "
                        << *inst << '\n');
           for (auto *I : tmpInstsMovedToFront) {
