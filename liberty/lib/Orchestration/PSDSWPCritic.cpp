@@ -813,26 +813,28 @@ bool PSDSWPCritic::avoidElimDep(
   }
 
   if (moveFrontCost != ULONG_MAX && moveFrontCost <= moveBackCost) {
-    for (Instruction *I : tmpInstsMovedToFront) {
-      instsMovedToFront.insert(I);
-    }
     edgesNotRemoved.insert(edge);
     offPStageWeight += moveFrontCost;
-    DEBUG(errs() << "Will not remove edge(s) (removal cost: "
+    DEBUG(errs() << "\nWill not remove edge(s) (removal cost: "
                  << edge->getMinRemovalCost() << " ) from "
                  << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                  << '\n');
+    for (Instruction *I : tmpInstsMovedToFront) {
+      instsMovedToFront.insert(I);
+      DEBUG(errs() << "Move inst to first sequential stage: " << *I << '\n');
+    }
     return true;
   } else if (moveBackCost != ULONG_MAX && moveBackCost < moveFrontCost) {
-    for (Instruction *I : tmpInstsMovedToBack) {
-      instsMovedToBack.insert(I);
-    }
     edgesNotRemoved.insert(edge);
     offPStageWeight += moveBackCost;
-    DEBUG(errs() << "Will not remove edge(s) (removal cost: "
+    DEBUG(errs() << "\nWill not remove edge(s) (removal cost: "
                  << edge->getMinRemovalCost() << " ) from "
                  << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                  << '\n');
+    for (Instruction *I : tmpInstsMovedToBack) {
+      instsMovedToBack.insert(I);
+      DEBUG(errs() << "Move inst to last sequential stage: " << *I << '\n');
+    }
     return true;
   }
   return false;
