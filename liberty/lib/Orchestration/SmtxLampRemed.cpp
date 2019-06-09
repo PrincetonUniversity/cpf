@@ -47,6 +47,20 @@ static bool intrinsicMayRead(const Instruction *inst) {
   return true;
 }
 
+Remedies SmtxLampRemediator::satisfy(const PDG &pdg, Loop *loop,
+                                     const Criticisms &criticisms) {
+
+  const DataLayout &DL = loop->getHeader()->getModule()->getDataLayout();
+  smtxaa = new SmtxAA(smtxMan);
+  smtxaa->InitializeLoopAA(&proxy, DL);
+
+  Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
+
+  delete smtxaa;
+
+  return remedies;
+}
+
 Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
                                                   const Instruction *B,
                                                   bool LoopCarried, bool RAW,
@@ -66,8 +80,19 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
     return remedResp;
   }
 
-  const DataLayout &DL = A->getModule()->getDataLayout();
-  smtxaa->InitializeLoopAA(&proxy, DL);
+  // sot: avoid intra-iter memory speculation with llamp. Presence of speculated
+  // II complicates validation process, and potentially forces high false
+  // positive rate of misspecs or extensive and regular checkpoints. Benefits
+  // for parallelization have not proven to be significant. If further
+  // experiments prove otherwise this change might be reverted. Note that
+  // neither Hanjun nor Taewook used II mem spec for similar reasons.
+  if (!LoopCarried) {
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
+  //const DataLayout &DL = A->getModule()->getDataLayout();
+  //smtxaa->InitializeLoopAA(&proxy, DL);
   // This AA stack includes static analysis and memory speculation
   LoopAA *aa = smtxaa->getTopAA();
   // aa->dump();
@@ -123,6 +148,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
     }
   }
 
+  /*
   else {
     // Query profile data for an intra-iteration flow from A to B
     if (lamp.numObsIntraIterDep(L->getHeader(), B, A) <= Threshhold) {
@@ -141,6 +167,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
       return remedResp;
     }
   }
+  */
 
   // check if collaboration of AA and SmtxAA achieves better accuracy
   bool noDep =

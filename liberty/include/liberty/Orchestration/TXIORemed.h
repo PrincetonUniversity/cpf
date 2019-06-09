@@ -23,7 +23,7 @@ public:
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
                    bool RAW, const Loop *L);
 
-  bool isTXIOFcn(const Instruction *inst);
+  static bool isTXIOFcn(const Instruction *inst);
 };
 
 } // namespace liberty

@@ -34,6 +34,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace liberty {
 namespace SpecPriv {
@@ -81,6 +82,14 @@ private:
   void addressCriticisms(SelectedRemedies &selectedRemedies,
                          unsigned long &selectedRemediesCost,
                          Criticisms &criticisms);
+
+  void printRemediatorSelectionCnt();
+  void printRemedies(Remedies &rs, bool selected);
+  void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected,
+                     Criticism &cr);
+
+  unordered_map<std::string, unsigned> remediatorSelectionCnt;
+
 };
 
 } // namespace SpecPriv

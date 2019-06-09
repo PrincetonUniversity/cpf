@@ -43,8 +43,26 @@ public:
   Instruction *privateI;
   StoreInst *reduxS;
   //const Instruction *localI;
+
+  // if a pointer was identified as private, redux or local for removal of
+  // loop-carried dep, record in 'ptr'
+  Value *ptr;
+
+  // record both pointers involved in a dependence when separation logic is used
   Value *ptr1;
   Value *ptr2;
+
+  enum LocalityRemedType {
+    ReadOnly = 0,
+    Redux,
+    Local,
+    Private,
+    Separated,
+    Subheaps,
+    LocalityAA
+  };
+
+  LocalityRemedType type;
 
   /*
   const Read *read;
@@ -58,6 +76,32 @@ public:
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "locality-remedy"; };
+
+  StringRef getLocalityRemedyName() const {
+    switch (type) {
+    case ReadOnly:
+      return "locality-readonly-remedy";
+      break;
+    case Redux:
+      return "locality-redux-remedy";
+      break;
+    case Local:
+      return "locality-local-remedy";
+      break;
+    case Private:
+      return "locality-private-remedy";
+      break;
+    case Separated:
+      return "locality-separated-remedy";
+      break;
+    case Subheaps:
+      return "locality-subheaps-remedy";
+      break;
+    case LocalityAA:
+      return "locality-aa-remedy";
+      break;
+    }
+  };
 
   bool addUOCheck(Value *ptr);
   void insertUOCheck(Value *obj, HeapAssignment::Type heap);
@@ -91,6 +135,8 @@ private:
   //std::unique_ptr<LocalityAA> localityaa;
   LocalityAA *localityaa;
   //VSet alreadyInstrumented;
+
+  unordered_set<const Instruction *> privateInsts;
 };
 
 } // namespace liberty

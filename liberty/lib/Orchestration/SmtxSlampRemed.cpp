@@ -205,6 +205,13 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
     }
   }
 
+  // sot: avoid intra-iter memory speculation with slamp. Presence of speculated
+  // II complicates validation process, and potentially forces high false
+  // positive rate of misspecs or extensive and regular checkpoints. Benefits
+  // for parallelization have not proven to be significant. If further
+  // experiments prove otherwise this change might be reverted. Note that
+  // neither Hanjun nor Taewook used II mem spec for similar reasons.
+  /*
   else {
     // Query profile data for an intra-iteration flow from A to B
     if (slamp.numObsIntraIterDep(L->getHeader(), B, A) <= Threshhold) {
@@ -246,6 +253,7 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       }
     }
   }
+  */
   remedResp.remedy = remedy;
   return remedResp;
 }
