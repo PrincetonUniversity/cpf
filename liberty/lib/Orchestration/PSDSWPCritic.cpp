@@ -992,6 +992,46 @@ EdgeWeight PSDSWPCritic::getParalleStageWeight(PipelineStrategy &ps) {
   return FIXED_POINT * parallelStageWeight;
 }
 
+// while forming criticisms the pipeline could have been slightly changed due to
+// the avoid dependence elimination optimization. Thus, we need to check the
+// criticisms and remove the ones that do not violate the final pipeline.
+void PSDSWPCritic::removeUnnecessaryCriticisms(Criticisms &criticisms,
+                                               PipelineStrategy &ps) {
+  Criticisms toBeRemovedCriticisms;
+  for (auto edge : criticisms) {
+    Value *outV = edge->getOutgoingT();
+    Instruction *outI = dyn_cast<Instruction>(outV);
+    Value *inV = edge->getIncomingT();
+    Instruction *inI = dyn_cast<Instruction>(inV);
+    if (!outI || !inI)
+      continue;
+
+    unsigned stageOut, stageIn;
+    for (unsigned i = 0, N = ps.stages.size(); i < N; ++i) {
+      const PipelineStage &stage = ps.stages[i];
+      if (stage.instructions.count(outI))
+        stageOut = i;
+      if (stage.instructions.count(inI))
+        stageIn = i;
+    }
+
+    if (stageOut < stageIn)
+      toBeRemovedCriticisms.insert(edge);
+
+    if (stageOut == stageIn) {
+      const PipelineStage &stage = ps.stages[stageIn];
+      if (stage.type == PipelineStage::Parallel) {
+        if (!edge->isLoopCarriedDependence())
+          toBeRemovedCriticisms.insert(edge);
+      } else
+        toBeRemovedCriticisms.insert(edge);
+    }
+  }
+  for (auto edge: toBeRemovedCriticisms) {
+    criticisms.erase(edge);
+  }
+}
+
 void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
 
   // Foreach parallel stage
@@ -1267,6 +1307,7 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
 
     critForParallelStageProperty(pdg, pstage, criticisms, ps);
   }
+  removeUnnecessaryCriticisms(criticisms, ps);
 }
 
 CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
