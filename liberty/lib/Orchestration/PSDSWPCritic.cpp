@@ -760,8 +760,9 @@ bool PSDSWPCritic::avoidElimDep(
   if ((offPStageWeight * 100.0) / parallelStageWeight > OffPStagePercThreshold)
     return false;
 
-  unsigned costThreshold = 5;
-  if (edge->getMinRemovalCost() <= costThreshold)
+  // try to avoid lamp/slamp remedies, locality-private, mem ver and priv remed
+  unsigned costThreshold = 100;
+  if (edge->getMinRemovalCost() < costThreshold)
     return false;
 
   Value *inV = edge->getIncomingT();
