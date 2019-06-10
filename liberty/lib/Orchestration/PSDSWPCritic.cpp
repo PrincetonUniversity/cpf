@@ -153,6 +153,8 @@ struct IsReplicable {
   bool operator()(const SCC &scc) const {
     // need to create more const iterators in noelle
     for (auto instPair : const_cast<SCC *>(&scc)->internalNodePairs()) {
+      if (!scc.isInternal(instPair.first))
+        continue;
       const Instruction *inst = dyn_cast<Instruction>(instPair.first);
       assert(inst);
 
@@ -169,6 +171,8 @@ struct IsLightweight {
 
   bool operator()(const SCC &scc) const {
     for (auto instPair : const_cast<SCC *>(&scc)->internalNodePairs()) {
+      if (!scc.isInternal(instPair.first))
+        continue;
       const Instruction *inst = dyn_cast<Instruction>(instPair.first);
       assert(inst);
 
