@@ -1003,6 +1003,48 @@ void PSDSWPCritic::avoidExpensiveCriticisms(const PDG &pdg,
   }
 }
 
+void PSDSWPCritic::populateCrossStageDependences(PipelineStrategy &ps,
+                                                 const Criticisms &criticisms,
+                                                 PDG &pdg) {
+  // Compute the set of control deps and mem flows which
+  // span pipeline stages.
+
+  // Foreach stage
+  for (unsigned i = 0, N = ps.stages.size(); i < N; ++i) {
+    const PipelineStage &si = ps.stages[i];
+    // Foreach instruction src in that stage that may source control deps
+    PipelineStage::ISet all_insts = si.instructions;
+    all_insts.insert(si.replicated.begin(), si.replicated.end());
+    // for (PipelineStage::ISet::iterator j = si.instructions.begin(),
+    //                                   z = si.instructions.end();
+    for (PipelineStage::ISet::iterator j = all_insts.begin(),
+                                       z = all_insts.end();
+         j != z; ++j) {
+      Instruction *src = *j;
+
+      auto srcNode = pdg.fetchNode(src);
+      for (auto edge : srcNode->getOutgoingEdges()) {
+        Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
+        assert(dst &&
+               "dst of ctrl dep is not an instruction in crossStageDeps");
+        if (edge->isControlDependence() && isa<TerminatorInst>(src)) {
+          // Foreach control-dep successor of src
+          // That spans stages.
+          //        if( !si.instructions.count(dst) )
+          ps.crossStageDeps.push_back(CrossStageDependence(src, dst, edge));
+
+        } else if (edge->isMemoryDependence() && edge->isRAWDependence() &&
+                   !criticisms.count(edge) && !all_insts.count(dst)) {
+          // Foreach mem flow dep that spans stages and is forward (not part of
+          // criticisms that contain all backward to the pipeline flows).
+          ps.crossStageMemFlows.push_back(
+              CrossStageDependence(src, dst, edge));
+        }
+      }
+    }
+  }
+}
+
 void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
 
   // Foreach parallel stage
@@ -1383,39 +1425,7 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   DEBUG(errs() << "\nPS-DSWP applicable to " << fcn->getName() << "::"
                << header->getName() << ": large parallel stage found\n");
 
-  // Compute the set of control dependences which
-  // span pipeline stages.
-
-  // Foreach stage
-  for (unsigned i = 0, N = ps->stages.size(); i < N; ++i) {
-    const PipelineStage &si = ps->stages[i];
-    // Foreach instruction src in that stage that may source control deps
-    PipelineStage::ISet all_insts = si.instructions;
-    all_insts.insert(si.replicated.begin(), si.replicated.end());
-    //for (PipelineStage::ISet::iterator j = si.instructions.begin(),
-    //                                   z = si.instructions.end();
-    for (PipelineStage::ISet::iterator j = all_insts.begin(),
-                                       z = all_insts.end();
-         j != z; ++j) {
-      Instruction *src = *j;
-      if (!isa<TerminatorInst>(src))
-        continue;
-
-      auto srcNode = pdg.fetchNode(src);
-      // Foreach control-dep successor of src
-      for (auto edge : srcNode->getOutgoingEdges()) {
-        if (!edge->isControlDependence())
-          continue;
-        Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
-        assert(dst &&
-               "dst of ctrl dep is not an instruction in crossStageDeps");
-
-        // That spans stages.
-        //        if( !si.instructions.count(dst) )
-        ps->crossStageDeps.push_back(CrossStageDependence(src, dst, edge));
-      }
-    }
-  }
+  populateCrossStageDependences(*ps, res.criticisms, pdg);
 
   DEBUG(ps->dump_pipeline(errs()));
 
