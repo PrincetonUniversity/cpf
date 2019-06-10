@@ -19,6 +19,7 @@
 
 #include <iterator>
 #include <set>
+#include <unordered_set>
 
 namespace liberty
 {
@@ -413,6 +414,62 @@ void PipelineStrategy::dump_pipeline(raw_ostream &fout, StringRef line_suffix) c
   fout << '\n';
   */
 
+  fout << "These memory (forward) flows cross pipeline stages (needed for "
+          "uncommitted value forwarding) :";
+  if (line_suffix.empty())
+    fout << line_suffix;
+  fout << '\n';
+
+  if (crossStageMemFlows.empty()) {
+    fout << " No forward mem flows. No comm required for uncommitted value "
+            "forwarding.";
+    if (line_suffix.empty())
+      fout << line_suffix;
+    fout << '\n';
+  }
+
+  // collect the values that need to be communicated
+  std::unordered_set<Instruction *> commValues;
+
+  for(PipelineStrategy::CrossStageDependences::const_iterator i=crossStageMemFlows.begin(), e=crossStageMemFlows.end(); i!=e; ++i)
+  {
+    const CrossStageDependence &dep = *i;
+    commValues.insert(dep.src);
+
+    dep.edge->print(fout);
+    if( line_suffix.empty() )
+      fout << line_suffix;
+    fout << '\n';
+    fout << "  " << *dep.src;
+    if( line_suffix.empty() )
+      fout << line_suffix;
+    fout << '\n';
+    fout << "  " << *dep.dst;
+    if( line_suffix.empty() )
+      fout << line_suffix;
+    fout << '\n';
+
+  }
+
+  if( line_suffix.empty() )
+    fout << line_suffix;
+  fout << '\n';
+
+  fout << "Uncommitted value forwarding count: " << commValues.size();
+  if( line_suffix.empty() )
+    fout << line_suffix;
+  fout << '\n';
+
+  for (Instruction *val : commValues) {
+    fout << "Forwarded value: " << *val;
+    if( line_suffix.empty() )
+      fout << line_suffix;
+    fout << '\n';
+  }
+
+  if( line_suffix.empty() )
+    fout << line_suffix;
+  fout << '\n';
 }
 
 bool PipelineStrategy::expandReplicatedStages()
