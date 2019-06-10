@@ -1100,6 +1100,7 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
     prevStage = &pstage;
   }
 
+
   // if a last sequential stage exists, consider moving all output I/O
   // operations from other stages to the last seq stage
   // Note that output I/O are not expected to source any non-removable
@@ -1181,98 +1182,105 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
     }
   }
 
-  // if a first sequential stage exists and control speculation is used for loop
-  // exit, try to move loop exit branch and its dependents from the parallel
-  // stage to the first stage
-  if (firstStage && firstStage->type == PipelineStage::Sequential) {
 
-    // get loop exit branch in header
-    TerminatorInst *headerLoopExitBr = loop->getHeader()->getTerminator();
-    bool loopExitBranch = false;
-    for (unsigned sn = 0, N = headerLoopExitBr->getNumSuccessors(); sn < N;
-         ++sn) {
-      BasicBlock *dest = headerLoopExitBr->getSuccessor(sn);
-      // Loop exit
-      if (!loop->contains(dest))
-        loopExitBranch = true;
-    }
+  // get loop exit branch in the header
+  TerminatorInst *headerLoopExitBr = loop->getHeader()->getTerminator();
+  bool loopExitBranch = false;
+  for (unsigned sn = 0, N = headerLoopExitBr->getNumSuccessors(); sn < N;
+       ++sn) {
+    BasicBlock *dest = headerLoopExitBr->getSuccessor(sn);
+    // Loop exit
+    if (!loop->contains(dest))
+      loopExitBranch = true;
+  }
 
-    if (loopExitBranch) {
-      std::unordered_set<Instruction *> moveToFirstSeq;
-      for (PipelineStage::ISet::const_iterator
-               j = parallelStage->instructions.begin(),
-               z = parallelStage->instructions.end();
-           j != z; ++j) {
-        Instruction *inst = *j;
+  if (loopExitBranch) {
+    // if control speculation is used for loop exit, try to avoid it
+    //    if a first sequential stage exists try to move loop exit branch and
+    //      its dependents from the parallel stage to the first stage;
+    //    else if first stage is parallel try to move loop exit branch and its
+    //      dependents to the replicated prefix of the parallel stage.
 
-        // check if loop exit branch
-        TerminatorInst *termI = dyn_cast<TerminatorInst>(inst);
-        if (!termI || termI != headerLoopExitBr)
-          continue;
+    std::unordered_set<Instruction *> moveToFirstSeq;
+    for (PipelineStage::ISet::const_iterator
+             j = parallelStage->instructions.begin(),
+             z = parallelStage->instructions.end();
+         j != z; ++j) {
+      Instruction *inst = *j;
 
-        if (!pdg.isInternal(inst))
-          continue;
+      // check if loop exit branch
+      TerminatorInst *termI = dyn_cast<TerminatorInst>(inst);
+      if (!termI || termI != headerLoopExitBr)
+        continue;
 
-        // check whether control spec is the cheapest remedy to remove LC dep
-        // sourcing from branch.
-        // if yes, try to move the branch from the parallel stage to the first
-        // sequential stage to prevent control spec usage on loop exits (will
-        // always cause misspec once per loop invocation)
-        auto pdgNode = pdg.fetchConstNode(const_cast<Instruction *>(inst));
-        auto edges = make_range(pdgNode->begin_outgoing_edges(),
-                                pdgNode->end_outgoing_edges());
-        bool ctrlSpecNeeded = false;
-        for (auto edge : edges) {
-          if (edge->isControlDependence() && edge->isRemovableDependence() &&
-              edge->isLoopCarriedDependence() &&
-              edge->getMinRemovalCost() == DEFAULT_CTRL_REMED_COST) {
-            ctrlSpecNeeded = true;
-            break;
-          }
-        }
+      if (!pdg.isInternal(inst))
+        continue;
 
-        if (!ctrlSpecNeeded)
+      // check whether control spec is the cheapest remedy to remove LC dep
+      // sourcing from branch.
+      // if yes, try to move the branch from the parallel stage to the first
+      // sequential stage to prevent control spec usage on loop exits (will
+      // always cause misspec once per loop invocation)
+      auto pdgNode = pdg.fetchConstNode(const_cast<Instruction *>(inst));
+      auto edges = make_range(pdgNode->begin_outgoing_edges(),
+                              pdgNode->end_outgoing_edges());
+      bool ctrlSpecNeeded = false;
+      for (auto edge : edges) {
+        if (edge->isControlDependence() && edge->isRemovableDependence() &&
+            edge->isLoopCarriedDependence() &&
+            edge->getMinRemovalCost() == DEFAULT_CTRL_REMED_COST) {
+          ctrlSpecNeeded = true;
           break;
+        }
+      }
 
-        set<Instruction *> *instsFrontSeqStage = &firstStage->instructions;
-        set<Instruction *> *instsBackSeqStage =
-            (lastSeqStage) ? &lastSeqStage->instructions : nullptr;
+      if (!ctrlSpecNeeded)
+        break;
 
-        std::unordered_set<Instruction *> tmpInstsMovedToFront;
-        std::unordered_set<Instruction *> instsMovedToBack;
-        std::unordered_set<DGEdge<Value> *> edgesNotRemoved;
-        unsigned long moveFrontCost =
-            moveOffStage(pdg, inst, tmpInstsMovedToFront, instsFrontSeqStage,
-                         moveToFirstSeq, instsMovedToBack, instsBackSeqStage,
-                         edgesNotRemoved, offPStageWeight, true);
+      set<Instruction *> *instsFrontSeqStage =
+          (firstStage && firstStage->type == PipelineStage::Sequential)
+              ? &firstStage->instructions
+              : nullptr;
+      set<Instruction *> *instsBackSeqStage =
+          (lastSeqStage) ? &lastSeqStage->instructions : nullptr;
 
-        if (moveFrontCost != ULONG_MAX) {
-          offPStageWeight += moveFrontCost;
-          DEBUG(
-              errs() << "\nMove loop exit branch to first sequential stage to "
+      std::unordered_set<Instruction *> tmpInstsMovedToFront;
+      std::unordered_set<Instruction *> instsMovedToBack;
+      std::unordered_set<DGEdge<Value> *> edgesNotRemoved;
+      unsigned long moveFrontCost =
+          moveOffStage(pdg, inst, tmpInstsMovedToFront, instsFrontSeqStage,
+                       moveToFirstSeq, instsMovedToBack, instsBackSeqStage,
+                       edgesNotRemoved, offPStageWeight, true);
+
+      if (moveFrontCost != ULONG_MAX) {
+        offPStageWeight += moveFrontCost;
+        DEBUG(errs() << "\nMove loop exit branch to first sequential stage to "
                         "avoid control spec remedy on loop exit, "
                      << *inst << '\n');
-          for (auto *I : tmpInstsMovedToFront) {
-            DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
-                            "branch inst to first "
-                            "sequential stage: "
-                         << *I << '\n');
-            if (parallelStage->instructions.count(I))
-              parallelStage->instructions.erase(I);
-            else if (lastSeqStage)
-              lastSeqStage->instructions.erase(I);
+        for (auto *I : tmpInstsMovedToFront) {
+          DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+                          "branch inst to first "
+                          "sequential stage: "
+                       << *I << '\n');
+          if (parallelStage->instructions.count(I))
+            parallelStage->instructions.erase(I);
+          else if (lastSeqStage)
+            lastSeqStage->instructions.erase(I);
+
+          if (firstStage && firstStage->type == PipelineStage::Sequential)
             firstStage->instructions.insert(I);
-          }
-        } else {
-          DEBUG(errs() << "\nNot movable loop exit branch inst along with "
-                          "dependent insts to first sequential stage, "
-                       << *inst << '\n');
-          for (auto *I : tmpInstsMovedToFront) {
-            DEBUG(errs() << "Part of non-movable insts: " << *I << "\n";);
-          }
+          else
+            parallelStage->replicated.insert(I);
         }
-        break;
+      } else {
+        DEBUG(errs() << "\nNot movable loop exit branch inst along with "
+                        "dependent insts to first sequential stage, "
+                     << *inst << '\n');
+        for (auto *I : tmpInstsMovedToFront) {
+          DEBUG(errs() << "Part of non-movable insts: " << *I << "\n";);
+        }
       }
+      break;
     }
   }
 }
