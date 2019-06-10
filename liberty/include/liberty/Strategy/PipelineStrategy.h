@@ -149,6 +149,9 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   typedef std::vector<CrossStageDependence> CrossStageDependences;
   CrossStageDependences crossStageDeps;
 
+  typedef std::vector<CrossStageDependence> CrossStageMemFlows;
+  CrossStageMemFlows crossStageMemFlows;
+
   virtual void summary(raw_ostream &fout) const;
   void dump_pipeline(raw_ostream &fout, StringRef line_suffix = "") const;
 

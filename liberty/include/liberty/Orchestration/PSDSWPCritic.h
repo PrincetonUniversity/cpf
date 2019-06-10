@@ -75,6 +75,9 @@ public:
   void avoidExpensiveCriticisms(const PDG &pdg, PipelineStrategy &ps,
                                 Criticisms &criticisms);
 
+  void populateCrossStageDependences(PipelineStrategy &ps,
+                                     const Criticisms &criticisms, PDG &pdg);
+
   void adjustPipeline(PipelineStrategy &ps, PDG &pdg);
 
   void populateCriticisms(PipelineStrategy &ps, Criticisms &criticisms,
