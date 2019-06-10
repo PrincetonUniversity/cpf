@@ -231,6 +231,20 @@ static void non_mergeable(unsigned scc1, unsigned scc2,
   nmweights[Edge(left, right)] = Infinity;
 }
 
+bool isLightweightReplicable(Instruction *inst) {
+  if (inst->mayReadFromMemory())
+    return false;
+  if (inst->mayWriteToMemory())
+    return false;
+
+  if (isa<CallInst>(inst))
+    return false;
+  if (isa<InvokeInst>(inst))
+    return false;
+
+  return true;
+}
+
 static void non_mergeable(const SCCDAG &sccdag, const SCCDAG::SCCSet &A,
                           const SCCDAG::SCCSet &B, Adjacencies &nonmergeable,
                           EdgeWeights &nmweights) {
@@ -928,14 +942,17 @@ void PSDSWPCritic::critForParallelStageProperty(const PDG &pdg,
   unordered_set<Instruction *> instsMovedToBack;
   unordered_set<DGEdge<Value> *> edgesNotRemoved;
 
+  PipelineStage::ISet all_insts = parallel.instructions;
+  all_insts.insert(parallel.replicated.begin(), parallel.replicated.end());
+
   for (PipelineStage::ISet::const_iterator i = parallel.instructions.begin(),
                                            e = parallel.instructions.end();
        i != e; ++i) {
     Instruction *p = *i;
     auto *pN = pdg.fetchConstNode(p);
 
-    for (PipelineStage::ISet::const_iterator j = parallel.instructions.begin(),
-                                             z = parallel.instructions.end();
+    for (PipelineStage::ISet::const_iterator j = all_insts.begin(),
+                                             z = all_insts.end();
          j != z; ++j) {
       Instruction *q = *j;
       auto *qN = pdg.fetchConstNode(q);
@@ -1013,9 +1030,9 @@ void PSDSWPCritic::removeUnnecessaryCriticisms(Criticisms &criticisms,
     unsigned stageOut, stageIn;
     for (unsigned i = 0, N = ps.stages.size(); i < N; ++i) {
       const PipelineStage &stage = ps.stages[i];
-      if (stage.instructions.count(outI))
+      if (stage.instructions.count(outI) || stage.replicated.count(outI))
         stageOut = i;
-      if (stage.instructions.count(inI))
+      if (stage.instructions.count(inI) || stage.replicated.count(inI))
         stageIn = i;
     }
 
@@ -1025,7 +1042,7 @@ void PSDSWPCritic::removeUnnecessaryCriticisms(Criticisms &criticisms,
     if (stageOut == stageIn) {
       const PipelineStage &stage = ps.stages[stageIn];
       if (stage.type == PipelineStage::Parallel) {
-        if (!edge->isLoopCarriedDependence())
+        if (!edge->isLoopCarriedDependence() || stage.replicated.count(outI))
           toBeRemovedCriticisms.insert(edge);
       } else
         toBeRemovedCriticisms.insert(edge);
@@ -1287,6 +1304,48 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
       break;
     }
   }
+
+  // If there is a first sequential stage and it is replicable and lightweight
+  // convert it to a replicable prefix of the parallel stage
+  if (firstStage && firstStage->type == PipelineStage::Sequential) {
+    bool allLightweightReplicable = true;
+    bool smallWeight = true;
+    EdgeWeight seqStageWeight = 0;
+    EdgeWeight seqStagePercThreshold = 2;
+    std::unordered_set<Instruction *> seqInsts;
+    for (PipelineStage::ISet::const_iterator
+             j = firstStage->instructions.begin(),
+             z = firstStage->instructions.end();
+         j != z; ++j) {
+      Instruction *inst = *j;
+
+      seqInsts.insert(inst);
+      seqStageWeight += FIXED_POINT * perf->estimate_weight(inst);
+
+      if (!isLightweightReplicable(inst)) {
+        allLightweightReplicable = false;
+        break;
+      }
+
+      // seq stage should not exceed 2% of parallel stage weight to be
+      // lightweight enough for replication. If too large then we are losing the
+      // overlapping of seq stage with parallel stage.
+      if ((seqStageWeight * 100.0) / parallelStageWeight >
+          seqStagePercThreshold) {
+        smallWeight = false;
+        break;
+      }
+    }
+    if (allLightweightReplicable && smallWeight) {
+      // first seq stage insts -> parallel stage replicated insts
+      for (Instruction *inst : seqInsts) {
+        firstStage->instructions.erase(inst);
+        parallelStage->replicated.insert(inst);
+      }
+      // erase completely first sequential stage
+      ps.stages.erase(ps.stages.begin());
+    }
+  }
 }
 
 void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
@@ -1362,7 +1421,7 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   // TODO: check if expansion needs to happen before
   // populateCriticisms, if replicable stages are introduced
   if( ps->expandReplicatedStages() ) {
-  ps->assertConsistentWithIR(loop);
+    ps->assertConsistentWithIR(loop);
     //ps->assertPipelineProperty(pdg);
   }
 
@@ -1376,8 +1435,12 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   for (unsigned i = 0, N = ps->stages.size(); i < N; ++i) {
     const PipelineStage &si = ps->stages[i];
     // Foreach instruction src in that stage that may source control deps
-    for (PipelineStage::ISet::iterator j = si.instructions.begin(),
-                                       z = si.instructions.end();
+    PipelineStage::ISet all_insts = si.instructions;
+    all_insts.insert(si.replicated.begin(), si.replicated.end());
+    //for (PipelineStage::ISet::iterator j = si.instructions.begin(),
+    //                                   z = si.instructions.end();
+    for (PipelineStage::ISet::iterator j = all_insts.begin(),
+                                       z = all_insts.end();
          j != z; ++j) {
       Instruction *src = *j;
       if (!isa<TerminatorInst>(src))
