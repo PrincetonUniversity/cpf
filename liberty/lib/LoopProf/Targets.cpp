@@ -30,7 +30,7 @@ static cl::list<std::string> ExplicitTargets(
      cl::desc("Explicit Target List: f1,bb1,f2,bb2,..."));
 
 static cl::opt<unsigned> MinExecTimePercent(
-  "target-min-exec-percent", cl::init(10), cl::NotHidden,
+  "target-min-exec-percent", cl::init(5), cl::NotHidden,
   cl::desc("Target loops whose execution is at least N% of the total"));
 
 static cl::opt<unsigned> MinIterationsPerInvoc(

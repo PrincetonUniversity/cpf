@@ -5,7 +5,7 @@
 #include "liberty/Orchestration/MemVerRemed.h"
 
 //#define DEFAULT_MEM_VER_REMED_COST 49
-#define DEFAULT_MEM_VER_REMED_COST 141
+#define DEFAULT_MEM_VER_REMED_COST 151
 
 namespace liberty {
 using namespace llvm;
