@@ -388,7 +388,7 @@ struct Api
 
   Constant *getSetLoopID()
   {
-    std::string name = (Twine(personality) + "_set_loopID");
+    std::string name = (Twine(personality) + "_set_loopID").str();
     return mod->getOrInsertFunction(name, fi2v);
   }
 
@@ -478,7 +478,7 @@ struct Api
 
   Constant *getProduceLocal()
   {
-    std::string name = (Twine(personality) + "_produce_locals");
+    std::string name = (Twine(personality) + "_produce_locals").str();
     return mod->getOrInsertFunction(name, fq2v);
   }
 
@@ -502,7 +502,7 @@ struct Api
 
   Constant *getConsumeLocal()
   {
-    std::string name = (Twine(personality) + "_consume_locals");
+    std::string name = (Twine(personality) + "_consume_locals").str();
     return mod->getOrInsertFunction(name, fq2v);
   }
 

@@ -66,10 +66,14 @@ bool MTCG::runOnModule(Module &module)
       PreparedStrategy &strategy = elaboratedStrategies.back();
 
       if( WriteStageCFGs )
+      {
         for(unsigned stageno=0, N=strategy.numStages(); stageno<N; ++stageno)
+        {
           writeStageCFG(strategy.loop, stageno, "on",
             strategy.relevant[stageno], strategy.instructions[stageno],
             strategy.produces[stageno], strategy.consumes[stageno]);
+        }
+      }
 
       // PHASE 2 ------------ CREATE STAGES
       if( runOnStrategy(strategy) )
@@ -135,6 +139,8 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
   const PipelineStrategy::CrossStageDependences &xdeps = strategy.lps->crossStageDeps;
   const unsigned N = stages.size();
 
+  strategy.lps->stages[stageno].stageno = stageno;
+
   ++numStagesCreated;
 
   // Maintain a correspondence between original and new blocks/args/instructions/liveins etc.
@@ -147,8 +153,6 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
     stage2queue,vmap_on,
     &repId, &repFactor);
   vmap_off = vmap_on;
-
-  stage.stageno = stageno;
 
   BasicBlock *preheader_on = createOnIteration(
     strategy,stageno,stage2queue,fcn,vmap_on,dt,pdt);
@@ -1428,21 +1432,21 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       split->moveAfter(source);
 
       // if no locals then don't add produce/consume calls
-      const Classify &classify = getAnalysis<Classify>();
-      HeapAssignment &heaps = classify.getAssignmentFor( loop );
+      Classify &classify = getAnalysis<Classify>();
+      const HeapAssignment &heaps = classify.getAssignmentFor( loop );
       if ( !heaps.getLocalAUs().empty() )
       {
         // if last stage don't add produce
         if ( stage.stageno != num_stages-1 )
         {
           // XXX need to get correct queue somehow
-          CallInst::Create( prod_local, ConstantInt::get(u32, 0), split);
+          CallInst::Create( prod_local, ConstantInt::get(u32, 0), "", split);
         }
         // if first stage don't add consume
         if ( stage.stageno != 0 )
         {
           // XXX need to get correct queue somehow
-          CallInst::Create( cons_local, ConstantInt::get(u32, 0), split);
+          CallInst::Create( cons_local, ConstantInt::get(u32, 0), "", split);
         }
       }
 
