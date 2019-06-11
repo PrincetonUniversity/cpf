@@ -1369,6 +1369,7 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
       }
       // erase completely first sequential stage
       ps.stages.erase(ps.stages.begin());
+      ++parallelStage->parallel_factor;
     }
   }
 }
