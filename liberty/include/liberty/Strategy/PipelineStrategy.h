@@ -117,6 +117,7 @@ struct PipelineStage
   ISet      instructions;
   Type      type;
   unsigned  parallel_factor;
+  unsigned  stageno;
 
   bool communicatesTo(const PipelineStage &other) const;
 

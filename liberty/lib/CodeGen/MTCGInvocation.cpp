@@ -161,6 +161,13 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
         CallInst::Create(allocStageQs, ArrayRef<Value *>(args));
     initFcn << allocSQsCall;
 
+    // set loop ID
+    args.clear();
+    args.push_back(loopIDc);
+    Constant *set_loopID = api.getSetLoopID();
+    Instruction *set_loopIDCall = CallInst::Create(set_loopID, ArrayRef<Value*>(args));
+    initFcn << set_loopIDCall;
+
     // create all queues of loop once at startup
     unsigned qID = 0;
     Constant *createQueue = api.getCreateQueue();
