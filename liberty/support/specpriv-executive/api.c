@@ -27,6 +27,7 @@
 #include "api.h"
 #include "debug.h"
 #include "strategy.h"
+#include "specpriv_queue.h"
 
 #if (AFFINITY & OS2PHYS) != 0
 // Map of linux cpu number to physical core number
@@ -85,8 +86,8 @@ static int (*pipefds)[2];
 // might use pipefds later if it's not too hard to get the timing right
 static int (*AU_pipefds)[2];
 
-// AU count for each thread
-static int AU_count;
+// loop ID for current invocation
+static int globalLoopID;
 
 #if JOIN == SPIN
 struct sigaction old_sigchld;
@@ -785,22 +786,32 @@ void __specpriv_begin_iter(void)
   __specpriv_reset_local();
 }
 
+void __specpriv_set_loopID( int n )
+{
+  globalLoopID = n;
+}
+
+// gc14: Let compiler determine if and where to produce to
+void __specpriv_produce_locals( __specpriv_queue *queue )
+{
+  __specpriv_produce( queue, (uint64_t) __specpriv_num_local() );
+}
+
+void __specpriv_consume_locals( __specpriv_queue *queue )
+{
+  int local_from_prev = (int) __specpriv_consume( queue );
+  __specpriv_add_num_local( local_from_prev );
+}
+
 // Called by a worker at the end of an iteration.
 // A worker should call this during ALL iterations,
 // even during those it does not execute.
 // XXX: gc14: assumes workers are allocated to stages sequentially
+// TODO: keep this function the sameish as it was a create a new one for
+//       sending locals to the next stage and add it in the compiler
+//       Use loopID and queues to send instead of pipes
 void __specpriv_end_iter(uint32_t ckptUsed)
 {
-  int prev_num_locals;
-  int this_num_locals = __specpriv_num_local();
-  int num_workers_in_stage = GET_REPLICATION_FACTOR( GET_MY_STAGE(myWorkerId) );
-
-  // if not first stage consume previous stage's local AU
-  if ( GET_MY_STAGE(myWorkerId) != 0 )
-  {
-    read(AU_pipefds[myWorkerId][0], &prev_num_locals, sizeof(int));
-    __specpriv_add_num_local(prev_num_locals);
-  }
 
   // only misspec on locals if last stage
   if( __specpriv_num_local() > 0 && GET_MY_STAGE(myWorkerId) == GET_NUM_STAGES()-1 )
@@ -819,23 +830,6 @@ void __specpriv_end_iter(uint32_t ckptUsed)
   Iteration globalCurIter = currentIter;
   if (!runOnEveryIter)
     globalCurIter = myWorkerId + (currentIter * numWorkers);
-
-  this_num_locals = __specpriv_num_local();
-
-  // communicate this num locals for this stage's iteration to next stage
-  int mystage = GET_MY_STAGE(myWorkerId);
-  if ( mystage < GET_NUM_STAGES()-1 )
-  {
-    int next_worker_offset;
-
-    // if next stage is parallel send to write pipe
-    if ( GET_REPLICATION_FACTOR(mystage+1) > 1 )
-      next_worker_offset = GET_WID_OFFSET_IN_STAGE( globalCurIter, mystage+1 );
-    else
-      next_worker_offset = GET_FIRST_WID_OF_STAGE( mystage+1 );
-
-    write( AU_pipefds[next_worker_offset][1], &this_num_locals, sizeof(int) );
-  }
 
   //__specpriv_advance_iter(++currentIter);
   __specpriv_advance_iter(globalCurIter, ckptUsed);
