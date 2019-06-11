@@ -739,6 +739,39 @@ unsigned long PSDSWPCritic::moveOffStage(
   }
 
   auto pdgNode = pdg.fetchConstNode(const_cast<Instruction *>(inst));
+
+  // avoid creating extra uncommitted mem value forwarding.
+  // stores moved to first seq stage could create a lot of extra
+  // communication for II or LC mem flows to later stages
+  // This comm occurs at every single iteration; thus it needs to be avoided
+  if (moveToFront && isa<StoreInst>(inst)) {
+    for (auto edge : make_range(pdgNode->begin_outgoing_edges(),
+                                pdgNode->end_outgoing_edges())) {
+
+      Instruction *dstI = dyn_cast<Instruction>(edge->getIncomingT());
+      if (!dstI)
+        continue;
+
+      if (edge->isMemoryDependence() && edge->isRAWDependence() &&
+          // dstI is not in first seq stage
+          !(instsMovedTgtSeq.count(dstI) ||
+            (instsTgtSeq && instsTgtSeq->count(dstI))) &&
+          // and exclude case where dstI is in last seq and store is in pstage
+          !((instsMovedOtherSeq.count(dstI) ||
+             (instsOtherSeq && instsOtherSeq->count(dstI))) &&
+            !(instsOtherSeq && instsOtherSeq->count(inst)))) {
+
+        // there is a mem flow from this store to a later stage. avoid moving it
+        // exclude scenario where inst is in parallel stage and dstI is in last
+        // sequential stage. In this scenario, it is more profitable to move
+        // store to first stage and avoid criticism and move comm out of the
+        // parallel stage
+        notMovableInsts.insert(inst);
+        return ULONG_MAX;
+      }
+    }
+  }
+
   auto edges = (moveToFront) ? make_range(pdgNode->begin_incoming_edges(),
                                           pdgNode->end_incoming_edges())
                              : make_range(pdgNode->begin_outgoing_edges(),
