@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <set>
 
+#define DEFAULT_CTRL_REMED_COST 45
+
 namespace liberty {
 using namespace llvm;
 

@@ -157,7 +157,10 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   const double MinSamples = 5.0;
   const double MaxMisspec = 0.00001; // 0.001%
   const double MaxMisspecLoopExit = 0.0;
-  const double MaxMisspecTargetLoopExit = 0.04; // 4%
+
+  // speculate loop exit (infinite loop) if trip count is at least 10.
+  // this min trip count should be close to the loopProf threshold for hot loops
+  const double MaxMisspecTargetLoopExit = 0.1; // 10%
 
   // Decline to comment on functions that were never invoked.
   // (we speculate that the function's callsites never run,

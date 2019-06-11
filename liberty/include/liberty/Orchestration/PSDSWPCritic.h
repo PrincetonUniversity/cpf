@@ -13,6 +13,8 @@
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Orchestration/ReduxRemed.h"
+#include "liberty/Orchestration/TXIORemed.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
 
 #include "PDG.hpp"
 #include "SCC.hpp"
@@ -46,35 +48,32 @@ public:
 
   void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
                                const PipelineStage &lateStage,
-                               Criticisms &criticisms, PipelineStrategy &ps,
-                               const EdgeWeight parallelStageWeight);
+                               Criticisms &criticisms, PipelineStrategy &ps);
 
   void critForParallelStageProperty(const PDG &pdg,
                                     const PipelineStage &parallel,
                                     Criticisms &criticisms,
-                                    PipelineStrategy &ps,
-                                    const EdgeWeight parallelStageWeight);
+                                    PipelineStrategy &ps);
 
-  unsigned long moveOffStage(const PDG &pdg,
-                             std::queue<Instruction *> &worklist,
+  unsigned long moveOffStage(const PDG &pdg, Instruction *inst,
                              unordered_set<Instruction *> &visited,
                              set<Instruction *> *instsTgtSeq,
                              unordered_set<Instruction *> &instsMovedTgtSeq,
                              unordered_set<Instruction *> &instsMovedOtherSeq,
                              set<Instruction *> *instsOtherSeq,
                              unordered_set<DGEdge<Value> *> &edgesNotRemoved,
-                             EdgeWeight offPStageWeight,
-                             const EdgeWeight &parallelStageWeight,
+                             const EdgeWeight curOffPStageWeight,
                              bool moveToFront);
 
   bool avoidElimDep(const PDG &pdg, PipelineStrategy &ps, DGEdge<Value> *edge,
                     unordered_set<Instruction *> &instsMovedToFront,
                     unordered_set<Instruction *> &instsMovedToBack,
-                    unordered_set<DGEdge<Value> *> &edgesNotRemoved,
-                    EdgeWeight &offPStageWeight,
-                    const EdgeWeight &parallelStageWeight);
+                    unordered_set<DGEdge<Value> *> &edgesNotRemoved);
 
   EdgeWeight getParalleStageWeight(PipelineStrategy &ps);
+
+  void removeUnnecessaryCriticisms(Criticisms &criticisms,
+                                   PipelineStrategy &ps);
 
   void adjustPipeline(PipelineStrategy &ps, PDG &pdg);
 
@@ -97,8 +96,22 @@ public:
 
 private:
   Loop *loop;
+
+  // dependence graphs after removing all the removable dependences
   PDG *optimisticPDG;
   SCCDAG *optimisticSCCDAG;
+
+  // insts that cannot be moved to the first seq stage
+  unordered_set<Instruction *> notMovableInstsToFront;
+
+  // insts that cannot be moved to the last seq stage
+  unordered_set<Instruction *> notMovableInstsToBack;
+
+  // original parallel stage weight after partitioning and before any movement
+  EdgeWeight parallelStageWeight;
+
+  // keeps track of weight of insts moved off the parallel stage
+  EdgeWeight offPStageWeight;
 };
 
 } // namespace liberty
