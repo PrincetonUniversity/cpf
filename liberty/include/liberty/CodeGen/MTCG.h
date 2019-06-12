@@ -4,6 +4,7 @@
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Speculation/LoopDominators.h"
 #include "liberty/Speculation/Selector.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 
 #include "liberty/Speculation/Api.h"
 #include "liberty/CodeGen/Preprocess.h"
@@ -47,7 +48,8 @@ typedef std::vector<Value*> Stage2Value;
 /// computed before code generation.
 struct PreparedStrategy
 {
-  PreparedStrategy(Loop *L, PipelineStrategy *strat);
+  PreparedStrategy(Loop *L, PipelineStrategy *strat,
+                   ProfilePerformanceEstimator *perf);
 
   typedef std::vector< ISet > Stage2ISet;
   typedef std::vector< VSet > Stage2VSet;
@@ -68,6 +70,7 @@ struct PreparedStrategy
 
   Loop *loop;
   PipelineStrategy *lps;
+  ProfilePerformanceEstimator *perf;
 
   VSet liveIns;
   Stage2ISet instructions;
@@ -84,6 +87,7 @@ struct PreparedStrategy
                          const PipelineStrategy::CrossStageDependences &xdeps,
                          const VSet &liveIns, const Stage2VSet &available,
                          unsigned stageno, Loop *loop,
+                         ProfilePerformanceEstimator *perf,
                          // Outputs
                          ISet &insts, VSet &avail, BBSet &rel,
                          ConsumeFrom &cons);
@@ -107,6 +111,7 @@ private:
                            const PipelineStrategy::CrossStageDependences &xdeps,
                            const PreparedStrategy::Stage2VSet &available,
                            unsigned stageno, Loop *loop,
+                           ProfilePerformanceEstimator *perf,
                            // Outputs
                            ISet &insts, VSet &avail, BBSet &rel,
                            ConsumeFrom &cons);
@@ -127,12 +132,25 @@ private:
                             unsigned stageno, Loop *loop, ISet &insts,
                             VSet &avail, BBSet &rel);
 
+  static bool rematerializeBackSliceRec(
+      Instruction *inst, VSet &avail, ProfilePerformanceEstimator *perf,
+      double estimatedCostOfComm, double rematerializeCost,
+      std::unordered_set<Instruction *> &rematerializeInsts);
+
+  static bool
+  rematerializeBackSliceInsteadOfComm(Instruction *inst,
+                                      ProfilePerformanceEstimator *perf,
+                                      // Outputs
+                                      ISet &insts, VSet &avail, BBSet &rel);
+
   /// Satisfy register deps with communication.
-  static bool communicateOnce(
-    const PipelineStrategy::Stages &stages, unsigned stageno,
-    const PreparedStrategy::Stage2VSet &available,
-    // Outputs
-    ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons);
+  static bool communicateOnce(const PipelineStrategy::Stages &stages,
+                              unsigned stageno,
+                              ProfilePerformanceEstimator *perf,
+                              const PreparedStrategy::Stage2VSet &available,
+                              // Outputs
+                              ISet &insts, VSet &avail, BBSet &rel,
+                              ConsumeFrom &cons);
   static bool rematerializeOnce(const PipelineStrategy::Stages &stages,
                                 unsigned stageno, Loop *loop,
                                 // Outputs
@@ -155,6 +173,8 @@ struct MTCG : public ModulePass
 private:
   typedef std::vector<PreparedStrategy> StrategiesPlus;
   StrategiesPlus elaboratedStrategies;
+
+  ProfilePerformanceEstimator *perf;
 
 
   // -------------- Transform --------------------
