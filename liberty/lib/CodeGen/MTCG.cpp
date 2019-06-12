@@ -178,7 +178,7 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
   BasicBlock *entry = &fcn->getEntryBlock();
   BranchInst::Create( preheader, entry );
 
-  markIterationBoundaries(preheader, stage, N);
+  markIterationBoundaries(preheader, stage, stage2queue, N);
 
 #if (MTCG_CTRL_DEBUG || MTCG_VALUE_DEBUG)
   Module *mod = fcn->getParent();
@@ -1351,7 +1351,10 @@ ControlSpeculation::LoopBlock MTCG::closestRelevantDom(BasicBlock *bb, const BBS
 
 void MTCG::markIterationBoundaries(BasicBlock *preheader,
                                    const PipelineStage &stage,
+                                   const Stage2Value &stage2queue,
                                    const int num_stages) {
+  Selector &selector = getAnalysis<Selector>();
+  const HeapAssignment &heaps = selector.getAssignment();
   Function *fcn = preheader->getParent();
   Module *mod = fcn->getParent();
   Api api(mod);
@@ -1361,8 +1364,10 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   BasicBlock *header = preheader->getTerminator()->getSuccessor(0);
   Constant *enditer = api.getEndIter();
   Constant *ckptcheck = api.getCkptCheck();
-  Constant *prod_local = api.getProduceLocal();
-  Constant *cons_local = api.getConsumeLocal();
+  Constant *get_locals = api.getNumLocals();
+  Constant *add_locals = api.getAddNumLocals();
+  Constant *prod = api.getProduce();
+  Constant *cons = api.getConsume();
 
   // Call begin iter at top of loop
   CallInst::Create( api.getBeginIter(), "", &*( header->getFirstInsertionPt() ) );
@@ -1432,21 +1437,19 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       split->moveAfter(source);
 
       // if no locals then don't add produce/consume calls
-      Classify &classify = getAnalysis<Classify>();
-      const HeapAssignment &heaps = classify.getAssignmentFor( loop );
       if ( !heaps.getLocalAUs().empty() )
       {
-        // if last stage don't add produce
-        if ( stage.stageno != num_stages-1 )
-        {
-          // XXX need to get correct queue somehow
-          CallInst::Create( prod_local, ConstantInt::get(u32, 0), "", split);
-        }
-        // if first stage don't add consume
+        // add consumes if not first stage
         if ( stage.stageno != 0 )
         {
           // XXX need to get correct queue somehow
-          CallInst::Create( cons_local, ConstantInt::get(u32, 0), "", split);
+          /* Instruction *prev_locals = CallInst::Create( cons, stage2queue[], "", split ); */
+          /* CallInst::Create( add_locals, "", split); */
+          /* Instruction *num_locals = CallInst::Create( get_locals ); */
+        }
+        // add produces if not last stage
+        if ( stage.stageno != num_stages-1 )
+        {
         }
       }
 
