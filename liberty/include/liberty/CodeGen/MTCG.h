@@ -216,6 +216,7 @@ private:
 
   void markIterationBoundaries(BasicBlock *preheader,
                                const PipelineStage &stage,
+                               const Stage2Value &stage2queue,
                                int num_stages);
 
   // ----------------- Invocation ----------------------

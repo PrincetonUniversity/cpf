@@ -319,11 +319,6 @@ void __spawn_workers_begin(void) {
       perror("create pipe");
       _exit(0);
     }
-    if ( pipe(AU_pipefds[wid]) )
-    {
-      perror("create AU pipe");
-      _exit(0);
-    }
     pid_t pid = fork();
     if( pid == 0 )
     {
@@ -789,18 +784,6 @@ void __specpriv_begin_iter(void)
 void __specpriv_set_loopID( int n )
 {
   globalLoopID = n;
-}
-
-// gc14: Let compiler determine if and where to produce to
-void __specpriv_produce_locals( __specpriv_queue *queue )
-{
-  __specpriv_produce( queue, (uint64_t) __specpriv_num_local() );
-}
-
-void __specpriv_consume_locals( __specpriv_queue *queue )
-{
-  int local_from_prev = (int) __specpriv_consume( queue );
-  __specpriv_add_num_local( local_from_prev );
 }
 
 // Called by a worker at the end of an iteration.
