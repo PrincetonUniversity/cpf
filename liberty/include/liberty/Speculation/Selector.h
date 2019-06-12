@@ -18,6 +18,7 @@
 #include "liberty/GraphAlgorithms/Graphs.h"
 #include "liberty/Speculation/UpdateOnClone.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/PredictionSpeculation.h"
@@ -69,6 +70,10 @@ struct Selector : public UpdateOnClone
 
   Loop2DepInfo &getLoop2DepInfo() { return loopDepInfo; }
   Loop2SelectedRemedies &getLoop2SelectedRemedies() { return selectedRemedies; }
+
+  ProfilePerformanceEstimator *getProfilePerformanceEstimator() {
+    return perf;
+  };
 
   virtual const HeapAssignment &getAssignment() const;
   virtual HeapAssignment &getAssignment();
@@ -141,6 +146,8 @@ protected:
   Loop2DepInfo loopDepInfo;
 
   SelectedLoops selectedLoops;
+
+  ProfilePerformanceEstimator *perf;
 
   bool doSelection(
     Vertices &vertices,

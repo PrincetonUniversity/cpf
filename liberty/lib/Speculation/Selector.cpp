@@ -144,7 +144,6 @@ unsigned Selector::computeWeights(
   //PredictionSpeculation *predspec = getPredictionSpeculation();
 
   Pass &proxy = getPass();
-  ProfilePerformanceEstimator &perf = proxy.getAnalysis< ProfilePerformanceEstimator >();
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
   PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
@@ -183,7 +182,7 @@ unsigned Selector::computeWeights(
 
     const HeapAssignment &asgn = classify.getAssignmentFor(A);
 
-    const unsigned long loopTime = perf.estimate_loop_weight(A);
+    const unsigned long loopTime = perf->estimate_loop_weight(A);
     const unsigned long scaledLoopTime = FixedPoint*loopTime;
     assert(A->getLoopDepth() > 0 && "Target loop is not inside a loop???");
     const unsigned depthPenalty = PenalizeLoopNest*(A->getLoopDepth()-1); // break ties with nested loops
@@ -220,7 +219,7 @@ unsigned Selector::computeWeights(
       Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
+          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
           smtxMan, smtxLampMan, rd, asgn, proxy, loopAA, lpl, ps, sr, sc,
           NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
@@ -232,7 +231,7 @@ unsigned Selector::computeWeights(
         ++numApplicable;
         ps->setValidFor( hA );
 
-        unsigned long  estimatePipelineWeight = (unsigned long) FixedPoint*perf.estimate_pipeline_weight(*ps, A);
+        unsigned long  estimatePipelineWeight = (unsigned long) FixedPoint*perf->estimate_pipeline_weight(*ps, A);
         const long wt = adjLoopTime - estimatePipelineWeight;
         unsigned long scaledwt = 0;
 
@@ -242,8 +241,8 @@ unsigned Selector::computeWeights(
 
         //ps->dump_pipeline(errs());
 
-        if (perf.estimate_loop_weight(A))
-          scaledwt = wt * (double)lpl.getLoopTime(hA) / (double)perf.estimate_loop_weight(A);
+        if (perf->estimate_loop_weight(A))
+          scaledwt = wt * (double)lpl.getLoopTime(hA) / (double)perf->estimate_loop_weight(A);
 
         if( wt < 0 )
         {
@@ -260,7 +259,7 @@ unsigned Selector::computeWeights(
                      << " :: " << hA->getName() << " has expected savings "
                      << weights[i] << '\n');
 
-        findLateInliningOpportunities(A,*ps,perf,opportunities);
+        findLateInliningOpportunities(A,*ps,*perf,opportunities);
 
         strategies[ hA ] = std::move(ps);
         selectedRemedies[ hA ] = std::move(sr);
@@ -593,7 +592,6 @@ bool Selector::doInlining(LateInliningOpportunities &opportunities)
   //   of resetAfterInline)
   Pass &proxy = getPass();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
-  ProfilePerformanceEstimator &perf = proxy.getAnalysis< ProfilePerformanceEstimator >();
   //sot
   //ProfileInfo &edgeprof = proxy.getAnalysis< ProfileInfo >();
   // since BranchProbabilityInfo and BlockFrequencyInfo are FunctionPasses we cannot call them here.
@@ -633,7 +631,7 @@ bool Selector::doInlining(LateInliningOpportunities &opportunities)
     // Edge, Loop Profilers, Performance estimator,
     // and ModuleLoops are used by ALL selectors
     edgeloop.resetAfterInline(callsite, caller,callee,vmap, call2invoke);
-    perf.reset();
+    perf->reset();
     mloops.forget( caller );
 
     // Reset those analyses/profiles specific to this
@@ -662,6 +660,7 @@ bool Selector::doSelection(
 
   Pass &proxy = getPass();
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
+  perf = &proxy.getAnalysis< ProfilePerformanceEstimator >();
 
 
   // Identify all classified loops as vertices
