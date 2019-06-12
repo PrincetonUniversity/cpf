@@ -14,6 +14,7 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/TXIORemed.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
 
 #include "PDG.hpp"
 #include "SCC.hpp"
@@ -70,6 +71,12 @@ public:
                     unordered_set<DGEdge<Value> *> &edgesNotRemoved);
 
   EdgeWeight getParalleStageWeight(PipelineStrategy &ps);
+
+  void avoidExpensiveCriticisms(const PDG &pdg, PipelineStrategy &ps,
+                                Criticisms &criticisms);
+
+  void populateCrossStageDependences(PipelineStrategy &ps,
+                                     const Criticisms &criticisms, PDG &pdg);
 
   void adjustPipeline(PipelineStrategy &ps, PDG &pdg);
 

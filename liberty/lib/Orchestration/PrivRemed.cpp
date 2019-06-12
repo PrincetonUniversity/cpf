@@ -4,7 +4,10 @@
 
 #include "liberty/Orchestration/PrivRemed.h"
 
-#define DEFAULT_PRIV_REMED_COST 1
+// conservative privitization in many cases is as expensive as memory versioning
+// and locality private. Need to always keep track of who wrote last.
+//#define DEFAULT_PRIV_REMED_COST 1
+#define DEFAULT_PRIV_REMED_COST 100
 
 namespace liberty {
 using namespace llvm;
