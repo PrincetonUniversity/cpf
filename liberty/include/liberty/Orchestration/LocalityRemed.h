@@ -137,6 +137,8 @@ private:
   //VSet alreadyInstrumented;
 
   unordered_set<const Instruction *> privateInsts;
+
+  unordered_set<const Value *> unclassifiedPointers;
 };
 
 } // namespace liberty

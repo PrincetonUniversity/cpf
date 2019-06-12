@@ -5,7 +5,7 @@
 
 #include "liberty/Orchestration/LocalityRemed.h"
 
-#define DEFAULT_LOCALITY_REMED_COST 40
+#define DEFAULT_LOCALITY_REMED_COST 50
 #define PRIVATE_ACCESS_COST 100
 #define LOCAL_ACCESS_COST 5
 
@@ -247,12 +247,18 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   // B: " << *B << "\n  type: " << t2 << '\n';
 
   if (t1 == HeapAssignment::Unclassified) {
-    ++numUnclassifiedPtrs;
-    errs() << "Pointer to unclassified heap: " << *ptr1 << "\n";
+    if (!unclassifiedPointers.count(ptr1)) {
+      unclassifiedPointers.insert(ptr1);
+      ++numUnclassifiedPtrs;
+      DEBUG(errs() << "Pointer to unclassified heap: " << *ptr1 << "\n");
+    }
   }
   if (t2 == HeapAssignment::Unclassified) {
-    ++numUnclassifiedPtrs;
-    errs() << "Pointer to unclassified heap: " << *ptr2 << "\n";
+    if (!unclassifiedPointers.count(ptr2)) {
+      unclassifiedPointers.insert(ptr2);
+      ++numUnclassifiedPtrs;
+      DEBUG(errs() << "Pointer to unclassified heap: " << *ptr2 << "\n");
+    }
   }
 
   // Loop-carried queries:

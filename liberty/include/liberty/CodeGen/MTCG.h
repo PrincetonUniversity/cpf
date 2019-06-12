@@ -215,7 +215,8 @@ private:
   ControlSpeculation::LoopBlock closestRelevantDom(BasicBlock *bb, const BBSet &rel, const LoopDom &dt, BB2LB &cache) const;
 
   void markIterationBoundaries(BasicBlock *preheader,
-                               const PipelineStage &stage);
+                               const PipelineStage &stage,
+                               int num_stages);
 
   // ----------------- Invocation ----------------------
   // These methods take the functions representing each pipeline stage,

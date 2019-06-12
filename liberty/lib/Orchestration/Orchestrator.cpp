@@ -94,7 +94,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
-  remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
+  // disable IV remediator for PS-DSWP for now, handle it via replicable stage
+  //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
   // TXIO remediator
   remeds.push_back(std::make_unique<TXIORemediator>());
