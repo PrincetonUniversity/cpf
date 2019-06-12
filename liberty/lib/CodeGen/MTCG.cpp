@@ -49,8 +49,10 @@ void MTCG::getAnalysisUsage(AnalysisUsage &au) const
 bool MTCG::runOnModule(Module &module)
 {
   bool modified = false;
-  const Selector &selector = getAnalysis< Selector >();
+  Selector &selector = getAnalysis< Selector >();
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
+  perf = selector.getProfilePerformanceEstimator();
+  assert(perf);
 
   // Study each of the strategies, and then create the stage functions
   for(Selector::strat_iterator i=selector.strat_begin(), e=selector.strat_end(); i!=e; ++i)
@@ -62,7 +64,7 @@ bool MTCG::runOnModule(Module &module)
     if( PipelineStrategy *ps = dyn_cast<PipelineStrategy>(&*(i->second)) )
     {
       // PHASE 1 ----------- PLANNING
-      elaboratedStrategies.push_back( PreparedStrategy(loop,ps) );
+      elaboratedStrategies.push_back( PreparedStrategy(loop,ps,perf) );
       PreparedStrategy &strategy = elaboratedStrategies.back();
 
       if( WriteStageCFGs )
@@ -584,19 +586,16 @@ BasicBlock *MTCG::createOffIteration(
   PreparedStrategy::ConsumeFrom off_cons;
   PreparedStrategy::ProduceTo off_prods;
 
-  PreparedStrategy::studyStage(
-    stages,xdeps,
-    liveIns, available,
-    stageno, loop,
-    off_insts,off_avail,off_rel,off_cons);
+  PreparedStrategy::studyStage(stages, xdeps, liveIns, available, stageno, loop,
+                               perf, off_insts, off_avail, off_rel, off_cons);
 
-/* Removing this unnecessary restriction.  Instead, we need a new variant of
- * the produce/consume operations which are specialized for the case where the
- * consume occurs in a replicable stage. -NPJ.
+  /* Removing this unnecessary restriction.  Instead, we need a new variant of
+   * the produce/consume operations which are specialized for the case where the
+   * consume occurs in a replicable stage. -NPJ.
 
-  assert( off_cons.empty()
-  && "Replicated off-iterations should not consume");
-*/
+    assert( off_cons.empty()
+    && "Replicated off-iterations should not consume");
+  */
   DEBUG(errs() << "OFF-iteration of stage " << stageno << " has "
                << off_insts.size() << " instructions; "
                << off_rel.size() << " basic blocks; consumes "

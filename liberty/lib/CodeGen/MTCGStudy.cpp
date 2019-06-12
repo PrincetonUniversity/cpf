@@ -17,9 +17,9 @@ namespace SpecPriv
 {
 using namespace llvm;
 
-PreparedStrategy::PreparedStrategy(Loop *L, PipelineStrategy *strat)
-  : loop(L), lps(strat)
-{
+PreparedStrategy::PreparedStrategy(Loop *L, PipelineStrategy *strat,
+                                   ProfilePerformanceEstimator *pe)
+    : loop(L), lps(strat), perf(pe) {
   const unsigned N = numStages();
 
   instructions.resize(N);
@@ -115,7 +115,7 @@ void PreparedStrategy::study(unsigned stageno)
   // This stage includes instructions specified in the partition.
   addInstsToStage( insts,avail,rel, stage.instructions );
   studyStage(lps->stages, lps->crossStageDeps, liveIns, available, stageno,
-             loop, insts, avail, rel, cons);
+             loop, perf, insts, avail, rel, cons);
   computeProducesAndQueues(cons, stageno, produces, queues);
   assert( !insts.empty() && "How can there be NO instructions in this stage?");
   assert( !rel.empty() && "How can there be NO relevant BBs?");
@@ -125,11 +125,12 @@ void PreparedStrategy::studyStage(
     const PipelineStrategy::Stages &stages,
     const PipelineStrategy::CrossStageDependences &xdeps, const VSet &liveIns,
     const Stage2VSet &available, unsigned stageno, Loop *loop,
+    ProfilePerformanceEstimator *perf,
     // Outputs
     ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons) {
-  addInstsToStage( insts,avail,rel, stages[stageno].replicated );
-  avail.insert( liveIns.begin(), liveIns.end() );
-  fillOutStage(stages, xdeps, available, stageno, loop, insts, avail, rel,
+  addInstsToStage(insts, avail, rel, stages[stageno].replicated);
+  avail.insert(liveIns.begin(), liveIns.end());
+  fillOutStage(stages, xdeps, available, stageno, loop, perf, insts, avail, rel,
                cons);
 }
 
@@ -184,11 +185,12 @@ void PreparedStrategy::fillOutStage(
     const PipelineStrategy::Stages &stages,
     const PipelineStrategy::CrossStageDependences &xdeps,
     const Stage2VSet &available, unsigned stageno, Loop *loop,
+    ProfilePerformanceEstimator *perf,
     // Outputs
     ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons) {
   while( handleControlDeps(xdeps,cons, stageno, insts, avail, rel)
   ||     rematerialize(stages,stageno, loop, insts, avail, rel)
-  ||     communicateOnce(stages,stageno, available, insts, avail, rel, cons) )
+  ||     communicateOnce(stages, stageno, perf, available, insts, avail, rel, cons) )
   { /* Iterate until convergence */ }
 }
 
@@ -282,7 +284,8 @@ bool PreparedStrategy::rematerializeOnce(const PipelineStrategy::Stages &stages,
       // rematerialize since parallel workers do not execute all iterations.
       // Stale values (from older than the previous iteration, will possibly be
       // feeded to the phi node if rematerialized.
-      if (isa<PHINode>(operand) && operand->getParent() == loop->getHeader())
+      if (stages[stageno].type == PipelineStage::Parallel &&
+          isa<PHINode>(operand) && operand->getParent() == loop->getHeader())
         continue;
 
       DEBUG(errs() << "rematerialized operand, used but not available: "
@@ -297,12 +300,91 @@ bool PreparedStrategy::rematerializeOnce(const PipelineStrategy::Stages &stages,
   return false;
 }
 
-bool PreparedStrategy::communicateOnce(
-  const PipelineStrategy::Stages &stages, unsigned stageno,
-  const Stage2VSet &available,
-  // Outputs
-  ISet &insts, VSet &avail, BBSet &rel, ConsumeFrom &cons)
-{
+bool PreparedStrategy::rematerializeBackSliceRec(
+    Instruction *inst, VSet &avail, ProfilePerformanceEstimator *perf,
+    double estimatedCostOfComm, double rematerializeCost,
+    std::unordered_set<Instruction *> &rematerializeInsts) {
+
+  // cannot memoize anything since newly communicated values invalidate results
+  // of previous queries to this function
+  // not a deep recursion; will fail or succeed quickly (within 5-10 calls)
+
+  if (avail.count(inst))
+    return true;
+
+  if (rematerializeInsts.count(inst))
+    return true;
+  rematerializeInsts.insert(inst);
+
+  if (inst->mayReadOrWriteMemory())
+    return false;
+
+  if (isa<CallInst>(inst))
+    return false;
+
+  if (isa<InvokeInst>(inst))
+    return false;
+
+  rematerializeCost += perf->relative_weight(inst);
+  if (rematerializeCost > estimatedCostOfComm)
+    return false;
+
+  for (User::op_iterator k = inst->op_begin(), kk = inst->op_end(); k != kk;
+       ++k) {
+
+    Instruction *operand = dyn_cast<Instruction>(&**k);
+    if (!operand)
+      continue;
+
+    if (!rematerializeBackSliceRec(operand, avail, perf, estimatedCostOfComm,
+                                   rematerializeCost, rematerializeInsts))
+      return false;
+  }
+  return true;
+}
+
+bool PreparedStrategy::rematerializeBackSliceInsteadOfComm(
+    Instruction *inst, ProfilePerformanceEstimator *perf,
+    // Outputs
+    ISet &insts, VSet &avail, BBSet &rel) {
+
+  // cost of communication
+  // we focus on the cost of consume. Estimated to be equal to 5 regular loads
+  // (consumes seems to need ~10 load insts but all of them are expected to be
+  // in L1).
+  // Computed using the relative weight of 'inst'. The consume will be a
+  // replacement for inst and it will be in the same block. Thus, the bbcnt will
+  // be the same
+  unsigned load_type_weight = 200;
+  // relative_weight = bbcnt * instruction_type_weight
+  double estimatedCostOfComm =
+      5.0 * load_type_weight * perf->relative_weight(inst) /
+      ProfilePerformanceEstimator::instruction_type_weight(inst);
+
+  std::unordered_set<Instruction *> rematerializeInsts;
+  if (rematerializeBackSliceRec(inst, avail, perf, estimatedCostOfComm, 0,
+                                rematerializeInsts)) {
+    // backslice is lightweight and rematerializable.
+    for (Instruction *I : rematerializeInsts) {
+      // Rematerialize all visited insts
+      addInstToStage(insts, avail, rel, I);
+      DEBUG(errs() << "rematerialized inst, used but not available: " << *I
+                   << "\n");
+    }
+    // rematerialized backslice
+    return true;
+  }
+  // better to communicate inst rather than rematerialize backwards slice
+  return false;
+}
+
+bool PreparedStrategy::communicateOnce(const PipelineStrategy::Stages &stages,
+                                       unsigned stageno,
+                                       ProfilePerformanceEstimator *perf,
+                                       const Stage2VSet &available,
+                                       // Outputs
+                                       ISet &insts, VSet &avail, BBSet &rel,
+                                       ConsumeFrom &cons) {
   // Foreach value which is used, but which is not available.
   for(ISet::iterator i=insts.begin(), e=insts.end(); i!=e; ++i)
   {
@@ -315,6 +397,14 @@ bool PreparedStrategy::communicateOnce(
       if( !operand || avail.count(operand) )
         continue;
       // 'operand' is used, but not available.
+
+      // try to avoid communication with extended remateriazation.
+      // If unavailable portion of backwards slice is lightweight (less weight
+      // than an estimate of a consume) and replicable (no read/write to mem, no
+      // fun calls), then rematerialize and avoid produce/consume.
+      if (stages[stageno].type == PipelineStage::Sequential &&
+          rematerializeBackSliceInsteadOfComm(operand, perf, insts, avail, rel))
+        return true;
 
       DEBUG(errs() << "communicated operand, used but not available: "
                    << *operand << "\n");

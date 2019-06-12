@@ -24,7 +24,7 @@ bool ProfilePerformanceEstimator::runOnModule(Module &mod)
   return false;
 }
 
-static unsigned instruction_type_weight(const Instruction *inst)
+unsigned ProfilePerformanceEstimator::instruction_type_weight(const Instruction *inst)
 {
   if( isa<PHINode>(inst) )
     return 1;
@@ -118,7 +118,7 @@ double ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
 
   const unsigned long relative = relative_weight(inst);
 
-  // errs() << "local, relative, sum: " << local_weight << " " << relative << " " << sum_local_relative << "\n"; 
+  // errs() << "local, relative, sum: " << local_weight << " " << relative << " " << sum_local_relative << "\n";
   return local_weight * (double)relative / (double)sum_local_relative;
 }
 
@@ -251,7 +251,7 @@ void ProfilePerformanceEstimator::visit(const Function *fcn, const Loop *loop, c
 
   const unsigned long local_time = outside_weight - sum_nested_loops - sum_nested_callsites;
 
-  // if (loop) 
+  // if (loop)
   //   errs() << "Fcn " << fcn->getName() << " :: " << loop->getHeader()->getName() << " local_time " << local_time << ", sum_rel_wt_locals " << sum_relative_weights_of_locals << "\n";
   // else
   //   errs() << "Fcn " << fcn->getName() << " local_time " << local_time << ", sum_rel_wt_locals " << sum_relative_weights_of_locals << "\n";
