@@ -27,6 +27,13 @@ struct ProfilePerformanceEstimator : public ModulePass, public PerformanceEstima
 
   void reset();
 
+  // Return a relative weight, which is based on
+  // the execution frequency of this instruction (from edge count profile)
+  // and instruction latency (i.e. loads/stores more expensive than add/sub)
+  unsigned long relative_weight(const Instruction *inst);
+
+  static unsigned instruction_type_weight(const Instruction *inst);
+
 private:
   // Root case
   void visit(const Function *fcn);
@@ -52,11 +59,6 @@ private:
   typedef std::map<Context,TimeAndWeight> Context2TimeAndWeight;
 
   Context2TimeAndWeight ctx2timeAndWeight;
-
-  // Return a relative weight, which is based on
-  // the execution frequency of this instruction (from edge count profile)
-  // and instruction latency (i.e. loads/stores more expensive than add/sub)
-  unsigned long relative_weight(const Instruction *inst);
 };
 
 }
