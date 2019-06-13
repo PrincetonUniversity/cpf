@@ -134,14 +134,24 @@ private:
 
   static bool rematerializeBackSliceRec(
       Instruction *inst, VSet &avail, ProfilePerformanceEstimator *perf,
-      double estimatedCostOfComm, double rematerializeCost,
-      std::unordered_set<Instruction *> &rematerializeInsts);
+      double estimatedCostOfComm, double &rematerializeCost,
+      std::unordered_set<Instruction *> &rematerializeInsts,
+      std::unordered_set<Instruction *> &commLoads);
 
-  static bool
-  rematerializeBackSliceInsteadOfComm(Instruction *inst,
-                                      ProfilePerformanceEstimator *perf,
-                                      // Outputs
-                                      ISet &insts, VSet &avail, BBSet &rel);
+  static bool rematerializeBackSliceInsteadOfComm(
+      Instruction *inst, ProfilePerformanceEstimator *perf,
+      // Outputs
+      ISet &insts, VSet &avail, BBSet &rel,
+      std::unordered_set<Instruction *> &rematInsts,
+      std::unordered_set<Instruction *> &commLoads, double &cost);
+
+  static void communicateValue(Instruction *operand,
+                               const PipelineStrategy::Stages &stages,
+                               unsigned stageno, const Stage2VSet &available,
+                               bool consumeOccursInReplicatedStage,
+                               // Outputs
+                               ISet &insts, VSet &avail, BBSet &rel,
+                               ConsumeFrom &cons);
 
   /// Satisfy register deps with communication.
   static bool communicateOnce(const PipelineStrategy::Stages &stages,
