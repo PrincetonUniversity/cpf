@@ -392,6 +392,11 @@ struct Api
     return mod->getOrInsertFunction(name, fi2v);
   }
 
+  Constant *getGetLoopID()
+  {
+    std::string name = (Twine(personality) + "_get_loopID").str();
+    return mod->getOrInsertFunction(name, fv2i);
+  }
 
   Constant *getBeginInvocation()
   {
@@ -421,6 +426,17 @@ struct Api
     return mod->getOrInsertFunction(name, fi2v);
   }
 
+  Constant *getNumLocals()
+  {
+    std::string name = (Twine(personality) + "_num_local").str();
+    return mod->getOrInsertFunction(name, fv2i);
+  }
+
+  Constant *getAddNumLocals()
+  {
+    std::string name = (Twine(personality) + "_add_num_local").str();
+    return mod->getOrInsertFunction(name, fi2v);
+  }
 
   Constant *getBegin()
   {
