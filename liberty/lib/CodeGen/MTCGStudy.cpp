@@ -302,8 +302,9 @@ bool PreparedStrategy::rematerializeOnce(const PipelineStrategy::Stages &stages,
 
 bool PreparedStrategy::rematerializeBackSliceRec(
     Instruction *inst, VSet &avail, ProfilePerformanceEstimator *perf,
-    double estimatedCostOfComm, double rematerializeCost,
-    std::unordered_set<Instruction *> &rematerializeInsts) {
+    double estimatedCostOfComm, double &rematerializeCost,
+    std::unordered_set<Instruction *> &rematerializeInsts,
+    std::unordered_set<Instruction *> &commLoads) {
 
   // cannot memoize anything since newly communicated values invalidate results
   // of previous queries to this function
@@ -314,10 +315,19 @@ bool PreparedStrategy::rematerializeBackSliceRec(
 
   if (rematerializeInsts.count(inst))
     return true;
-  rematerializeInsts.insert(inst);
 
-  if (inst->mayReadOrWriteMemory())
+  if (commLoads.count(inst))
+    return true;
+
+  if (!isa<LoadInst>(inst))
+    rematerializeInsts.insert(inst);
+  else
+    commLoads.insert(inst);
+
+  if (inst->mayReadOrWriteMemory() && !isa<LoadInst>(inst)) {
+    errs() << "mayReadOrWriteMemory blocking remat: " << *inst<< "\n";
     return false;
+  }
 
   if (isa<CallInst>(inst))
     return false;
@@ -325,7 +335,12 @@ bool PreparedStrategy::rematerializeBackSliceRec(
   if (isa<InvokeInst>(inst))
     return false;
 
-  rematerializeCost += perf->relative_weight(inst);
+  if (!isa<LoadInst>(inst))
+    rematerializeCost += perf->relative_weight(inst);
+  else
+    // loads will be consumed, so their cost is higher that a simple load
+    rematerializeCost += 5 * perf->relative_weight(inst);
+
   if (rematerializeCost > estimatedCostOfComm)
     return false;
 
@@ -337,7 +352,8 @@ bool PreparedStrategy::rematerializeBackSliceRec(
       continue;
 
     if (!rematerializeBackSliceRec(operand, avail, perf, estimatedCostOfComm,
-                                   rematerializeCost, rematerializeInsts))
+                                   rematerializeCost, rematerializeInsts,
+                                   commLoads))
       return false;
   }
   return true;
@@ -346,7 +362,9 @@ bool PreparedStrategy::rematerializeBackSliceRec(
 bool PreparedStrategy::rematerializeBackSliceInsteadOfComm(
     Instruction *inst, ProfilePerformanceEstimator *perf,
     // Outputs
-    ISet &insts, VSet &avail, BBSet &rel) {
+    ISet &insts, VSet &avail, BBSet &rel,
+    std::unordered_set<Instruction *> &rematInsts,
+    std::unordered_set<Instruction *> &commLoads, double &cost) {
 
   // cost of communication
   // we focus on the cost of consume. Estimated to be equal to 5 regular loads
@@ -361,21 +379,37 @@ bool PreparedStrategy::rematerializeBackSliceInsteadOfComm(
       5.0 * load_type_weight * perf->relative_weight(inst) /
       ProfilePerformanceEstimator::instruction_type_weight(inst);
 
-  std::unordered_set<Instruction *> rematerializeInsts;
-  if (rematerializeBackSliceRec(inst, avail, perf, estimatedCostOfComm, 0,
-                                rematerializeInsts)) {
-    // backslice is lightweight and rematerializable.
-    for (Instruction *I : rematerializeInsts) {
-      // Rematerialize all visited insts
-      addInstToStage(insts, avail, rel, I);
-      DEBUG(errs() << "rematerialized inst, used but not available: " << *I
-                   << "\n");
-    }
+  if (rematerializeBackSliceRec(inst, avail, perf, estimatedCostOfComm, cost,
+                                rematInsts, commLoads)) {
     // rematerialized backslice
+    cost /= estimatedCostOfComm;
     return true;
   }
   // better to communicate inst rather than rematerialize backwards slice
   return false;
+}
+
+void PreparedStrategy::communicateValue(Instruction *operand,
+                                        const PipelineStrategy::Stages &stages,
+                                        unsigned stageno,
+                                        const Stage2VSet &available,
+                                        bool consumeOccursInReplicatedStage,
+                                        // Outputs
+                                        ISet &insts, VSet &avail, BBSet &rel,
+                                        ConsumeFrom &cons) {
+  DEBUG(errs() << "communicated operand, used but not available: " << *operand
+               << "\n");
+
+  // Communicate it!
+  unsigned sourceStage = 0;
+  for (sourceStage = 0; sourceStage < stageno; ++sourceStage)
+    if (available[sourceStage].count(operand))
+      break;
+  assert(sourceStage < stageno &&
+         "Operand should be available from an *earlier* stage");
+
+  addCommunication(avail, rel, cons, sourceStage, stageno, operand,
+                   consumeOccursInReplicatedStage);
 }
 
 bool PreparedStrategy::communicateOnce(const PipelineStrategy::Stages &stages,
@@ -385,48 +419,113 @@ bool PreparedStrategy::communicateOnce(const PipelineStrategy::Stages &stages,
                                        // Outputs
                                        ISet &insts, VSet &avail, BBSet &rel,
                                        ConsumeFrom &cons) {
+
+  // cannot be replicated, need to communicated
+  std::unordered_map<Instruction *, bool> mayWriteReadInsts;
+
+  // rematerializable insts ordered by cost
+  std::multimap<double, Instruction*> rematerializableInsts;
+
+  // non-rematerializable and non mem ops
+  std::unordered_map<Instruction*, bool> nonRematNonMem;
+
   // Foreach value which is used, but which is not available.
-  for(ISet::iterator i=insts.begin(), e=insts.end(); i!=e; ++i)
-  {
+  for (ISet::iterator i = insts.begin(), e = insts.end(); i != e; ++i) {
     // 'inst' is an instruction in this stage.
     Instruction *inst = *i;
-    for(User::op_iterator j=inst->op_begin(), jj=inst->op_end(); j!=jj; ++j)
-    {
+    for (User::op_iterator j = inst->op_begin(), jj = inst->op_end(); j != jj;
+         ++j) {
       // 'operand' is a value used by an instruction in this stage.
-      Instruction *operand = dyn_cast<Instruction>( &**j );
-      if( !operand || avail.count(operand) )
+      Instruction *operand = dyn_cast<Instruction>(&**j);
+      if (!operand || avail.count(operand))
         continue;
       // 'operand' is used, but not available.
 
-      // try to avoid communication with extended remateriazation.
-      // If unavailable portion of backwards slice is lightweight (less weight
-      // than an estimate of a consume) and replicable (no read/write to mem, no
-      // fun calls), then rematerialize and avoid produce/consume.
+      // if comm needed, would this consume occur in the replicated stage?
+      bool consumeOccursInReplicatedStage =
+          (stages[stageno].replicated.count(inst));
+
+      // collect insts accessing memory
+      if (operand->mayReadOrWriteMemory()) {
+        if (mayWriteReadInsts.count(operand))
+          mayWriteReadInsts[operand] |= consumeOccursInReplicatedStage;
+        else
+          mayWriteReadInsts[operand] = consumeOccursInReplicatedStage;
+        continue;
+      }
+
+      // no need to look for other cases if there is at least one memory
+      // accessing inst, just populate mayWriteReadInsts and communicate those
+      if (!mayWriteReadInsts.empty())
+        continue;
+
+      // try to avoid communication with extended remateriazation (and cheaper
+      // comm). If unavailable portion of backwards slice is lightweight (less
+      // weight than an estimate of a consume with operands BB count) and
+      // replicable (no write to mem, no fun calls), then rematerialize and
+      // avoid expensive produce/consume.
+      double cost = 0;
+      std::unordered_set<Instruction *> rematInsts;
+      std::unordered_set<Instruction *> commLoads;
       if (stages[stageno].type == PipelineStage::Sequential &&
-          rematerializeBackSliceInsteadOfComm(operand, perf, insts, avail, rel))
-        return true;
+          rematerializeBackSliceInsteadOfComm(operand, perf, insts, avail, rel,
+                                              rematInsts, commLoads, cost)) {
+        rematerializableInsts.insert(
+            std::pair<double, Instruction *>(cost, operand));
+        continue;
+      }
 
-      DEBUG(errs() << "communicated operand, used but not available: "
-                   << *operand << "\n");
-
-      // Communicate it!
-      unsigned sourceStage=0;
-      for(sourceStage=0; sourceStage<stageno; ++sourceStage)
-        if( available[sourceStage].count(operand) )
-          break;
-      assert( sourceStage < stageno
-      && "Operand should be available from an *earlier* stage");
-
-      // Does this consume occur in the replicated stage?
-      bool consumeOccursInReplicatedStage = ( stages[stageno].replicated.count(inst) );
-
-      addCommunication(avail,rel,cons, sourceStage, stageno, operand, consumeOccursInReplicatedStage);
-      return true;
+      // non-rematerializable and non mem ops
+      if (nonRematNonMem.count(operand))
+        nonRematNonMem[operand] |= consumeOccursInReplicatedStage;
+      else
+        nonRematNonMem[operand] = consumeOccursInReplicatedStage;
     }
   }
+
+  for (auto memI : mayWriteReadInsts) {
+    communicateValue(memI.first, stages, stageno, available, memI.second, insts,
+                     avail, rel, cons);
+  }
+  if (!mayWriteReadInsts.empty())
+    return true;
+
+  if (!rematerializableInsts.empty()) {
+    // pick cheapest to rematerialzie
+    Instruction *inst = (*rematerializableInsts.begin()).second;
+
+    // recompute the rematInsts and commLoads
+    double cost = 0;
+    std::unordered_set<Instruction *> rematInsts;
+    std::unordered_set<Instruction *> commLoads;
+    rematerializeBackSliceInsteadOfComm(inst, perf, insts, avail, rel,
+                                        rematInsts, commLoads, cost);
+
+    for (Instruction *I : rematInsts) {
+      addInstToStage(insts, avail, rel, I);
+      DEBUG(errs() << "rematerialized inst, used but not available: " << *I
+                   << "\n");
+    }
+
+    for (Instruction *loadI : commLoads) {
+      // this rematerialization is only allowed for now for sequential stages
+      communicateValue(loadI, stages, stageno, available, false, insts, avail,
+                       rel, cons);
+    }
+
+    return true;
+  }
+
+  if (!nonRematNonMem.empty()) {
+    // pick a random one from the rest to communicate
+    auto pairI = *nonRematNonMem.begin();
+    communicateValue(pairI.first, stages, stageno, available, pairI.second,
+                     insts, avail, rel, cons);
+    return true;
+  }
+
   return false;
 }
-
 }
 }
 
