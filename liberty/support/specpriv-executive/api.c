@@ -786,6 +786,11 @@ void __specpriv_set_loopID( int n )
   globalLoopID = n;
 }
 
+int __specpriv_get_loopID( void )
+{
+  return globalLoopID;
+}
+
 // Called by a worker at the end of an iteration.
 // A worker should call this during ALL iterations,
 // even during those it does not execute.

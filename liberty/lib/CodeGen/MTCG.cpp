@@ -1365,8 +1365,10 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   Constant *ckptcheck = api.getCkptCheck();
   Constant *get_locals = api.getNumLocals();
   Constant *add_locals = api.getAddNumLocals();
+  Constant *get_loopid = api.getGetLoopID();
   Constant *prod = api.getProduce();
   Constant *cons = api.getConsume();
+  std::vector<Value*> args;
 
   // Call begin iter at top of loop
   CallInst::Create( api.getBeginIter(), "", &*( header->getFirstInsertionPt() ) );
@@ -1438,17 +1440,28 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       // if no locals then don't add produce/consume calls
       if ( !heaps.getLocalAUs().empty() )
       {
+        DEBUG( errs() << "Adding produces for local AUs" );
         // add consumes if not first stage
         if ( stage.stageno != 0 )
         {
           // XXX need to get correct queue somehow
-          /* Instruction *prev_locals = CallInst::Create( cons, stage2queue[], "", split ); */
-          /* CallInst::Create( add_locals, "", split); */
-          /* Instruction *num_locals = CallInst::Create( get_locals ); */
+          Instruction *loop_id = CallInst::Create( get_loopid, "", split );
+          args.clear();
+          args.push_back(stage2queue[stage.stageno]);
+          Instruction *prev_locals =
+              CallInst::Create(cons, ArrayRef<Value *>(args), "", split);
+          CallInst::Create( add_locals, ArrayRef<Value *>(prev_locals), "", split );
+          Instruction *num_locals = CallInst::Create( get_locals );
         }
         // add produces if not last stage
         if ( stage.stageno != num_stages-1 )
         {
+          Instruction *num_locals = CallInst::Create( get_locals );
+          args.clear();
+          args.push_back(stage2queue[stage.stageno]); // probably incorrect
+          args.push_back(num_locals);
+          Instruction *prev_locals =
+              CallInst::Create(prod, ArrayRef<Value *>(args), "", split);
         }
       }
 
