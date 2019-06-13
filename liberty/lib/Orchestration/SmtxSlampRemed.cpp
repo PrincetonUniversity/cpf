@@ -33,6 +33,11 @@ static cl::opt<unsigned>
     Threshhold("smtx-slamp-threshhold2", cl::init(0), cl::NotHidden,
                cl::desc("Maximum number of observed flows to report NoModRef"));
 
+static cl::opt<bool>
+    Disabled("smtx-slamp-disable", cl::init(false), cl::NotHidden,
+               cl::desc("Disable Slamp for Remediator"));
+
+
 static bool isMemIntrinsic(const Instruction *inst) {
   return isa<MemIntrinsic>(inst);
 }
@@ -98,10 +103,15 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
   Remediator::RemedResp remedResp;
   // conservative answer
   remedResp.depRes = DepResult::Dep;
+
   std::shared_ptr<SmtxSlampRemedy> remedy =
       std::shared_ptr<SmtxSlampRemedy>(new SmtxSlampRemedy());
   remedy->cost = DEFAULT_SLAMP_REMED_COST;
-
+  
+  if (Disabled){
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
   slamp::SLAMPLoadProfile &slamp = smtxMan->getSlampResult();
 
   // Slamp profile data is loop sensitive.
@@ -204,7 +214,6 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       // slamp.dumpValuePredictionForEdge(L->getHeader(), B, A, true);
     }
   }
-
   // sot: avoid intra-iter memory speculation with slamp. Presence of speculated
   // II complicates validation process, and potentially forces high false
   // positive rate of misspecs or extensive and regular checkpoints. Benefits
