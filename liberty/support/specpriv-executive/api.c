@@ -82,10 +82,6 @@ static pid_t workerPids[ MAX_WORKERS ];
 
 static int (*pipefds)[2];
 
-// pipes for sending/receiving AU values from stages
-// might use pipefds later if it's not too hard to get the timing right
-static int (*AU_pipefds)[2];
-
 // loop ID for current invocation
 static int globalLoopID;
 
@@ -329,10 +325,6 @@ void __spawn_workers_begin(void) {
       // close write ends of pipes of prior children and current wid
       for(unsigned j=0; j<=wid; ++j) {
         close(pipefds[j][1]);
-
-        // don't close this pipe because we might be sending to next stage
-        if ( j != wid )
-          close(AU_pipefds[j][1]);
       }
 
       __specpriv_worker_setup(wid);
@@ -341,11 +333,6 @@ void __spawn_workers_begin(void) {
 
     // close read side of wid's pipe
     close(pipefds[wid][0]);
-    close( AU_pipefds[wid][0] );
-
-    // close all the AU write pipes except those to 2nd stage
-    if ( wid != 0 )
-      close( AU_pipefds[wid][1] );
 
     #if JOIN == WAITPID
     workerPids[ wid ] = pid;
