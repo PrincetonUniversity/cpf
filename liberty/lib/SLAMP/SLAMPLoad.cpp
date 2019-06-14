@@ -246,7 +246,9 @@ uint64_t SLAMPLoadProfile::numObsInterIterDep(BasicBlock* header, const Instruct
   uint32_t  dstid = sid->getID(dst);
 
   DepEdge edge(srcid, dstid, 1);
-  return (this->edges)[loopid][edge];
+  // ZY: count == 0 stands for there is one dep
+  if ((this->edges)[loopid].count(edge))
+    return (this->edges)[loopid][edge] + 1;
 }
 
 uint64_t SLAMPLoadProfile::numObsIntraIterDep(BasicBlock* header, const Instruction* dst, const Instruction* src)
@@ -256,7 +258,11 @@ uint64_t SLAMPLoadProfile::numObsIntraIterDep(BasicBlock* header, const Instruct
   uint32_t  dstid = sid->getID(dst);
 
   DepEdge edge(srcid, dstid, 0);
-  return (this->edges)[loopid][edge];
+
+  // ZY: count == 1 stands for there is one dep
+  if ((this->edges)[loopid].count(edge))
+    return (this->edges)[loopid][edge] + 1;
+  return 0;
 }
 
 bool SLAMPLoadProfile::isPredictableInterIterDep(BasicBlock* header, const Instruction* dst, const Instruction* src)
