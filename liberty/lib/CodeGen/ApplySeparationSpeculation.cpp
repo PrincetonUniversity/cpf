@@ -410,6 +410,12 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
       if( !isPrivate(loop,ptr) )
         continue;
 
+      const GlobalVariable *gv = dyn_cast<GlobalVariable>(ptr);
+      if (gv && gv->hasExternalLinkage()) {
+        // do not instrument externally defined objects such as stdout or stderr
+        continue;
+      }
+
       DEBUG(errs() << "Instrumenting private load: " << *load << '\n');
 
       //DataLayout &td = getAnalysis< DataLayout >();
@@ -428,6 +434,12 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
 
       if( !isPrivate(loop,ptr) )
         continue;
+
+      const GlobalVariable *gv = dyn_cast<GlobalVariable>(ptr);
+      if (gv && gv->hasExternalLinkage()) {
+        // do not instrument externally defined objects such as stdout or stderr
+        continue;
+      }
 
       DEBUG(errs() << "Instrumenting private store: " << *store << '\n');
 
@@ -670,6 +682,12 @@ bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const He
     const GlobalVariable *cgv = dyn_cast< GlobalVariable >( au->value );
     assert( cgv );
     GlobalVariable *gv = const_cast< GlobalVariable* >( cgv );
+
+    //if (gv->isExternallyInitialized()) {
+    if (gv->hasExternalLinkage()) {
+      // do not realllocate externally defined objects such as stdout or stderr
+      continue;
+    }
 
     DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
@@ -1211,6 +1229,13 @@ bool ApplySeparationSpec::addUOChecks(const HeapAssignment &asgn, Loop *loop, Ba
   for(UO::iterator i=objectsToInstrument.begin(), e=objectsToInstrument.end(); i!=e; ++i)
   {
     const Value *obj = *i;
+
+    const GlobalVariable *cgv = dyn_cast< GlobalVariable >( obj );
+    if (cgv && cgv->hasExternalLinkage()) {
+      // do not check externally defined objects such as stdout or stderr
+      continue;
+    }
+
     if( alreadyInstrumented.count(obj) )
       continue;
     alreadyInstrumented.insert(obj);

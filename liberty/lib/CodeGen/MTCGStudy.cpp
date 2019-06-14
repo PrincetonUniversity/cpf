@@ -324,10 +324,8 @@ bool PreparedStrategy::rematerializeBackSliceRec(
   else
     commLoads.insert(inst);
 
-  if (inst->mayReadOrWriteMemory() && !isa<LoadInst>(inst)) {
-    errs() << "mayReadOrWriteMemory blocking remat: " << *inst<< "\n";
+  if (inst->mayReadOrWriteMemory() && !isa<LoadInst>(inst))
     return false;
-  }
 
   if (isa<CallInst>(inst))
     return false;
