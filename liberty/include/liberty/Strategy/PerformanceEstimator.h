@@ -58,9 +58,9 @@ struct PerformanceEstimator
   }
 
   // Estimate the weight of a loop
-  unsigned long estimate_loop_weight(const Loop *loop)
+  double estimate_loop_weight(const Loop *loop)
   {
-    unsigned long sum = 0;
+    double sum = 0;
     for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
     {
       const BasicBlock *bb = *i;
