@@ -7,6 +7,7 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Support/CommandLine.h"
@@ -48,8 +49,8 @@ namespace liberty
   //  (1) A null pointer.
   //  (2) A newly allocated object from an AllocaInst.
   //  (3) A newly allocated object from malloc(), calloc() or realloc().
-  static bool isAlloc(const Value *v, const DataLayout &td)
-  {
+  static bool isAlloc(const Value *v, const DataLayout &td,
+                      const TargetLibraryInfo &tli) {
     if(isa<UndefValue>(v))
       return true;
 
@@ -74,14 +75,14 @@ namespace liberty
       return false;
 
     // Check for malloc, calloc, realloc, new, et al.
-    if(F->returnDoesNotAlias())
+    if(F->returnDoesNotAlias() || isNoAliasFn(v, &tli))
       return true;
 
     return false;
   }
 
-  static bool isNewObject(Value *v, Value *container, const DataLayout &td)
-  {
+  static bool isNewObject(Value *v, Value *container, const DataLayout &td,
+                          const TargetLibraryInfo &tli) {
     UO values;
     GetUnderlyingObjects(v, values, td);
 
@@ -102,7 +103,7 @@ namespace liberty
         return false;
       }
 
-      if(!isAlloc(*object, td))
+      if(!isAlloc(*object, td, tli))
       {
         DEBUG(errs() << "\tNot a new object (notAlloc): " << *v << '\n');
         return false;
@@ -112,7 +113,8 @@ namespace liberty
     return true;
   }
 
-  static bool isAcyclic(Function *f, Val2Bool &valuesAcyclic);
+  static bool isAcyclic(Function *f, Val2Bool &valuesAcyclic,
+                        const TargetLibraryInfo &tli);
 
   // Determine if the value computes an acyclic structure.
   // In particular, this means either
@@ -120,8 +122,8 @@ namespace liberty
   //  (1) It was returned from a function that only returns acyclic structures
   //  (2) It is a PHI, select, or cast of any of these.
   //  (3) It is a new object.
-  static bool isAcyclic(Value *tl, Val2Bool &valuesAcyclic, const DataLayout &td)
-  {
+  static bool isAcyclic(Value *tl, Val2Bool &valuesAcyclic,
+                        const DataLayout &td, const TargetLibraryInfo &tli) {
     // break recursions
     if( valuesAcyclic.count(tl) )
       return valuesAcyclic[tl];
@@ -147,7 +149,7 @@ namespace liberty
         return false;
       }
 
-      if( ! isAcyclic(gep->getPointerOperand(), valuesAcyclic, td) )
+      if( ! isAcyclic(gep->getPointerOperand(), valuesAcyclic, td, tli) )
       {
         DEBUG(errs() << "\t             via: " << *tl << '\n');
         valuesAcyclic[tl] = false;
@@ -163,7 +165,7 @@ namespace liberty
     {
       Function *f = cs.getCalledFunction();
 
-      if( isAcyclic(f, valuesAcyclic) )
+      if( isAcyclic(f, valuesAcyclic, tli) )
       {
         valuesAcyclic[tl] = true;
         return true;
@@ -174,7 +176,7 @@ namespace liberty
     if( phi )
     {
       for(unsigned i=0; i<phi->getNumIncomingValues(); ++i)
-        if( ! isAcyclic( phi->getIncomingValue(i), valuesAcyclic, td) )
+        if( ! isAcyclic( phi->getIncomingValue(i), valuesAcyclic, td, tli) )
         {
           DEBUG(errs() << "\t             via: " << *tl << '\n');
           valuesAcyclic[tl] = false;
@@ -188,8 +190,8 @@ namespace liberty
     SelectInst *select = dyn_cast<SelectInst>(tl);
     if( select )
     {
-      if( isAcyclic( select->getTrueValue(), valuesAcyclic, td)
-       && isAcyclic( select->getFalseValue(), valuesAcyclic, td) )
+      if( isAcyclic( select->getTrueValue(), valuesAcyclic, td, tli)
+       && isAcyclic( select->getFalseValue(), valuesAcyclic, td, tli) )
       {
         valuesAcyclic[tl] = true;
         return true;
@@ -203,7 +205,7 @@ namespace liberty
     CastInst *cast = dyn_cast<CastInst>(tl);
     if( cast )
     {
-      if( isAcyclic( cast->getOperand(0), valuesAcyclic, td ) )
+      if( isAcyclic( cast->getOperand(0), valuesAcyclic, td, tli ) )
       {
         valuesAcyclic[tl] = true;
         return true;
@@ -214,7 +216,7 @@ namespace liberty
       return false;
     }
 
-    if( !isNewObject(tl, 0, td) )
+    if( !isNewObject(tl, 0, td, tli) )
     {
       DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
       valuesAcyclic[tl] = false;
@@ -225,8 +227,8 @@ namespace liberty
     return true;
   }
 
-  static bool isAcyclic(Function *f, Val2Bool &valuesAcyclic)
-  {
+  static bool isAcyclic(Function *f, Val2Bool &valuesAcyclic,
+                        const TargetLibraryInfo &tli) {
     if( f->isDeclaration() )
     {
       DEBUG(errs() << "\tNot acyclic tail: <external function>\n");
@@ -256,7 +258,7 @@ namespace liberty
       if( !ret )
         continue;
 
-      if( !isAcyclic(ret->getReturnValue(), valuesAcyclic, td) )
+      if( !isAcyclic(ret->getReturnValue(), valuesAcyclic, td, tli) )
       {
         DEBUG(errs() << "\t             via: " << *ret << '\n');
         // save our final result.
@@ -270,8 +272,8 @@ namespace liberty
     return true;
   }
 
-  static bool proveAcyclic(Type *ty, Function &fcn, const DataLayout &td)
-  {
+  static bool proveAcyclic(Type *ty, Function &fcn, const DataLayout &td,
+                           const TargetLibraryInfo &tli) {
     Val2Bool    functionsReturningNew;
     Val2Bool    valuesAcyclic;
 
@@ -306,7 +308,7 @@ namespace liberty
           << "' Found a mutation " << *store << ".\n");
 
       // The head or the tail must be a single, new object
-      if( isNewObject(hd, tl, td) || isNewObject(tl, hd, td) )
+      if( isNewObject(hd, tl, td, tli) || isNewObject(tl, hd, td, tli) )
       {
         DEBUG(errs() << "\t\tHead " << *hd << " is new.\n");
 
@@ -341,7 +343,7 @@ namespace liberty
   // attempt to prove that every store to the
   // recursive field of objects of this type
   // is a new object.
-  static bool proveAcyclic(Type *ty, Module &mod)
+  static bool proveAcyclic(Type *ty, Module &mod, const TargetLibraryInfo &tli)
   {
     // Here, ty is something like "BSTNode *"
     // We are looking for a store of a "BSTNode *" into a "BSTNode **"
@@ -352,7 +354,7 @@ namespace liberty
     for(FI i=mod.begin(), e=mod.end(); i!=e; ++i)
     {
       Function &fcn = *i;
-      if( !proveAcyclic(ty, fcn, td) )
+      if( !proveAcyclic(ty, fcn, td, tli) )
         return false;
     }
     return true;
@@ -628,6 +630,9 @@ namespace liberty
     InitializeLoopAA(this, DL);
     currentModule = &mod;
 
+    const TargetLibraryInfo &tli =
+        getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
     // First, find all recursive types
     Types recTys;
     accumulateRecursiveTypes(recTys);
@@ -643,7 +648,7 @@ namespace liberty
         errs() << '\n';
       );
 
-      if( proveAcyclic(ty, mod) )
+      if( proveAcyclic(ty, mod, tli) )
         acyclic.insert(ty);
     }
 

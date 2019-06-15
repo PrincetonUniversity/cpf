@@ -17,6 +17,7 @@ using namespace llvm;
 /// captured, stored in data structures, etc.
 class LoopVariantAllocation : public llvm::ModulePass, public liberty::ClassicLoopAA {
   const DataLayout *DL;
+  const TargetLibraryInfo *tli;
 public:
   static char ID;
 
