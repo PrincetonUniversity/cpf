@@ -6,6 +6,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/ADT/DenseSet.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include "liberty/Analysis/ClassicLoopAA.h"
 
