@@ -121,15 +121,20 @@ make -jX
             *   Loads from or stores to such objects cannot depend on memory accesses in other iterations. 
             *   Extra validation on top of separation speculation validation: object lifetime speculation must validate that short-lived objects never outlive their iteration. Thread-local checks.
 
-11. Memory Flow Speculation (SmtxSlampRemed)
+11. Memory Flow Speculation (SmtxSlampRemed & SmtxLampRemed)
     *   Assumes the absence of flow dependences between memory operations when not manifested during profiling.
     *   Provides as much or more an enabling effect than many other types of speculation.
     *   Expensive validation. Requires communication among concurrent threads.
 
-12. Speculative Loop Fission (LoopFissionRemed)
+12. Speculative AA stack (MemSpecAARemed)
+    *   Allows collaboration among memory flow speculation, control speculation, value prediction, speculative points-to analysis and static analysis.
+    *   Demonstrates the power of collaboration among remediators, and between speculation techniques and static analysis.
+    *   Provides at least as much coverage as all the remediators addressing mem deps combined (only excludes SLAMP mem spec and localityaa).
+
+13. Speculative Loop Fission (LoopFissionRemed)
     *   Same as Conservative Loop Fission apart from the fact that it requires usage of speculative remediators to achieve separation
 
-13. Pointer-Residue Speculation (Not added)
+14. Pointer-Residue Speculation (Not added)
     *   Never part of a paper. Published in Nick Johnson's thesis
     *   Separation speculation disambiguates references to different objects, but does not disambiguate references within the same object. Pointer-residue speculation works at the sub-object level.
     *   It disambiguates different fields within an object and in some cases recognizes different regular strides across an array.
