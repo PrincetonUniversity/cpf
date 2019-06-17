@@ -215,6 +215,14 @@ void fini_logger(const char* filename)
 
 void log(TS ts, const uint32_t dst_inst, TS* pts, const uint32_t bare_inst, uint64_t addr, uint64_t value, uint8_t size)
 {
+  // ZY: check invocation counter, if not the same, just return
+  if (ts){
+    uint64_t src_invoc = GET_INVOC(ts);
+    if (src_invoc != __slamp_invocation)
+      return;
+  }
+
+
   // check if constant
 
   KEY constkey(0, dst_inst, bare_inst, 0);
