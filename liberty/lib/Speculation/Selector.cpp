@@ -15,6 +15,7 @@
 #include "llvm/Support/DOTGraphTraits.h"
 
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
@@ -87,6 +88,7 @@ void Selector::analysisUsage(AnalysisUsage &au)
   au.addRequired< PDGBuilder >();
   au.addRequired< ModuleLoops >();
   au.addRequired< LoopProfLoad >();
+  au.addRequired< LAMPLoadProfile >();
   au.addRequired< Targets >();
   au.addRequired< ProfilePerformanceEstimator >();
   au.setPreservesAll();
@@ -157,6 +159,7 @@ unsigned Selector::computeWeights(
       proxy.getAnalysis<SmtxSlampSpeculationManager>();
   SmtxSpeculationManager &smtxLampMan =
       proxy.getAnalysis<SmtxSpeculationManager>();
+  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
   const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
   Classify &classify = proxy.getAnalysis<Classify>();
   LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
@@ -219,9 +222,9 @@ unsigned Selector::computeWeights(
       Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred, mloops,
-          smtxMan, smtxLampMan, rd, asgn, proxy, loopAA, lpl, ps, sr, sc,
-          NumThreads, pipelineOption_ignoreAntiOutput(),
+          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred,
+          mloops, smtxMan, smtxLampMan, lamp, rd, asgn, proxy, loopAA, lpl, ps,
+          sr, sc, NumThreads, pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());

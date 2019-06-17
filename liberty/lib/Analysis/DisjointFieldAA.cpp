@@ -7,6 +7,7 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/InstIterator.h"
 
@@ -30,6 +31,7 @@ class DisjointFieldsAA : public ModulePass, public liberty::ClassicLoopAA {
   DenseSet<StructType *> jointTypes;
 
   const DataLayout *DL;
+  const TargetLibraryInfo *tli;
 
 public:
   static char ID;
@@ -38,6 +40,8 @@ public:
   bool runOnModule(Module &M) {
     DL = &M.getDataLayout();
     InitializeLoopAA(this, *DL);
+
+    tli = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
     TAA = &getAnalysis<liberty::TypeSanityAnalysis>();
 
@@ -178,13 +182,13 @@ public:
 
     StructType *structType = structs[0];
 
-    if(isJoint(gep, structType))
+    if(isJoint(gep, structType, *tli))
       jointTypes.insert(structType);
 
   }
 
-  static bool isJoint(const GetElementPtrInst *gep,
-                      StructType *structType) {
+  static bool isJoint(const GetElementPtrInst *gep, StructType *structType,
+                      const TargetLibraryInfo &tli) {
 
     // If we cannot find all the defs of the pointer, mark the structure joint.
     StoreSet defs;
@@ -197,7 +201,7 @@ public:
 
       // Make sure the stored pointer is from a NoAlias source.
       const Value *src =
-        liberty::findNoAliasSource((*def)->getValueOperand());
+        liberty::findNoAliasSource((*def)->getValueOperand(), tli);
       if(!src) return true;
 
       // If all the captures for the source are not known, mark the type joint.

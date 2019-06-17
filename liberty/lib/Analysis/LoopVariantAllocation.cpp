@@ -4,6 +4,7 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
@@ -22,6 +23,7 @@ LoopVariantAllocation::LoopVariantAllocation() : ModulePass(ID) {
 }
 
 bool LoopVariantAllocation::runOnModule(Module &M) {
+  tli = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   DL = &M.getDataLayout();
   InitializeLoopAA(this, *DL);
   return false;
@@ -43,19 +45,23 @@ LoopAA::ModRefResult LoopVariantAllocation::getModRefInfo(llvm::CallSite CS,
   return ModRef;
 }
 
-static bool isNoaliasWithinLoop(const Value *src, const Loop *L)
-{
+static bool isNoaliasWithinLoop(const Value *src, const Loop *L,
+                                const TargetLibraryInfo &tli) {
   if( const AllocaInst *alloca = dyn_cast< AllocaInst >(src) )
     if( L->contains(alloca) )
       return true;
 
   CallSite cs = getCallSite(src);
   if( cs.getInstruction() )
-    if( L->contains( cs.getInstruction() ) )
-      if( cs.getCalledFunction() )
-        if( cs.getCalledFunction()->getAttributes().
-              hasAttribute(0, Attribute::NoAlias) )
+    if (L->contains(cs.getInstruction())) {
+      if (cs.getCalledFunction())
+        if (cs.getCalledFunction()->getAttributes().hasAttribute(
+                0, Attribute::NoAlias))
           return true;
+
+      if (isNoAliasFn(src, &tli))
+        return true;
+    }
 
   return false;
 }
@@ -76,8 +82,8 @@ LoopAA::AliasResult LoopVariantAllocation::aliasCheck(
 
   DEBUG(errs() << "LoopVariantAllocation(" << *src1 << ", " << *src2 << ")\n");
 
-  if( isNoaliasWithinLoop(src1,L) && isNoaliasWithinLoop(src2,L) )
-  {
+  if (isNoaliasWithinLoop(src1, L, *tli) &&
+      isNoaliasWithinLoop(src2, L, *tli)) {
     DEBUG(errs() << "Yes.\n");
     return NoAlias;
   }
