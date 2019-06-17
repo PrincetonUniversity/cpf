@@ -3,6 +3,8 @@
 
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/DataLayout.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 
 namespace liberty {
   const llvm::Value *findSource(const llvm::BinaryOperator *binop);
@@ -11,8 +13,10 @@ namespace liberty {
   const llvm::Value *findSource(const llvm::Value *v);
   const llvm::Value *findActualArgumentSource(const llvm::Value *v);
   const llvm::Argument *findArgumentSource(const llvm::Value *v);
-  const llvm::Instruction *findNoAliasSource(const llvm::StoreInst *store);
-  const llvm::Instruction *findNoAliasSource(const llvm::Value *v);
+  const llvm::Instruction *findNoAliasSource(const llvm::StoreInst *store,
+                                             const llvm::TargetLibraryInfo &tli);
+  const llvm::Instruction *findNoAliasSource(const llvm::Value *v,
+                                             const llvm::TargetLibraryInfo &tli);
   const llvm::AllocaInst *findAllocaSource(const llvm::Value *v);
   const llvm::Value *findOffsetSource(const llvm::Value *v);
   const llvm::Argument *findLoadedNoCaptureArgument(const llvm::Value *v,

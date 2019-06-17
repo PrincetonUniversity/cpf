@@ -3,23 +3,22 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Analysis/CallsiteSearch.h"
 #include "liberty/Analysis/CallsiteDepthCombinator.h"
-#include "liberty/Analysis/KillFlow.h"
+#include "liberty/Analysis/CallsiteSearch.h"
 #include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/Speculation/Read.h"
+#include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
-#include "liberty/Speculation/Classify.h"
-#include "liberty/Speculation/PointsToAA.h"
+#include "liberty/Speculation/Read.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/Timer.h"
 #include "liberty/Utilities/StableHash.h"
-
+#include "liberty/Utilities/Timer.h"
 
 #include <set>
 
