@@ -106,10 +106,10 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   // commutative libs remediator
   remeds.push_back(std::make_unique<CommutativeLibsRemediator>());
 
-  // mem speculation combining lamp, ctrl spec, value prediction, locality
-  // (privateer) and static analysis
-  remeds.push_back(std::make_unique<MemSpecAARemediator>(proxy, ctrlspec, &lamp,
-                                                         rd, loadedValuePred));
+  // mem speculation combining lamp, ctrl spec, value prediction, points-to
+  // spec, separation logic spec, and static analysis
+  remeds.push_back(std::make_unique<MemSpecAARemediator>(
+      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred));
 
   return remeds;
 }

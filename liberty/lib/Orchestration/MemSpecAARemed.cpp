@@ -45,6 +45,11 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   pointstoaa = new PointsToAA(spresults);
   pointstoaa->InitializeLoopAA(&proxy, DL);
 
+  // Separation Spec
+  const Ctx *ctx = spresults.getCtx(loop);
+  localityaa = new LocalityAA(spresults, asgn, ctx);
+  localityaa->InitializeLoopAA(&proxy, DL);
+
   // Value prediction
   predaa = new PredictionAA(predspec);
   predaa->InitializeLoopAA(&proxy, DL);
@@ -55,6 +60,7 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   delete edgeaa;
   delete lampaa;
   delete pointstoaa;
+  delete localityaa;
   delete predaa;
 
   return remedies;

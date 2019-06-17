@@ -10,6 +10,7 @@
 #include "liberty/Analysis/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
@@ -31,9 +32,10 @@ public:
 class MemSpecAARemediator : public Remediator {
 public:
   MemSpecAARemediator(Pass &p, ControlSpeculation *cs, LAMPLoadProfile *lp,
-                      const Read &read, PredictionSpeculation *ps)
+                      const Read &read, const HeapAssignment &c,
+                      PredictionSpeculation *ps)
       : Remediator(), proxy(p), ctrlspec(cs), lamp(lp), spresults(read),
-        predspec(ps) {}
+        asgn(c), predspec(ps) {}
 
   StringRef getRemediatorName() const { return "mem-spec-aa-remediator"; }
 
@@ -50,6 +52,8 @@ private:
   LampOracle *lampaa;
   const Read &spresults;
   PointsToAA *pointstoaa;
+  const HeapAssignment &asgn;
+  LocalityAA *localityaa;
   PredictionSpeculation *predspec;
   PredictionAA *predaa;
 };
