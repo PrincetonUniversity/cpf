@@ -1366,6 +1366,9 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
   // pipeline)
   characterizeStages(ps, &firstStage, &parallelStage, &lastSeqStage);
 
+  if (!parallelStage)
+    return;
+
   // Foreach parallel stage
   // if there is a loop-carried reg dep from a seq stage to parallel stage, then
   // the destination of this dep needs to be moved to the sequential stage. The
