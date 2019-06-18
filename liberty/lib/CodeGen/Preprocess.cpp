@@ -413,6 +413,11 @@ void Preprocess::init(ModuleLoops &mloops)
         if (!separationSpecUsed.count(header))
           separationSpecUsed.insert(header);
         specUsedFlag = true;
+
+        LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
+        if (localityRemed->privateLoad)
+          selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
+
       } else if (remed->getRemedyName().equals("smtx-slamp-remed") ||
                  remed->getRemedyName().equals("smtx-lamp-remed") ||
                  remed->getRemedyName().equals("loaded-value-pred-remed")) {

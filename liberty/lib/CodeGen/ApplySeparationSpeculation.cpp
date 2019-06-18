@@ -89,7 +89,7 @@ bool ApplySeparationSpec::runOnModule(Module &module)
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
   Preprocess &preprocess = getAnalysis< Preprocess >();
 
-  init(mloops);
+  init(mloops, preprocess);
 
   if( loops.empty() )
     return false;
@@ -136,7 +136,7 @@ bool ApplySeparationSpec::runOnModule(Module &module)
 }
 
 
-void ApplySeparationSpec::init(ModuleLoops &mloops)
+void ApplySeparationSpec::init(ModuleLoops &mloops, Preprocess &preprocess)
 {
   LLVMContext &ctx = mod->getContext();
 
@@ -149,6 +149,8 @@ void ApplySeparationSpec::init(ModuleLoops &mloops)
 
   std::vector<Type *> formals;
   fv2v = FunctionType::get(voidty, formals, false);
+
+  selectedPrivateSpecLoads = preprocess.getSelectedPrivateSpecLoads();
 
   const HeapAssignment &asgn = getHeapAssignment();
 
@@ -291,6 +293,12 @@ bool ApplySeparationSpec::isRedux(Loop *loop, Value *ptr)
   return selectHeap(ptr,loop) == HeapAssignment::Redux;
 }
 
+bool ApplySeparationSpec::isSelectedPrivateSpecLoad(Loop *loop,
+                                                    LoadInst *load) {
+  const BasicBlock *loopHeader = loop->getHeader();
+  return selectedPrivateSpecLoads.count(loopHeader) &&
+         selectedPrivateSpecLoads[loopHeader].count(load);
+}
 
 void ApplySeparationSpec::insertPrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
 {
@@ -411,6 +419,10 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
 
       if( !isPrivate(loop,ptr) )
         continue;
+
+      if (!isSelectedPrivateSpecLoad(loop, load)) {
+        continue;
+      }
 
       const GlobalVariable *gv = dyn_cast<GlobalVariable>(ptr);
       if (gv && gv->hasExternalLinkage()) {
