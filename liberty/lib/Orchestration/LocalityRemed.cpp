@@ -346,6 +346,10 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedy->type = LocalityRemedy::Private;
       remedResp.remedy = remedy;
       privateInsts.insert(A);
+      if (isa<LoadInst>(A))
+        remedy->privateLoad = dyn_cast<LoadInst>(A);
+      else if (t2 == HeapAssignment::Private && isa<LoadInst>(B))
+        remedy->privateLoad = dyn_cast<LoadInst>(B);
       return remedResp;
     } else if (t2 == HeapAssignment::Private) {
       if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
@@ -358,6 +362,10 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedy->type = LocalityRemedy::Private;
       remedResp.remedy = remedy;
       privateInsts.insert(B);
+      if (isa<LoadInst>(B))
+        remedy->privateLoad = dyn_cast<LoadInst>(B);
+      else if (t1 == HeapAssignment::Private && isa<LoadInst>(A))
+        remedy->privateLoad = dyn_cast<LoadInst>(A);
       return remedResp;
     }
   }

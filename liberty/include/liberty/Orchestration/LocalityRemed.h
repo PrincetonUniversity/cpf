@@ -41,6 +41,7 @@ public:
   // remedies maybe need to also record all the AUs assumed to be part of a
   // family. Heap assignment might be adjusted based on the selected remedies.
   Instruction *privateI;
+  const LoadInst *privateLoad;
   StoreInst *reduxS;
   //const Instruction *localI;
 
