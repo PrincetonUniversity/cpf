@@ -399,6 +399,7 @@ void Preprocess::init(ModuleLoops &mloops)
 
     bool specUsedFlag = false;
     bool memVerUsed = false;
+    bool privUsed = false;
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
         ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
@@ -446,11 +447,13 @@ void Preprocess::init(ModuleLoops &mloops)
         indVarPhi = indVarRemed->ivPHI;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
         memVerUsed = true;
+      } else if (remed->getRemedyName().equals("priv-remedy")) {
+        privUsed = true;
       }
     }
     if (specUsedFlag)
       specUsed.insert(header);
-    if (memVerUsed || specUsedFlag)
+    if (memVerUsed || privUsed || specUsedFlag)
       checkpointNeeded.insert(header);
   }
 }
