@@ -244,10 +244,12 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
   formals.insert( formals.end(),
     old_fty->param_begin(), old_fty->param_end() );
 
+  /*
   DEBUG(errs() << "formals.size: " << formals.size() << "\n";
         for (auto f
              : formals) errs()
         << "formal: " << *f << "\n";);
+  */
 
   FunctionType *new_fty = FunctionType::get(u32, formals, false);
   // errs() << "Fty: " << *new_fty << '\n';
