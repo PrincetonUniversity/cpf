@@ -232,15 +232,8 @@ static void non_mergeable(unsigned scc1, unsigned scc2,
   nmweights[Edge(left, right)] = Infinity;
 }
 
-bool isLightweightReplicable(Instruction *inst) {
-  if (inst->mayReadFromMemory())
-    return false;
+bool isReplicable(Instruction *inst) {
   if (inst->mayWriteToMemory())
-    return false;
-
-  if (isa<CallInst>(inst))
-    return false;
-  if (isa<InvokeInst>(inst))
     return false;
 
   return true;
@@ -1318,7 +1311,7 @@ void PSDSWPCritic::convertRepLightFirstSeqToRepPrefix(
     PipelineStrategy &ps, PipelineStage *firstStage,
     PipelineStage *parallelStage) {
 
-  bool allLightweightReplicable = true;
+  bool allReplicable = true;
   bool smallWeight = true;
   EdgeWeight seqStageWeight = 0;
   EdgeWeight seqStagePercThreshold = 2;
@@ -1331,8 +1324,8 @@ void PSDSWPCritic::convertRepLightFirstSeqToRepPrefix(
     seqInsts.insert(inst);
     seqStageWeight += FIXED_POINT * perf->estimate_weight(inst);
 
-    if (!isLightweightReplicable(inst)) {
-      allLightweightReplicable = false;
+    if (!isReplicable(inst)) {
+      allReplicable = false;
       break;
     }
 
@@ -1345,7 +1338,7 @@ void PSDSWPCritic::convertRepLightFirstSeqToRepPrefix(
       break;
     }
   }
-  if (allLightweightReplicable && smallWeight) {
+  if (allReplicable && smallWeight) {
     // first seq stage insts -> parallel stage replicated insts
     for (Instruction *inst : seqInsts) {
       firstStage->instructions.erase(inst);
