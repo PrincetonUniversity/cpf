@@ -314,6 +314,24 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     return remedResp;
   }
 
+  // They are assigned to the same heap.
+  // Are they assigned to different sub-heaps?
+  if (t1 == t2 && t1 != HeapAssignment::Unclassified) {
+    const int subheap1 = asgn.getSubHeap(aus1);
+    if (subheap1 > 0) {
+      const int subheap2 = asgn.getSubHeap(aus2);
+      if (subheap2 > 0 && subheap1 != subheap2) {
+        ++numSubSep;
+        remedResp.depRes = DepResult::NoDep;
+        remedy->ptr1 = const_cast<Value *>(ptr1);
+        remedy->ptr2 = const_cast<Value *>(ptr2);
+        remedy->type = LocalityRemedy::Subheaps;
+        remedResp.remedy = remedy;
+        return remedResp;
+      }
+    }
+  }
+
   // if one of the memory accesses is private, then there is no loop-carried.
   // Validation for private accesses is more expensive than read-only and local
   // and thus private accesses are checked last
@@ -341,24 +359,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedResp.remedy = remedy;
       privateInsts.insert(B);
       return remedResp;
-    }
-  }
-
-  // They are assigned to the same heap.
-  // Are they assigned to different sub-heaps?
-  if (t1 == t2 && t1 != HeapAssignment::Unclassified) {
-    const int subheap1 = asgn.getSubHeap(aus1);
-    if (subheap1 > 0) {
-      const int subheap2 = asgn.getSubHeap(aus2);
-      if (subheap2 > 0 && subheap1 != subheap2) {
-        ++numSubSep;
-        remedResp.depRes = DepResult::NoDep;
-        remedy->ptr1 = const_cast<Value *>(ptr1);
-        remedy->ptr2 = const_cast<Value *>(ptr2);
-        remedy->type = LocalityRemedy::Subheaps;
-        remedResp.remedy = remedy;
-        return remedResp;
-      }
     }
   }
 
