@@ -206,7 +206,9 @@ bool ApplySeparationSpec::manageMemOps(Loop *loop)
     modified |= replacePrivateLoadsStores(loop);
 
   // Report footprint of reduction operators
-  modified |= replaceReduxStores(loop);
+  // replaceReduxStores is now deprecated since runtime does not require
+  // instrumentation of redux stores
+  // modified |= replaceReduxStores(loop);
 
   return modified;
 }
