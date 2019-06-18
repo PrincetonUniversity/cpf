@@ -1355,7 +1355,7 @@ void PSDSWPCritic::convertRepLightFirstSeqToRepPrefix(
     }
     // erase completely first sequential stage
     ps.stages.erase(ps.stages.begin());
-    ++parallelStage->parallel_factor;
+    ++ps.stages[0].parallel_factor;
   }
 }
 
