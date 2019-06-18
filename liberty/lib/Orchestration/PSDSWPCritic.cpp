@@ -1276,27 +1276,36 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
 
       if (moveFrontCost != ULONG_MAX) {
         offPStageWeight += moveFrontCost;
-        DEBUG(errs() << "\nMove loop exit branch to first sequential stage to "
+        if (firstStage && firstStage->type == PipelineStage::Sequential)
+          DEBUG(
+              errs() << "\nMove loop exit branch to first sequential stage to "
                         "avoid control spec remedy on loop exit, "
                      << *inst << '\n');
+        else
+          DEBUG(errs() << "\nMove loop exit branch to replicable stage to "
+                          "avoid control spec remedy on loop exit, "
+                       << *inst << '\n');
         for (auto *I : tmpInstsMovedToFront) {
-          DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
-                          "branch inst to first "
-                          "sequential stage: "
-                       << *I << '\n');
           if (parallelStage->instructions.count(I))
             parallelStage->instructions.erase(I);
           else if (lastSeqStage)
             lastSeqStage->instructions.erase(I);
 
-          if (firstStage && firstStage->type == PipelineStage::Sequential)
+          if (firstStage && firstStage->type == PipelineStage::Sequential) {
             firstStage->instructions.insert(I);
-          else
+            DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+                            "branch inst to first sequential stage: "
+                         << *I << '\n');
+          } else {
             parallelStage->replicated.insert(I);
+            DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+                            "branch inst to replicable stage: "
+                         << *I << '\n');
+          }
         }
       } else {
         DEBUG(errs() << "\nNot movable loop exit branch inst along with "
-                        "dependent insts to first sequential stage, "
+                        "dependent insts to first sequential/replicable stage, "
                      << *inst << '\n');
         for (auto *I : tmpInstsMovedToFront) {
           DEBUG(errs() << "Part of non-movable insts: " << *I << "\n";);

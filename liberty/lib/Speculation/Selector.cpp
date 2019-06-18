@@ -545,7 +545,7 @@ void Selector::summarizeParallelizableLoops(const Vertices &vertices, const Vert
   }
   else
   {
-    errs() << "*********************************************************************\n"
+    errs() << "\n\n*********************************************************************\n"
            << "Parallelizable loops:\n";
     const unsigned long tt = FixedPoint * lpl.getTotTime();
     for(unsigned i=0, N=vertices.size(); i<N; ++i)
