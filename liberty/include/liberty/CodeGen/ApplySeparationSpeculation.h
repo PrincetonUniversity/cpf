@@ -41,7 +41,10 @@ private:
   InstInsertPt initFcn, finiFcn;
   std::vector<Loop*> loops;
 
-  void init(ModuleLoops &mloops);
+  std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
+      selectedPrivateSpecLoads;
+
+  void init(ModuleLoops &mloops, Preprocess &preprocess);
 
   bool runOnLoop(Loop *loop);
   bool manageMemOps(Loop *loop);
@@ -78,6 +81,8 @@ private:
 
   const Selector &getSelector() const;
   const HeapAssignment &getHeapAssignment() const;
+
+  bool isSelectedPrivateSpecLoad(Loop *loop, LoadInst *load);
 };
 
 }

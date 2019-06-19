@@ -484,10 +484,12 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     actuals.push_back(reduxObjects[i]);
   }
 
+  /*
   DEBUG(errs() << "actuals.size: " << actuals.size() << "\n";
         for (auto f
              : actuals) errs()
         << "actual: " << *f->getType() << "\n";);
+  */
 
   Instruction *callRecover = CallInst::Create(recoveryFcn, ArrayRef<Value*>(actuals) );
 

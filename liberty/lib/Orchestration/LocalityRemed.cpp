@@ -314,36 +314,6 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     return remedResp;
   }
 
-  // if one of the memory accesses is private, then there is no loop-carried.
-  // Validation for private accesses is more expensive than read-only and local
-  // and thus private accesses are checked last
-  if (LoopCarried) {
-    // if memory access in instruction B was already identified as private,
-    // re-use it instead of introducing another private inst.
-    if (t1 == HeapAssignment::Private && !privateInsts.count(B)) {
-      ++numPrivatizedPriv;
-      remedy->cost += PRIVATE_ACCESS_COST;
-      remedy->privateI = const_cast<Instruction *>(A);
-      remedResp.depRes = DepResult::NoDep;
-      remedy->type = LocalityRemedy::Private;
-      remedResp.remedy = remedy;
-      privateInsts.insert(A);
-      return remedResp;
-    } else if (t2 == HeapAssignment::Private) {
-      if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
-        ++numReusedPriv;
-      }
-      ++numPrivatizedPriv;
-      remedy->cost += PRIVATE_ACCESS_COST;
-      remedy->privateI = const_cast<Instruction *>(B);
-      remedResp.depRes = DepResult::NoDep;
-      remedy->type = LocalityRemedy::Private;
-      remedResp.remedy = remedy;
-      privateInsts.insert(B);
-      return remedResp;
-    }
-  }
-
   // They are assigned to the same heap.
   // Are they assigned to different sub-heaps?
   if (t1 == t2 && t1 != HeapAssignment::Unclassified) {
@@ -359,6 +329,44 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
         remedResp.remedy = remedy;
         return remedResp;
       }
+    }
+  }
+
+  // if one of the memory accesses is private, then there is no loop-carried.
+  // Validation for private accesses is more expensive than read-only and local
+  // and thus private accesses are checked last
+  if (LoopCarried) {
+    // if memory access in instruction B was already identified as private,
+    // re-use it instead of introducing another private inst.
+    if (t1 == HeapAssignment::Private && !privateInsts.count(B)) {
+      ++numPrivatizedPriv;
+      remedy->cost += PRIVATE_ACCESS_COST;
+      remedy->privateI = const_cast<Instruction *>(A);
+      remedResp.depRes = DepResult::NoDep;
+      remedy->type = LocalityRemedy::Private;
+      remedResp.remedy = remedy;
+      privateInsts.insert(A);
+      if (isa<LoadInst>(A))
+        remedy->privateLoad = dyn_cast<LoadInst>(A);
+      else if (t2 == HeapAssignment::Private && isa<LoadInst>(B))
+        remedy->privateLoad = dyn_cast<LoadInst>(B);
+      return remedResp;
+    } else if (t2 == HeapAssignment::Private) {
+      if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
+        ++numReusedPriv;
+      }
+      ++numPrivatizedPriv;
+      remedy->cost += PRIVATE_ACCESS_COST;
+      remedy->privateI = const_cast<Instruction *>(B);
+      remedResp.depRes = DepResult::NoDep;
+      remedy->type = LocalityRemedy::Private;
+      remedResp.remedy = remedy;
+      privateInsts.insert(B);
+      if (isa<LoadInst>(B))
+        remedy->privateLoad = dyn_cast<LoadInst>(B);
+      else if (t1 == HeapAssignment::Private && isa<LoadInst>(A))
+        remedy->privateLoad = dyn_cast<LoadInst>(A);
+      return remedResp;
     }
   }
 

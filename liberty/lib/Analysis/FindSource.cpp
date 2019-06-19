@@ -80,11 +80,13 @@ namespace liberty {
     }
   }
 
-  const Instruction *findNoAliasSource(const StoreInst *store) {
-    return findNoAliasSource(store->getValueOperand());
+  const Instruction *findNoAliasSource(const StoreInst *store,
+                                       const TargetLibraryInfo &tli) {
+    return findNoAliasSource(store->getValueOperand(), tli);
   }
 
-  const Instruction *findNoAliasSource(const Value *v) {
+  const Instruction *findNoAliasSource(const Value *v,
+                                       const TargetLibraryInfo &tli) {
 
     const Instruction *source = dyn_cast<Instruction>(findSource(v));
     if(!source)
@@ -101,7 +103,8 @@ namespace liberty {
     if(!f)
       return NULL;
 
-    if(!f->getAttributes().hasAttribute(0, Attribute::NoAlias))
+    if (!f->getAttributes().hasAttribute(0, Attribute::NoAlias) &&
+        !isNoAliasFn(v, &tli))
       return NULL;
 
     return source;

@@ -58,7 +58,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-    SmtxSpeculationManager &smtxLampMan, const Read &rd,
+    SmtxSpeculationManager &smtxLampMan, LAMPLoadProfile &lamp, const Read &rd,
     const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
   std::vector<Remediator_ptr> remeds;
 
@@ -105,6 +105,11 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
 
   // commutative libs remediator
   remeds.push_back(std::make_unique<CommutativeLibsRemediator>());
+
+  // mem speculation combining lamp, ctrl spec, value prediction, points-to
+  // spec, separation logic spec, and static analysis
+  remeds.push_back(std::make_unique<MemSpecAARemediator>(
+      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred));
 
   return remeds;
 }
@@ -229,8 +234,9 @@ bool Orchestrator::findBestStrategy(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
-    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
+    LAMPLoadProfile &lamp, const Read &rd, const HeapAssignment &asgn,
+    Pass &proxy, LoopAA *loopAA, LoopProfLoad &lpl,
+    std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -261,7 +267,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds = getRemediators(
       loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, ldi,
-      smtxMan, smtxLampMan, rd, asgn, proxy, loopAA);
+      smtxMan, smtxLampMan, lamp, rd, asgn, proxy, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);

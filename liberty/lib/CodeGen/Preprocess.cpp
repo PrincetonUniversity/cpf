@@ -53,6 +53,7 @@ void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< ModuleLoops >();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< Selector >();
+  au.addRequired< ReadPass >();
 
   au.addPreserved< ReadPass >();
   au.addPreserved< ModuleLoops >();
@@ -376,6 +377,17 @@ void Preprocess::init(ModuleLoops &mloops)
   fv2v = FunctionType::get(voidty, formals, false);
 
   Selector &selector = getAnalysis<Selector>();
+  ReadPass &rp = getAnalysis< ReadPass >();
+  const Read &spresults = rp.getProfileInfo();
+  HeapAssignment &asgn = selector.getAssignment();
+
+  // collect all the AUs that appeared in selected conservative privitization
+  // remedies
+  HeapAssignment::AUSet consevPrivAUs;
+  // was memory versioning used at all?
+  bool memVerUsedAll = false;
+  // was any speculation used?
+  bool specUsedAll = false;
 
   // Identify loops we will parallelize
   for (Selector::strat_iterator i = selector.strat_begin(),
@@ -399,6 +411,8 @@ void Preprocess::init(ModuleLoops &mloops)
 
     bool specUsedFlag = false;
     bool memVerUsed = false;
+    bool privUsed = false;
+    Ctx *loop_ctx = spresults.getCtx(loop);
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
         ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
@@ -413,6 +427,11 @@ void Preprocess::init(ModuleLoops &mloops)
         if (!separationSpecUsed.count(header))
           separationSpecUsed.insert(header);
         specUsedFlag = true;
+
+        LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
+        if (localityRemed->privateLoad)
+          selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
+
       } else if (remed->getRemedyName().equals("smtx-slamp-remed") ||
                  remed->getRemedyName().equals("smtx-lamp-remed") ||
                  remed->getRemedyName().equals("loaded-value-pred-remed")) {
@@ -441,12 +460,50 @@ void Preprocess::init(ModuleLoops &mloops)
         indVarPhi = indVarRemed->ivPHI;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
         memVerUsed = true;
+        memVerUsedAll = true;
+      } else if (remed->getRemedyName().equals("priv-remedy")) {
+        privUsed = true;
+
+        PrivRemedy *privRemed = (PrivRemedy *)&*remed;
+        Ptrs aus;
+        assert(spresults.getUnderlyingAUs(
+                   privRemed->storeI->getPointerOperand(), loop_ctx, aus) &&
+               "Failed to create AU objects for priv store?!");
+
+        for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+          consevPrivAUs.insert(i->au);
       }
     }
-    if (specUsedFlag)
+    if (specUsedFlag) {
       specUsed.insert(header);
-    if (memVerUsed || specUsedFlag)
+      specUsedAll = true;
+    }
+    if (memVerUsed || privUsed || specUsedFlag)
       checkpointNeeded.insert(header);
+  }
+
+  // if no spec and no need for privitization (no WAW, but AU is written),
+  // then make the AU shared instead of private
+  // e.g.
+  //      for (i=0; i<N; ++i)
+  //        a[i] = ...
+  // In every iteration a different memory location is written. No overlap. No
+  // need for privitization. This is mapped to the private heap by Privateer but
+  // it can be safely shared among main process and the workers. Avoids copying
+  // from workers' memory to checkpoint object and then to main process memory.
+  if (!specUsedAll && !memVerUsedAll) {
+    HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
+    HeapAssignment::AUSet &shared = asgn.getSharedAUs();
+    HeapAssignment::AUSet nonPrivAUs;
+    for (auto au : privs) {
+      if (!consevPrivAUs.count(au))
+        nonPrivAUs.insert(au);
+    }
+
+    for (auto au : nonPrivAUs) {
+      privs.erase(au);
+      shared.insert(au);
+    }
   }
 }
 
@@ -840,13 +897,15 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     Ctx *fcn_ctx = spresults.getCtx(fcn);
     HeapAssignment &asgn = sps->getAssignment();
 
-    // liveout (non-redux) -> private
-    Ptrs aus;
-    assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
-           "Failed to create AU objects for the live-out object?!");
-    HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
-    for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
-      privs.insert(i->au);
+    if (N > 0) {
+      // liveout (non-redux) -> private
+      Ptrs aus;
+      assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
+             "Failed to create AU objects for the live-out object?!");
+      HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
+      for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+        privs.insert(i->au);
+    }
 
     // redux liveout -> redux
     HeapAssignment::ReduxAUSet &reduxs = asgn.getReductionAUs();

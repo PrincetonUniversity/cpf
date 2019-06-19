@@ -259,7 +259,7 @@ uint64_t SLAMPLoadProfile::numObsIntraIterDep(BasicBlock* header, const Instruct
 
   DepEdge edge(srcid, dstid, 0);
 
-  // ZY: count == 1 stands for there is one dep
+  // ZY: count == 0 stands for there is one dep
   if ((this->edges)[loopid].count(edge))
     return (this->edges)[loopid][edge] + 1;
   return 0;

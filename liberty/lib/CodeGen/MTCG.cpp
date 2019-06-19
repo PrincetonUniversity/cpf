@@ -98,8 +98,6 @@ bool MTCG::runOnModule(Module &module)
     modified = true;
   }
 
-  errs() << "\n" << module << "\n";
-
   return modified;
 }
 
