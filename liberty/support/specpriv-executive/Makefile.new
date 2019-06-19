@@ -1,0 +1,35 @@
+CC = gcc
+
+INCFLAGS = -I./include -I$(HOME)/tpool
+
+DEFINES += -DUSE_LIBERTY_SW_QUEUE
+CFLAGS += -Wall -g3 $(INCFLAGS) $(DEFINES)
+LDFLAGS += -L$(HOME)/tpool -ltpool -L./lib -l:libsmtx.a
+
+srcs = $(wildcard src/*.c)
+tmp = $(srcs:src/%=%)
+objs = $(addprefix obj/,$(tmp:.c=.o))
+
+.PHONY: clean
+
+all: libdope.a
+
+install:
+	cp lib/* $(HOME)/stuff
+	cp -r include/* $(HOME)/stuff
+
+libdope.a: $(objs)
+	ar rcs lib/libdope.a $(objs)
+
+obj/%.o: src/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# $(objs): $(srcs)
+# 	$(CC) $(CFLAGS) -c $< -o $@
+
+# $(objs): %.o : src/$(%:obj/%=%).c
+# 	echo $%
+# 	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	-rm -f obj/* lib/*

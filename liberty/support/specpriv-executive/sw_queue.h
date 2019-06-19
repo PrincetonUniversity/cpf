@@ -7,6 +7,7 @@
 #define PAD(suffix, size) char padding ## suffix [PADDING - size]
 
 #define QUEUE_SIZE 8192*2 /* // 65536 // 128 // 16384 // 8192*/
+// #define QUEUE_SIZE 8192*8 /* // 65536 // 128 // 16384 // 8192*/
 
 typedef struct {
     void * volatile *head;

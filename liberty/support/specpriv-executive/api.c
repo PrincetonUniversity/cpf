@@ -195,15 +195,18 @@ static void __specpriv_worker_setup(Wid wid)
       ssize_t r = read(pipefds[myWorkerId][0], &workerArgs + bytesRead,
                workerArgsSize - bytesRead);
       if (r == -1) {
-        perror("child read from pipe");
+        perror("child read from pipe!!!");
         _exit(0);
       }
       else if (r == 0) {
         // nothing to read, main process closed the pipe
         // time to exit
+        DEBUG(printf("Nothing read from pipe; exiting\n"));
+        DEBUG(fflush(stdout));
         _exit(0);
       }
       bytesRead += r;
+      DEBUG(printf("Read %ld bytes from pipe\n", r));
     }
 
     __specpriv_set_sizeof_private(workerArgs.sizeof_private);
@@ -355,6 +358,7 @@ void __parallel_end(void)
 // for separation speculation
 void __specpriv_end(void)
 {
+  TOUT( __specpriv_print_percentages());
   assert( myWorkerId == MAIN_PROCESS );
 
   for (Wid wid = 0; wid < numWorkers; ++wid) {
@@ -457,6 +461,7 @@ void __specpriv_worker_finishes(Exit exitTaken)
 
   TIME(worker_end_invocation);
   TOUT( __specpriv_print_worker_times() );
+  TOUT( __specpriv_print_percentages());
 
   DEBUG(printf("Worker %u finished.\n", myWorkerId));
 
@@ -578,6 +583,7 @@ uint32_t __specpriv_begin_invocation(void)
 
 
 // Spawn workers
+// Called from main process
 static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(void *, int64_t, int64_t, int64_t), void *user, int64_t numCores, int64_t chunkSize)
 {
   assert( myWorkerId == MAIN_PROCESS );
@@ -618,9 +624,11 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
       ssize_t w = write(pipefds[wid][1], &workerArgs + bytesWritten,
                         workerArgsSize - bytesWritten);
       if (w == -1) {
-        perror("parent write to pipe");
+        perror("parent write to pipe!!!");
         _exit(0);
       }
+      DEBUG(printf("Parent wrote %ld bytes to pipe\n", w));
+      DEBUG(fflush(stdout));
       bytesWritten += w;
     }
   }

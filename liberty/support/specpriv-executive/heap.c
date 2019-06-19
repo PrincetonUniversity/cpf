@@ -71,6 +71,36 @@ void heap_map_shared(Heap *h, MappedHeap *mh)
   close(fd);
 }
 
+void heap_map_read_only( Heap *h, MappedHeap *mh )
+{
+  assert( mh->heap == 0 && "Already mapped!" );
+  mh->heap = h;
+
+  DEBUG(printf("Mapping heap \"%s\" read-only.\n", h->name));
+
+  // open with read-only permissions
+  const int fd = shm_open( h->name, O_RDONLY, S_IRUSR );
+  if( fd < 0 )
+  {
+    perror("can't reopen shm");
+    exit(0);
+  }
+
+  int flags = MAP_NORESERVE | MAP_SHARED;
+  if( h->base )
+    flags |= MAP_FIXED;
+
+  mh->size = h->size;
+  mh->next = mh->base = mmap(h->base, h->size, PROT_READ, flags, fd, 0);
+  if( mh->base == MAP_FAILED )
+  {
+    perror("mmap failed for map-read-only");
+    exit(0);
+  }
+
+  close(fd);
+}
+
 void heap_map_anywhere(Heap *h, MappedHeap *mh)
 {
   assert( mh->heap == 0 && "Already mapped!");

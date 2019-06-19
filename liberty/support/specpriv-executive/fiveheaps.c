@@ -148,7 +148,7 @@ void __specpriv_worker_remap_ro(void)
 {
   __specpriv_worker_unmap_ro();
 
-  heap_map_cow( &ro, &mro );
+  heap_map_read_only( &ro, &mro );
   if( sizeof_ro )
     heap_alloc( &mro, sizeof_ro );
 }

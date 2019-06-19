@@ -9,6 +9,10 @@
 #include "types.h"
 #include "constants.h"
 #include "config.h"
+#include "timer.h"
+
+uint64_t total_produces = 0;
+uint64_t total_consumes = 0;
 
 typedef union _box
 {
@@ -83,15 +87,21 @@ __specpriv_queue* __specpriv_fetch_queue(uint32_t loopID, uint32_t qID)
 
 void __specpriv_produce(__specpriv_queue* specpriv_queue, int64_t value)
 {
+  uint64_t start;
+  TIME(start);
   box b;
   b.i = value;
   DBG("__specpriv_produce %p: %lx ( or %lf )\n", specpriv_queue, value, b.d);
 
   __sw_queue_produce( get_queue(specpriv_queue), (void*)value );
+  TADD(produce_time, start);
+  DEBUG(total_produces++);
 }
 
 void __specpriv_produce_replicated(__specpriv_queue* specpriv_queue, int64_t value)
 {
+  uint64_t start;
+  TIME(start);
   box b;
   b.i = value;
   DBG("__specpriv_produce_replicated %p: %lx ( or %lf )\n", specpriv_queue, value, b.d);
@@ -99,10 +109,15 @@ void __specpriv_produce_replicated(__specpriv_queue* specpriv_queue, int64_t val
   unsigned i = 0;
   for ( ; i < specpriv_queue->n_queues ; i++)
     __sw_queue_produce( specpriv_queue->queues[i], (void*)value );
+
+  TADD(produce_time, start);
+  DEBUG(total_produces += specpriv_queue->n_queues);
 }
 
 int64_t __specpriv_consume(__specpriv_queue* specpriv_queue)
 {
+  uint64_t start;
+  TIME(start);
   DBG("__specpriv_consume %p: ", specpriv_queue);
   int64_t ret = (int64_t)__sw_queue_consume( get_queue(specpriv_queue) );
 
@@ -110,11 +125,15 @@ int64_t __specpriv_consume(__specpriv_queue* specpriv_queue)
   b.i = ret;
   DBG("%lx ( or %lf )\n", ret, b.d);
 
+  TADD(consume_time, start);
+  DEBUG(total_consumes++);
   return ret;
 }
 
 int64_t __specpriv_consume_replicated(__specpriv_queue* specpriv_queue)
 {
+  uint64_t start;
+  TIME(start);
   DBG("__specpriv_consume_replicated %p: ", specpriv_queue);
 
   Wid      wid = __specpriv_my_worker_id();
@@ -127,6 +146,8 @@ int64_t __specpriv_consume_replicated(__specpriv_queue* specpriv_queue)
   b.i = ret;
   DBG("%lx ( or %lf )\n", ret, b.d);
 
+  TADD(consume_time, start);
+  DEBUG(total_consumes++);
   return ret;
 }
 
