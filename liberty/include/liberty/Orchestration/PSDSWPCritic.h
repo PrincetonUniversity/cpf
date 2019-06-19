@@ -78,6 +78,28 @@ public:
   void populateCrossStageDependences(PipelineStrategy &ps,
                                      const Criticisms &criticisms, PDG &pdg);
 
+  void characterizeStages(PipelineStrategy &ps, PipelineStage **firstStage,
+                          PipelineStage **parallelStage,
+                          PipelineStage **lastSeqStage);
+
+  void adjustForRegLCFromSeqToPar(PipelineStrategy &ps, PDG &pdg,
+                                  PipelineStage *firstStage,
+                                  PipelineStage *parallelStage);
+
+  void moveIOToLastSeqStage(PipelineStrategy &ps, PDG &pdg,
+                            PipelineStage *firstStage,
+                            PipelineStage *parallelStage,
+                            PipelineStage *lastSeqStage);
+
+  void avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
+                                PipelineStage *firstStage,
+                                PipelineStage *parallelStage,
+                                PipelineStage *lastSeqStage);
+
+  void convertRepLightFirstSeqToRepPrefix(PipelineStrategy &ps,
+                                          PipelineStage *firstStage,
+                                          PipelineStage *parallelStage);
+
   void adjustPipeline(PipelineStrategy &ps, PDG &pdg);
 
   void populateCriticisms(PipelineStrategy &ps, Criticisms &criticisms,

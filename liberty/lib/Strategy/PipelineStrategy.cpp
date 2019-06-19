@@ -385,6 +385,9 @@ void PipelineStrategy::dump_pipeline(raw_ostream &fout, StringRef line_suffix) c
     fout << line_suffix;
   fout << '\n';
 
+  if (stages.size() == 1 && stages[0].type == PipelineStage::Parallel)
+    return;
+
   /*
   fout << "These deps cross pipeline stages:";
   if( line_suffix.empty() )

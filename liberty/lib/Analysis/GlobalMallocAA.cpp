@@ -9,6 +9,7 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -36,6 +37,7 @@ private:
   VToCIMap mallocSrcs;
 
   const DataLayout *DL;
+  const TargetLibraryInfo *tli;
 
   static bool isExclusive(const GlobalValue *global,
                           const ValueSet &nonMalloc,
@@ -79,6 +81,8 @@ public:
     DL = &M.getDataLayout();
     InitializeLoopAA(this, *DL);
 
+    tli = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
     nonMalloc.clear();
     mallocSrcs.clear();
 
@@ -89,7 +93,7 @@ public:
         for (UseIt use = global->user_begin(); use != global->user_end();
              ++use) {
           if (const StoreInst *store = dyn_cast<StoreInst>(*use)) {
-            const Instruction *src = liberty::findNoAliasSource(store);
+            const Instruction *src = liberty::findNoAliasSource(store, *tli);
             if (src) {
               mallocSrcs[&*global].insert(src);
             } else {
@@ -100,7 +104,7 @@ public:
             for (UseIt bUse = bcOp->user_begin(); bUse != bcOp->user_end();
                  ++bUse) {
               if (const StoreInst *bStore = dyn_cast<StoreInst>(*bUse)) {
-                const Instruction *s = liberty::findNoAliasSource(bStore);
+                const Instruction *s = liberty::findNoAliasSource(bStore, *tli);
                 if (s) {
                   mallocSrcs[&*global].insert(s);
                 } else {
@@ -185,8 +189,8 @@ public:
       }
     }
 
-    const Instruction *V1Src = liberty::findNoAliasSource(V1);
-    const Instruction *V2Src = liberty::findNoAliasSource(V2);
+    const Instruction *V1Src = liberty::findNoAliasSource(V1, *tli);
+    const Instruction *V2Src = liberty::findNoAliasSource(V2, *tli);
 
     if(V1GlobalSrc && V2Src && V1MallocOnly &&
        !mallocSrcs[V1GlobalSrc].count(V2Src)) {

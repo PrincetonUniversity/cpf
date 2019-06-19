@@ -215,10 +215,11 @@ void SLAMP_loop_invocation()
 
   if (invokedepth > 1) return;
 
-  __slamp_invocation = ++__slamp_iteration;
+  ++__slamp_invocation;
+  ++__slamp_iteration;
 
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "[invoke] " << (__slamp_iteration) << "\n" << std::flush;
+  if (__slamp_begin_trace) std::cout << "[invoke] " << (__slamp_invocation) << "\n" << std::flush;
 #endif
 }
 
@@ -485,7 +486,7 @@ void SLAMP_store1(uint32_t instr, const uint64_t addr)
 #endif
 
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration);
+  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
@@ -509,7 +510,7 @@ void SLAMP_store2(uint32_t instr, const uint64_t addr)
 #endif
 
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration);
+  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
@@ -533,7 +534,7 @@ void SLAMP_store4(uint32_t instr, const uint64_t addr)
 #endif
 
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration);
+  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
@@ -557,8 +558,7 @@ void SLAMP_store8(uint32_t instr, const uint64_t addr)
 #endif
 
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration);
-
+  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
   // TODO: handle output dependence. ignore it as of now.
 
   s[0] = s[1] = s[2] = s[3] = s[4] = s[5] = s[6] = s[7] = ts;
@@ -580,7 +580,7 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n)
 #endif
 
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration);
+  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
