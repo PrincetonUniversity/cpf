@@ -897,13 +897,15 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     Ctx *fcn_ctx = spresults.getCtx(fcn);
     HeapAssignment &asgn = sps->getAssignment();
 
-    // liveout (non-redux) -> private
-    Ptrs aus;
-    assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
-           "Failed to create AU objects for the live-out object?!");
-    HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
-    for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
-      privs.insert(i->au);
+    if (N > 0) {
+      // liveout (non-redux) -> private
+      Ptrs aus;
+      assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
+             "Failed to create AU objects for the live-out object?!");
+      HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
+      for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+        privs.insert(i->au);
+    }
 
     // redux liveout -> redux
     HeapAssignment::ReduxAUSet &reduxs = asgn.getReductionAUs();
