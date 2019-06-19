@@ -35,6 +35,7 @@ void mapped_heap_init(MappedHeap *mh);
 
 // un/map those heaps
 void heap_map_shared(Heap *h, MappedHeap *mh);
+void heap_map_read_only( Heap *h, MappedHeap *mh );
 void heap_map_cow(Heap *h, MappedHeap *mh);
 void heap_map_anon(uint64_t len, void *forceAddress, MappedHeap *mh);
 void heap_unmap(MappedHeap *mh);
