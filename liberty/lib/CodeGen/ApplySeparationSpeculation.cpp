@@ -762,8 +762,9 @@ bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const He
   return modified;
 }
 
-bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus)
-{
+bool ApplySeparationSpec::reallocateGlobals(
+    const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus,
+    const HeapAssignment::ReduxDepAUSet depAUs) {
   // OUTSIDE of parallel region
   //DataLayout &td = getAnalysis< DataLayout >();
   const DataLayout &td = mod->getDataLayout();
@@ -772,73 +773,124 @@ bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const He
   ReplaceConstant2PreprocessAdaptor adaptor(preprocess);
 
   bool modified = false;
-  for(HeapAssignment::ReduxAUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
-  {
-    AU *au = i->first;
-    Reduction::Type redty = i->second;
 
-    if( au->type != AU_Constant
-    &&  au->type != AU_Global )
-      continue;
+  std::set<const Value *> already;
+  std::map<AU *, Value *> newAUs;
+  std::map<AU *, Value *> ausSize;
+  std::map<AU *, Value *> ausType;
+  bool notDone = true;
+  // iterate over all reduxAUs until all dependent redux objects, if any, are
+  // processed
+  while (notDone) {
+    notDone = false; // if no dependent redux then only one invocation needed
+    for (HeapAssignment::ReduxAUSet::const_iterator i = aus.begin(),
+                                                    e = aus.end();
+         i != e; ++i) {
+      AU *au = i->first;
+      Reduction::Type redty = i->second;
 
-    GlobalVariable *gv = const_cast< GlobalVariable*>( cast< GlobalVariable >( au->value ) );
+      if (au->type != AU_Constant && au->type != AU_Global)
+        continue;
 
-    if( gv->hasExternalLinkage() )
-      continue;
+      GlobalVariable *gv =
+          const_cast<GlobalVariable *>(cast<GlobalVariable>(au->value));
 
-    DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
+      if (gv->hasExternalLinkage())
+        continue;
 
-    // create a new global pointer.
-    PointerType *pty = cast< PointerType >( gv->getType() );
-    Type *eltty = pty->getElementType();
-    Twine name = "__reallocated_" + gv->getName();
-    GlobalVariable *gvptr = new GlobalVariable(
-      *mod,
-      pty,
-      false,
-      GlobalValue::InternalLinkage,
-      ConstantPointerNull::get(pty),
-      name);
+      if (already.count(au->value))
+        continue;
 
-    // replace all uses of the global.
-    assert(replaceConstantWithLoad(gv, gvptr, adaptor)
-      && "Couldn't replace constant with load.");
+      // if there is a redux that 'i' redux depends on, make sure it is already
+      // available, if not, process it first
+      Value *depSz;      // defaults to 0
+      Value *depAllocAU; // defaults to null
+      Value *depType;
+      depSz = ConstantInt::get(u32, 0);
+      LLVMContext &ctx = gv->getParent()->getContext();
+      PointerType *voidptr = PointerType::getUnqual(Type::getInt8Ty(ctx));
+      depAllocAU = ConstantPointerNull::get(voidptr);
+      depType = ConstantInt::get(u8, 0);
 
-    // allocate the object in the initialization function.
-    uint64_t size = td.getTypeStoreSize( eltty );
-    Constant *sz = ConstantInt::get(u32,size);
+      auto f = depAUs.find(au);
+      if (f != depAUs.end()) {
+        AU *depAU = f->second.depAU;
+        if (!newAUs.count(depAU)) {
+          au = depAU;
+          redty = f->second.depType;
+          notDone = true; // process this in the next loop invocation
+        } else {
+          depSz = ausSize[depAU];
+          depAllocAU = newAUs[depAU];
+          depType = ausType[depAU];
+        }
+      }
 
-    Constant *subheap = ConstantInt::get(u8, asgn.getSubHeap(au) );
+      if (au->type != AU_Constant && au->type != AU_Global)
+        continue;
 
-    Constant *alloc = Api(mod).getAlloc( HeapAssignment::Redux );
-    Value *actuals[] = { sz, subheap, ConstantInt::get(u8, redty) };
-    Instruction *allocate = CallInst::Create(alloc, ArrayRef<Value*>(&actuals[0], &actuals[3]) );
-    initFcn << allocate;
-    Value *newAU = allocate;
+      gv = const_cast<GlobalVariable *>(cast<GlobalVariable>(au->value));
 
-    Instruction *cast = new BitCastInst(newAU, pty);
-    initFcn << cast << new StoreInst(cast, gvptr);
+      if (gv->hasExternalLinkage())
+        continue;
 
-    // if has initializer, copy initial value.
-    if( gv->hasInitializer() && !isa< ConstantAggregateZero >( gv->getInitializer() ) )
-      insertMemcpy(initFcn,allocate,gv,sz);
+      if (already.count(au->value))
+        continue;
 
-    // free the object in the finalization function
-    Constant *free = Api(mod).getFree( HeapAssignment::Redux );
-    Instruction *load = new LoadInst(gvptr);
-    finiFcn << load;
-    Value *actual = load;
-    if( actual->getType() != voidptr )
-    {
-      Instruction *cast = new BitCastInst(load,voidptr);
-      finiFcn << cast;
-      actual = cast;
+      already.insert(au->value);
+
+      DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
+
+      // create a new global pointer.
+      PointerType *pty = cast<PointerType>(gv->getType());
+      Type *eltty = pty->getElementType();
+      Twine name = "__reallocated_" + gv->getName();
+      GlobalVariable *gvptr =
+          new GlobalVariable(*mod, pty, false, GlobalValue::InternalLinkage,
+                             ConstantPointerNull::get(pty), name);
+
+      // replace all uses of the global.
+      assert(replaceConstantWithLoad(gv, gvptr, adaptor) &&
+             "Couldn't replace constant with load.");
+
+      // allocate the object in the initialization function.
+      uint64_t size = td.getTypeStoreSize(eltty);
+      Constant *sz = ConstantInt::get(u32, size);
+
+      Constant *subheap = ConstantInt::get(u8, asgn.getSubHeap(au));
+
+      Constant *alloc = Api(mod).getAlloc(HeapAssignment::Redux);
+      Value *actuals[] = {sz,         subheap, ConstantInt::get(u8, redty),
+                          depAllocAU, depSz,   depType};
+      Instruction *allocate =
+          CallInst::Create(alloc, ArrayRef<Value *>(&actuals[0], &actuals[6]));
+      initFcn << allocate;
+      Value *newAU = allocate;
+
+      Instruction *cast = new BitCastInst(newAU, pty);
+      initFcn << cast << new StoreInst(cast, gvptr);
+
+      // if has initializer, copy initial value.
+      if (gv->hasInitializer() &&
+          !isa<ConstantAggregateZero>(gv->getInitializer()))
+        insertMemcpy(initFcn, allocate, gv, sz);
+
+      // free the object in the finalization function
+      Constant *free = Api(mod).getFree(HeapAssignment::Redux);
+      Instruction *load = new LoadInst(gvptr);
+      finiFcn << load;
+      Value *actual = load;
+      if (actual->getType() != voidptr) {
+        Instruction *cast = new BitCastInst(load, voidptr);
+        finiFcn << cast;
+        actual = cast;
+      }
+      finiFcn << CallInst::Create(free, actual)
+              << new StoreInst(ConstantPointerNull::get(pty), gvptr);
+
+      ++numStaticReloc;
+      modified = true;
     }
-    finiFcn << CallInst::Create(free, actual)
-            << new StoreInst( ConstantPointerNull::get(pty), gvptr);
-
-    ++numStaticReloc;
-    modified = true;
   }
 
   return modified;
@@ -856,7 +908,7 @@ bool ApplySeparationSpec::reallocateStaticAUs()
   modified |= reallocateGlobals(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
   modified |= reallocateGlobals(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
-  modified |= reallocateGlobals(asgn, asgn.getReductionAUs());
+  modified |= reallocateGlobals(asgn, asgn.getReductionAUs(), asgn.getReduxDepAUs());
 
   return modified;
 }
@@ -1032,8 +1084,9 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 }
 
 // TODO: generalize and merge with the other version of reallocateInst.
-bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus, const HeapAssignment::ReduxDepAUSet depAUs)
-{
+bool ApplySeparationSpec::reallocateInst(
+    const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus,
+    const HeapAssignment::ReduxDepAUSet depAUs) {
   bool modified = false;
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
@@ -1181,10 +1234,9 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
           where << CallInst::Create(free, allocate);
         }
       }
+      ++numDynReloc;
+      modified = true;
     }
-
-    ++numDynReloc;
-    modified = true;
   }
 
   return modified;

@@ -67,10 +67,15 @@ private:
   void insertMemcpy(InstInsertPt &where, Value *dst, Value *src, Value *sz);
   bool reallocateGlobals(const HeapAssignment &asgn, const HeapAssignment::AUSet &aus, const HeapAssignment::Type heap);
   bool reallocateGlobals(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus);
+  bool reallocateGlobals(const HeapAssignment &asgn,
+                         const HeapAssignment::ReduxAUSet &aus,
+                         const HeapAssignment::ReduxDepAUSet depAUs);
   bool reallocateStaticAUs();
   Value *determineSize(Instruction *gravity, InstInsertPt &where, Instruction *inst);
   bool reallocateInst(const HeapAssignment &asgn, const HeapAssignment::AUSet &aus, const HeapAssignment::Type heap);
-  bool reallocateInst(const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus, const HeapAssignment::ReduxDepAUSet depAUs);
+  bool reallocateInst(const HeapAssignment &asgn,
+                      const HeapAssignment::ReduxAUSet &aus,
+                      const HeapAssignment::ReduxDepAUSet depAUs);
   bool reallocateDynamicAUs();
 
   bool addUOChecks(Loop *loop);
