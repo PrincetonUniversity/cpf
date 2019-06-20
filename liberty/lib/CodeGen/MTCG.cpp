@@ -178,7 +178,7 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
   BasicBlock *entry = &fcn->getEntryBlock();
   BranchInst::Create( preheader, entry );
 
-  markIterationBoundaries(preheader, stage, stage2queue, N);
+  markIterationBoundaries(preheader, strategy, stage, stage2queue, N);
 
 #if (MTCG_CTRL_DEBUG || MTCG_VALUE_DEBUG)
   Module *mod = fcn->getParent();
@@ -1340,9 +1340,11 @@ ControlSpeculation::LoopBlock MTCG::closestRelevantDom(BasicBlock *bb, const BBS
 }
 
 void MTCG::markIterationBoundaries(BasicBlock *preheader,
+                                   PreparedStrategy &strategy,
                                    const PipelineStage &stage,
                                    const Stage2Value &stage2queue,
                                    const int num_stages) {
+  BasicBlock *originalLoopHeader = strategy.loop->getHeader();
   Selector &selector = getAnalysis<Selector>();
   const HeapAssignment &heaps = selector.getAssignment();
   Function *fcn = preheader->getParent();
@@ -1369,7 +1371,8 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   Loop *loop = li.getLoopFor(header);
 
   const Preprocess &preprocessor = getAnalysis< Preprocess >();
-  bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
+  bool checkpointNeeded =
+      preprocessor.isCheckpointingNeeded(originalLoopHeader);
   unsigned ckptNeeded = (checkpointNeeded) ? 1 : 0;
 
   // Identify the edges at the end of an iteration
