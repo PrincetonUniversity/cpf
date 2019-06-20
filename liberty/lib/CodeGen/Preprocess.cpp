@@ -897,7 +897,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     Ctx *fcn_ctx = spresults.getCtx(fcn);
     HeapAssignment &asgn = sps->getAssignment();
 
-    if (N > 0) {
+    if (N > 0 || (checkpointNeeded.count(header) && M > 0)) {
       // liveout (non-redux) -> private
       Ptrs aus;
       assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
