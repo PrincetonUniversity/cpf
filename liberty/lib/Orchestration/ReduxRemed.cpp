@@ -299,7 +299,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
                  << "  and  " << *B << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxSCC = aSCC;
-    remedy->liveOutV = nullptr;
+    if (isa<PHINode>(B))
+      remedy->liveOutV = B;
     remedResp.remedy = remedy;
     return remedResp;
   }
