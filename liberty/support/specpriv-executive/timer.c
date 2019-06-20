@@ -14,6 +14,17 @@ uint64_t worker_enter_loop, worker_exit_loop;
 uint64_t worker_begin_waitpid, worker_end_waitpid;
 uint64_t distill_into_liveout_start, distill_into_liveout_end;
 
+uint64_t produce_time = 0;
+uint64_t consume_time = 0;
+uint64_t produce_wait_time = 0;
+uint64_t consume_wait_time = 0;
+uint64_t produce_actual_time = 0;
+uint64_t consume_actual_time = 0;
+
+#if DEBUGGING != 0
+extern uint64_t total_produces, total_consumes;
+#endif
+
 uint64_t worker_time_in_checkpoints=0;
 uint64_t worker_time_in_redux=0;
 uint64_t worker_time_in_priv_write=0;
@@ -33,11 +44,89 @@ uint64_t rdtsc(void)
   return ((uint64_t)a) | (((uint64_t)d) <<32 );
 }
 
+void __specpriv_print_percentages( void )
+{
+#if TIMER_PRINT_TIMELINE
+
+  double total_time = (double) (worker_end_invocation - worker_begin_invocation);
+
+  uint64_t worker_loop_time = worker_exit_loop - worker_enter_loop;
+  uint64_t worker_useful_work_time = worker_loop_time - consume_time - produce_time
+    - worker_time_in_checkpoints - worker_time_in_priv_read - worker_time_in_priv_write
+    - worker_time_in_io;
+  uint64_t worker_initialize_time = worker_enter_loop - worker_begin_invocation;
+
+  printf("Total worker invocation time:   %18lu\n", worker_end_invocation - worker_begin_invocation);
+  printf("Total worker loop time:         %18lu\n", worker_loop_time);
+  printf("Worker loop initialize time:    %18lu\n", worker_enter_loop - worker_begin_invocation);
+  printf("Total worker useful work time:  %18lu\n", worker_useful_work_time);
+  printf("Time spent in checkpoints:      %18lu\n", worker_time_in_checkpoints);
+  printf("Time spent in private reads:    %18lu\n", worker_time_in_priv_read);
+  printf("Time spent in private writes:   %18lu\n", worker_time_in_priv_write);
+  printf("Time spent in IO:               %18lu\n", worker_time_in_io);
+  printf("Total number of produces:       %18lu\n", total_produces);
+  printf("Total number of consume:        %18lu\n", total_consumes);
+  printf("Produces took:                  %18lu\n", produce_time);
+  printf("Time waiting for produce queue: %18lu\n", produce_wait_time);
+  printf("Consumes took:                  %18lu\n", consume_time);
+  printf("Time waiting for consume queue: %18lu\n", consume_wait_time);
+
+  printf("\nPercentages spent in loop invocation\n");
+  printf("Worker initialize:          %12lf\n"
+         "Worker loop:                %12lf\n"
+         "Worker useful work:         %12lf\n"
+         "Worker checkpoint:          %12lf\n"
+         "Worker private reads:       %12lf\n"
+         "Worker private writes:      %12lf\n"
+         "Worker IO:                  %12lf\n"
+         "Worker produces:            %12lf\n"
+         "Worker waiting for produce: %12lf\n"
+         "Worker actual produce:      %12lf\n"
+         "Worker consumes:            %12lf\n"
+         "Worker waiting for consume: %12lf\n"
+         "Worker actual consume:      %12lf\n",
+
+         (double)(worker_initialize_time*100) / total_time,
+         (double)(worker_loop_time*100) / total_time,
+         (double)(worker_useful_work_time*100) / total_time,
+         (double)(worker_time_in_checkpoints*100) / total_time,
+         (double)(worker_time_in_priv_read*100) / total_time,
+         (double)(worker_time_in_priv_write*100) / total_time,
+         (double)(worker_time_in_io*100) / total_time,
+         (double)(produce_time*100) / total_time,
+         (double)(produce_wait_time*100) / total_time,
+         (double)(produce_actual_time*100) / total_time,
+         (double)(consume_time*100) / total_time,
+         (double)(consume_wait_time*100) / total_time,
+         (double)(consume_actual_time*100) / total_time
+         );
+  #if 0
+  printf("Total percentage for produces:              %18lf\n"
+         "Total percentage waiting for produce queue: %18lf\n"
+         "Total percentage for consumes:              %18lf\n"
+         "Total percentage waiting for consume queue: %18lf\n"
+         "Total percentage in checkpoints:            %18lf\n"
+         "Total percentage in private reads:          %18lf\n"
+         "Total percentage in private writes:         %18lf\n"
+         "Total percentage in IO:                     %18lf\n",
+      (double)(produce_time*100) / total_time,
+      (double)(produce_wait_time*100) / total_time,
+      (double)(consume_time*100) / total_time,
+      (double)(consume_wait_time*100) / total_time,
+      (double)(worker_time_in_checkpoints*100) / total_time,
+      (double)(worker_time_in_priv_read*100) / total_time,
+      (double)(worker_time_in_priv_write*100) / total_time,
+      (double)(worker_time_in_io*100) / total_time);
+  #endif
+#endif
+}
+
 void __specpriv_print_worker_times(void)
 {
   const uint64_t myWorkerId = __specpriv_my_worker_id();
 
 #if TIMER_PRINT_TIMELINE
+  printf("WORKER %ld times\n", myWorkerId);
   printf(". %10ld w%ld + invoc\n"
          ". %10ld w%ld + loop\n"
          ". %10ld w%ld - loop\n",
@@ -117,6 +206,8 @@ void __specpriv_print_worker_times(void)
 void __specpriv_print_main_times(void)
 {
 #if TIMER_PRINT_TIMELINE
+  printf("MAIN TIMES\n");
+  printf("Time for main invocation: %12lu\n", main_end_invocation - main_begin_invocation);
   printf(
        ". %10ld m + invoc\n"
        ". %10ld m + waitpid\n"
@@ -138,6 +229,7 @@ void __specpriv_print_main_times(void)
        distill_into_liveout_end - main_begin_invocation,
 
        main_end_invocation - main_begin_invocation);
+
 #endif
 
 #if TIMER_PRINT_OVERHEAD
