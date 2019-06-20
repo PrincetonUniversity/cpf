@@ -384,6 +384,8 @@ BasicBlock *MTCG::stitchLoops(
             newPhi->addIncoming(phi_off, pred);
         }
 
+        std::string save_redux_lc_name = "save.redux.lc";
+
         // 1: store phi_off to reduxObject before return of the stage
         // 2: store phi_off to reduxObject before checkpoint at iteration end
 
@@ -413,19 +415,20 @@ BasicBlock *MTCG::stitchLoops(
                       break;
                   assert(sn != N);
 
-                  BasicBlock *splitCkpt =
-                      BasicBlock::Create(ctx, "ckpt.check", fcn);
-                  splitCkpt->moveAfter(BB);
+                  // look if there already a BB that stores redux and other
+                  // loop-carried variables (added by Preprocess).
+                  // If there is one, do not add a new one
+                  std::string predName = pred->getName().str();
+                  if (predName.find(save_redux_lc_name) != std::string::npos) {
+                    saveRxLCBBs.push_back(pred);
+                    continue;
+                  }
 
-                  term->setSuccessor(sn, splitCkpt);
-
-                  BasicBlock *dummy = BasicBlock::Create(ctx, "dummy", fcn);
                   BasicBlock *save_redux_lc =
                       BasicBlock::Create(ctx, "save.redux.lc", fcn);
-                  save_redux_lc->moveAfter(splitCkpt);
-                  BranchInst::Create(succ, dummy);
-                  BranchInst::Create(dummy, save_redux_lc);
-                  dummy->moveAfter(save_redux_lc);
+                  term->setSuccessor(sn, save_redux_lc);
+                  save_redux_lc->moveAfter(pred);
+                  BranchInst::Create(succ, save_redux_lc);
 
                   // Update PHIs in header_off and newHeader
                   for (BasicBlock::iterator j = header_off->begin(),
@@ -437,7 +440,7 @@ BasicBlock *MTCG::stitchLoops(
 
                     int idx = phiH->getBasicBlockIndex(pred);
                     if (idx != -1)
-                      phiH->setIncomingBlock(idx, dummy);
+                      phiH->setIncomingBlock(idx, save_redux_lc);
                   }
                   for (BasicBlock::iterator j = newHeader->begin(),
                                             z = newHeader->end();
@@ -448,20 +451,10 @@ BasicBlock *MTCG::stitchLoops(
 
                     int idx = phiH->getBasicBlockIndex(pred);
                     if (idx != -1)
-                      phiH->setIncomingBlock(idx, dummy);
+                      phiH->setIncomingBlock(idx, save_redux_lc);
                   }
 
                   saveRxLCBBs.push_back(save_redux_lc);
-
-                  IntegerType *u32 = Type::getInt32Ty(ctx);
-                  Value *zero = ConstantInt::get(u32, 0);
-                  Constant *ckptcheck = api.getCkptCheck();
-                  Instruction *callckptcheck = CallInst::Create(ckptcheck);
-                  Instruction *cmp =
-                      new ICmpInst(ICmpInst::ICMP_EQ, callckptcheck, zero);
-                  Instruction *br =
-                      BranchInst::Create(dummy, save_redux_lc, cmp);
-                  InstInsertPt::End(splitCkpt) << callckptcheck << cmp << br;
                 }
               } else if (isa<ReturnInst>(succ->getTerminator())) {
                 offIterStageExitBBs.push_back(succ);
