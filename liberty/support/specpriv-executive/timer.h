@@ -24,6 +24,7 @@ uint64_t rdtsc(void);
 
 void __specpriv_print_worker_times(void);
 void __specpriv_print_main_times(void);
+void __specpriv_print_percentages( void );
 
 // Timer variables
 extern uint64_t main_begin_invocation, main_end_invocation;
@@ -31,6 +32,15 @@ extern uint64_t worker_begin_invocation, worker_end_invocation;
 extern uint64_t worker_enter_loop, worker_exit_loop;
 extern uint64_t worker_begin_waitpid, worker_end_waitpid;
 extern uint64_t distill_into_liveout_start, distill_into_liveout_end;
+
+extern uint64_t produce_time;
+extern uint64_t consume_time;
+extern uint64_t produce_wait_time;
+extern uint64_t consume_wait_time;
+extern uint64_t produce_actual_time;
+extern uint64_t consume_actual_time;
+
+extern uint64_t worker_useful_work_time;
 
 extern uint64_t worker_time_in_checkpoints;
 extern uint64_t worker_time_in_priv_write;

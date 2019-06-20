@@ -9,6 +9,7 @@
 
 #include "debug.h"
 #include "sw_queue.h"
+#include "timer.h"
 
 #define SW_QUEUE_OCCUPIED 1   // b'01
 #define SW_QUEUE_NULL 0
@@ -29,8 +30,12 @@ queue_t* __sw_queue_create(void)
 void __sw_queue_produce(queue_t* queue, void* value)
 {
   //DBG("\t\tsw_queue_produce, queue %p\n", queue);
+  uint64_t start;
+  TIME(start);
   while (*(queue->head) != (void*) SW_QUEUE_NULL);
+  TADD(produce_wait_time, start);
 
+  TIME(start);
   *(queue->head+1) = (void*)value;
 
   *queue->head = (void *) SW_QUEUE_OCCUPIED;
@@ -38,12 +43,18 @@ void __sw_queue_produce(queue_t* queue, void* value)
   queue->head+=2;
   if ( queue->head >= &(queue->data[QUEUE_SIZE]) )
     queue->head = &queue->data[0];
+
+  TADD(produce_actual_time, start);
 }
 
 void* __sw_queue_consume(queue_t* queue)
 {
   void *value;
+  uint64_t start;
+  TIME(start);
   while ((*queue->tail) == (void*) SW_QUEUE_NULL);
+  TADD(consume_wait_time, start);
+  TIME(start);
 
   value = *( (queue->tail)+1 );
   *( (queue->tail)+1 ) = (void*) SW_QUEUE_NULL;
@@ -54,6 +65,8 @@ void* __sw_queue_consume(queue_t* queue)
   queue->tail+=2;
   if ( queue->tail >= &(queue->data[QUEUE_SIZE]) )
     queue->tail = &(queue->data[0]);
+
+  TADD(consume_actual_time, start);
 
   return value;
 }
