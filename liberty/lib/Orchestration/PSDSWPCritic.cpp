@@ -1259,7 +1259,7 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
     // expensive ctrl spec means that there was misspec during profiling
     // namely this loop exit is actually taken during profiling
     if (!expCtrlSpecNeeded)
-      break;
+      continue;
 
     set<Instruction *> *instsFrontSeqStage =
         (firstStage && firstStage->type == PipelineStage::Sequential)
