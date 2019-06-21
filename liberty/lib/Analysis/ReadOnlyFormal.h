@@ -10,6 +10,7 @@
 { "fwrite", 0 },
 { "fwrite", 3 },
 { "puts", 0 },
+{ "fputs", 0 },
 // string.h
 { "strcat", 1 },
 { "strtod", 0 },
