@@ -1322,7 +1322,7 @@ void PSDSWPCritic::convertRepLightFirstSeqToRepPrefix(
   bool allReplicable = true;
   bool smallWeight = true;
   EdgeWeight seqStageWeight = 0;
-  EdgeWeight seqStagePercThreshold = 3;
+  EdgeWeight seqStagePercThreshold = 5;
   std::unordered_set<Instruction *> seqInsts;
   for (PipelineStage::ISet::const_iterator j = firstStage->instructions.begin(),
                                            z = firstStage->instructions.end();
