@@ -200,6 +200,7 @@ Remediator::RemedResp ControlSpecRemediator::memdep(const Instruction *A,
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
   remedy->cost = DEFAULT_CTRL_REMED_COST;
+  remedy->brI = nullptr;
 
   // isReachable function call requires non-const parameters
   Loop *ncL = const_cast<Loop*>(L);
@@ -262,6 +263,13 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
   // ctrl dep is removable by control speculation
   ++numCtrlDepRem;
   remedy->brI = A;
+
+  const TerminatorInst *tA = dyn_cast<TerminatorInst>(A);
+  assert(tA);
+
+  if (speculator->misspecInProfLoopExit(tA))
+    remedy->cost = EXPENSIVE_CTRL_REMED_COST;
+
   remedResp.depRes = DepResult::NoDep;
   DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
                << "  and  " << *B << '\n');
@@ -282,6 +290,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
   remedy->cost = DEFAULT_CTRL_REMED_COST;
+  remedy->brI = nullptr;
 
   // check if the inst that source the dependence is speculatively dead
   if (speculator->isSpeculativelyDead(A)) {

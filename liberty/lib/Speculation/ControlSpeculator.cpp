@@ -233,6 +233,8 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
 
   // For each conditional branch in this function which executes at least once
   CtrlEdges &deadEdges = loops[ getLoopHeaderOfInterest() ].deadEdges;
+  TermISet &misspecInProfLoopExits =
+      loops[getLoopHeaderOfInterest()].misspecInProfLoopExits;
   for(Function::const_iterator i=fcn->begin(), e=fcn->end(); i!=e; ++i)
   {
     const BasicBlock *pred = &*i;
@@ -349,6 +351,12 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
           continue;
         }
 
+        // keep track of loop exits that will be speculated but manifest at
+        // least one misspec during profiling (MaxMisspecLoopExit is 0.0)
+        if (loopOfInterestExit && rate > pred_cnt * MaxMisspecLoopExit) {
+          misspecInProfLoopExits.insert(term);
+        }
+
         // Normal biasing threshhold for all branches
         // which are not loop exits.
         if (!loopOfInterestExit && rate > pred_cnt * MaxMisspec) {
@@ -438,6 +446,17 @@ bool ProfileGuidedControlSpeculator::isSpeculativelyDead(const BasicBlock *bb)
 
   BlockSet &deadBlocks = loops[ getLoopHeaderOfInterest() ].deadBlocks;
   return deadBlocks.count(bb);
+}
+
+bool ProfileGuidedControlSpeculator::misspecInProfLoopExit(const TerminatorInst *t)
+{
+  const BasicBlock *bb = t->getParent();
+  const Function *fcn = bb->getParent();
+  visit(fcn);
+
+  const TermISet &misspecInProfLoopExits = loops[ getLoopHeaderOfInterest() ].misspecInProfLoopExits;
+
+  return misspecInProfLoopExits.count(t);
 }
 
 void  ProfileGuidedControlSpeculator::dot_block_label(const BasicBlock *bb, raw_ostream &fout) // const  //need to remove due to non_const casting of Function*

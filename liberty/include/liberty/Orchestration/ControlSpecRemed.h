@@ -13,13 +13,13 @@
 #include <set>
 
 #define DEFAULT_CTRL_REMED_COST 45
+#define EXPENSIVE_CTRL_REMED_COST 48
 
 namespace liberty {
 using namespace llvm;
 
 class ControlSpecRemedy : public Remedy {
 public:
-  // TODO: populate this field when responding to queries
   const Instruction *brI;
 
   void apply(Task *task);
