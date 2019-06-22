@@ -204,6 +204,12 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
   Function *fcn = header->getParent();
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
+
+  std::unordered_set<const LoadInst *> *selectedLoadedValuePreds =
+      preprocess.getSelectedLoadedValuePreds(header);
+  if (!selectedLoadedValuePreds)
+    return modified;
+
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
   DominatorTree &dt = mloops.getAnalysis_DominatorTree( fcn );
 
@@ -221,6 +227,10 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
   for(ProfileGuidedPredictionSpeculator::load_iterator i=predspec.loads_begin(loop), e=predspec.loads_end(loop); i!=e; ++i)
   {
     LoadInst *load = const_cast<LoadInst*>( i->second );
+
+    if (!selectedLoadedValuePreds->count(load))
+      continue;
+
     Value *ptr = load->getPointerOperand();
     if( already.count(ptr) )
       continue;

@@ -431,10 +431,13 @@ void Preprocess::init(ModuleLoops &mloops)
         LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
         if (localityRemed->privateLoad)
           selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
-
+      } else if (remed->getRemedyName().equals("loaded-value-pred-remedy")) {
+        specUsedFlag = true;
+        LoadedValuePredRemedy *loadedValuePredRemedy =
+            (LoadedValuePredRemedy *)&*remed;
+        selectedLoadedValuePreds[header].insert(loadedValuePredRemedy->loadI);
       } else if (remed->getRemedyName().equals("smtx-slamp-remed") ||
-                 remed->getRemedyName().equals("smtx-lamp-remed") ||
-                 remed->getRemedyName().equals("loaded-value-pred-remed")) {
+                 remed->getRemedyName().equals("smtx-lamp-remed")) {
         specUsedFlag = true;
       } else if (remed->getRemedyName().equals("redux-remedy")) {
         ReduxRemedy *reduxRemed = (ReduxRemedy *)&*remed;

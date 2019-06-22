@@ -63,6 +63,14 @@ struct Preprocess : public ModulePass {
     return selectedPrivateSpecLoads;
   }
 
+  std::unordered_set<const LoadInst *> *
+  getSelectedLoadedValuePreds(const BasicBlock *loopHeader) {
+    if (selectedLoadedValuePreds.count(loopHeader))
+      return &selectedLoadedValuePreds[loopHeader];
+    else
+      return nullptr;
+  }
+
   bool isSeparationSpecUsed(BasicBlock *loopHeader) {
     return separationSpecUsed.count(loopHeader);
   }
@@ -95,6 +103,8 @@ private:
       selectedCtrlSpecDeps;
   std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
       selectedPrivateSpecLoads;
+  std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
+      selectedLoadedValuePreds;
 
   std::unordered_set<const BasicBlock *> separationSpecUsed;
   std::unordered_set<const BasicBlock *> specUsed;
