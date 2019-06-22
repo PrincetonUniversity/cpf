@@ -1345,8 +1345,6 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
                                    const Stage2Value &stage2queue,
                                    const int num_stages) {
   BasicBlock *originalLoopHeader = strategy.loop->getHeader();
-  Selector &selector = getAnalysis<Selector>();
-  const HeapAssignment &heaps = selector.getAssignment();
   Function *fcn = preheader->getParent();
   Module *mod = fcn->getParent();
   Api api(mod);
@@ -1356,11 +1354,16 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   BasicBlock *header = preheader->getTerminator()->getSuccessor(0);
   Constant *enditer = api.getEndIter();
   Constant *ckptcheck = api.getCkptCheck();
+  // TODO: uncomment when locals' handling is tested
+  /*
+  Selector &selector = getAnalysis<Selector>();
+  const HeapAssignment &heaps = selector.getAssignment();
   Constant *get_locals = api.getNumLocals();
   Constant *add_locals = api.getAddNumLocals();
   Constant *get_loopid = api.getGetLoopID();
   Constant *prod = api.getProduce();
   Constant *cons = api.getConsume();
+  */
   std::vector<Value*> args;
 
   // Call begin iter at top of loop
@@ -1431,6 +1434,9 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       term->setSuccessor(sn, split);
       split->moveAfter(source);
 
+      // TODO: complete, check and uncomment following code for handling locals
+      // for PS-DSWP
+      /*
       // if no locals then don't add produce/consume calls
       if ( !heaps.getLocalAUs().empty() )
       {
@@ -1458,6 +1464,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
               CallInst::Create(prod, ArrayRef<Value *>(args), "", split);
         }
       }
+      */
 
       CallInst::Create(enditer, ConstantInt::get(u32, ckptNeeded), "", split);
       BranchInst::Create(dest, split);
@@ -1476,7 +1483,6 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       if (sourceBBName.find(save_redux_lc_name) == std::string::npos)
         continue;
 
-      BasicBlock *dest = split;
       BasicBlock *splitCkpt = source;
       splitCkpt->setName("ckpt.check");
 
