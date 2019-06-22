@@ -1033,7 +1033,8 @@ void PSDSWPCritic::populateCrossStageDependences(PipelineStrategy &ps,
                                                  const Criticisms &criticisms,
                                                  PDG &pdg) {
   // Compute the set of control deps and mem flows which
-  // span pipeline stages.
+  // span pipeline stages (and within the same stage kept for parallel stage OFF
+  // iteration (replicated prefix))
 
   // Foreach stage
   for (unsigned i = 0, N = ps.stages.size(); i < N; ++i) {
@@ -1055,9 +1056,16 @@ void PSDSWPCritic::populateCrossStageDependences(PipelineStrategy &ps,
                "dst of ctrl dep is not an instruction in crossStageDeps");
         if (edge->isControlDependence() && isa<TerminatorInst>(src)) {
           // Foreach control-dep successor of src
+          // also useful to keep ctrl deps within a stage for parallel stage's
+          // OFF iteration
           // That spans stages.
           //        if( !si.instructions.count(dst) )
-          ps.crossStageDeps.push_back(CrossStageDependence(src, dst, edge));
+
+          // ignore ctrl deps that are removable and highly unlikely to
+          // misspeculate
+          if (!edge->isRemovableDependence() ||
+              edge->getMinRemovalCost() == EXPENSIVE_CTRL_REMED_COST)
+            ps.crossStageDeps.push_back(CrossStageDependence(src, dst, edge));
 
         } else if (edge->isMemoryDependence() && edge->isRAWDependence() &&
                    !criticisms.count(edge) && !all_insts.count(dst)) {
