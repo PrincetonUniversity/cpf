@@ -190,7 +190,8 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
 
 Remediator::RemedResp ControlSpecRemediator::memdep(const Instruction *A,
                                                     const Instruction *B,
-                                                    bool LoopCarried, bool RAW,
+                                                    bool LoopCarried,
+                                                    DataDepType dataDepTy,
                                                     const Loop *L) {
 
   ++numQueries;

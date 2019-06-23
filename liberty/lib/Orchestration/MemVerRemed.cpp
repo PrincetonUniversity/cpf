@@ -6,6 +6,7 @@
 
 //#define DEFAULT_MEM_VER_REMED_COST 49
 #define DEFAULT_MEM_VER_REMED_COST 151
+#define WAR_MEM_VER_REMED_COST 20
 
 namespace liberty {
 using namespace llvm;
@@ -25,7 +26,8 @@ bool MemVerRemedy::compare(const Remedy_ptr rhs) const {
 
 Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
                                                const Instruction *B,
-                                               bool LoopCarried, bool RAW,
+                                               bool LoopCarried,
+                                               DataDepType dataDepTy,
                                                const Loop *L) {
 
   Remediator::RemedResp remedResp;

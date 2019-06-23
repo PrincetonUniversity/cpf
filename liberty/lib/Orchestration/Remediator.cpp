@@ -28,10 +28,16 @@ namespace liberty
       assert(sop && dop &&
              "PDG nodes that are part of criticims should be instructions");
       bool lc = cr->isLoopCarriedDependence();
-      bool raw = cr->isRAWDependence();
+      DataDepType dataDepTy;
+      if (cr->isRAWDependence())
+        dataDepTy = DataDepType::RAW;
+      else if (cr->isWAWDependence())
+        dataDepTy = DataDepType::WAW;
+      else
+        dataDepTy = DataDepType::WAR;
       Remedy_ptr r;
       if (cr->isMemoryDependence())
-        r = tryRemoveMemEdge(sop, dop, lc, raw, loop);
+        r = tryRemoveMemEdge(sop, dop, lc, dataDepTy, loop);
       else if (cr->isControlDependence())
         r = tryRemoveCtrlEdge(sop, dop, lc, loop);
       else
@@ -54,8 +60,9 @@ namespace liberty
 
   Remedy_ptr Remediator::tryRemoveMemEdge(const Instruction *sop,
                                           const Instruction *dop, bool lc,
-                                          bool raw, const Loop *loop) {
-    RemedResp remedResp = memdep(sop, dop, lc, raw, loop);
+                                          DataDepType dataDepTy,
+                                          const Loop *loop) {
+    RemedResp remedResp = memdep(sop, dop, lc, dataDepTy, loop);
     if (remedResp.depRes == DepResult::NoDep)
       return remedResp.remedy;
     else
@@ -86,7 +93,8 @@ namespace liberty
 
   Remediator::RemedResp Remediator::memdep(const Instruction *sop,
                                            const Instruction *dop, bool lc,
-                                           bool raw, const Loop *loop) {
+                                           DataDepType dataDepTy,
+                                           const Loop *loop) {
     RemedResp remedResp;
     remedResp.depRes = DepResult::Dep;
     return remedResp;

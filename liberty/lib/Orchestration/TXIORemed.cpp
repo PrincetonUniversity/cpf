@@ -61,10 +61,9 @@ bool TXIORemediator::isTXIOFcn(const Instruction *inst) {
   return false;
 }
 
-Remediator::RemedResp TXIORemediator::memdep(const Instruction *A,
-                                             const Instruction *B,
-                                             bool LoopCarried, bool RAW,
-                                             const Loop *L) {
+Remediator::RemedResp
+TXIORemediator::memdep(const Instruction *A, const Instruction *B,
+                       bool LoopCarried, DataDepType dataDepTy, const Loop *L) {
 
   ++numTXIOQueries;
   Remediator::RemedResp remedResp;
