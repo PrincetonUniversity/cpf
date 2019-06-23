@@ -53,14 +53,17 @@ struct Preprocess : public ModulePass {
   void replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
                            StringRef name, Instruction *object, bool redux);
 
-  std::unordered_set<const TerminatorInst *>
+  std::unordered_set<const TerminatorInst *> *
   getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
-    return selectedCtrlSpecDeps[loopHeader];
+    if (selectedCtrlSpecDeps.count(loopHeader))
+      return &selectedCtrlSpecDeps[loopHeader];
+    else
+      return nullptr;
   }
 
-  std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
+  std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>> *
   getSelectedPrivateSpecLoads() {
-    return selectedPrivateSpecLoads;
+    return &selectedPrivateSpecLoads;
   }
 
   std::unordered_set<const LoadInst *> *

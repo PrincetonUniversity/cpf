@@ -186,7 +186,7 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
   bool modified = false;
   RoI &roi = preprocess.getRoI();
 
-  auto selectedCtrlSpecDeps = preprocess.getSelectedCtrlSpecDeps(loop_header);
+  auto *selectedCtrlSpecDeps = preprocess.getSelectedCtrlSpecDeps(loop_header);
 
   // Cut speculatively dead incoming values of PHI nodes.
   // For each PHI node in the RoI:
@@ -241,7 +241,8 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
         // the remedy for these to avoid unnecessary mis-speculation
         bool loopOfInterestExit = lpred && !lpred->contains(succ) &&
                                   lpred->getHeader() == loop_header;
-        bool selectedCtrlSpecDep = selectedCtrlSpecDeps.count(term);
+        bool selectedCtrlSpecDep =
+            selectedCtrlSpecDeps && selectedCtrlSpecDeps->count(term);
 
         if (loopOfInterestExit && !selectedCtrlSpecDep)
           continue;

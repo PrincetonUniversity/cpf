@@ -42,7 +42,7 @@ private:
   std::vector<Loop*> loops;
 
   std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
-      selectedPrivateSpecLoads;
+      *selectedPrivateSpecLoads;
 
   void init(ModuleLoops &mloops, Preprocess &preprocess);
 
