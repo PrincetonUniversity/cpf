@@ -296,8 +296,8 @@ bool ApplySeparationSpec::isRedux(Loop *loop, Value *ptr)
 bool ApplySeparationSpec::isSelectedPrivateSpecLoad(Loop *loop,
                                                     LoadInst *load) {
   const BasicBlock *loopHeader = loop->getHeader();
-  return selectedPrivateSpecLoads.count(loopHeader) &&
-         selectedPrivateSpecLoads[loopHeader].count(load);
+  return selectedPrivateSpecLoads->count(loopHeader) &&
+         (*selectedPrivateSpecLoads)[loopHeader].count(load);
 }
 
 void ApplySeparationSpec::insertPrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
