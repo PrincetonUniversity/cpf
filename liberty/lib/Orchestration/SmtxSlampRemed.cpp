@@ -97,7 +97,8 @@ void SmtxSlampRemediator::queryAcrossCallsites(
 
 Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
                                                   const Instruction *B,
-                                                  bool LoopCarried, bool RAW,
+                                                  bool LoopCarried,
+                                                  DataDepType dataDepTy,
                                                   const Loop *L) {
   ++numQueries;
   Remediator::RemedResp remedResp;
@@ -107,7 +108,8 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
   std::shared_ptr<SmtxSlampRemedy> remedy =
       std::shared_ptr<SmtxSlampRemedy>(new SmtxSlampRemedy());
   remedy->cost = DEFAULT_SLAMP_REMED_COST;
-  
+  bool RAW = dataDepTy == DataDepType::RAW;
+
   if (Disabled){
     remedResp.remedy = remedy;
     return remedResp;

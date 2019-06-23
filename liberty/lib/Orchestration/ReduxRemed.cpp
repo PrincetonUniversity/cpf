@@ -392,7 +392,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
 Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
                                               const Instruction *B,
-                                              bool LoopCarried, bool RAW,
+                                              bool LoopCarried,
+                                              DataDepType dataDepTy,
                                               const Loop *L) {
 
   Remediator::RemedResp remedResp;

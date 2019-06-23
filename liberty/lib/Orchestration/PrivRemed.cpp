@@ -39,10 +39,9 @@ bool PrivRemediator::isPrivate(const Instruction *I) {
   return true;
 }
 
-Remediator::RemedResp PrivRemediator::memdep(const Instruction *A,
-                                             const Instruction *B,
-                                             bool LoopCarried, bool RAW,
-                                             const Loop *L) {
+Remediator::RemedResp
+PrivRemediator::memdep(const Instruction *A, const Instruction *B,
+                       bool LoopCarried, DataDepType dataDepTy, const Loop *L) {
 
   Remediator::RemedResp remedResp;
   // conservative answer

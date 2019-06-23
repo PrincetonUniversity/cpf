@@ -127,7 +127,7 @@ public:
   Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   bool RAW, const Loop *L);
+                   DataDepType dataDepTy, const Loop *L);
 
 private:
   const Read &read;

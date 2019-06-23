@@ -62,9 +62,10 @@ Remedies SmtxLampRemediator::satisfy(const PDG &pdg, Loop *loop,
 }
 
 Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
-                                                  const Instruction *B,
-                                                  bool LoopCarried, bool RAW,
-                                                  const Loop *L) {
+                                                 const Instruction *B,
+                                                 bool LoopCarried,
+                                                 DataDepType dataDepTy,
+                                                 const Loop *L) {
   ++numQueries;
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -72,6 +73,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
   std::shared_ptr<SmtxLampRemedy> remedy =
       std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
   remedy->cost = DEFAULT_LAMP_REMED_COST;
+  bool RAW = dataDepTy == DataDepType::RAW;
 
   // Lamp profile data is loop sensitive.
   if (!L) {
@@ -96,7 +98,6 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
   // This AA stack includes static analysis and memory speculation
   LoopAA *aa = smtxaa->getTopAA();
   // aa->dump();
-
 
   // Lamp profile data is only collected for
   // loads and stores; not callsites.

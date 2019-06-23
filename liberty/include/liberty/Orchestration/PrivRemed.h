@@ -28,7 +28,7 @@ public:
   }
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   bool RAW, const Loop *L);
+                   DataDepType dataDepTy, const Loop *L);
 
 private:
   PDG *pdg;
