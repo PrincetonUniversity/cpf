@@ -462,8 +462,11 @@ void Preprocess::init(ModuleLoops &mloops)
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
-        memVerUsed = true;
-        memVerUsedAll = true;
+        MemVerRemedy *memVerRemed = (MemVerRemedy *)&*remed;
+        if (memVerRemed->waw) {
+          memVerUsed = true;
+          memVerUsedAll = true;
+        }
       } else if (remed->getRemedyName().equals("priv-remedy")) {
         privUsed = true;
 
