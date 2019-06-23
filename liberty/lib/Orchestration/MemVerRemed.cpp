@@ -6,7 +6,7 @@
 
 //#define DEFAULT_MEM_VER_REMED_COST 49
 #define DEFAULT_MEM_VER_REMED_COST 151
-#define WAR_MEM_VER_REMED_COST 20
+#define WAR_MEM_VER_REMED_COST 25
 
 namespace liberty {
 using namespace llvm;
