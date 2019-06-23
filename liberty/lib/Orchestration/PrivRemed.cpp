@@ -50,11 +50,18 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       std::shared_ptr<PrivRemedy>(new PrivRemedy());
   remedy->cost = DEFAULT_PRIV_REMED_COST;
 
-  // need to be loop-carried WAW or WAR where the privitizable store is the instruction B
-  if (LoopCarried && isa<StoreInst>(B) && isPrivate(B)) {
+  bool WAW = dataDepTy == DataDepType::WAW;
+
+  // need to be loop-carried WAW where the privitizable store is either A or B
+  if (LoopCarried && WAW &&
+      ((isa<StoreInst>(A) && isPrivate(A)) ||
+       (isa<StoreInst>(B) && isPrivate(B)))) {
     ++numPrivNoMemDep;
     remedResp.depRes = DepResult::NoDep;
-    remedy->storeI = dyn_cast<StoreInst>(B);
+    if (isa<StoreInst>(A) && isPrivate(A))
+      remedy->storeI = dyn_cast<StoreInst>(A);
+    else
+      remedy->storeI = dyn_cast<StoreInst>(B);
 
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
