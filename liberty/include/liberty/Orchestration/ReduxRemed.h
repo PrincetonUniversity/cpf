@@ -67,7 +67,7 @@ public:
                    const Loop *L);
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool LoopCarried,
-                   bool RAW, const Loop *L);
+                   DataDepType dataDepTy, const Loop *L);
 
   bool isRegReductionPHI(Instruction *I, Loop *l);
   bool isConditionalReductionPHI(const Instruction *I, const Loop *l) const;

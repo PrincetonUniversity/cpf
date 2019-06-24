@@ -112,6 +112,10 @@ struct ControlSpeculation
   // Determine if the given basic block is speculatively dead.
   virtual bool isSpeculativelyDead(const BasicBlock *bb) = 0;
 
+  // speculatively dead edge sourcing from this term, rare misspec but observed
+  // at least once in profiling
+  virtual bool misspecInProfLoopExit(const TerminatorInst *term) = 0;
+
   // ------------------- CFG inspection methods
 
   // Cut some register uses in response to control speculation.
@@ -262,6 +266,12 @@ struct NoControlSpeculation : public ControlSpeculation
 
   // Determine if the given basic block is speculatively dead.
   virtual bool isSpeculativelyDead(const BasicBlock *bb) { return false; }
+
+  // speculatively dead edge sourcing from this term, rare misspec but observed
+  // at least once in profiling
+  virtual bool misspecInProfLoopExit(const TerminatorInst *term) {
+    return false;
+  };
 };
 
 raw_ostream &operator<<(raw_ostream &fout, const ControlSpeculation::LoopBlock &block);

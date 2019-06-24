@@ -2,6 +2,7 @@
 "feof",
   "fflush",
   "fgets",
+  "fputs",
   "fopen",
   "fprintf",
   "fputc",

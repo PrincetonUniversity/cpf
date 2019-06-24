@@ -46,9 +46,9 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 
   DEBUG(errs() << "constructEdgesFromControl ...\n");
 
-  auto *F = loop->getHeader()->getParent();
-  auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(*F).getPostDomTree();
-  constructEdgesFromControl(*pdg, loop, PDT);
+  //auto *F = loop->getHeader()->getParent();
+  //auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(*F).getPostDomTree();
+  constructEdgesFromControl(*pdg, loop);
 
   DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
 
@@ -105,35 +105,186 @@ void llvm::PDGBuilder::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {
   }
 }
 
+void buildTransitiveIntraIterationControlDependenceCache(
+    Loop *loop, PDG &pdg, PDG &IICtrlPDG,
+    std::unordered_map<const Instruction *,
+                       std::unordered_set<const Instruction *>>
+        cache) {
+  std::list<Instruction *> fringe;
+
+  // initialization phase (populate IICtrlPDG with II ctrl deps from pdg)
+
+  for (Loop::block_iterator j = loop->block_begin(), z = loop->block_end();
+       j != z; ++j)
+    for (BasicBlock::iterator k = (*j)->begin(), g = (*j)->end(); k != g; ++k) {
+      Instruction *inst = &*k;
+      fringe.push_back(inst);
+
+      auto s = pdg.fetchNode(inst);
+      for (auto edge : s->getOutgoingEdges()) {
+        if (!edge->isControlDependence() || edge->isLoopCarriedDependence())
+          continue;
+        Instruction *si =
+            dyn_cast<Instruction>(edge->getIncomingT());
+        assert(si);
+        cache[inst].insert(si);
+        IICtrlPDG.addEdge((Value *)inst, (Value *)si);
+      }
+    }
+
+  // update cache iteratively
+
+  while (!fringe.empty()) {
+    Instruction *v = fringe.front();
+    fringe.pop_front();
+
+    std::vector<Instruction *> updates;
+
+    auto vN = IICtrlPDG.fetchNode(v);
+    for (auto edge : vN->getOutgoingEdges()) {
+      Instruction *m = dyn_cast<Instruction>(edge->getIncomingT());
+      assert(m);
+      auto mN = IICtrlPDG.fetchNode(m);
+      for (auto edgeM : mN->getOutgoingEdges()) {
+        Instruction *k =
+            dyn_cast<Instruction>(edgeM->getIncomingT());
+        assert(k);
+        if (!cache.count(v) || !cache[v].count(k))
+          updates.push_back(k);
+      }
+    }
+
+    if (!updates.empty()) {
+      for (unsigned i = 0 ; i < updates.size() ; i++) {
+        cache[v].insert(updates[i]);
+        IICtrlPDG.addEdge((Value *)v, (Value *)updates[i]);
+      }
+      fringe.push_back(v);
+    }
+  }
+}
+
 void llvm::PDGBuilder::constructEdgesFromControl(
-    PDG &pdg, Loop *loop, PostDominatorTree &postDomTree) {
-  for (auto bbi = loop->block_begin(); bbi != loop->block_end(); ++bbi) {
-    auto &B = **bbi;
-    SmallVector<BasicBlock *, 10> dominatedBBs;
-    postDomTree.getDescendants(&B, dominatedBBs);
+    PDG &pdg, Loop *loop) {
 
-    /*
-     * For each basic block that B post dominates, check if B doesn't stricly
-     * post dominate its predecessor If it does not, then there is a control
-     * dependency from the predecessor to B
-     */
-    for (auto dominatedBB : dominatedBBs) {
-      for (auto predBB :
-           make_range(pred_begin(dominatedBB), pred_end(dominatedBB))) {
-        if (postDomTree.properlyDominates(&B, predBB))
+  noctrlspec.setLoopOfInterest(loop->getHeader());
+  SpecPriv::LoopPostDom pdt(noctrlspec, loop);
+
+  for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
+  {
+    ControlSpeculation::LoopBlock dst = ControlSpeculation::LoopBlock( *i );
+    for(SpecPriv::LoopPostDom::pdf_iterator j=pdt.pdf_begin(dst), z=pdt.pdf_end(dst); j!=z; ++j)
+    {
+      ControlSpeculation::LoopBlock src = *j;
+
+      TerminatorInst *term = src.getBlock()->getTerminator();
+
+      for(BasicBlock::iterator k=dst.getBlock()->begin(), f=dst.getBlock()->end(); k!=f; ++k)
+      {
+        Instruction *idst = &*k;
+
+        /*
+        // Draw ctrl deps to:
+        //  (1) Operations with side-effects
+        //  (2) Conditional branches.
+        */
+
+        auto edge = pdg.addEdge((Value *)term, (Value *)idst);
+        edge->setControl(true);
+        edge->setLoopCarried(false);
+      }
+    }
+  }
+
+  // TODO: ideally, a PHI dependence is drawn from
+  // a conditional branch to a PHI node iff the branch
+  // controls which incoming value is selected by that PHI.
+
+  // That's a pain to compute.  Instead, we will draw a
+  // dependence from branches to PHIs in successors.
+  for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
+  {
+    BasicBlock *bb = *i;
+    TerminatorInst *term = bb->getTerminator();
+
+    // no control dependence can be formulated around unconditional branches
+
+    if (noctrlspec.isSpeculativelyUnconditional(term))
+      continue;
+
+    for(liberty::BBSuccIterator j=noctrlspec.succ_begin(bb), z=noctrlspec.succ_end(bb); j!=z; ++j)
+    {
+      BasicBlock *succ = *j;
+      if( !loop->contains(succ) )
+        continue;
+
+      const bool loop_carried = (succ == loop->getHeader());
+
+      for(BasicBlock::iterator k=succ->begin(); k!=succ->end(); ++k)
+      {
+        PHINode *phi = dyn_cast<PHINode>(&*k);
+        if( !phi )
+          break;
+        if( phi->getNumIncomingValues() == 1 )
           continue;
 
-        if (!loop->contains(predBB))
-          continue;
-        auto controlTerminator = predBB->getTerminator();
-        // TODO: is this check if this check for loopCarried enough?
-        // should predBB also be a loop exiting block?
-        bool loopCarried = (&B == loop->getHeader());
-        for (auto &I : B) {
-          auto edge = pdg.addEdge((Value *)controlTerminator, (Value *)&I);
-          edge->setControl(true);
-          edge->setLoopCarried(loopCarried);
-        }
+        auto edge = pdg.addEdge((Value *)term, (Value *)phi);
+        edge->setControl(true);
+        edge->setLoopCarried(loop_carried);
+      }
+    }
+  }
+
+  // Add loop-carried control dependences.
+  // Foreach loop-exit.
+  typedef ControlSpeculation::ExitingBlocks Exitings;
+
+  // build a tmp pdg that holds transitive II-ctrl dependence info
+  std::unordered_map<const Instruction *,
+                     std::unordered_set<const Instruction *>>
+      IICtrlCache;
+  PDG IICtrlPDG;
+  IICtrlPDG.populateNodesOf(loop);
+  buildTransitiveIntraIterationControlDependenceCache(loop, pdg, IICtrlPDG, IICtrlCache);
+
+  Exitings exitings;
+  noctrlspec.getExitingBlocks(loop, exitings);
+  for(Exitings::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
+  {
+    BasicBlock *exiting = *i;
+    TerminatorInst *term = exiting->getTerminator();
+
+    // Draw ctrl deps to:
+    //  (1) Operations with side-effects
+    //  (2) Loop exits.
+    for(Loop::block_iterator j=loop->block_begin(), z=loop->block_end(); j!=z; ++j)
+    {
+      BasicBlock *dst = *j;
+      for(BasicBlock::iterator k=dst->begin(), g=dst->end(); k!=g; ++k)
+      {
+        Instruction *idst = &*k;
+
+        /*
+        // Draw ctrl deps to:
+        //  (1) Operations with side-effects
+        //  (2) Loop exits
+        */
+
+        /*
+        if( TerminatorInst *tt = dyn_cast< TerminatorInst >(idst) )
+          if( ! ctrlspec.mayExit(tt,loop) )
+            continue;
+        */
+
+        // Draw LC ctrl dep only when there is no (transitive) II ctrl dep from t to s
+
+        if (IICtrlCache.count(term))
+          if (IICtrlCache[term].count(idst))
+            continue;
+        //errs() << "new LC ctrl dep between " << *term << " and " << *idst << "\n";
+        auto edge = pdg.addEdge((Value *)term, (Value *)idst);
+        edge->setControl(true);
+        edge->setLoopCarried(true);
       }
     }
   }

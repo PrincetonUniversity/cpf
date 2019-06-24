@@ -37,8 +37,8 @@ public:
 
   Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
-  RemedResp memdep(const Instruction *A, const Instruction *B,
-                   bool LoopCarried, bool RAW, const Loop *L);
+  RemedResp memdep(const Instruction *A, const Instruction *B, bool LoopCarried,
+                   DataDepType dataDepTy, const Loop *L);
 
 private:
   // TODO: eventually remove this manager

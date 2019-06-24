@@ -12,6 +12,8 @@ using namespace llvm;
 
 class MemVerRemedy : public Remedy {
 public:
+  bool waw;
+
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "mem-ver-remedy"; };
@@ -22,7 +24,7 @@ public:
   StringRef getRemediatorName() const { return "mem-ver-remediator"; }
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   bool RAW, const Loop *L);
+                   DataDepType dataDepTy, const Loop *L);
 };
 
 } // namespace liberty

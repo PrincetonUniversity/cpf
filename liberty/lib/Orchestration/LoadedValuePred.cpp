@@ -21,9 +21,11 @@ bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
   return this->loadI < valPredRhs->loadI;
 }
 
-Remediator::RemedResp
-LoadedValuePredRemediator::memdep(const Instruction *A, const Instruction *B,
-                                  bool loopCarried, bool RAW, const Loop *L) {
+Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
+                                                        const Instruction *B,
+                                                        bool loopCarried,
+                                                        DataDepType dataDepTy,
+                                                        const Loop *L) {
   Remediator::RemedResp remedResp;
   // conservative answer
   remedResp.depRes = DepResult::Dep;

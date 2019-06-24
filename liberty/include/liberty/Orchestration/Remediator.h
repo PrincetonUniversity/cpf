@@ -128,6 +128,8 @@ typedef std::unique_ptr<InstSet> InstSet_uptr;
 
 enum DepResult { NoDep = 0, Dep = 1 };
 
+enum DataDepType { RAW = 0, WAW = 1, WAR = 2 };
+
 class Remediator {
 public:
   virtual Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
@@ -145,7 +147,8 @@ public:
 
   // Query for mem deps
   virtual RemedResp memdep(const Instruction *A, const Instruction *B,
-                           bool loopCarried, bool raw, const Loop *L);
+                           bool loopCarried, DataDepType dataDepTy,
+                           const Loop *L);
 
   // Query for RAW register dependences
   // is there a RAW reg dep from A to B?
@@ -157,7 +160,8 @@ public:
                             const Loop *L);
 
   Remedy_ptr tryRemoveMemEdge(const Instruction *sop, const Instruction *dop,
-                              bool loopCarried, bool raw, const Loop *L);
+                              bool loopCarried, DataDepType dataDepTy,
+                              const Loop *L);
 
   Remedy_ptr tryRemoveRegEdge(const Instruction *sop, const Instruction *dop,
                               bool loopCarried, const Loop *L);

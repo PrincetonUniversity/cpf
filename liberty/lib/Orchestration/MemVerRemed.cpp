@@ -6,6 +6,7 @@
 
 //#define DEFAULT_MEM_VER_REMED_COST 49
 #define DEFAULT_MEM_VER_REMED_COST 151
+#define WAR_MEM_VER_REMED_COST 25
 
 namespace liberty {
 using namespace llvm;
@@ -19,13 +20,15 @@ void MemVerRemedy::apply(Task *task) {
 }
 
 bool MemVerRemedy::compare(const Remedy_ptr rhs) const {
-  // only one remedy is produced by this remediator
-  return false;
+  std::shared_ptr<MemVerRemedy> memVerRhs =
+      std::static_pointer_cast<MemVerRemedy>(rhs);
+  return this->waw < memVerRhs->waw;
 }
 
 Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
                                                const Instruction *B,
-                                               bool LoopCarried, bool RAW,
+                                               bool LoopCarried,
+                                               DataDepType dataDepTy,
                                                const Loop *L) {
 
   Remediator::RemedResp remedResp;
@@ -35,11 +38,22 @@ Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
   std::shared_ptr<MemVerRemedy> remedy =
       std::shared_ptr<MemVerRemedy>(new MemVerRemedy());
   remedy->cost = DEFAULT_MEM_VER_REMED_COST;
+  bool RAW = dataDepTy == DataDepType::RAW;
+  bool WAW = dataDepTy == DataDepType::WAW;
 
   // need to be loop-carried WAW or WAR
   if (LoopCarried && !RAW) {
     ++numNoMemDep;
     remedResp.depRes = DepResult::NoDep;
+    if (WAW)
+      remedy->waw = true;
+    else {
+      // with process-based parallelization, WAR are removed for free.
+      // WAW dep removal is expensive since the last write to each mem
+      // location needs to be tracked
+      remedy->waw = false;
+      remedy->cost = WAR_MEM_VER_REMED_COST;
+    }
     DEBUG(errs() << "MemVerRemed removed false mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }

@@ -343,3 +343,6 @@
   "cuModuleGetSize",
   "cuModuleGetFunction",
   "cuLaunchGrid",
+
+// unistd.h
+  "isatty",

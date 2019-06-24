@@ -178,7 +178,7 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
   BasicBlock *entry = &fcn->getEntryBlock();
   BranchInst::Create( preheader, entry );
 
-  markIterationBoundaries(preheader, stage, stage2queue, N);
+  markIterationBoundaries(preheader, strategy, stage, stage2queue, N);
 
 #if (MTCG_CTRL_DEBUG || MTCG_VALUE_DEBUG)
   Module *mod = fcn->getParent();
@@ -384,6 +384,8 @@ BasicBlock *MTCG::stitchLoops(
             newPhi->addIncoming(phi_off, pred);
         }
 
+        std::string save_redux_lc_name = "save.redux.lc";
+
         // 1: store phi_off to reduxObject before return of the stage
         // 2: store phi_off to reduxObject before checkpoint at iteration end
 
@@ -413,19 +415,20 @@ BasicBlock *MTCG::stitchLoops(
                       break;
                   assert(sn != N);
 
-                  BasicBlock *splitCkpt =
-                      BasicBlock::Create(ctx, "ckpt.check", fcn);
-                  splitCkpt->moveAfter(BB);
+                  // look if there already a BB that stores redux and other
+                  // loop-carried variables (added by Preprocess).
+                  // If there is one, do not add a new one
+                  std::string predName = pred->getName().str();
+                  if (predName.find(save_redux_lc_name) != std::string::npos) {
+                    saveRxLCBBs.push_back(pred);
+                    continue;
+                  }
 
-                  term->setSuccessor(sn, splitCkpt);
-
-                  BasicBlock *dummy = BasicBlock::Create(ctx, "dummy", fcn);
                   BasicBlock *save_redux_lc =
                       BasicBlock::Create(ctx, "save.redux.lc", fcn);
-                  save_redux_lc->moveAfter(splitCkpt);
-                  BranchInst::Create(succ, dummy);
-                  BranchInst::Create(dummy, save_redux_lc);
-                  dummy->moveAfter(save_redux_lc);
+                  term->setSuccessor(sn, save_redux_lc);
+                  save_redux_lc->moveAfter(pred);
+                  BranchInst::Create(succ, save_redux_lc);
 
                   // Update PHIs in header_off and newHeader
                   for (BasicBlock::iterator j = header_off->begin(),
@@ -437,7 +440,7 @@ BasicBlock *MTCG::stitchLoops(
 
                     int idx = phiH->getBasicBlockIndex(pred);
                     if (idx != -1)
-                      phiH->setIncomingBlock(idx, dummy);
+                      phiH->setIncomingBlock(idx, save_redux_lc);
                   }
                   for (BasicBlock::iterator j = newHeader->begin(),
                                             z = newHeader->end();
@@ -448,20 +451,10 @@ BasicBlock *MTCG::stitchLoops(
 
                     int idx = phiH->getBasicBlockIndex(pred);
                     if (idx != -1)
-                      phiH->setIncomingBlock(idx, dummy);
+                      phiH->setIncomingBlock(idx, save_redux_lc);
                   }
 
                   saveRxLCBBs.push_back(save_redux_lc);
-
-                  IntegerType *u32 = Type::getInt32Ty(ctx);
-                  Value *zero = ConstantInt::get(u32, 0);
-                  Constant *ckptcheck = api.getCkptCheck();
-                  Instruction *callckptcheck = CallInst::Create(ckptcheck);
-                  Instruction *cmp =
-                      new ICmpInst(ICmpInst::ICMP_EQ, callckptcheck, zero);
-                  Instruction *br =
-                      BranchInst::Create(dummy, save_redux_lc, cmp);
-                  InstInsertPt::End(splitCkpt) << callckptcheck << cmp << br;
                 }
               } else if (isa<ReturnInst>(succ->getTerminator())) {
                 offIterStageExitBBs.push_back(succ);
@@ -1347,11 +1340,11 @@ ControlSpeculation::LoopBlock MTCG::closestRelevantDom(BasicBlock *bb, const BBS
 }
 
 void MTCG::markIterationBoundaries(BasicBlock *preheader,
+                                   PreparedStrategy &strategy,
                                    const PipelineStage &stage,
                                    const Stage2Value &stage2queue,
                                    const int num_stages) {
-  Selector &selector = getAnalysis<Selector>();
-  const HeapAssignment &heaps = selector.getAssignment();
+  BasicBlock *originalLoopHeader = strategy.loop->getHeader();
   Function *fcn = preheader->getParent();
   Module *mod = fcn->getParent();
   Api api(mod);
@@ -1361,11 +1354,16 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   BasicBlock *header = preheader->getTerminator()->getSuccessor(0);
   Constant *enditer = api.getEndIter();
   Constant *ckptcheck = api.getCkptCheck();
+  // TODO: uncomment when locals' handling is tested
+  /*
+  Selector &selector = getAnalysis<Selector>();
+  const HeapAssignment &heaps = selector.getAssignment();
   Constant *get_locals = api.getNumLocals();
   Constant *add_locals = api.getAddNumLocals();
   Constant *get_loopid = api.getGetLoopID();
   Constant *prod = api.getProduce();
   Constant *cons = api.getConsume();
+  */
   std::vector<Value*> args;
 
   // Call begin iter at top of loop
@@ -1376,7 +1374,8 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   Loop *loop = li.getLoopFor(header);
 
   const Preprocess &preprocessor = getAnalysis< Preprocess >();
-  bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
+  bool checkpointNeeded =
+      preprocessor.isCheckpointingNeeded(originalLoopHeader);
   unsigned ckptNeeded = (checkpointNeeded) ? 1 : 0;
 
   // Identify the edges at the end of an iteration
@@ -1435,6 +1434,9 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       term->setSuccessor(sn, split);
       split->moveAfter(source);
 
+      // TODO: complete, check and uncomment following code for handling locals
+      // for PS-DSWP
+      /*
       // if no locals then don't add produce/consume calls
       if ( !heaps.getLocalAUs().empty() )
       {
@@ -1462,6 +1464,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
               CallInst::Create(prod, ArrayRef<Value *>(args), "", split);
         }
       }
+      */
 
       CallInst::Create(enditer, ConstantInt::get(u32, ckptNeeded), "", split);
       BranchInst::Create(dest, split);
@@ -1480,7 +1483,6 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       if (sourceBBName.find(save_redux_lc_name) == std::string::npos)
         continue;
 
-      BasicBlock *dest = split;
       BasicBlock *splitCkpt = source;
       splitCkpt->setName("ckpt.check");
 

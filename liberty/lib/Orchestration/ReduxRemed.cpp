@@ -295,11 +295,34 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   if (aSCC == bSCC && loopDepInfo->sccdagAttrs.canExecuteReducibly(aSCC)) {
     ++numRegDepsRemovedNoelleRedux;
     DEBUG(errs() << "Resolved by noelle Redux\n");
-    DEBUG(errs() << "Removed reg dep between inst " << *A
-                 << "  and  " << *B << '\n');
+    DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+                 << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxSCC = aSCC;
-    remedy->liveOutV = nullptr;
+    if (isa<PHINode>(B))
+      remedy->liveOutV = B;
+
+    bool foundAssocCommutBinOp = false;
+    for (auto node : make_range(aSCC->begin_nodes(), aSCC->end_nodes())) {
+      if (!aSCC->isInternal(node->getT()))
+        continue;
+
+      BinaryOperator *binop = dyn_cast<BinaryOperator>(node->getT());
+
+      if (binop) {
+        if (Reduction::Type type = Reduction::isAssocAndCommut(binop)) {
+          assert(!foundAssocCommutBinOp &&
+                 "More than 1 accoc & commut binops in redux SCC!!");
+          foundAssocCommutBinOp = true;
+          remedy->type = type;
+          DEBUG(errs() << "Binop in redux SCC: " << *binop
+                       << " ,and redux type:" << type << '\n');
+        }
+      }
+    }
+    assert(foundAssocCommutBinOp &&
+           "Noelle redux SCC does not have a assoc & commut binop");
+
     remedResp.remedy = remedy;
     return remedResp;
   }
@@ -371,7 +394,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
 Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
                                               const Instruction *B,
-                                              bool LoopCarried, bool RAW,
+                                              bool LoopCarried,
+                                              DataDepType dataDepTy,
                                               const Loop *L) {
 
   Remediator::RemedResp remedResp;
