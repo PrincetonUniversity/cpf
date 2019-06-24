@@ -852,45 +852,64 @@ bool HeapAssignment::isSimpleCase() const
   for(AUSet::const_iterator i=shareds.begin(), e=shareds.end(); i!=e; ++i)
   {
     AU *au = *i;
+    if (!au->value) {
+      errs() << "Empty value in au : " << *au << "\n";
+      continue;
+    }
     allocationSites.insert( au->value );
   }
   for(AUSet::const_iterator i=locals.begin(), e=locals.end(); i!=e; ++i)
   {
     AU *au = *i;
-    if( allocationSites.count( au->value ) )
+    if( au->value && allocationSites.count( au->value ) )
       return false;
   }
   for(AUSet::const_iterator i=locals.begin(), e=locals.end(); i!=e; ++i)
   {
     AU *au = *i;
+    if (!au->value) {
+      errs() << "Empty value in au : " << *au << "\n";
+      continue;
+    }
     allocationSites.insert( au->value );
   }
   for(ReduxAUSet::const_iterator i=reductions.begin(), e=reductions.end(); i!=e; ++i)
   {
     AU *au = i->first;
-    if( allocationSites.count( au->value ) )
+    if( au->value && allocationSites.count( au->value ) )
       return false;
   }
   for(ReduxAUSet::const_iterator i=reductions.begin(), e=reductions.end(); i!=e; ++i)
   {
     AU *au = i->first;
+    if (!au->value) {
+      errs() << "Empty value in au : " << *au << "\n";
+      continue;
+    }
     allocationSites.insert( au->value );
   }
   for(AUSet::const_iterator i=privates.begin(), e=privates.end(); i!=e; ++i)
   {
     AU *au = *i;
-    if( allocationSites.count( au->value ) )
+    if( au->value && allocationSites.count( au->value ) )
       return false;
   }
   for(AUSet::const_iterator i=privates.begin(), e=privates.end(); i!=e; ++i)
   {
     AU *au = *i;
+    if (!au->value) {
+      errs() << "Empty value in au : " << *au << "\n";
+      continue;
+    }
     allocationSites.insert( au->value );
   }
   for(AUSet::const_iterator i=ro.begin(), e=ro.end(); i!=e; ++i)
   {
     AU *au = *i;
-    if( allocationSites.count( au->value ) )
+    if (!au->value) {
+      errs() << "Empty value in au : " << *au << "\n";
+    }
+    if( au->value && allocationSites.count( au->value ) )
       return false;
   }
   /*

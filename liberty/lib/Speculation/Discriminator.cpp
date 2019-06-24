@@ -234,6 +234,11 @@ bool Discriminator::resolveOneAmbiguityViaCloning(UpdateOnClone &changes, FoldMa
     if( heapGivenCtx.upper_bound(firstHeap) == heapGivenCtx.end() )
       continue;
 
+    // for AUs of type AU_IO, AU_Unknown or AU_Null the au->value could be null.
+    // avoid handling these ones
+    if (!i->first)
+      continue;
+
     // This static object has two different assignments.
     // Can we distinguish them via calling context?
 
