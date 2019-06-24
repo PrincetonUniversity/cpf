@@ -302,6 +302,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     if (isa<PHINode>(B))
       remedy->liveOutV = B;
 
+    bool foundAssocCommutBinOp = false;
     for (auto node : make_range(aSCC->begin_nodes(), aSCC->end_nodes())) {
       if (!aSCC->isInternal(node->getT()))
         continue;
@@ -310,16 +311,17 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
       if (binop) {
         if (Reduction::Type type = Reduction::isAssocAndCommut(binop)) {
-          if (!remedy->type)
-            errs() << "More than 1 accoc & commut binops in redux SCC!!\n";
+          assert(!foundAssocCommutBinOp &&
+                 "More than 1 accoc & commut binops in redux SCC!!");
+          foundAssocCommutBinOp = true;
           remedy->type = type;
           DEBUG(errs() << "Binop in redux SCC: " << *binop
                        << " ,and redux type:" << type << '\n');
         }
       }
     }
-    if (!remedy->type)
-      errs() << "Noelle redux SCC does not have a assoc & commut binop\n";
+    assert(foundAssocCommutBinOp &&
+           "Noelle redux SCC does not have a assoc & commut binop");
 
     remedResp.remedy = remedy;
     return remedResp;
