@@ -431,10 +431,14 @@ void Preprocess::init(ModuleLoops &mloops)
         LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
         if (localityRemed->privateLoad)
           selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
-
-      } else if (remed->getRemedyName().equals("smtx-slamp-remed") ||
-                 remed->getRemedyName().equals("smtx-lamp-remed") ||
-                 remed->getRemedyName().equals("loaded-value-pred-remed")) {
+      } else if (remed->getRemedyName().equals("loaded-value-pred-remedy")) {
+        specUsedFlag = true;
+        LoadedValuePredRemedy *loadedValuePredRemedy =
+            (LoadedValuePredRemedy *)&*remed;
+        selectedLoadedValuePreds[header].insert(loadedValuePredRemedy->loadI);
+      } else if (remed->getRemedyName().equals("smtx-remedy") ||
+                 remed->getRemedyName().equals("smtx-lamp-remedy") ||
+                 remed->getRemedyName().equals("mem-spec-aa-remedy")) {
         specUsedFlag = true;
       } else if (remed->getRemedyName().equals("redux-remedy")) {
         ReduxRemedy *reduxRemed = (ReduxRemedy *)&*remed;
@@ -459,8 +463,11 @@ void Preprocess::init(ModuleLoops &mloops)
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
-        memVerUsed = true;
-        memVerUsedAll = true;
+        MemVerRemedy *memVerRemed = (MemVerRemedy *)&*remed;
+        if (memVerRemed->waw) {
+          memVerUsed = true;
+          memVerUsedAll = true;
+        }
       } else if (remed->getRemedyName().equals("priv-remedy")) {
         privUsed = true;
 
@@ -897,7 +904,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     Ctx *fcn_ctx = spresults.getCtx(fcn);
     HeapAssignment &asgn = sps->getAssignment();
 
-    if (N > 0) {
+    if (N > 0 || (checkpointNeeded.count(header) && M > 0)) {
       // liveout (non-redux) -> private
       Ptrs aus;
       assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
@@ -905,6 +912,16 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
       for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
         privs.insert(i->au);
+    } else if (M > 0) {
+      // no liveouts (non-redux) and no checkpointing is needed.
+      // all the initial values for LC are live-ins and can be stored in the RO
+      // heap
+      Ptrs aus;
+      assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
+             "Failed to create AU objects for the live-out object?!");
+      HeapAssignment::AUSet &readonlys = asgn.getReadOnlyAUs();
+      for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+        readonlys.insert(i->au);
     }
 
     // redux liveout -> redux

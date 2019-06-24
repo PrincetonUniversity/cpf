@@ -403,6 +403,19 @@ private:
             break;
           }
 
+          if (Function *func = allocator.getCalledFunction()) {
+            std::string funcName = func->getName().str();
+            if (funcName.rfind("__specpriv_alloc_", 0) != 0) {
+              // not a specpriv_alloc call.
+              // This could happen when a specpriv_alloc is called somewhere
+              // inside another function and the returned value of this other
+              // function is the pointer produced by the specpriv_alloc
+              heapMustBeCorrect = false;
+              subheapMustBeCorrect = false;
+              break;
+            }
+          }
+
           if( getHeapFromAllocator(api, allocator) != heap )
             heapMustBeCorrect = false;
 

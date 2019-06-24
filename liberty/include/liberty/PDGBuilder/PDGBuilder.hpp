@@ -5,9 +5,14 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 
-#include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/ControlSpeculation.h"
 #include "PDG.hpp"
+#include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/ControlSpecIterators.h"
+#include "liberty/Analysis/LoopAA.h"
+#include "liberty/Speculation/LoopDominators.h"
+
+#include <unordered_set>
+#include <unordered_map>
 
 using namespace llvm;
 using namespace liberty;
@@ -30,8 +35,7 @@ private:
 
   void constructEdgesFromUseDefs(PDG &pdg, Loop *loop);
   void constructEdgesFromMemory(PDG &pdg, Loop *loop, LoopAA *aa);
-  void constructEdgesFromControl(PDG &pdg, Loop *loop,
-                                 PostDominatorTree &postDomTree);
+  void constructEdgesFromControl(PDG &pdg, Loop *loop);
 
   void queryMemoryDep(Instruction *src, Instruction *dst,
                       LoopAA::TemporalRelation FW, LoopAA::TemporalRelation RV,

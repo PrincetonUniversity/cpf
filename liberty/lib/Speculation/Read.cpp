@@ -432,6 +432,13 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
   const Function *callee = cs.getCalledFunction();
   if( !callee )
   {
+    // try to strip any bitcasts and get called function
+    Value *strippedCalledValue = cs.getCalledValue()->stripPointerCasts();
+    callee = dyn_cast<Function>(strippedCalledValue);
+  }
+
+  if( !callee )
+  {
     DEBUG( errs() << "getFootprint: cannot determine indirect call " << *op << '\n');
     return false;
   }

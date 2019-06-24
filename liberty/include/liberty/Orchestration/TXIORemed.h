@@ -21,7 +21,7 @@ public:
   StringRef getRemediatorName() const { return "txio-remediator"; }
 
   RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   bool RAW, const Loop *L);
+                   DataDepType dataDepTy, const Loop *L);
 
   static bool isTXIOFcn(const Instruction *inst);
 };

@@ -4,14 +4,14 @@
 #include "constants.h"
 
 // Enable time measurements for performance tuning? 0 (off) or 1 (on)
-#define TIMER             (1)
+#define TIMER             (0)
 
 // If timing is enabled, what statistics/format to print
 #define TIMER_PRINT_TIMELINE  (1)
 #define TIMER_PRINT_OVERHEAD  (1)
 
 // Enable debug messages? 0 (off) or 1 (on)
-#define DEBUGGING         (1)
+#define DEBUGGING         (0)
 #define DEBUG_ON          DEBUGGING
 
 // Print debug messages on misspeculation? 0 (off) or 1 (on)

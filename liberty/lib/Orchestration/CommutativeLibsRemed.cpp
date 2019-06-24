@@ -62,9 +62,11 @@ Function *CommutativeLibsRemediator::getCalledFun(const Instruction *A) {
   return FunA;
 }
 
-Remediator::RemedResp
-CommutativeLibsRemediator::memdep(const Instruction *A, const Instruction *B,
-                                  bool LoopCarried, bool RAW, const Loop *L) {
+Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
+                                                        const Instruction *B,
+                                                        bool LoopCarried,
+                                                        DataDepType dataDepTy,
+                                                        const Loop *L) {
 
   ++numQueries;
   Remediator::RemedResp remedResp;

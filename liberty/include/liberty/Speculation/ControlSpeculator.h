@@ -51,6 +51,10 @@ struct ProfileGuidedControlSpeculator : public ModulePass, public ControlSpecula
   // Determine if the given basic block is speculatively dead.
   virtual bool isSpeculativelyDead(const BasicBlock *bb);
 
+  // speculatively dead edge sourcing from this term, rare misspec but observed
+  // at least once in profiling
+  virtual bool misspecInProfLoopExit(const TerminatorInst *term);
+
   // ---------------------- for UpdateOnClone interface
 
   // Update on clone
@@ -75,11 +79,13 @@ private:
   typedef std::map<const TerminatorInst *, SmallBitVector> CtrlEdges;
   typedef std::set<const BasicBlock*> BlockSet;
   typedef std::set<const Function *> FcnSet;
+  typedef std::set<const TerminatorInst *> TermISet;
 
   struct LoopSpeculation
   {
     FcnSet visited;
     CtrlEdges deadEdges;
+    TermISet misspecInProfLoopExits; // speculated dead loop exit but observed misspec in profiling
     BlockSet deadBlocks;
   };
   typedef std::map<const BasicBlock*,LoopSpeculation> PerLoopData;

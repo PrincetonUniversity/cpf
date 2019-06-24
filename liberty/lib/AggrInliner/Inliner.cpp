@@ -78,8 +78,10 @@ private:
       return false;
     curPathVisited.insert(F);
 
-    if (processedFunctions.count(F))
+    if (processedFunctions.count(F)) {
+      curPathVisited.erase(F);
       return true;
+    }
     processedFunctions.insert(F);
 
     for (BasicBlock &BB : *F)

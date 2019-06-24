@@ -68,7 +68,8 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
 
 Remediator::RemedResp MemSpecAARemediator::memdep(const Instruction *A,
                                                   const Instruction *B,
-                                                  bool LoopCarried, bool RAW,
+                                                  bool LoopCarried,
+                                                  DataDepType dataDepTy,
                                                   const Loop *L) {
   ++numQueries;
   Remediator::RemedResp remedResp;
@@ -96,6 +97,7 @@ Remediator::RemedResp MemSpecAARemediator::memdep(const Instruction *A,
   LoopAA *aa = predaa->getTopAA();
   //aa->dump();
 
+  bool RAW = dataDepTy == DataDepType::RAW;
   bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW);
   if (noDep) {
     ++numNoFlow;

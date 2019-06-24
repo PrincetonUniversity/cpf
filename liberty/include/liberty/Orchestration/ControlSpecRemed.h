@@ -13,13 +13,13 @@
 #include <set>
 
 #define DEFAULT_CTRL_REMED_COST 45
+#define EXPENSIVE_CTRL_REMED_COST 48
 
 namespace liberty {
 using namespace llvm;
 
 class ControlSpecRemedy : public Remedy {
 public:
-  // TODO: populate this field when responding to queries
   const Instruction *brI;
 
   void apply(Task *task);
@@ -37,8 +37,8 @@ public:
 
   StringRef getRemediatorName() const { return "ctrl-spec-remediator"; }
 
-  RemedResp memdep(const Instruction *A, const Instruction *B,
-                   bool LoopCarried, bool RAW, const Loop *L);
+  RemedResp memdep(const Instruction *A, const Instruction *B, bool LoopCarried,
+                   DataDepType dataDepTy, const Loop *L);
 
   RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
 
