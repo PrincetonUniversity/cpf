@@ -21,9 +21,9 @@ uint64_t consume_wait_time = 0;
 uint64_t produce_actual_time = 0;
 uint64_t consume_actual_time = 0;
 
-#if DEBUGGING != 0
-extern uint64_t total_produces, total_consumes;
-#endif
+uint64_t get_queue_time = 0;
+
+uint64_t total_produces, total_consumes;
 
 uint64_t worker_time_in_checkpoints=0;
 uint64_t worker_time_in_redux=0;
@@ -84,7 +84,8 @@ void __specpriv_print_percentages( void )
          "Worker actual produce:      %12lf\n"
          "Worker consumes:            %12lf\n"
          "Worker waiting for consume: %12lf\n"
-         "Worker actual consume:      %12lf\n",
+         "Worker actual consume:      %12lf\n"
+         "Worker getting queue:       %12lf\n",
 
          (double)(worker_initialize_time*100) / total_time,
          (double)(worker_loop_time*100) / total_time,
@@ -98,7 +99,8 @@ void __specpriv_print_percentages( void )
          (double)(produce_actual_time*100) / total_time,
          (double)(consume_time*100) / total_time,
          (double)(consume_wait_time*100) / total_time,
-         (double)(consume_actual_time*100) / total_time
+         (double)(consume_actual_time*100) / total_time,
+         (double)(get_queue_time*100) / total_time
          );
   #if 0
   printf("Total percentage for produces:              %18lf\n"
