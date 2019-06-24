@@ -912,6 +912,16 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
       for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
         privs.insert(i->au);
+    } else if (M > 0) {
+      // no liveouts (non-redux) and no checkpointing is needed.
+      // all the initial values for LC are live-ins and can be stored in the RO
+      // heap
+      Ptrs aus;
+      assert(spresults.getUnderlyingAUs(liveoutObject, fcn_ctx, aus) &&
+             "Failed to create AU objects for the live-out object?!");
+      HeapAssignment::AUSet &readonlys = asgn.getReadOnlyAUs();
+      for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+        readonlys.insert(i->au);
     }
 
     // redux liveout -> redux
