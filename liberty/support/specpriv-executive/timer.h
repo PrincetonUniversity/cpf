@@ -40,7 +40,8 @@ extern uint64_t consume_wait_time;
 extern uint64_t produce_actual_time;
 extern uint64_t consume_actual_time;
 
-extern uint64_t worker_useful_work_time;
+extern uint64_t get_queue_time;
+extern uint64_t total_produces, total_consumes;
 
 extern uint64_t worker_time_in_checkpoints;
 extern uint64_t worker_time_in_priv_write;

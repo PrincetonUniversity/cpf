@@ -13,6 +13,10 @@
 #include "timer.h"
 #include "fiveheaps.h"
 
+/******************************************************************************
+ * XXX Remove this after 3mm works!!!!!!
+ */
+
 // Determine the amount of memory (in bytes) used by the main checkpoint.
 // Not completely accurate, ignores small sources of memory consumption,
 // and instead focuses on the contribution of each heap...
@@ -545,6 +549,8 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
 
   acquire_lock( &chkpt->lock );
   {
+    DEBUG( if (isFinalCheckpoint) printf("Worker %u's final checkpoint\n",
+          __specpriv_my_worker_id()));
     DEBUG(printf("Worker %u begins checkpointing at iteration %u\n",
       __specpriv_my_worker_id(), effectiveIter));
 

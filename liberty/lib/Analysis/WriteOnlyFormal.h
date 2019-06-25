@@ -34,3 +34,6 @@
 
 //  string.h
 {  "strtod", 1 },
+
+// stdio.h
+{  "fread", 0 },
