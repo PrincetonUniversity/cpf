@@ -9,6 +9,7 @@
 { "sprintf", 1 },
 { "fwrite", 0 },
 { "fwrite", 3 },
+{ "fread", 3},
 { "puts", 0 },
 { "fputs", 0 },
 // string.h
