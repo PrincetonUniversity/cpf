@@ -31,6 +31,7 @@ static MappedHeap   mshared, mro, mpriv0, mredux0;
 // shadow - metadata for private AUs, determines if a privacy violation occurs.
 // local  - holds short-lived objects
 static Heap redux[MAX_WORKERS];
+static Heap local;
 static MappedHeap myShadow, myLocal, myRedux;
 
 /*
@@ -50,6 +51,7 @@ static ReductionInfo *first_reduction_info,
 
 static Len sizeof_private, sizeof_redux;
 static Len sizeof_ro;
+static Len sizeof_local;
 
 void *__specpriv_alloc_meta(Len len)
 {
@@ -83,12 +85,14 @@ void __specpriv_initialize_main_heaps(void)
   // Create heaps for the main process.
   heap_init(&shared, "shared",  HEAP_SIZE, (void*) (SHARED_ADDR), 0);
   heap_init(&ro,     "ro",      HEAP_SIZE, (void*) (RO_ADDR    ), 0);
+  heap_init(&local,  "local",   HEAP_SIZE, (void*) (LOCAL_ADDR ), 0);
 
   // Map these in the main process
   mapped_heap_init(&mshared);
   mapped_heap_init(&mro);
   mapped_heap_init(&mpriv0);
   mapped_heap_init(&mredux0);
+  mapped_heap_init(&myLocal);
   sizeof_private = sizeof_redux = 0;
 
   heap_map_shared(&shared, &mshared);
@@ -96,6 +100,9 @@ void __specpriv_initialize_main_heaps(void)
   // ro needs to be shared, up until invocation when spawning once
   heap_map_shared(&ro,     &mro);
   //heap_map_cow(&ro,     &mro);
+
+  // local heap needs to be shared until invocation
+  heap_map_shared(&local,  &myLocal);
 
   // Map the /right/ version of the private, redux heaps.
   heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_priv, &mpriv0);
@@ -127,10 +134,12 @@ void __specpriv_destroy_main_heaps(void)
   heap_unmap(&mro);
   heap_unmap(&mpriv0);
   heap_unmap(&mredux0);
+  heap_unmap(&myLocal);
 
   // Destroy main heaps.
   heap_fini(&shared);
   heap_fini(&ro);
+  heap_fini(&local);
 
   __specpriv_destroy_pcb();
 
@@ -151,6 +160,21 @@ void __specpriv_worker_remap_ro(void)
   heap_map_read_only( &ro, &mro );
   if( sizeof_ro )
     heap_alloc( &mro, sizeof_ro );
+}
+
+void __specpriv_worker_unmap_local(void)
+{
+  if ( myLocal.heap )
+    heap_unmap( &myLocal );
+}
+
+void __specpriv_worker_remap_local(void)
+{
+  __specpriv_worker_unmap_local(); // not sure if we need to do this
+
+  heap_map_cow( &local, &myLocal );
+  if ( sizeof_local )
+    heap_alloc( &myLocal, sizeof_local );
 }
 
 void __specpriv_worker_unmap_private(void)
@@ -187,6 +211,9 @@ void __specpriv_initialize_worker_heaps(void)
   // added due to process spawning once at startup
   __specpriv_worker_remap_ro();
 
+  // remap local heap to deal with weird "local" variables
+  __specpriv_worker_remap_local();
+
   // re-map my a new independent heap as my 'redux' heap.
   if (mredux0.heap)
     heap_unmap(&mredux0);
@@ -200,9 +227,9 @@ void __specpriv_initialize_worker_heaps(void)
 
   // map my 'shadow', and 'local' heaps
   mapped_heap_init(&myShadow);
-  mapped_heap_init(&myLocal);
+  /* mapped_heap_init(&myLocal); */
   heap_map_anon(HEAP_SIZE, (void*) (SHADOW_ADDR), &myShadow);
-  heap_map_anon(HEAP_SIZE, (void*) (LOCAL_ADDR ), &myLocal);
+  /* heap_map_anon(HEAP_SIZE, (void*) (LOCAL_ADDR ), &myLocal); */
 }
 
 void __specpriv_destroy_worker_heaps(void)
@@ -368,6 +395,11 @@ Len __specpriv_sizeof_ro(void)
   return sizeof_ro;
 }
 
+Len __specpriv_sizeof_local(void)
+{
+  return sizeof_local;
+}
+
 void __specpriv_set_sizeof_private(Len sp)
 {
   sizeof_private = sp;
@@ -381,6 +413,11 @@ void __specpriv_set_sizeof_redux(Len sr)
 void __specpriv_set_sizeof_ro(Len sr)
 {
   sizeof_ro = sr;
+}
+
+void __specpriv_set_sizeof_local(Len sr)
+{
+  sizeof_local = sr;
 }
 
 void *__specpriv_alloc_unclassified(Len size)

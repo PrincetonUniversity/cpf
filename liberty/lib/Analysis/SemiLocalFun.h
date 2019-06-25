@@ -10,6 +10,7 @@
   "fseek",
   "ftell",
   "fwrite",
+  "fread",
   "printf",
   "putchar",
   "puts",

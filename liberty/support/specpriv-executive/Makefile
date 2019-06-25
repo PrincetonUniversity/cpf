@@ -13,7 +13,7 @@ DONT_BUILD_RELINKED=1
 SHARED_LIBRARY=1
 
 CFLAGS += -O3 -fPIC -I$(LIBERTY_SMTX_DIR) -flto -std=c11
-CFLAGS_MANUAL += -O3 -fPIC -I$(LIBERTY_SMTX_DIR) -flto
+CFLAGS_MANUAL += -O3 -fPIC -I$(LIBERTY_SMTX_DIR) -flto -D_GNU_SOURCE
 
 manual_srcs = $(wildcard *.c)
 manual_bcs = $(patsubst %.c,%.bc,$(manual_srcs))

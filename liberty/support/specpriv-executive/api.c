@@ -102,6 +102,7 @@ struct WorkerArgs {
   unsigned sizeof_private;
   unsigned sizeof_redux;
   unsigned sizeof_ro;
+  unsigned sizeof_local;
   uint64_t main_begin_invocation;
   ReductionInfo *first_reduction_info;
 } workerArgs;
@@ -212,6 +213,7 @@ static void __specpriv_worker_setup(Wid wid)
     __specpriv_set_sizeof_private(workerArgs.sizeof_private);
     __specpriv_set_sizeof_redux(workerArgs.sizeof_redux);
     __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
+    __specpriv_set_sizeof_local(workerArgs.sizeof_local);
 
     main_begin_invocation = workerArgs.main_begin_invocation;
     __specpriv_set_first_reduction_info(workerArgs.first_reduction_info);
@@ -605,6 +607,7 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
   workerArgs.sizeof_private = __specpriv_sizeof_private();
   workerArgs.sizeof_redux = __specpriv_sizeof_redux();
   workerArgs.sizeof_ro = __specpriv_sizeof_ro();
+  workerArgs.sizeof_local = __specpriv_sizeof_local();
   workerArgs.main_begin_invocation = main_begin_invocation;
   workerArgs.first_reduction_info = __specpriv_first_reduction_info();
   ssize_t workerArgsSize = sizeof(struct WorkerArgs);
