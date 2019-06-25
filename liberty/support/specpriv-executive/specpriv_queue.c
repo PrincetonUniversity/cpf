@@ -26,8 +26,13 @@ static uint32_t *n_stageQs;
 
 static queue_t* get_queue(__specpriv_queue* specpriv_queue)
 {
+  uint64_t start;
+  TIME(start);
+
   unsigned index = (unsigned)__specpriv_current_iter() % (specpriv_queue->n_queues);
   queue_t* queue = specpriv_queue->queues[index];
+
+  TADD(get_queue_time, start);
   return queue;
 }
 
