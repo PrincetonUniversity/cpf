@@ -49,11 +49,11 @@
 // How large should we allocate our heaps.
 // Doesn't really matter; OS will only reserve
 // space for the used portion.
-#define HEAP_SIZE         (1*GB)
+#define HEAP_SIZE         (4UL*GB)
 
 // Maximum number of bytes of checkpoint state
 // that we will allocate at any time.
-#define MAX_CHECKPOINT    (3UL*GB)
+#define MAX_CHECKPOINT    (8UL*GB)
 
 // Who tries to combine checkpoints?
 
