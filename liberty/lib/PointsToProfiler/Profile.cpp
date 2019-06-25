@@ -1138,6 +1138,9 @@ private:
           continue;
         already.insert(inst);
 
+        if (isa<AllocaInst>(inst))
+          continue;
+
         DEBUG(errs() << "Instrumenting indeterminate base object: " << *inst << '\n');
         instrumentInstructionForIndeterminateBase(inst, interesting, li);
         modified = true;
