@@ -924,7 +924,7 @@ Bool __specpriv_distill_committed_private_into_partial(
 
       if( ds == LIVE_IN )
       {
-        if( WAS_WRITTEN_RECENTLY( src_s[i] ) )
+        if( WAS_WRITTEN_EVER( src_s[i] ) )
         {
           dst_p[i] = src_p[i];
           dst_s[i] = OLD_ITERATION;
@@ -933,7 +933,7 @@ Bool __specpriv_distill_committed_private_into_partial(
 
       else if( ds == READ_LIVE_IN )
       {
-        if( WAS_WRITTEN_RECENTLY( src_s[i] ) )
+        if( WAS_WRITTEN_EVER( src_s[i] ) )
         {
           // Misspeculate!
           return 1;
