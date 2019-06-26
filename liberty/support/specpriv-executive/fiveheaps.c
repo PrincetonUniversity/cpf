@@ -223,7 +223,7 @@ void __specpriv_initialize_worker_heaps(void)
   heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0 );
   if( sizeof_redux )
 //    heap_alloc(&myRedux, sizeof_redux);
-    heap_alloc(&mpriv0, sizeof_redux);
+    heap_alloc(&mredux0, sizeof_redux);
 
   // map my 'shadow', and 'local' heaps
   mapped_heap_init(&myShadow);
@@ -239,7 +239,7 @@ void __specpriv_destroy_worker_heaps(void)
   //heap_unmap(&mshared);
   //heap_unmap(&mro);
 
-  heap_unmap(&myLocal);
+  //heap_unmap(&myLocal);
   //heap_unmap(&myRedux);
   heap_unmap(&myShadow);
 }

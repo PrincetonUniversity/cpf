@@ -230,23 +230,15 @@ void __specpriv_destroy_checkpoint_manager(CheckpointManager *mgr)
   mgr->total_checkpoint_objects = 0;
 }
 
-static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, MappedHeap *shadow, MappedHeap *redux)
+static void __specpriv_initialize_checkpoint_redux(MappedHeap *redux)
 {
-  // Initialize shadow, redux.
-
-  const Len priv_used = __specpriv_sizeof_private();
-  const Len redux_used= __specpriv_sizeof_redux();
-
-  memset((void*)shadow->base, LIVE_IN, priv_used);
-
-  partial->shadow_lowest_inclusive = (uint8_t*) (SHADOW_ADDR + (1UL<<POINTER_BITS));
-  partial->shadow_highest_exclusive = (uint8_t*) (SHADOW_ADDR);
-
   // initialize with identity reductions in the checkpoint object
   //
   // initialize at first  all memory to zero.
   // Suitable for sum reduction and max reduction with unsigned.
   // For the other types of reduction special handling required.
+
+  const Len redux_used= __specpriv_sizeof_redux();
   memset((void*)redux->base, 0, redux_used);
 
   ReductionInfo *info = __specpriv_first_reduction_info();
@@ -260,6 +252,21 @@ static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, Mapped
 
     __specpriv_initialize_reductions(dst_au, info);
   }
+}
+
+static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, MappedHeap *shadow, MappedHeap *redux)
+{
+  // Initialize shadow, redux.
+
+  const Len priv_used = __specpriv_sizeof_private();
+
+  memset((void*)shadow->base, LIVE_IN, priv_used);
+
+  partial->shadow_lowest_inclusive = (uint8_t*) (SHADOW_ADDR + (1UL<<POINTER_BITS));
+  partial->shadow_highest_exclusive = (uint8_t*) (SHADOW_ADDR);
+
+  // initialize with identity reductions in the checkpoint object
+  __specpriv_initialize_checkpoint_redux(redux);
 }
 
 
@@ -350,6 +357,10 @@ static Bool __specpriv_combine_redux(Checkpoint *older, Checkpoint *newer)
   mapped_heap_init( &partial_redux );
   heap_map_anywhere( &older->heap_redux, &commit_redux );
   heap_map_anywhere( &newer->heap_redux, &partial_redux );
+
+  // newer checkpoint has the correct redux values
+  // just initialize the old checkpoint redux with identity
+  __specpriv_initialize_checkpoint_redux(&commit_redux);
 
   // combine them.
   misspec = __specpriv_distill_committed_redux_into_partial(
