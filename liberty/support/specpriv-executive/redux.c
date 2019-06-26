@@ -23,7 +23,7 @@ static void __specpriv_reduce_i32_add(int32_t *src_au, int32_t *dst_au, uint32_t
   {
     DEBUG(printf("%d + %d ", *dst_au, *src_au));
     *dst_au += *src_au;
-    *src_au = 0;
+    //*src_au = 0;
     DEBUG(printf("-> %d\n", *dst_au));
     return;
   }
@@ -72,6 +72,7 @@ static void __specpriv_reduce_i32_add(int32_t *src_au, int32_t *dst_au, uint32_t
     _mm_store_si128( (__m128i*)&dst_au[i], sum );
   }
 
+  /*
   // Reset the reduction for next invocation.
   uint8_t *first = (uint8_t*) & src_au[lo];
   uint8_t *last = (uint8_t*) & src_au[ hi + 1 ];
@@ -80,6 +81,7 @@ static void __specpriv_reduce_i32_add(int32_t *src_au, int32_t *dst_au, uint32_t
     unsigned len = last - first;
     memset( (void*)first, 0, len );
   }
+  */
 #else
 # error todo
   /*
@@ -179,7 +181,7 @@ static void __specpriv_reduce_f32_add(float *src_au, float *dst_au, uint32_t siz
   {
     DEBUG(printf("%f + %f ", *dst_au, *src_au));
     *dst_au += *src_au;
-    *src_au = 0.0f;
+    //*src_au = 0.0f;
     DEBUG(printf("-> %f\n", *dst_au));
     return;
   }
@@ -239,6 +241,7 @@ static void __specpriv_reduce_f32_add(float *src_au, float *dst_au, uint32_t siz
 
   DEBUG(printf("Done with performing reduction\n"));
 
+  /*
   // Reset the reduction for next invocation.
   uint8_t *first = (uint8_t*) & src_au[lo];
   uint8_t *last = (uint8_t*) & src_au[ hi + 1 ];
@@ -247,12 +250,13 @@ static void __specpriv_reduce_f32_add(float *src_au, float *dst_au, uint32_t siz
     unsigned len = last - first;
     memset( (void*)first, 0, len );
   }
+  */
 #else
   int i;
   for(i=0; i<N; ++i)
   {
     dst_au[i] += src_au[i];
-    src_au[i] = 0.0f;
+    //src_au[i] = 0.0f;
   }
 #endif
   DEBUG(printf("__specpriv_reduce_f32_add\n"));
@@ -268,7 +272,7 @@ static void __specpriv_reduce_f64_add(double *src_au, double *dst_au, uint32_t s
   {
     DEBUG(printf("%lf + %lf ", *dst_au, *src_au));
     *dst_au += *src_au;
-    *src_au = 0.0;
+    //*src_au = 0.0;
     DEBUG(printf("-> %lf\n", *dst_au));
     return;
   }
@@ -317,6 +321,7 @@ static void __specpriv_reduce_f64_add(double *src_au, double *dst_au, uint32_t s
     _mm_store_pd( &dst_au[i], sum );
   }
 
+  /*
   // Reset the reduction for next invocation.
   uint8_t *first = (uint8_t*) & src_au[lo];
   uint8_t *last = (uint8_t*) & src_au[ hi + 1 ];
@@ -325,12 +330,13 @@ static void __specpriv_reduce_f64_add(double *src_au, double *dst_au, uint32_t s
     unsigned len = last - first;
     memset( (void*)first, 0, len );
   }
+  */
 #else
   int i;
   for(i=0; i<N; ++i)
   {
     dst_au[i] += src_au[i];
-    src_au[i] = 0.0;
+    //src_au[i] = 0.0;
   }
 #endif
 }
@@ -348,7 +354,7 @@ static void __specpriv_reduce_u64_max(uint64_t *src_au, uint64_t *dst_au,
         *dst_au = *src_au;
         *dstLastUpIter = srcLastUpIter;
       }
-      *src_au = 0;
+      //*src_au = 0;
       return;
     }
     else if (dep_size_bytes == 4) {
@@ -386,7 +392,7 @@ static void __specpriv_reduce_u64_max(uint64_t *src_au, uint64_t *dst_au,
       else {
         assert(0 && "depType is not in [0,2] ?!");
       }
-      *src_au = 0;
+      //*src_au = 0;
       return;
     }
     else
@@ -439,7 +445,7 @@ static void __specpriv_reduce_u64_max(uint64_t *src_au, uint64_t *dst_au,
     if( src > d0 )
       dst_au[i] = src;
 
-    src_au[i] = 0;
+    //src_au[i] = 0;
   }
 //#endif
 }
@@ -458,7 +464,7 @@ static void __specpriv_reduce_f32_max(float *src_au, float *dst_au,
       *dstLastUpIter = srcLastUpIter;
     }
 
-    *src_au = -FLT_MAX;
+    //*src_au = -FLT_MAX;
     return;
   }
 
@@ -511,7 +517,7 @@ static void __specpriv_reduce_f32_max(float *src_au, float *dst_au,
     if( src > d0 )
       dst_au[i] = src;
 
-    src_au[i] = -FLT_MAX;
+    //src_au[i] = -FLT_MAX;
   }
 #endif
 }
@@ -524,7 +530,7 @@ static void __specpriv_reduce_f64_max(double *src_au, double *dst_au, uint32_t s
   {
     if ( *src_au > *dst_au )
       *dst_au = *src_au;
-    *src_au = -DBL_MAX;
+    //*src_au = -DBL_MAX;
     return;
   }
 
@@ -577,7 +583,7 @@ static void __specpriv_reduce_f64_max(double *src_au, double *dst_au, uint32_t s
     if( src > d0 )
       dst_au[i] = src;
 
-    src_au[i] = -DBL_MAX;
+    //src_au[i] = -DBL_MAX;
   }
 #endif
 }
