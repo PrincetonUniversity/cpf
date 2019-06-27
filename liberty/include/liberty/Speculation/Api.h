@@ -1121,13 +1121,14 @@ private:
 
   Constant *getAllocRedux()
   {
-    std::vector<Type*> formals(6);
+    std::vector<Type*> formals(7);
     formals[0] = u32; // size
     formals[1] = u8;  // sub-heap
     formals[2] = u8;  // redux type
-    formals[3] = voidptr; // dep au
-    formals[4] = u32; // dep size
-    formals[5] = u8; // dep size
+    formals[3] = u8;  // is register redux?
+    formals[4] = voidptr; // dep au
+    formals[5] = u32; // dep size
+    formals[6] = u8; // dep type
 
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
     std::string name = (Twine(personality) + "_alloc_redux").str();

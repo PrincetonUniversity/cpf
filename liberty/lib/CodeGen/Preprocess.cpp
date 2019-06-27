@@ -927,6 +927,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     // redux liveout -> redux
     HeapAssignment::ReduxAUSet &reduxs = asgn.getReductionAUs();
     HeapAssignment::ReduxDepAUSet &reduxdeps = asgn.getReduxDepAUs();
+    HeapAssignment::ReduxRegAUSet &reduxregs = asgn.getReduxRegAUs();
     for (unsigned i = 0; i < K; ++i) {
       Ptrs reduxaus;
       assert(spresults.getUnderlyingAUs(liveoutStructure.reduxObjects[i],
@@ -935,6 +936,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       for (Ptrs::iterator p = reduxaus.begin(), e = reduxaus.end(); p != e;
            ++p) {
         reduxs[p->au] = redux2Info[reduxLiveouts[i]].type;
+        reduxregs.insert(p->au);
 
         const Instruction *depInst = redux2Info[reduxLiveouts[i]].depInst;
         if (depInst) {

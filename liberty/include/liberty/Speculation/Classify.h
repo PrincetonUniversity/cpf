@@ -36,6 +36,7 @@ struct HeapAssignment : public UpdateOnClone
   typedef std::set<AU*> AUSet;
   typedef std::map<AU*,Reduction::Type> ReduxAUSet;
   typedef std::map<AU*,ReduxDepInfo> ReduxDepAUSet;
+  typedef std::set<AU*> ReduxRegAUSet;
   typedef std::map<const AU*,int> SubheapAssignment;
   typedef std::set<const BasicBlock *> LoopSet;
   typedef LoopSet::const_iterator loop_iterator;
@@ -67,6 +68,7 @@ struct HeapAssignment : public UpdateOnClone
   const AUSet &getReadOnlyAUs() const;
   const ReduxAUSet &getReductionAUs() const;
   const ReduxDepAUSet &getReduxDepAUs() const;
+  const ReduxRegAUSet &getReduxRegAUs() const;
 
   /// Return the subheap for an object, or (-1) on failure.
   int getSubHeap(const AU *au) const;
@@ -84,6 +86,7 @@ struct HeapAssignment : public UpdateOnClone
   AUSet &getReadOnlyAUs();
   ReduxAUSet &getReductionAUs();
   ReduxDepAUSet &getReduxDepAUs();
+  ReduxRegAUSet &getReduxRegAUs();
 
   void setValidFor(const Loop *);
 
@@ -120,6 +123,7 @@ private:
   AUSet shareds, locals, privs, ros;
   ReduxAUSet reduxs;
   ReduxDepAUSet reduxdeps;
+  ReduxRegAUSet reduxregs; // collects all the register reductions
 
   /// Sub-heap assignments.
   SubheapAssignment subheaps;

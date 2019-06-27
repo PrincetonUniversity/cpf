@@ -763,11 +763,12 @@ bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const He
 }
 
 bool ApplySeparationSpec::reallocateGlobals(
-    const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus,
-    const HeapAssignment::ReduxDepAUSet depAUs) {
+    const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus) {
   // OUTSIDE of parallel region
-  //DataLayout &td = getAnalysis< DataLayout >();
   const DataLayout &td = mod->getDataLayout();
+
+  const HeapAssignment::ReduxDepAUSet depAUs = asgn.getReduxDepAUs();
+  const HeapAssignment::ReduxRegAUSet regAUs = asgn.getReduxRegAUs();
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
   ReplaceConstant2PreprocessAdaptor adaptor(preprocess);
@@ -858,12 +859,15 @@ bool ApplySeparationSpec::reallocateGlobals(
       Constant *sz = ConstantInt::get(u32, size);
 
       Constant *subheap = ConstantInt::get(u8, asgn.getSubHeap(au));
+      Constant *reg = (regAUs.count(au)) ? ConstantInt::get(u8, 1)
+                                         : ConstantInt::get(u8, 0);
 
       Constant *alloc = Api(mod).getAlloc(HeapAssignment::Redux);
-      Value *actuals[] = {sz,         subheap, ConstantInt::get(u8, redty),
-                          depAllocAU, depSz,   depType};
+      Value *actuals[] = {sz,     subheap,    ConstantInt::get(u8, redty),
+                          reg,    depAllocAU, depSz,
+                          depType};
       Instruction *allocate =
-          CallInst::Create(alloc, ArrayRef<Value *>(&actuals[0], &actuals[6]));
+          CallInst::Create(alloc, ArrayRef<Value *>(&actuals[0], &actuals[7]));
       initFcn << allocate;
       Value *newAU = allocate;
 
@@ -908,7 +912,7 @@ bool ApplySeparationSpec::reallocateStaticAUs()
   modified |= reallocateGlobals(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
   modified |= reallocateGlobals(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
-  modified |= reallocateGlobals(asgn, asgn.getReductionAUs(), asgn.getReduxDepAUs());
+  modified |= reallocateGlobals(asgn, asgn.getReductionAUs());
 
   return modified;
 }
@@ -1085,11 +1089,13 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 
 // TODO: generalize and merge with the other version of reallocateInst.
 bool ApplySeparationSpec::reallocateInst(
-    const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus,
-    const HeapAssignment::ReduxDepAUSet depAUs) {
-  bool modified = false;
+    const HeapAssignment &asgn, const HeapAssignment::ReduxAUSet &aus) {
+  const HeapAssignment::ReduxDepAUSet depAUs = asgn.getReduxDepAUs();
+  const HeapAssignment::ReduxRegAUSet regAUs = asgn.getReduxRegAUs();
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
+
+  bool modified = false;
 
   std::set<const Value *> already;
   std::map<AU *, Value *> newAUs;
@@ -1164,13 +1170,16 @@ bool ApplySeparationSpec::reallocateInst(
       // Determine size of allocation
       Value *sz = determineSize(inst, where, inst);
       Constant *subheap = ConstantInt::get(u8, asgn.getSubHeap(au));
+      Constant *reg = (regAUs.count(au)) ? ConstantInt::get(u8, 1)
+                                         : ConstantInt::get(u8, 0);
 
       // Add code to perform allocation
       Constant *alloc = Api(mod).getAlloc(HeapAssignment::Redux);
-      Value *actuals[] = {sz,         subheap, ConstantInt::get(u8, redty),
-                          depAllocAU, depSz,   depType};
+      Value *actuals[] = {sz,     subheap,    ConstantInt::get(u8, redty),
+                          reg,    depAllocAU, depSz,
+                          depType};
       Instruction *allocate =
-          CallInst::Create(alloc, ArrayRef<Value *>(&actuals[0], &actuals[6]));
+          CallInst::Create(alloc, ArrayRef<Value *>(&actuals[0], &actuals[7]));
       where << allocate;
       Value *newAU = allocate;
 
@@ -1253,7 +1262,7 @@ bool ApplySeparationSpec::reallocateDynamicAUs()
   modified |= reallocateInst(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
   modified |= reallocateInst(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
-  modified |= reallocateInst(asgn, asgn.getReductionAUs(), asgn.getReduxDepAUs());
+  modified |= reallocateInst(asgn, asgn.getReductionAUs());
 
   return modified;
 }
