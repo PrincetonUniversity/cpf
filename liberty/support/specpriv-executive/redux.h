@@ -58,6 +58,7 @@ struct s_reduction_info
   void          * au;
   unsigned        size;
   ReductionType   type;
+  uint8_t         reg;   // is it a register reduction?
   void          * depAU; // depend on another min/max AU, found in KS benchmark
   unsigned        depSize;
   uint8_t         depType;
