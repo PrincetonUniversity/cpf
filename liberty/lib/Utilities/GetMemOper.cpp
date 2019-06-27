@@ -14,6 +14,9 @@ Value *liberty::getMemOper(Instruction *inst) {
   if(StoreInst *store = dyn_cast<StoreInst>(inst))
     return store->getPointerOperand();
 
+  if( MemSetInst *msi = dyn_cast< MemSetInst >(inst) )
+    return msi->getRawDest();
+
   if(isa<MemIntrinsic>(inst))
     return NULL;
 
