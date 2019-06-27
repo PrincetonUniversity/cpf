@@ -312,7 +312,8 @@ void __specpriv_free_priv(void *ptr)
 }
 
 void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type,
-                             void *depAU, Len depSize, uint8_t depType) {
+                             uint8_t reg, void *depAU, Len depSize,
+                             uint8_t depType) {
 
   DEBUG(printf("Allocate redux alloc\n"));
   DEBUG(printf("ReductionType:%hhu, len:%u, dep_len:%u\n",type, size, depSize));
@@ -325,6 +326,7 @@ void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type,
   info->size = size;
   info->type = type;
   info->au = heap_alloc(&mredux0, size);
+  info->reg = reg;
   info->depAU = depAU;
   info->depSize = depSize;
   info->depType = depType;

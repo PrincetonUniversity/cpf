@@ -29,7 +29,8 @@ void *__specpriv_alloc_unclassified(Len size);
 void __specpriv_free_unclassified(void *ptr);
 
 void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type,
-                             void *depAU, Len depSize, uint8_t depType);
+                             uint8_t reg, void *depAU, Len depSize,
+                             uint8_t depType);
 void __specpriv_free_redux(void *ptr);
 
 void *__specpriv_alloc_worker_redux(Len size);
