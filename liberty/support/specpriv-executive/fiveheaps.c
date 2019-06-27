@@ -214,16 +214,18 @@ void __specpriv_initialize_worker_heaps(void)
   // remap local heap to deal with weird "local" variables
   __specpriv_worker_remap_local();
 
+   const Wid myWorkerId = __specpriv_my_worker_id();
+
   // re-map my a new independent heap as my 'redux' heap.
   if (mredux0.heap)
     heap_unmap(&mredux0);
-//  mapped_heap_init(&myRedux);
-//  heap_map_shared(&redux[myWorkerId], &myRedux);
-  ParallelControlBlock *pcb = __specpriv_get_pcb();
-  heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0 );
+  mapped_heap_init(&myRedux);
+  heap_map_shared(&redux[myWorkerId], &myRedux);
+  //ParallelControlBlock *pcb = __specpriv_get_pcb();
+  //heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0 );
   if( sizeof_redux )
-//    heap_alloc(&myRedux, sizeof_redux);
-    heap_alloc(&mredux0, sizeof_redux);
+    heap_alloc(&myRedux, sizeof_redux);
+    //heap_alloc(&mredux0, sizeof_redux);
 
   // map my 'shadow', and 'local' heaps
   mapped_heap_init(&myShadow);
@@ -240,7 +242,7 @@ void __specpriv_destroy_worker_heaps(void)
   //heap_unmap(&mro);
 
   //heap_unmap(&myLocal);
-  //heap_unmap(&myRedux);
+  heap_unmap(&myRedux);
   heap_unmap(&myShadow);
 }
 
