@@ -73,6 +73,17 @@ private:
     return true;
   }
 
+  bool storeNull(const StoreInst *sI) {
+    const Value *stValOp = sI->getValueOperand();
+    if (PointerType *stValOpPtrTy = dyn_cast<PointerType>(stValOp->getType())) {
+      auto nullPtrVal =
+          ConstantPointerNull::get(cast<PointerType>(stValOpPtrTy));
+      if (sI->getValueOperand() == nullPtrVal)
+        return true;
+    }
+    return false;
+  }
+
 public:
   static char ID;
   GlobalMallocAA() : ModulePass(ID) {}
@@ -97,6 +108,8 @@ public:
             if (src) {
               mallocSrcs[&*global].insert(src);
             } else {
+              if (storeNull(store))
+                continue;
               nonMalloc.insert(&*global);
             }
           } else if (const BitCastOperator *bcOp =
@@ -108,6 +121,13 @@ public:
                 if (s) {
                   mallocSrcs[&*global].insert(s);
                 } else {
+                  // null is stored usually after a free operation.
+                  // Storing null should not be considered nonMalloc.
+                  // Undef behavior if the pointer is used with null value.
+                  // So we can leverage that and increase GlobalMallocAA
+                  // applicability
+                  if (storeNull(bStore))
+                    continue;
                   nonMalloc.insert(&*global);
                 }
               } else if (!isa<LoadInst>(*bUse)) {
