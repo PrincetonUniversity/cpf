@@ -5,6 +5,8 @@
 #define DEBUG_TYPE "inliner"
 
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Operator.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/ADT/Statistic.h"
@@ -39,11 +41,14 @@ struct Inliner: public ModulePass
 
   bool runOnModule(Module &mod)
   {
-    const bool modified = transform();
+    const bool modified = transform(mod);
     return modified;
   };
 
 private:
+  typedef Module::global_iterator GlobalIt;
+  typedef Value::user_iterator UseIt;
+
   // keep track of valid for inlining, already processed, call insts
   std::unordered_set<CallInst *> validCallInsts;
 
@@ -100,7 +105,41 @@ private:
       processBB(*BB, curPathVisited);
   }
 
-  bool transform() {
+  void inlineCall(CallInst *call) {
+    Function *calledFun = call->getCalledFunction();
+    if (calledFun && !calledFun->isDeclaration()) {
+      if (validCallInsts.count(call))
+        return;
+      inlineCallInsts.push(call);
+      validCallInsts.insert(call);
+    }
+  }
+
+  // TODO: could improve the inlining for globals by ensuring that all the uses
+  // by function calls of each global (including within the whole call graph)
+  // can be eliminated (namely when no recursive function needs to be inlined).
+  // Should do no inlining unless all captures by fun calls can be removed for a
+  // particular global.
+  void runOnGlobal(GlobalVariable &global) {
+    Type *type = global.getType()->getElementType();
+    if (type->isPointerTy()) {
+      for (UseIt use = global.user_begin(); use != global.user_end(); ++use) {
+        if (CallInst *call = dyn_cast<CallInst>(*use)) {
+          inlineCall(call);
+        } else if (BitCastOperator *bcOp =
+                       dyn_cast<BitCastOperator>(*use)) {
+          for (UseIt bUse = bcOp->user_begin(); bUse != bcOp->user_end();
+               ++bUse) {
+            if (CallInst *bCall = dyn_cast<CallInst>(*bUse)) {
+              inlineCall(bCall);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  bool transform(Module &mod) {
     bool modified = false;
 
     ModuleLoops &mloops = getAnalysis<ModuleLoops>();
@@ -108,6 +147,13 @@ private:
     for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
          i != e; ++i) {
       runOnTargetLoop(*i);
+    }
+
+    // inline functions that capture globals in their arguments (usually memory
+    // allocation or free related functions). Simplifies work of GlobalMallocAA
+    for (GlobalIt global = mod.global_begin(); global != mod.global_end();
+         ++global) {
+      runOnGlobal(*global);
     }
 
     // performing function inlining on collected call insts

@@ -228,6 +228,115 @@ public:
 		return true;
   }
 
+  // getURemExpr not available in LLVM 5.0 as opposed to LLVM 9.0, so it is
+  // added here for now to avoid adding extra patch to LLVM
+  const SCEV *getURemExpr(ScalarEvolution *SE, const SCEV *LHS,
+                          const SCEV *RHS) {
+    assert(SE->getEffectiveSCEVType(LHS->getType()) ==
+               SE->getEffectiveSCEVType(RHS->getType()) &&
+           "SCEVURemExpr operand types don't match!");
+
+    // Short-circuit easy cases
+    if (const SCEVConstant *RHSC = dyn_cast<SCEVConstant>(RHS)) {
+      // If constant is one, the result is trivial
+      if (RHSC->getValue()->isOne())
+        return SE->getZero(LHS->getType()); // X urem 1 --> 0
+
+      // If constant is a power of two, fold into a zext(trunc(LHS)).
+      if (RHSC->getAPInt().isPowerOf2()) {
+        Type *FullTy = LHS->getType();
+        Type *TruncTy =
+            IntegerType::get(SE->getContext(), RHSC->getAPInt().logBase2());
+        return SE->getZeroExtendExpr(SE->getTruncateExpr(LHS, TruncTy), FullTy);
+      }
+    }
+
+    // Fallback to %a == %x urem %y == %x -<nuw> ((%x udiv %y) *<nuw> %y)
+    const SCEV *UDiv = SE->getUDivExpr(LHS, RHS);
+    const SCEV *Mult = SE->getMulExpr(UDiv, RHS, SCEV::FlagNUW);
+    return SE->getMinusSCEV(LHS, Mult, SCEV::FlagNUW);
+  }
+
+  bool notOverlappingStrides(ScalarEvolution *SE, const Loop *L,
+                             const SCEV *ptr1,
+                             const APInt &size1, // (from earlier iteration)
+                             const SCEV *ptr2,
+                             const APInt &size2 // (from later iteration)
+  ) {
+    // Deconstruct each stride into (base1,step1) and (base2,step2) w.r.t. loop
+    // L
+    const unsigned BitWidth = SE->getTypeSizeInBits(ptr1->getType());
+    const APInt ap0(BitWidth, 0);
+    const SCEV *zero = SE->getConstant(ap0);
+
+    const SCEV *base1 = ptr1;
+    const SCEV *step1 = zero;
+    if (const SCEVAddRecExpr *ar1 = dyn_cast<SCEVAddRecExpr>(ptr1))
+      if (ar1->getLoop() == L) {
+        base1 = ar1->getStart();
+        step1 = ar1->getStepRecurrence(*SE);
+      }
+
+    const SCEV *base2 = ptr2;
+    const SCEV *step2 = zero;
+    if (const SCEVAddRecExpr *ar2 = dyn_cast<SCEVAddRecExpr>(ptr2))
+      if (ar2->getLoop() == L) {
+        base2 = ar2->getStart();
+        step2 = ar2->getStepRecurrence(*SE);
+      }
+
+    // At least one must stride
+    if( step1 == zero && step2 == zero )
+      return false;
+
+    // Targets cases where the later iteration ptr (ptr2) starts from a
+    // smaller base compared to the earlier iteration ptr (ptr1) but might
+    // overlap if there are enough iterations in between.
+    // The goal is to prove that they cannot overlap.
+    // Check only for the simple case where the step is the same for both
+    // pointers and it is constant.
+    // Orthogonal case to the one handled by stepGreaterThan function.
+    // The performed check:
+    //    dbase = base1 - base2
+    //    dstep = step1 - step2
+    //    if (dbase > 0 && dstep == 0 &&
+    //        dbase % step >= size2 &&
+    //        dbase % step <= step - size1
+    //      then no-alias
+
+    const SCEV *diffStep = SE->getMinusSCEV(step2, step1);
+    bool stepDiffZero =
+        SE->isKnownNonNegative(diffStep) && SE->isKnownNonPositive(diffStep);
+
+    if (!stepDiffZero)
+      return false;
+
+    const SCEV *step = step1; // both steps the same
+    const ConstantRange stepRange = SE->getSignedRange(step);
+    if (!stepRange.isSingleElement())  // step needs to be constant
+      return false;
+    if (stepRange.getSignedMax().sle(0)) // step assumed to be positive.
+      return false;
+
+    const SCEV *diffBases = SE->getMinusSCEV(base1, base2);
+    const ConstantRange diffBasesRange = SE->getSignedRange(diffBases);
+
+		// getURemExpr not available in LLVM 5.0
+    //const SCEV *rem = SE->getURemExpr(diffBases, step);
+    const SCEV *rem = getURemExpr(SE, diffBases, step);
+    const ConstantRange remRange = SE->getSignedRange(rem);
+
+    const SCEV *tmpS = SE->getMinusSCEV(step, rem);
+    const ConstantRange tmpSRange = SE->getSignedRange(tmpS);
+
+    if (diffBasesRange.getSignedMin().sgt(0) &&
+        remRange.getSignedMin().sge(size2) &&
+        tmpSRange.getSignedMin().sge(size1)) {
+      return true;
+    }
+		return false;
+  }
+
 	static BasicBlock *GetBottom(DominatorTree &DT, const SCEV *S) {
 		struct FindBottom {
 			BasicBlock *Bottom = nullptr;
@@ -354,10 +463,10 @@ public:
 
     if( SE->getEffectiveSCEVType(s1->getType()) != SE->getEffectiveSCEVType(s2->getType()) )
       return MayAlias;
-    
+
     // fix dominance problem; may introduce more MayAlias
     if (Rel == LoopAA::Same && !HasDominanceRelation(DT, s1, s2))
-      return MayAlias; 
+      return MayAlias;
 
     ++numEligible;
 
@@ -425,7 +534,7 @@ public:
           }
       }
       */
-     
+
       const SCEV *diff = SE->getMinusSCEV(s1,s2);
       if( alwaysGreaterThan(SE, diff, L,  size2, size1) )
       {
@@ -466,6 +575,9 @@ public:
       {
         ++numNoAlias;
         return NoAlias;
+      } else if (notOverlappingStrides(SE, L, s1, size1, s2, size2)) {
+        ++numNoAlias;
+        return NoAlias;
       }
     }
 
@@ -473,11 +585,10 @@ public:
     // for which we can't say anything.
     DEBUG(errs()
       << "Eligible fallthrough:\n"
-      << "  size " << size1 << " scev " << *s1 << '\n'
+      << "  size " << size1 << " scev1 " << *s1 << '\n'
       << "(" << Rel << ", " << fcn->getName() << " :: " << header->getName() << ")\n"
-      << "  size " << size2 << " scev " << *s2 << '\n'
+      << "  size " << size2 << " scev2 " << *s2 << '\n'
     );
-
     return MayAlias;
   }
 

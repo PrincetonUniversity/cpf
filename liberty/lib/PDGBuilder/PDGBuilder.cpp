@@ -11,6 +11,7 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ValueTracking.h"
 
 #include "llvm/ADT/iterator_range.h"
 
@@ -183,11 +184,11 @@ void llvm::PDGBuilder::constructEdgesFromControl(
       {
         Instruction *idst = &*k;
 
-        /*
         // Draw ctrl deps to:
         //  (1) Operations with side-effects
         //  (2) Conditional branches.
-        */
+        if (isSafeToSpeculativelyExecute(idst))
+          continue;
 
         auto edge = pdg.addEdge((Value *)term, (Value *)idst);
         edge->setControl(true);
@@ -239,6 +240,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   // Foreach loop-exit.
   typedef ControlSpeculation::ExitingBlocks Exitings;
 
+  /*
   // build a tmp pdg that holds transitive II-ctrl dependence info
   std::unordered_map<const Instruction *,
                      std::unordered_set<const Instruction *>>
@@ -246,6 +248,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   PDG IICtrlPDG;
   IICtrlPDG.populateNodesOf(loop);
   buildTransitiveIntraIterationControlDependenceCache(loop, pdg, IICtrlPDG, IICtrlCache);
+  */
 
   Exitings exitings;
   noctrlspec.getExitingBlocks(loop, exitings);
@@ -264,11 +267,11 @@ void llvm::PDGBuilder::constructEdgesFromControl(
       {
         Instruction *idst = &*k;
 
-        /*
         // Draw ctrl deps to:
         //  (1) Operations with side-effects
         //  (2) Loop exits
-        */
+        if (isSafeToSpeculativelyExecute(idst))
+          continue;
 
         /*
         if( TerminatorInst *tt = dyn_cast< TerminatorInst >(idst) )
@@ -278,10 +281,14 @@ void llvm::PDGBuilder::constructEdgesFromControl(
 
         // Draw LC ctrl dep only when there is no (transitive) II ctrl dep from t to s
 
-        if (IICtrlCache.count(term))
-          if (IICtrlCache[term].count(idst))
-            continue;
-        //errs() << "new LC ctrl dep between " << *term << " and " << *idst << "\n";
+        /*
+        // TODO: double-check if this is actually useful. Be more conservative
+        for now to speedupthe PDG's control dep construction
+        if (IICtrlCache.count(term)) if (IICtrlCache[term].count(idst)) continue;
+        */
+
+        // errs() << "new LC ctrl dep between " << *term << " and " << *idst <<
+        // "\n";
         auto edge = pdg.addEdge((Value *)term, (Value *)idst);
         edge->setControl(true);
         edge->setLoopCarried(true);

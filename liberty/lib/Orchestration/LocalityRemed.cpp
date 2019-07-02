@@ -213,6 +213,25 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   bool RAW = dataDepTy == DataDepType::RAW;
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);
+
+  // if ptr1/ptr2 null, check for memcpy/memmove inst.
+  // src pointer is read, dst pointer is written.
+  // choose pointer for current query based on dataDepTy
+  if (!ptr1) {
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(A)) {
+      if (dataDepTy == DataDepType::WAR)
+        ptr1 = mti->getRawSource();
+      ptr1 = mti->getRawDest();
+    }
+  }
+  if (!ptr2) {
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(B)) {
+      if (dataDepTy == DataDepType::RAW)
+        ptr2 = mti->getRawSource();
+      ptr2 = mti->getRawDest();
+    }
+  }
+
   if (!ptr1 || !ptr2) {
     bool noDep =
         (LoopCarried)
