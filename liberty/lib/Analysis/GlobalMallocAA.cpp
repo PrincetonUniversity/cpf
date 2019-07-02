@@ -35,6 +35,7 @@ private:
   ValueSet nonMalloc;
   ValueSet nonExclusive;
   VToCIMap mallocSrcs;
+  VToCIMap nonMallocSrcs;
 
   const DataLayout *DL;
   const TargetLibraryInfo *tli;
@@ -73,7 +74,25 @@ private:
     return true;
   }
 
-  bool storeNull(const StoreInst *sI) {
+  bool storeOtherGV(const StoreInst *sI, const GlobalValue *otherGV) const {
+    const LoadInst *ld = dyn_cast<LoadInst>(sI->getValueOperand());
+    if (!ld)
+      return false;
+
+    if (ld->getPointerOperand() == otherGV)
+      return true;
+
+    if (const BitCastOperator *bcOp =
+            dyn_cast<BitCastOperator>(ld->getPointerOperand())) {
+      if (const GlobalValue *gv = dyn_cast<GlobalValue>(bcOp->getOperand(0))) {
+        if (gv == otherGV)
+          return true;
+      }
+    }
+    return false;
+  }
+
+  bool storeNull(const StoreInst *sI) const {
     const Value *stValOp = sI->getValueOperand();
     if (PointerType *stValOpPtrTy = dyn_cast<PointerType>(stValOp->getType())) {
       auto nullPtrVal =
@@ -95,6 +114,7 @@ public:
     tli = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
     nonMalloc.clear();
+    nonMallocSrcs.clear();
     mallocSrcs.clear();
 
     for (GlobalIt global = M.global_begin(); global != M.global_end();
@@ -111,6 +131,7 @@ public:
               if (storeNull(store))
                 continue;
               nonMalloc.insert(&*global);
+              nonMallocSrcs[&*global].insert(store);
             }
           } else if (const BitCastOperator *bcOp =
                          dyn_cast<BitCastOperator>(*use)) {
@@ -129,6 +150,7 @@ public:
                   if (storeNull(bStore))
                     continue;
                   nonMalloc.insert(&*global);
+                  nonMallocSrcs[&*global].insert(bStore);
                 }
               } else if (!isa<LoadInst>(*bUse)) {
                 nonMalloc.insert(&*global);
@@ -232,6 +254,56 @@ public:
 
     if(V2GlobalSrc && V1Global && V2MallocOnly)
       return NoAlias;
+
+    // Addressing the following scenario:
+    // V1 points to one object and V2 points to a different object and at some
+    // point these two global pointers get swapped. The stores in the swap are
+    // the only nonMalloc stores.  If the swap does not occur within the loop of
+    // interest then these two pointers do not alias. They will never point to
+    // the same object at any invocation of this loop.
+    if (V1GlobalSrc && !V1MallocOnly && V2GlobalSrc && !V2MallocOnly && L) {
+
+      // 1) check that the global pointers originally point to different objects
+      const CISet V1set = mallocSrcs[V1GlobalSrc];
+      const CISet V2set = mallocSrcs[V2GlobalSrc];
+
+      SmallPtrSet<const Instruction *, 4> both;
+      for (CISetIt it = V1set.begin(); it != V1set.end(); ++it) {
+        both.insert(*it);
+      }
+
+      bool noAlias = true;
+      for (CISetIt it = V2set.begin(); it != V2set.end(); ++it) {
+        if (!both.insert(*it).second) {
+          noAlias = false;
+        }
+      }
+
+      if (both.size() && noAlias) {
+
+        // 2) check whether existence of nonMallocSrcs is due to a swap of the
+        // two global pointers
+        if (nonMallocSrcs[V1GlobalSrc].size() == 1 &&
+            nonMallocSrcs[V2GlobalSrc].size() == 1) {
+          const StoreInst *nonMallocSt1 =
+              dyn_cast<StoreInst>(*nonMallocSrcs[V1GlobalSrc].begin());
+          const StoreInst *nonMallocSt2 =
+              dyn_cast<StoreInst>(*nonMallocSrcs[V2GlobalSrc].begin());
+
+          if (nonMallocSt1 && storeOtherGV(nonMallocSt1, V2GlobalSrc) &&
+              nonMallocSt2 && storeOtherGV(nonMallocSt2, V1GlobalSrc) &&
+              // stores should occur within the same basic block
+              nonMallocSt1->getParent() == nonMallocSt2->getParent()) {
+
+            // nonMallocSrcs exist due to a swap
+            //
+            // 3) check that swap does not occur within the loop of interest
+            if (!L->contains(nonMallocSt1) && !L->contains(nonMallocSt2))
+              return NoAlias;
+          }
+        }
+      }
+    }
 
     return MayAlias;
   }
