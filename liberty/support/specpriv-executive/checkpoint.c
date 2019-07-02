@@ -13,13 +13,6 @@
 #include "timer.h"
 #include "fiveheaps.h"
 
-/******************************************************************************
- * XXX Remove this after 3mm works!!!!!!
- */
-
-// Determine the amount of memory (in bytes) used by the main checkpoint.
-// Not completely accurate, ignores small sources of memory consumption,
-// and instead focuses on the contribution of each heap...
 static uint64_t __specpriv_count_memory_used_by_main_checkpoint(void)
 {
   uint64_t size_private = __specpriv_sizeof_private();
@@ -537,7 +530,7 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
 
 void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
 {
-  uint64_t checkpoint_start, checkpoint_stop;
+  uint64_t checkpoint_start, checkpoint_stop = 0;
   TIME( checkpoint_start );
 
   assert( ! __specpriv_i_am_main_process() );
@@ -578,7 +571,7 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
   __specpriv_commit_zero_or_more_checkpoints( &pcb->checkpoints );
 #endif
 
-  TIME( checkpoint_stop );
+  TADD(worker_time_in_checkpoints, checkpoint_start);
   TOUT(
     if( numCheckpoints < MAX_CHECKPOINTS )
     {
@@ -587,7 +580,6 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
       rec->checkpoint_stop = checkpoint_stop;
     }
 
-    worker_time_in_checkpoints += (checkpoint_stop - checkpoint_start);
     ++numCheckpoints;
   );
 }

@@ -21,16 +21,21 @@ uint64_t consume_wait_time = 0;
 uint64_t produce_actual_time = 0;
 uint64_t consume_actual_time = 0;
 
+uint64_t pipe_read_time = 0;
+uint64_t pipe_write_time = 0;
+
 uint64_t get_queue_time = 0;
 
-uint64_t total_produces, total_consumes;
-
+uint64_t worker_iteration_start;
+uint64_t worker_off_iteration_time = 0;
+uint64_t worker_on_iteration_time = 0;
 uint64_t worker_time_in_checkpoints=0;
 uint64_t worker_time_in_redux=0;
 uint64_t worker_time_in_priv_write=0;
 uint64_t worker_time_in_priv_read=0;
 uint64_t worker_time_in_io=0;
 
+uint64_t total_produces, total_consumes;
 uint64_t worker_private_bytes_read=0;
 uint64_t worker_private_bytes_written=0;
 
@@ -48,6 +53,8 @@ void __specpriv_print_percentages( void )
 {
 #if TIMER_PRINT_TIMELINE
 
+  if ( __specpriv_i_am_main_process() )
+    return;
   double total_time = (double) (worker_end_invocation - worker_begin_invocation);
 
   uint64_t worker_loop_time = worker_exit_loop - worker_enter_loop;
@@ -60,6 +67,8 @@ void __specpriv_print_percentages( void )
   printf("Total worker loop time:         %18lu\n", worker_loop_time);
   printf("Worker loop initialize time:    %18lu\n", worker_enter_loop - worker_begin_invocation);
   printf("Total worker useful work time:  %18lu\n", worker_useful_work_time);
+  printf("Total worker off iter time:     %18lu\n", worker_off_iteration_time);
+  printf("Total worker on iter time:      %18lu\n", worker_on_iteration_time);
   printf("Time spent in checkpoints:      %18lu\n", worker_time_in_checkpoints);
   printf("Time spent in private reads:    %18lu\n", worker_time_in_priv_read);
   printf("Time spent in private writes:   %18lu\n", worker_time_in_priv_write);
@@ -75,6 +84,8 @@ void __specpriv_print_percentages( void )
   printf("Worker initialize:          %12lf\n"
          "Worker loop:                %12lf\n"
          "Worker useful work:         %12lf\n"
+         "Worker off iteration:       %12lf\n"
+         "Worker on iteration:        %12lf\n"
          "Worker checkpoint:          %12lf\n"
          "Worker private reads:       %12lf\n"
          "Worker private writes:      %12lf\n"
@@ -90,6 +101,8 @@ void __specpriv_print_percentages( void )
          (double)(worker_initialize_time*100) / total_time,
          (double)(worker_loop_time*100) / total_time,
          (double)(worker_useful_work_time*100) / total_time,
+         (double)(worker_off_iteration_time*100) / total_time,
+         (double)(worker_on_iteration_time*100) / total_time,
          (double)(worker_time_in_checkpoints*100) / total_time,
          (double)(worker_time_in_priv_read*100) / total_time,
          (double)(worker_time_in_priv_write*100) / total_time,
