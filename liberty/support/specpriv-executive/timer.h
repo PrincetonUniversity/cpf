@@ -40,6 +40,13 @@ extern uint64_t consume_wait_time;
 extern uint64_t produce_actual_time;
 extern uint64_t consume_actual_time;
 
+extern uint64_t pipe_read_time;
+extern uint64_t pipe_write_time;
+
+extern uint64_t worker_iteration_start;
+extern uint64_t worker_off_iteration_time;
+extern uint64_t worker_on_iteration_time;
+
 extern uint64_t get_queue_time;
 extern uint64_t total_produces, total_consumes;
 

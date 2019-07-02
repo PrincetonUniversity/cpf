@@ -192,9 +192,12 @@ static void __specpriv_worker_setup(Wid wid)
     DEBUG(fflush(stdout));
 
     ssize_t bytesRead = 0;
+    uint64_t start;
     while (bytesRead != workerArgsSize) {
+      TIME(start);
       ssize_t r = read(pipefds[myWorkerId][0], &workerArgs + bytesRead,
                workerArgsSize - bytesRead);
+      TADD(pipe_read_time, start);
       if (r == -1) {
         perror("child read from pipe!!!");
         _exit(0);
@@ -363,6 +366,7 @@ void __specpriv_end(void)
   TOUT( __specpriv_print_percentages());
   assert( myWorkerId == MAIN_PROCESS );
 
+  DEBUG( printf("Closing pipes from parent\n") );
   for (Wid wid = 0; wid < numWorkers; ++wid) {
     close(pipefds[wid][1]);
   }
@@ -577,8 +581,8 @@ uint32_t __specpriv_begin_invocation(void)
 
   currentIter = 0;
 
-  DEBUG(printf("At beginning of invocation, sizeof(priv)=%u, sizeof(redux)=%u\n",
-    __specpriv_sizeof_private(), __specpriv_sizeof_redux() ));
+  DEBUG(printf("At beginning of invocation, sizeof(priv)=%u, sizeof(redux)=%u, sizeof(local)=%u\n",
+    __specpriv_sizeof_private(), __specpriv_sizeof_redux(), __specpriv_sizeof_local() ));
 
   return numWorkers;
 }
@@ -623,14 +627,17 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
 
     // write to workers to start work
     ssize_t bytesWritten = 0;
+    uint64_t start;
     while (bytesWritten != workerArgsSize) {
+      TIME(start);
       ssize_t w = write(pipefds[wid][1], &workerArgs + bytesWritten,
                         workerArgsSize - bytesWritten);
+      TADD(pipe_write_time, start);
       if (w == -1) {
         perror("parent write to pipe!!!");
         _exit(0);
       }
-      DEBUG(printf("Parent wrote %ld bytes to pipe\n", w));
+      DEBUG(printf("Parent wrote %ld bytes to pipe %d\n", w, wid));
       DEBUG(fflush(stdout));
       bytesWritten += w;
     }
@@ -775,6 +782,10 @@ Exit __specpriv_end_invocation(void)
 void __specpriv_begin_iter(void)
 {
   DEBUG(printf("iter %u %u\n", myWorkerId, currentIter));
+  // XXX gc14 -- will need to change this for multiple stages
+  TOUT(
+      TIME(worker_iteration_start);
+      );
 
   __specpriv_reset_local();
 }
@@ -799,6 +810,13 @@ int __specpriv_get_loopID( void )
 void __specpriv_end_iter(uint32_t ckptUsed)
 {
 
+  // XXX gc14 -- will need to change this for multiple stages
+  TOUT(
+      if ( myWorkerId != currentIter % __specpriv_num_workers() )
+        TADD(worker_off_iteration_time, worker_iteration_start);
+      else
+        TADD(worker_on_iteration_time, worker_iteration_start);
+      );
   // only misspec on locals if last stage
   if( __specpriv_num_local() > 0 && GET_MY_STAGE(myWorkerId) == GET_NUM_STAGES()-1 )
     __specpriv_misspec("Object lifetime misspeculation");
