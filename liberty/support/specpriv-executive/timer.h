@@ -46,6 +46,7 @@ extern uint64_t pipe_write_time;
 extern uint64_t worker_iteration_start;
 extern uint64_t worker_set_iter_time;
 extern uint64_t worker_end_iter;
+extern uint64_t worker_end_iter_checks;
 extern uint64_t worker_between_iter_time;
 extern uint64_t worker_off_iteration_time;
 extern uint64_t worker_on_iteration_time;

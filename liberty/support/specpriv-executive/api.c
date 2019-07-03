@@ -434,6 +434,7 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
     worker_on_iteration_time = 0;
     worker_off_iteration_time = 0;
     worker_between_iter_time = 0;
+    worker_end_iter_checks = 0;
     worker_end_iter = 0;
     worker_set_iter_time = 0;
     produce_time = 0;
@@ -835,6 +836,8 @@ void __specpriv_end_iter(uint32_t ckptUsed)
         TADD(worker_on_iteration_time, worker_iteration_start);
       );
   TIME(worker_end_iter);
+  uint64_t start;
+  TIME(start);
   // only misspec on locals if last stage
   if( __specpriv_num_local() > 0 && GET_MY_STAGE(myWorkerId) == GET_NUM_STAGES()-1 )
     __specpriv_misspec("Object lifetime misspeculation");
@@ -852,6 +855,7 @@ void __specpriv_end_iter(uint32_t ckptUsed)
   Iteration globalCurIter = currentIter;
   if (!runOnEveryIter)
     globalCurIter = myWorkerId + (currentIter * numWorkers);
+  TADD(worker_end_iter_checks, start);
 
   //__specpriv_advance_iter(++currentIter);
   __specpriv_advance_iter(globalCurIter, ckptUsed);

@@ -32,6 +32,7 @@ uint64_t worker_on_iteration_time = 0;
 uint64_t worker_set_iter_time = 0;
 uint64_t worker_end_iter = 0;
 uint64_t worker_between_iter_time = 0;
+uint64_t worker_end_iter_checks = 0;
 uint64_t worker_time_in_checkpoints=0;
 uint64_t worker_final_checkpoint_time = 0;
 uint64_t worker_intermediate_checkpoint_time = 0;
@@ -75,6 +76,7 @@ void __specpriv_print_percentages( void )
   printf("Total worker useful work time:  %18lu\n", worker_useful_work_time);
   printf("Total worker off iter time:     %18lu\n", worker_off_iteration_time);
   printf("Total worker on iter time:      %18lu\n", worker_on_iteration_time);
+  printf("Time checking in end_iter():    %18lu\n", worker_end_iter_checks);
   printf("Time spent in checkpoints:      %18lu\n", worker_time_in_checkpoints);
   printf("Time in checking checkpoints:   %18lu\n", worker_checkpoint_check_time);
   printf("Time in intermediate ckpts:     %18lu\n", worker_intermediate_checkpoint_time);
@@ -96,7 +98,7 @@ void __specpriv_print_percentages( void )
          "Worker off iteration:       %12lf\n"
          "Worker on iteration:        %12lf\n"
          "Worker between iteration:   %12lf\n"
-         "Worker set iter:            %12lf\n"
+         "Worker end_iter() checks:   %12lf\n"
          "Worker checkpoint:          %12lf\n"
          "Worker checkpoint check:    %12lf\n"
          "Worker intermediate ckpt:   %12lf\n"
@@ -118,7 +120,7 @@ void __specpriv_print_percentages( void )
          (double)(worker_off_iteration_time*100) / total_time,
          (double)(worker_on_iteration_time*100) / total_time,
          (double)(worker_between_iter_time*100) / total_time,
-         (double)(worker_set_iter_time*100) / total_time,
+         (double)(worker_end_iter_checks*100) / total_time,
          (double)(worker_time_in_checkpoints*100) / total_time,
          (double)(worker_checkpoint_check_time*100) / total_time,
          (double)(worker_intermediate_checkpoint_time*100) / total_time,
