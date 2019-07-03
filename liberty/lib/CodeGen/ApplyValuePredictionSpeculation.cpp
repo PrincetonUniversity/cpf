@@ -286,8 +286,20 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
     for(unsigned j=0; j<backedges.size(); ++j)
     {
       BasicBlock *pred = backedges[j];
+
       if( ctrlspec->isSpeculativelyDead(pred,header) )
         continue;
+
+      // look if there a BB that stores redux and other loop-carried variables
+      // (added by Preprocess)
+      // if you find this kind of BB, insert value pred checks on predecessor
+      // since this BB will be modified by MTCG
+      std::string save_redux_lc_name = "save.redux.lc";
+      std::string predBBName = pred->getName().str();
+      if (predBBName.find(save_redux_lc_name) != std::string::npos) {
+        pred = pred->getUniquePredecessor();
+        assert(pred && "save.redux.lc BB does not have a unique predecessor??");
+      }
 
       InstInsertPt bottom = InstInsertPt::End(pred);
       LoadInst *ldpred = new LoadInst(new_ptr);
