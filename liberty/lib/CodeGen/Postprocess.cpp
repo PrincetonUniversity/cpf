@@ -1725,11 +1725,20 @@ private:
         */
       }
 
-      BinaryOperator *conjunction =
-        BinaryOperator::Create(Instruction::And, heap_ok, subheap_ok, "spec.ok");
+      // check for null ptr
+      ConstantInt *null_ptr = ConstantInt::get(u64, 0);
+      Instruction *null_ptr_check = CmpInst::Create(
+          Instruction::ICmp, ICmpInst::ICMP_EQ, cast, null_ptr, "null.ptr.check");
+      where << null_ptr_check;
+
+      BinaryOperator *all_spec_ok=
+        BinaryOperator::Create(Instruction::And, heap_ok, subheap_ok, "all.spec.ok");
+
+      BinaryOperator *conjunction=
+        BinaryOperator::Create(Instruction::Or, null_ptr_check, all_spec_ok, "spec.ok");
       BranchInst *br = BranchInst::Create(goodbb, misspecbb, conjunction);
 
-      where << conjunction << br;
+      where << all_spec_ok << conjunction << br;
 
       // fill in the misspec bb
       where = InstInsertPt::Beginning(misspecbb);
