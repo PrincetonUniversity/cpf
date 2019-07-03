@@ -421,6 +421,8 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
   // reset timers
   TOUT(
     ++InvocationNumber;
+    worker_intermediate_checkpoint_time = 0;
+    worker_final_checkpoint_time = 0;
     worker_time_in_checkpoints=0;
     worker_time_in_priv_write=0;
     worker_time_in_priv_read=0;
@@ -428,6 +430,18 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
     numCheckpoints = 0;
     worker_private_bytes_read=0;
     worker_private_bytes_written=0;
+    worker_on_iteration_time = 0;
+    worker_off_iteration_time = 0;
+    worker_between_iter_time = 0;
+    worker_end_iter = 0;
+    worker_set_iter_time = 0;
+    produce_time = 0;
+    consume_time = 0;
+    produce_wait_time = 0;
+    consume_wait_time = 0;
+    produce_actual_time = 0;
+    consume_actual_time = 0;
+    get_queue_time = 0;
   );
 
   TIME(worker_begin_invocation);
@@ -450,10 +464,10 @@ void __specpriv_worker_finishes(Exit exitTaken)
   DEBUG(printf("Worker %u finishing with exitTaken:%u.\n", myWorkerId,
                exitTaken));
 
-  TIME(worker_exit_loop);
-
   __specpriv_worker_perform_checkpoint(1);
   __specpriv_destroy_worker_heaps();
+
+  TIME(worker_exit_loop);
 
   __specpriv_get_pcb()->exit_taken = exitTaken;
 
@@ -784,8 +798,10 @@ void __specpriv_begin_iter(void)
   DEBUG(printf("iter %u %u\n", myWorkerId, currentIter));
   // XXX gc14 -- will need to change this for multiple stages
   TOUT(
-      TIME(worker_iteration_start);
+      if ( worker_end_iter != 0 )
+        TADD(worker_between_iter_time, worker_end_iter);
       );
+  TIME(worker_iteration_start);
 
   __specpriv_reset_local();
 }
@@ -817,6 +833,7 @@ void __specpriv_end_iter(uint32_t ckptUsed)
       else
         TADD(worker_on_iteration_time, worker_iteration_start);
       );
+  TIME(worker_end_iter);
   // only misspec on locals if last stage
   if( __specpriv_num_local() > 0 && GET_MY_STAGE(myWorkerId) == GET_NUM_STAGES()-1 )
     __specpriv_misspec("Object lifetime misspeculation");
