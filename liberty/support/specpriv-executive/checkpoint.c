@@ -571,6 +571,12 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
   __specpriv_commit_zero_or_more_checkpoints( &pcb->checkpoints );
 #endif
 
+  TOUT(
+      if ( isFinalCheckpoint )
+        TADD(worker_final_checkpoint_time, checkpoint_start);
+      else
+        TADD(worker_intermediate_checkpoint_time, checkpoint_start);
+      );
   TADD(worker_time_in_checkpoints, checkpoint_start);
   TOUT(
     if( numCheckpoints < MAX_CHECKPOINTS )
