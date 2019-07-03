@@ -56,6 +56,7 @@ extern uint64_t total_produces, total_consumes;
 extern uint64_t worker_time_in_checkpoints;
 extern uint64_t worker_final_checkpoint_time;
 extern uint64_t worker_intermediate_checkpoint_time;
+extern uint64_t worker_checkpoint_check_time;
 extern uint64_t worker_time_in_priv_write;
 extern uint64_t worker_time_in_priv_read;
 extern uint64_t worker_time_in_io;

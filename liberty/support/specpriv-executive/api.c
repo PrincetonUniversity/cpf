@@ -423,6 +423,7 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
     ++InvocationNumber;
     worker_intermediate_checkpoint_time = 0;
     worker_final_checkpoint_time = 0;
+    worker_checkpoint_check_time = 0;
     worker_time_in_checkpoints=0;
     worker_time_in_priv_write=0;
     worker_time_in_priv_read=0;
@@ -859,6 +860,9 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 // check whether we will checkpoint at the end of current iteration
 uint32_t __specpriv_ckpt_check(void)
 {
+  uint64_t start;
+  TIME(start);
+
   Iteration firstIter = __specpriv_get_first_iter();
   Iteration i = currentIter + 1;
   if (!runOnEveryIter)
@@ -871,6 +875,7 @@ uint32_t __specpriv_ckpt_check(void)
   if (runOnEveryIter) {
     if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0) {
       ckpt_check = 1;
+      TADD(worker_checkpoint_check_time, start);
       return 1;
     }
   }
@@ -880,10 +885,12 @@ uint32_t __specpriv_ckpt_check(void)
     Iteration curR = (i - firstIter) / checkpointGranularity;
     if (prevI >= firstIter && prevR + 1 == curR) {
       ckpt_check = 1;
+      TADD(worker_checkpoint_check_time, start);
       return 1;
     }
   }
   ckpt_check = 0;
+  TADD(worker_checkpoint_check_time, start);
   return 0;
 }
 
