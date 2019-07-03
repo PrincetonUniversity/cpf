@@ -21,18 +21,91 @@ uint64_t consume_wait_time = 0;
 uint64_t produce_actual_time = 0;
 uint64_t consume_actual_time = 0;
 
+//////// ONE-TIME COSTS ////////
+/******************************************************************************
+ * Worker setup time
+ */
+uint64_t worker_setup_cpu_time = 0;
+
+//////// PER-INVOCATION TIMES ////////
+/******************************************************************************
+ * Writing/reading from pipe time
+ */
+uint64_t main_write_pipe_time = 0;
+uint64_t worker_read_pipe_time = 0;
+
+/******************************************************************************
+ * Worker total invocation time (after reading from pipe)
+ */
+uint64_t worker_total_invocation_time = 0;
+
+  /******************************************************************************
+   * Worker invocation setup time
+   */
+  uint64_t worker_setup_invocation_time = 0;
+
+  /******************************************************************************
+   * Worker actual loop time (after invocation setup)
+   */
+  uint64_t worker_loop_time = 0;
+
+  /******************************************************************************
+   * Worker on iteration time
+   */
+  uint64_t worker_on_iteration_time = 0;
+
+  /******************************************************************************
+   * Worker off iteration time
+   */
+  uint64_t worker_off_iteration_time = 0;
+
+  /******************************************************************************
+   * Worker time in private writes/reads
+   */
+  uint64_t worker_private_write_time = 0;
+  uint64_t worker_private_read_time = 0;
+
+  /******************************************************************************
+   * Worker time in redux
+   */
+  uint64_t worker_redux_time = 0;
+
+  /******************************************************************************
+   * Worker time in io
+   */
+  uint64_t worker_io_time = 0;
+
+  /******************************************************************************
+   * Worker time in produces/consumes
+   */
+  uint64_t worker_produce_time = 0;
+  uint64_t worker_consume_time = 0;
+
+  /******************************************************************************
+   * Worker time in checkpoints
+   */
+  uint64_t worker_checkpoint_time = 0;
+
+/******************************************************************************
+ * Other statistics
+ */
+uint64_t worker_number_produces = 0;
+uint64_t worker_number_consumes = 0;
+uint64_t worker_private_bytes_read = 0;
+uint64_t worker_private_bytes_written = 0;
+
 uint64_t pipe_read_time = 0;
 uint64_t pipe_write_time = 0;
 
 uint64_t get_queue_time = 0;
 
 uint64_t worker_iteration_start;
-uint64_t worker_off_iteration_time = 0;
-uint64_t worker_on_iteration_time = 0;
 uint64_t worker_set_iter_time = 0;
 uint64_t worker_end_iter = 0;
 uint64_t worker_between_iter_time = 0;
 uint64_t worker_end_iter_checks = 0;
+uint64_t worker_between_iteration_start = 0;
+uint64_t worker_between_iteration_time = 0;
 uint64_t worker_time_in_checkpoints=0;
 uint64_t worker_final_checkpoint_time = 0;
 uint64_t worker_intermediate_checkpoint_time = 0;
@@ -43,8 +116,6 @@ uint64_t worker_time_in_priv_read=0;
 uint64_t worker_time_in_io=0;
 
 uint64_t total_produces, total_consumes;
-uint64_t worker_private_bytes_read=0;
-uint64_t worker_private_bytes_written=0;
 
 CheckpointRecord checkpoints[ MAX_CHECKPOINTS ];
 unsigned numCheckpoints;
