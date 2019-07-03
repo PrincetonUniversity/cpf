@@ -44,6 +44,9 @@ extern uint64_t pipe_read_time;
 extern uint64_t pipe_write_time;
 
 extern uint64_t worker_iteration_start;
+extern uint64_t worker_set_iter_time;
+extern uint64_t worker_end_iter;
+extern uint64_t worker_between_iter_time;
 extern uint64_t worker_off_iteration_time;
 extern uint64_t worker_on_iteration_time;
 
@@ -51,6 +54,8 @@ extern uint64_t get_queue_time;
 extern uint64_t total_produces, total_consumes;
 
 extern uint64_t worker_time_in_checkpoints;
+extern uint64_t worker_final_checkpoint_time;
+extern uint64_t worker_intermediate_checkpoint_time;
 extern uint64_t worker_time_in_priv_write;
 extern uint64_t worker_time_in_priv_read;
 extern uint64_t worker_time_in_io;
