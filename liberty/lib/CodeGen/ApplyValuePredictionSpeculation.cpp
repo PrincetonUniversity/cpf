@@ -159,10 +159,11 @@ bool ApplyValuePredSpec::manageMemOps(Loop *loop)
   return modified;
 }
 
-/*
 bool ApplyValuePredSpec::deferIO()
 {
   bool modified = false;
+  Preprocess &preprocess = getAnalysis<Preprocess>();
+  const RoI &roi = preprocess.getRoI();
   for(RoI::BBSet::iterator i=roi.bbs.begin(), e=roi.bbs.end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
@@ -194,7 +195,6 @@ bool ApplyValuePredSpec::deferIO()
   }
   return modified;
 }
-*/
 
 bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
 {

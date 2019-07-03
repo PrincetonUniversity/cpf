@@ -117,6 +117,8 @@ static void __specpriv_sig_helper(int sig, siginfo_t *siginfo, void *dummy)
 // Called by __specpriv_begin on each worker after spawned
 static void __specpriv_worker_setup(Wid wid)
 {
+  uint64_t start;
+  TIME(start);
   // First, a policy to make the spawn work better...
 #if (AFFINITY & SLEEP0) != 0
   // 'sleep0'
@@ -176,6 +178,7 @@ static void __specpriv_worker_setup(Wid wid)
   // 'fix'
   // Do not relax affinity; the worker is bound to a single proc.
 #endif
+  TADD(worker_setup_cpu_time, start);
 
   // capture SIGSEGV signal -> misspeculate
   struct sigaction replacement;

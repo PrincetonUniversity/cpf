@@ -26,6 +26,7 @@
 //#include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/CodeGen/Preprocess.h"
 #include "liberty/CodeGen/ApplySeparationSpeculation.h"
+#include "liberty/CodeGen/ApplyValuePredictionSpeculation.h"
 #include "liberty/Speculation/Recovery.h"
 #include "liberty/CodeGen/RoI.h"
 #include "liberty/Speculation/RemedSelector.h"
@@ -66,6 +67,7 @@ void ApplySeparationSpec::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< ModuleLoops >();
   au.addRequired< Selector >();
   au.addRequired< Preprocess >();
+  au.addRequired< ApplyValuePredSpec >();
 
   au.addPreserved< ReadPass >();
   au.addPreserved< ModuleLoops >();
@@ -197,8 +199,9 @@ bool ApplySeparationSpec::manageMemOps(Loop *loop)
    * everything DOALL.
    *
   // Turn all IO calls into __specpriv_*() IO calls.
-  modified |= deferIO();
   */
+  ApplyValuePredSpec &valuepred = getAnalysis<ApplyValuePredSpec>();
+  modified |= valuepred.deferIO();
 
   // Insert UO checks
   modified |= addUOChecks(loop);
