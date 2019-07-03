@@ -153,13 +153,19 @@ bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
       std::static_pointer_cast<LocalityRemedy>(rhs);
 
   if (this->privateI == sepRhs->privateI) {
-    if (this->reduxS == sepRhs->reduxS) {
-      if (this->ptr1 == sepRhs->ptr1) {
-        return this->ptr2 < sepRhs->ptr2;
+    if (this->privateLoad == sepRhs->privateLoad) {
+      if (this->reduxS == sepRhs->reduxS) {
+        if (this->ptr1 == sepRhs->ptr1) {
+          if (this->ptr2 == sepRhs->ptr2) {
+            return this->ptr < sepRhs->ptr;
+          }
+          return this->ptr2 < sepRhs->ptr2;
+        }
+        return this->ptr1 < sepRhs->ptr1;
       }
-      return this->ptr1 < sepRhs->ptr1;
+      return this->reduxS < sepRhs->reduxS;
     }
-    return this->reduxS < sepRhs->reduxS;
+    return this->privateLoad < sepRhs->privateLoad;
   }
   return this->privateI < sepRhs->privateI;
 }
@@ -192,9 +198,11 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   remedy->cost = DEFAULT_LOCALITY_REMED_COST;
 
   remedy->privateI = nullptr;
+  remedy->privateLoad = nullptr;
   remedy->reduxS = nullptr;
   remedy->ptr1 = nullptr;
   remedy->ptr2 = nullptr;
+  remedy->ptr = nullptr;
 
   remedResp.remedy = remedy;
 
@@ -365,12 +373,12 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedy->privateI = const_cast<Instruction *>(A);
       remedResp.depRes = DepResult::NoDep;
       remedy->type = LocalityRemedy::Private;
-      remedResp.remedy = remedy;
       privateInsts.insert(A);
       if (isa<LoadInst>(A))
         remedy->privateLoad = dyn_cast<LoadInst>(A);
       else if (t2 == HeapAssignment::Private && isa<LoadInst>(B))
         remedy->privateLoad = dyn_cast<LoadInst>(B);
+      remedResp.remedy = remedy;
       return remedResp;
     } else if (t2 == HeapAssignment::Private) {
       if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
@@ -381,12 +389,12 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
       remedy->privateI = const_cast<Instruction *>(B);
       remedResp.depRes = DepResult::NoDep;
       remedy->type = LocalityRemedy::Private;
-      remedResp.remedy = remedy;
       privateInsts.insert(B);
       if (isa<LoadInst>(B))
         remedy->privateLoad = dyn_cast<LoadInst>(B);
       else if (t1 == HeapAssignment::Private && isa<LoadInst>(A))
         remedy->privateLoad = dyn_cast<LoadInst>(A);
+      remedResp.remedy = remedy;
       return remedResp;
     }
   }
