@@ -68,6 +68,8 @@ void __specpriv_init_private(void)
 
 static void __specpriv_set_iter(Iteration i)
 {
+  uint64_t start;
+  TIME(start);
   // The metadata value which indicates a value defined during /this/ iteration.
   code8 = ( (uint8_t) ( ( (i-firstIteration) % checkpointGranularity) + NUM_RESERVED_SHADOW_VALUES ) );
 
@@ -83,6 +85,7 @@ static void __specpriv_set_iter(Iteration i)
 
   code128 = _mm_or_si128( _mm_slli_si128(_code64, 8), _code64 );
 #endif
+  TADD(worker_set_iter_time, start);
 }
 
 void __specpriv_set_first_iter(Iteration i)
