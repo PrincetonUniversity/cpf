@@ -33,6 +33,79 @@ extern uint64_t worker_enter_loop, worker_exit_loop;
 extern uint64_t worker_begin_waitpid, worker_end_waitpid;
 extern uint64_t distill_into_liveout_start, distill_into_liveout_end;
 
+//////// ONE-TIME COSTS ////////
+/******************************************************************************
+ * Worker setup time
+ */
+extern uint64_t worker_setup_cpu_time;
+
+//////// PER-INVOCATION TIMES ////////
+/******************************************************************************
+ * Writing/reading from pipe time
+ */
+extern uint64_t main_write_pipe_time;
+extern uint64_t worker_read_pipe_time;
+
+/******************************************************************************
+ * Worker total invocation time (after reading from pipe)
+ */
+extern uint64_t worker_total_invocation_time;
+
+  /******************************************************************************
+   * Worker invocation setup time
+   */
+  extern uint64_t worker_setup_invocation_time;
+
+  /******************************************************************************
+   * Worker actual loop time (after invocation setup)
+   */
+  extern uint64_t worker_loop_time;
+
+  /******************************************************************************
+   * Worker on iteration time
+   */
+  extern uint64_t worker_on_iteration_time;
+
+  /******************************************************************************
+   * Worker off iteration time
+   */
+  extern uint64_t worker_off_iteration_time;
+
+  /******************************************************************************
+   * Worker time in private writes/reads
+   */
+  extern uint64_t worker_private_write_time;
+  extern uint64_t worker_private_read_time;
+
+  /******************************************************************************
+   * Worker time in redux
+   */
+  extern uint64_t worker_redux_time;
+
+  /******************************************************************************
+   * Worker time in io
+   */
+  extern uint64_t worker_io_time;
+
+  /******************************************************************************
+   * Worker time in produces/consumes
+   */
+  extern uint64_t worker_produce_time;
+  extern uint64_t worker_consume_time;
+
+  /******************************************************************************
+   * Worker time in checkpoints
+   */
+  extern uint64_t worker_checkpoint_time;
+
+/******************************************************************************
+ * Other statistics
+ */
+extern uint64_t worker_number_produces;
+extern uint64_t worker_number_consumes;
+extern uint64_t worker_private_bytes_read;
+extern uint64_t worker_private_bytes_written;
+
 extern uint64_t produce_time;
 extern uint64_t consume_time;
 extern uint64_t produce_wait_time;
