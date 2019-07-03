@@ -925,12 +925,15 @@ Iteration __specpriv_last_redux_update_iter(void) {
 // Perform a UO test.  Specifically, this ensures
 // that certain bits within the pointer match the
 // encoded heap information
+// uo checks are inlined in postprocess. This function was never called
+/*
 void __specpriv_uo(void *ptr, uint64_t code, const char *msg)
 {
   if( ptr )
     if( (POINTER_MASK & (uint64_t)ptr) != code )
       __specpriv_misspec(msg);
 }
+*/
 
 // -----------------------------------------------------------------------
 // Value prediction
