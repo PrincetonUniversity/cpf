@@ -28,6 +28,7 @@ struct ApplyValuePredSpec : public ModulePass
 
   void getAnalysisUsage(AnalysisUsage &au) const;
   bool runOnModule(Module &module);
+  bool deferIO();
 
 private:
   typedef std::set<const Value*> VSet;
@@ -43,6 +44,7 @@ private:
   bool addValueSpecChecks(Loop *loop);
 
   bool manageMemOps(Loop *loop);
+  int numDeferredIO;
 
 };
 
