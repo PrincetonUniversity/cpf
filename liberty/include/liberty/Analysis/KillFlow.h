@@ -3,12 +3,14 @@
 
 #include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DataLayout.h"
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Analysis/FindSource.h"
 
 namespace liberty
 {
@@ -29,6 +31,7 @@ namespace liberty
 
     // Hold reference to this.
     ModuleLoops *mloops;
+    const TargetLibraryInfo *tli;
     //Pass *proxy;
 
     // Allow the client to set this (i.e. KillFlow does not need to run as a pass)
@@ -39,12 +42,12 @@ namespace liberty
     bool mustAliasFast(const Value *, const Value *, const DataLayout &DL);
 
     /// Determine if this instruction MUST KILL the specified pointer.
-    bool instMustKill(const Instruction *inst, const Value *ptr, time_t queryStart, unsigned Timeout);
+    bool instMustKill(const Instruction *inst, const Value *ptr, time_t queryStart, unsigned Timeout, const Loop *L = nullptr);
 
     /// Determine if the block MUST KILL the specified pointer.
     /// If <after> belongs to this block and <after> is not null, only consider operations AFTER <after>
     /// If <after> belongs to this block and <before> is is not null, only consider operations BEFORE <before>
-    bool blockMustKill(const BasicBlock *bb, const Value *ptr, const Instruction *after, const Instruction *before, time_t queryStart, unsigned Timeout);
+    bool blockMustKill(const BasicBlock *bb, const Value *ptr, const Instruction *after, const Instruction *before, time_t queryStart, unsigned Timeout, const Loop *L = nullptr);
 
     /// Determine if this instruction MUST KILL the specified <aggregate>
     bool instMustKillAggregate(const Instruction *inst, const Value *aggregate, time_t queryStart, unsigned Timeout);
@@ -71,6 +74,7 @@ namespace liberty
       DL = &M.getDataLayout();
       InitializeLoopAA(this, *DL);
       setModuleLoops( & getAnalysis< ModuleLoops >() );
+      tli = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
       //setProxy(this);
       return false;
     }
@@ -97,6 +101,7 @@ namespace liberty
       //AU.addRequired< DominatorTreeWrapperPass >();
       //AU.addRequired< PostDominatorTreeWrapperPass >();
       //AU.addRequired< LoopInfoWrapperPass >();
+      AU.addRequired< TargetLibraryInfoWrapperPass >();
       AU.setPreservesAll();
     }
 
@@ -173,6 +178,16 @@ namespace liberty
 
     const PostDominatorTree *getPDT(const Function *cf);
     const DominatorTree *getDT(const Function *cf);
+    ScalarEvolution *getSE(const Function *cf);
+    LoopInfo *getLI(const Function *cf);
+
+    bool aliasBasePointer(const Value *gepptr, const Value *killgepptr,
+                          const Value **numElemAU, ScalarEvolution *se,
+                          const Loop *L);
+    bool matchingIdx(const Value *idx, const Value *killidx, const Value *numElemAU,
+                     ScalarEvolution *se, const Loop *L);
+    bool greaterThan(const SCEV *killTripCount, const SCEV *tripCount,
+                     ScalarEvolution *se, const Loop *L);
   };
 
 }
