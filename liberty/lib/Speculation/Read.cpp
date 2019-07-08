@@ -963,7 +963,7 @@ bool Read::sem_obj_predict(Value *v, Ctx *ctx, Ptrs &ptrs)
   return true;
 }
 
-bool Read::sem_pointer_residual(Value *v, Ctx *ctx, unsigned char bitvector)
+bool Read::sem_pointer_residual(Value *v, Ctx *ctx, unsigned short bitvector)
 {
   pointerResiduals[v][ctx] = bitvector;
   return true;
