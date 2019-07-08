@@ -586,7 +586,7 @@ bool Parse::parse_pointer_residues()
   EXPECT("{");
 
   // PTR RESIDUES <name> AT <ctx> AS RESTRICTED <n> SAMPLES OVER <n> MEMBERS { __ <r-values> } ;
-  unsigned char bit_vector = 0;
+  unsigned short bit_vector = 0;
   for(;;)
   {
     unsigned member = 0;
@@ -599,7 +599,7 @@ bool Parse::parse_pointer_residues()
       return false;
     }
 
-    unsigned char mask = 1u << member;
+    unsigned short mask = 1u << member;
     bit_vector |= mask;
 
     if( test(",") )

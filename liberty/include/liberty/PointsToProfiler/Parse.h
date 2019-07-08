@@ -28,7 +28,7 @@ struct SemanticAction
   virtual bool sem_int_predict(Value *value, Ctx *ctx, Ints &ints) = 0;
   virtual bool sem_ptr_predict(Value *value, Ctx *ctx, Ptrs &ptrs) = 0;
   virtual bool sem_obj_predict(Value *value, Ctx *ctx, Ptrs &ptrs) = 0;
-  virtual bool sem_pointer_residual(Value *value, Ctx *ctx, unsigned char bitvector) = 0;
+  virtual bool sem_pointer_residual(Value *value, Ctx *ctx, unsigned short bitvector) = 0;
 
   virtual void sem_set_valid(bool isValid) { valid = isValid; }
 
