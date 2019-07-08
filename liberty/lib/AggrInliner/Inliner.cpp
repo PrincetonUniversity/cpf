@@ -9,6 +9,7 @@
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -36,6 +37,7 @@ struct Inliner: public ModulePass
   void getAnalysisUsage(AnalysisUsage &au) const
   {
     au.addRequired< ModuleLoops >();
+    au.addRequired< BlockFrequencyInfoWrapperPass >();
     au.addRequired< Targets >();
   }
 
@@ -59,8 +61,23 @@ private:
   // keep list of already processed functions
   std::unordered_set<Function*> processedFunctions;
 
+  bool isSpeculativelyDeadBB(BasicBlock &BB) {
+    Function *fcn = BB.getParent();
+    BlockFrequencyInfo &bfi =
+        getAnalysis<BlockFrequencyInfoWrapperPass>(*fcn).getBFI();
+    if (bfi.getBlockProfileCount(&BB).hasValue()) {
+      uint64_t bb_cnt = bfi.getBlockProfileCount(&BB).getValue();
+      if (bb_cnt == 0)
+        return true;
+    }
+    return false;
+  }
+
   void processBB(BasicBlock &BB,
                  std::unordered_set<Function *> &curPathVisited) {
+    if (isSpeculativelyDeadBB(BB))
+      return;
+
     for (Instruction &I : BB) {
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
