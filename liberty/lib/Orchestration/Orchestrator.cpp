@@ -58,8 +58,9 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-    SmtxSpeculationManager &smtxLampMan, LAMPLoadProfile &lamp, const Read &rd,
-    const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
+    SmtxSpeculationManager &smtxLampMan,
+    PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
@@ -69,6 +70,9 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
 
   // separation logic remediator (Privateer PLDI '12)
   remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
+
+  // pointer-residue remediator (Nick Johnson's thesis)
+  remeds.push_back(std::make_unique<PtrResidueRemediator>(&ptrResMan));
 
   // memory specualation remediator (with SLAMP)
   remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
@@ -234,9 +238,9 @@ bool Orchestrator::findBestStrategy(
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
-    LAMPLoadProfile &lamp, const Read &rd, const HeapAssignment &asgn,
-    Pass &proxy, LoopAA *loopAA, LoopProfLoad &lpl,
-    std::unique_ptr<PipelineStrategy> &strat,
+    PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+    LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -267,7 +271,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds = getRemediators(
       loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, ldi,
-      smtxMan, smtxLampMan, lamp, rd, asgn, proxy, loopAA);
+      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
@@ -358,7 +362,7 @@ bool Orchestrator::findBestStrategy(
         std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
     unsigned long selectedRemediesCost = 0;
     if (!criticisms.size()) {
-      DEBUG(errs() << "No criticisms generated\n");
+      DEBUG(errs() << "\nNo criticisms generated!\n\n");
     } else {
       DEBUG(errs() << "Addressible criticisms\n");
       // orchestrator selects set of remedies to address the given criticisms,

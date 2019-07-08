@@ -159,6 +159,8 @@ unsigned Selector::computeWeights(
       proxy.getAnalysis<SmtxSlampSpeculationManager>();
   SmtxSpeculationManager &smtxLampMan =
       proxy.getAnalysis<SmtxSpeculationManager>();
+  PtrResidueSpeculationManager &ptrResMan =
+      proxy.getAnalysis<PtrResidueSpeculationManager>();
   LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
   const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
   Classify &classify = proxy.getAnalysis<Classify>();
@@ -223,8 +225,9 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred,
-          mloops, smtxMan, smtxLampMan, lamp, rd, asgn, proxy, loopAA, lpl, ps,
-          sr, sc, NumThreads, pipelineOption_ignoreAntiOutput(),
+          mloops, smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
+          loopAA, lpl, ps, sr, sc, NumThreads,
+          pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
