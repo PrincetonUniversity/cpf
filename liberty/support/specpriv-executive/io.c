@@ -139,6 +139,7 @@ void __specpriv_commit_io(IOEvtSet *evtset, MappedHeap *redux)
       FILE *file = evt->stream;
       const unsigned len = evt->len;
       int result = fwrite(corrected_buffer, 1, len, file);
+      fflush(file);
       heap_free(redux, corrected_buffer);
 
       assert( result >= 0 && ((unsigned)result) == len && "Can't fix this");
