@@ -18,6 +18,7 @@
 #include "liberty/Orchestration/CountedIVRemed.h"
 #include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/LocalityAA.h"
+#include "liberty/Orchestration/PtrResidueRemed.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 #include "liberty/Orchestration/MemSpecAARemed.h"
 #include "liberty/Orchestration/LoopFissionRemed.h"
@@ -57,8 +58,9 @@ public:
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
       SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
-      LAMPLoadProfile &lamp, const Read &rd, const HeapAssignment &asgn,
-      Pass &proxy, LoopAA *loopAA, LoopProfLoad &lpl,
+      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+      LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -75,7 +77,8 @@ private:
                  PredictionSpeculation *loadedValuePred,
                  PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
                  LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-                 SmtxSpeculationManager &smtxLampMan, LAMPLoadProfile &lamp,
+                 SmtxSpeculationManager &smtxLampMan,
+                 PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
                  const Read &rd, const HeapAssignment &asgn, Pass &proxy,
                  LoopAA *loopAA);
 
