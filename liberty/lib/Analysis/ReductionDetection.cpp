@@ -97,7 +97,8 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
       dst->getParent() == loop->getHeader() && loopCarried &&
       src->getOpcode() == Instruction::PHI &&
       (addInst = findAddInstDefForPHI(dyn_cast<PHINode>(src), dst)) &&
-      (isDefUseForPHI(dyn_cast<PHINode>(dst), addInst))) {
+      (isDefUseForPHI(dyn_cast<PHINode>(dst), addInst)) && dst->hasOneUse() &&
+      src->hasOneUse()) {
     DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
                  << *dst << "\naddInst: " << *addInst
                  << "\naccumValue: " << *dst << "\n");
@@ -105,18 +106,19 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
     isSumRedux = true;
   }
 
-// Pattern 0:
-// x0 = phi(initial from outside loop, x1 from backedge)
-// tmp = add x0, ...
-// x1 = phi(tmp from ...)
+  // Pattern 0:
+  // x0 = phi(initial from outside loop, x1 from backedge)
+  // tmp = add x0, ...
+  // x1 = phi(tmp from ...)
   else if (dst->getOpcode() == Instruction::PHI &&
-    dst->getParent() == loop->getHeader() && loopCarried &&
-    src->getOpcode() == Instruction::PHI &&
-    (addInst = getAddInstDefForPHI(dyn_cast<PHINode>(src))) &&
-    (isDefUseForPHI(dyn_cast<PHINode>(dst), addInst))) {
-   DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
-               << *dst << "\naddInst: " << *addInst << "\naccumValue: " << *dst
-               << "\n");
+           dst->getParent() == loop->getHeader() && loopCarried &&
+           src->getOpcode() == Instruction::PHI &&
+           (addInst = getAddInstDefForPHI(dyn_cast<PHINode>(src))) &&
+           (isDefUseForPHI(dyn_cast<PHINode>(dst), addInst)) &&
+           dst->hasOneUse() && src->hasOneUse()) {
+    DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
+                 << *dst << "\naddInst: " << *addInst
+                 << "\naccumValue: " << *dst << "\n");
     isSumRedux = true;
   }
 
@@ -125,7 +127,8 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
   // x1 = add x0, ...
   else if (dst->getOpcode() == Instruction::PHI &&
            dst->getParent() == loop->getHeader() && loopCarried &&
-           isAddInst(src) && (isDefUseForPHI(dyn_cast<PHINode>(dst), src))) {
+           isAddInst(src) && (isDefUseForPHI(dyn_cast<PHINode>(dst), src)) &&
+           dst->hasOneUse() && src->hasOneUse()) {
     DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
                  << *dst << "\naddInst: " << *src << "\naccumValue: " << *dst
                  << "\n");
