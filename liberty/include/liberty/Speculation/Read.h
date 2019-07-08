@@ -110,7 +110,7 @@ struct Read : public SemanticAction, public UpdateOnClone
   virtual bool sem_int_predict(Value *value, Ctx *ctx, Ints &ints);
   virtual bool sem_ptr_predict(Value *value, Ctx *ctx, Ptrs &ptrs);
   virtual bool sem_obj_predict(Value *value, Ctx *ctx, Ptrs &ptrs);
-  virtual bool sem_pointer_residual(Value *value, Ctx *ctx, unsigned char bitvector);
+  virtual bool sem_pointer_residual(Value *value, Ctx *ctx, unsigned short bitvector);
 
   virtual AU *fold(AU *) const;
   virtual Ctx *fold(Ctx *) const;
