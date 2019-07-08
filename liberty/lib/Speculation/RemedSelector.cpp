@@ -14,6 +14,7 @@
 //#include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/SmtxSlampManager.h"
 #include "liberty/Speculation/SmtxManager.h"
+#include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
@@ -37,6 +38,7 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< SLAMPLoadProfile >();
   au.addRequired< SmtxSlampSpeculationManager >();
   au.addRequired< SmtxSpeculationManager >();
+  au.addRequired< PtrResidueSpeculationManager >();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< HeaderPhiPredictionSpeculation >();
