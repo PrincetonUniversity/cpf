@@ -134,8 +134,8 @@ make -jX
 13. Speculative Loop Fission (LoopFissionRemed)
     *   Same as Conservative Loop Fission apart from the fact that it requires usage of speculative remediators to achieve separation
 
-14. Pointer-Residue Speculation (Not added)
-    *   Never part of a paper. Published in Nick Johnson's thesis
+14. Pointer-Residue Speculation (PtrResidueRemed)
+    *   Never part of a paper. Never evaluated. Idea published in Nick Johnson's thesis
     *   Separation speculation disambiguates references to different objects, but does not disambiguate references within the same object. Pointer-residue speculation works at the sub-object level.
     *   It disambiguates different fields within an object and in some cases recognizes different regular strides across an array.
     *   It characterizes each pointer expression in the program according to the possible values of its four least-significant bits (residue).
