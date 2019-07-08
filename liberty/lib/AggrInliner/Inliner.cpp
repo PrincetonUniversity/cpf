@@ -61,6 +61,21 @@ private:
   // keep list of already processed functions
   std::unordered_set<Function*> processedFunctions;
 
+  bool isRecursiveFnFast(Function *F) {
+    for (BasicBlock &BB : *F) {
+      for (Instruction &I : BB) {
+        if (CallInst *call = dyn_cast<CallInst>(&I)) {
+          Function *calledFun = call->getCalledFunction();
+          if (calledFun && !calledFun->isDeclaration()) {
+            if (calledFun == F)
+              return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   bool isSpeculativelyDeadBB(BasicBlock &BB) {
     Function *fcn = BB.getParent();
     BlockFrequencyInfo &bfi =
@@ -96,7 +111,8 @@ private:
   bool processFunction(Function *F,
                        std::unordered_set<Function *> &curPathVisited) {
     // check if there is a cycle in call graph
-    if (curPathVisited.count(F))
+    // or if the function is recursive (quick check)
+    if (curPathVisited.count(F) || isRecursiveFnFast(F))
       return false;
     curPathVisited.insert(F);
 
