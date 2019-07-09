@@ -137,6 +137,10 @@ void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_write_range(void *ptr, uint64_t len)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -155,7 +159,8 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
     TOUT(worker_private_bytes_written += len);
   }
 
-  TADD(worker_time_in_priv_write,start);
+  TADD(worker_private_read_time,start);
+  TIME(worker_pause_time);
 }
 
 // Does not update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
@@ -274,6 +279,10 @@ TODO: make sure that bytes marked LIVE_IN become READ_LIVE_IN
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -293,7 +302,8 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
     TOUT(worker_private_bytes_read += len);
   }
 
-  TADD(worker_time_in_priv_read,start);
+  TIME(worker_pause_time);
+  TADD(worker_private_read_time,start);
 }
 
 // The remainder of the file contains
@@ -304,6 +314,10 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
 
 void __specpriv_private_write_1b(void *ptr)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -320,19 +334,31 @@ void __specpriv_private_write_1b(void *ptr)
     TOUT(worker_private_bytes_written += 1);
   }
 
-  TADD(worker_time_in_priv_write,start);
+  TIME(worker_pause_time);
+  TADD(worker_private_write_time,start);
 }
 
 void __specpriv_private_read_1b(void *ptr, const char *name)
 {
   // TODO optimize
+  TOUT(
+      // gc14 -- kinda funky since this is the only read fn that calls
+      // __specpriv_private_read_range
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   __specpriv_private_read_range(ptr,1, name);
+  TIME(worker_pause_time);
 }
 
 // For 2-byte loads/stores
 
 void __specpriv_private_write_2b(void *ptr)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -353,11 +379,16 @@ void __specpriv_private_write_2b(void *ptr)
     TOUT(worker_private_bytes_written += 2);
   }
 
-  TADD(worker_time_in_priv_write,start);
+  TIME(worker_pause_time);
+  TADD(worker_private_write_time,start);
 }
 
 void __specpriv_private_read_2b(void *ptr, const char *name)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -372,20 +403,23 @@ void __specpriv_private_read_2b(void *ptr, const char *name)
 
     if( meta == code16 )
     {
-      TADD(worker_time_in_priv_read,start);
+      TIME(worker_pause_time);
+      TADD(worker_private_read_time,start);
       return;
     }
 
     else if( meta == V16( LIVE_IN ) )
     {
       *shadow = V16( READ_LIVE_IN );
-      TADD(worker_time_in_priv_read,start);
+      TIME(worker_pause_time);
+      TADD(worker_private_read_time,start);
       return;
     }
 
     else if( meta == V16( READ_LIVE_IN ) )
     {
-      TADD(worker_time_in_priv_read,start);
+      TIME(worker_pause_time);
+      TADD(worker_private_read_time,start);
       return;
     }
 
@@ -408,7 +442,8 @@ void __specpriv_private_read_2b(void *ptr, const char *name)
       __specpriv_misspec(name);
   }
 
-  TADD(worker_time_in_priv_read,start);
+  TADD(worker_private_read_time,start);
+  TIME(worker_pause_time);
 
 }
 
@@ -417,6 +452,10 @@ void __specpriv_private_read_2b(void *ptr, const char *name)
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_write_4b(void *ptr)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -435,12 +474,17 @@ void __specpriv_private_write_4b(void *ptr)
     TOUT(worker_private_bytes_written += 4);
   }
 
-  TADD(worker_time_in_priv_write,start);
+  TADD(worker_private_write_time,start);
+  TIME(worker_pause_time);
 }
 
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_read_4b(void *ptr, const char *name)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -457,20 +501,23 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
 
     if( meta == code32 )
     {
-      TADD(worker_time_in_priv_read,start);
+      TADD(worker_private_read_time,start);
+      TIME(worker_pause_time);
       return;
     }
 
     else if( meta == V32( LIVE_IN ) )
     {
       *shadow = V32( READ_LIVE_IN );
-      TADD(worker_time_in_priv_read,start);
+      TADD(worker_private_read_time,start);
+      TIME(worker_pause_time);
       return;
     }
 
     else if( meta == V32( READ_LIVE_IN ) )
     {
-      TADD(worker_time_in_priv_read,start);
+      TADD(worker_private_read_time,start);
+      TIME(worker_pause_time);
       return;
     }
 
@@ -505,7 +552,8 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
       __specpriv_misspec(name);
   }
 
-  TADD(worker_time_in_priv_read,start);
+  TADD(worker_private_read_time,start);
+  TIME(worker_pause_time);
 }
 
 // For 8-byte loads/stores
@@ -513,6 +561,10 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_write_8b(void *ptr)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -531,12 +583,17 @@ void __specpriv_private_write_8b(void *ptr)
     TOUT(worker_private_bytes_written += 8);
   }
 
-  TADD(worker_time_in_priv_write,start);
+  TADD(worker_private_write_time,start);
+  TIME(worker_pause_time);
 }
 
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_read_8b(void *ptr, const char *name)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -553,12 +610,14 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
     if( meta == V64( LIVE_IN ) )
     {
       *shadow = V64( READ_LIVE_IN );
-      TADD(worker_time_in_priv_read,start);
+      TADD(worker_private_read_time,start);
+      TIME(worker_pause_time);
       return;
     }
     else if( meta == code64 || meta == V64( READ_LIVE_IN ) )
     {
-      TADD(worker_time_in_priv_read,start);
+      TADD(worker_private_read_time,start);
+      TIME(worker_pause_time);
       return;
     }
 
@@ -618,12 +677,17 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
       __specpriv_misspec(name);
   }
 
-  TADD(worker_time_in_priv_read,start);
+  TADD(worker_private_read_time,start);
+  TIME(worker_pause_time);
 }
 
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64_t strideWidth, uint64_t lenPerStride)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -730,12 +794,17 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
       TOUT(worker_private_bytes_written += nStrides * lenPerStride);
     }
   }
-  TADD(worker_time_in_priv_write,start);
+  TADD(worker_private_write_time,start);
+  TIME(worker_pause_time);
 }
 
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
 void __specpriv_private_read_range_stride(void *base, uint64_t nStrides, uint64_t strideWidth, uint64_t lenPerStride, const char *message)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -805,7 +874,8 @@ void __specpriv_private_read_range_stride(void *base, uint64_t nStrides, uint64_
     TOUT(worker_private_bytes_read += nStrides * lenPerStride);
   }
 
-  TADD(worker_time_in_priv_read,start);
+  TADD(worker_private_read_time,start);
+  TIME(worker_pause_time);
 }
 
 // partial <-- later(worker,partial)
