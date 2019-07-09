@@ -606,14 +606,24 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   }
   optimisticPDG = pdg->createSubgraphFromValues(loopInternals, false);
 
-  unsigned lcDepTotal = 0;
-  unsigned lcDepNotCovered = 0;
+  unsigned long lcDepTotal = 0;
+  unsigned long lcDepNotCovered = 0;
+  unsigned long lcMemDepTotal = 0;
+  unsigned long lcRegDepTotal = 0;
+  unsigned long lcCtrlDepTotal = 0;
 
   // remove all the removable edges and produce optimistic pdg
   std::vector<DGEdge<Value> *> toBeRemovedEdges;
   for (auto edge : optimisticPDG->getEdges()) {
     if (edge->isLoopCarriedDependence()) {
       ++lcDepTotal;
+
+      if (edge->isControlDependence())
+        ++lcCtrlDepTotal;
+      else if (edge->isMemoryDependence())
+        ++lcMemDepTotal;
+      else
+        ++lcRegDepTotal;
 
       if (!edge->isRemovableDependence()) {
         DEBUG(errs() << "Cannot remove loop-carried ";
@@ -630,11 +640,13 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
                   errs() << "RAW)";
               } errs() << " edge(s) from "
                        << *edge->getOutgoingT();
-              if (Instruction *outgoingI = dyn_cast<Instruction>(
-                      edge->getOutgoingT())) liberty::printInstDebugInfo(outgoingI);
+              if (Instruction *outgoingI =
+                      dyn_cast<Instruction>(edge->getOutgoingT()))
+                  liberty::printInstDebugInfo(outgoingI);
               errs() << "\n    to " << *edge->getIncomingT();
-              if (Instruction *incomingI = dyn_cast<Instruction>(
-                      edge->getIncomingT())) liberty::printInstDebugInfo(incomingI);
+              if (Instruction *incomingI =
+                      dyn_cast<Instruction>(edge->getIncomingT()))
+                  liberty::printInstDebugInfo(incomingI);
               errs() << '\n';);
 
         ++lcDepNotCovered;
@@ -666,7 +678,12 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
-  unsigned lcDepCovered = lcDepTotal - lcDepNotCovered;
+  DEBUG(errs() << "\nMemory Loop-Carried Deps Count: " << lcMemDepTotal
+               << "\nRegister Loop-Carried Deps Count: " << lcRegDepTotal
+               << "\nControl Loop-Carried Deps Count: " << lcCtrlDepTotal
+               << "\n");
+
+  unsigned long lcDepCovered = lcDepTotal - lcDepNotCovered;
   double percentageCovered = (100.0 * lcDepCovered) / lcDepTotal;
   DEBUG(errs() << "\nCoverage of loop-carried dependences for hot loop "
                << fcn->getName() << " :: " << header->getName() << " "
