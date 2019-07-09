@@ -103,7 +103,6 @@ struct WorkerArgs {
   unsigned sizeof_redux;
   unsigned sizeof_ro;
   unsigned sizeof_local;
-  uint64_t main_begin_invocation;
   ReductionInfo *first_reduction_info;
 } workerArgs;
 
@@ -178,7 +177,6 @@ static void __specpriv_worker_setup(Wid wid)
   // 'fix'
   // Do not relax affinity; the worker is bound to a single proc.
 #endif
-  TADD(worker_setup_cpu_time, start);
 
   // capture SIGSEGV signal -> misspeculate
   struct sigaction replacement;
@@ -187,20 +185,19 @@ static void __specpriv_worker_setup(Wid wid)
   replacement.sa_sigaction = &__specpriv_sig_helper;
   sigaction( SIGSEGV, &replacement, 0 );
 
+  TADD(worker_setup_time, start);
   ssize_t workerArgsSize = sizeof(struct WorkerArgs);
 
   // wait and read from pipe until killed
   while (1) {
-
     DEBUG(fflush(stdout));
+    TIME(start);
 
     ssize_t bytesRead = 0;
-    uint64_t start;
     while (bytesRead != workerArgsSize) {
-      TIME(start);
       ssize_t r = read(pipefds[myWorkerId][0], &workerArgs + bytesRead,
                workerArgsSize - bytesRead);
-      TADD(pipe_read_time, start);
+      TADD(worker_read_pipe_time, start);
       if (r == -1) {
         perror("child read from pipe!!!");
         _exit(0);
@@ -221,7 +218,6 @@ static void __specpriv_worker_setup(Wid wid)
     __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
     __specpriv_set_sizeof_local(workerArgs.sizeof_local);
 
-    main_begin_invocation = workerArgs.main_begin_invocation;
     __specpriv_set_first_reduction_info(workerArgs.first_reduction_info);
 
     __specpriv_worker_starts(workerArgs.firstIter, myWorkerId);
@@ -230,6 +226,7 @@ static void __specpriv_worker_setup(Wid wid)
         "calling callback with workerId %u, numCores: %ld, chunkSize: %ld \n",
         myWorkerId, workerArgs.numCores, workerArgs.chunkSize));
 
+    TADD(worker_setup_invocation_time, start);
     workerArgs.callback(workerArgs.user, myWorkerId, workerArgs.numCores,
                   workerArgs.chunkSize);
 
@@ -418,38 +415,11 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
 // in the beginning of loop invocation
 static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
 {
-
   DEBUG(printf("__specpriv_worker_starts, %u worker\n", wid));
 
   // reset timers
-  TOUT(
-    ++InvocationNumber;
-    worker_intermediate_checkpoint_time = 0;
-    worker_final_checkpoint_time = 0;
-    worker_checkpoint_check_time = 0;
-    worker_time_in_checkpoints=0;
-    worker_time_in_priv_write=0;
-    worker_time_in_priv_read=0;
-    worker_time_in_io=0;
-    numCheckpoints = 0;
-    worker_private_bytes_read=0;
-    worker_private_bytes_written=0;
-    worker_on_iteration_time = 0;
-    worker_off_iteration_time = 0;
-    worker_between_iter_time = 0;
-    worker_end_iter_checks = 0;
-    worker_end_iter = 0;
-    worker_set_iter_time = 0;
-    produce_time = 0;
-    consume_time = 0;
-    produce_wait_time = 0;
-    consume_wait_time = 0;
-    produce_actual_time = 0;
-    consume_actual_time = 0;
-    get_queue_time = 0;
-  );
+  TOUT(__specpriv_reset_timers(););
 
-  TIME(worker_begin_invocation);
   __specpriv_initialize_worker_heaps();
 
   currentIter = firstIter;
@@ -457,8 +427,6 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
 
   // Initialize structure for deferred IO.
   __specpriv_reset_worker_io();
-
-  TIME(worker_enter_loop);
 }
 
 // Called by a worker when it is done working.
@@ -492,6 +460,13 @@ void __specpriv_worker_finishes(Exit exitTaken)
 
   // should not exit when spawning processes just once
   //_exit(0);
+}
+
+Bool __specpriv_is_on_iter(void)
+{
+  if ( myWorkerId == __specpriv_current_iter() % numWorkers )
+    return 1;
+  return 0;
 }
 
 Iteration __specpriv_current_iter(void)
@@ -568,7 +543,6 @@ void __specpriv_recovery_finished(Exit e)
 
 uint32_t __specpriv_begin_invocation(void)
 {
-  TIME(main_begin_invocation);
   assert( myWorkerId == MAIN_PROCESS );
 
 #if (AFFINITY & MP0INVOC) != 0
@@ -578,18 +552,6 @@ uint32_t __specpriv_begin_invocation(void)
   CPU_SET( CORE(0), &affinity );
   sched_setaffinity(0, sizeof(cpu_set_t), &affinity );
 #endif
-
-  // reset timers
-  TOUT(
-    ++InvocationNumber;
-    worker_time_in_checkpoints=0;
-    worker_time_in_priv_write=0;
-    worker_time_in_priv_read=0;
-    worker_time_in_io=0;
-    numCheckpoints = 0;
-    worker_private_bytes_read=0;
-    worker_private_bytes_written=0;
-  );
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   pcb->misspeculation_happened = 0;
@@ -631,7 +593,6 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
   workerArgs.sizeof_redux = __specpriv_sizeof_redux();
   workerArgs.sizeof_ro = __specpriv_sizeof_ro();
   workerArgs.sizeof_local = __specpriv_sizeof_local();
-  workerArgs.main_begin_invocation = main_begin_invocation;
   workerArgs.first_reduction_info = __specpriv_first_reduction_info();
   ssize_t workerArgsSize = sizeof(struct WorkerArgs);
 
@@ -651,7 +612,7 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
       TIME(start);
       ssize_t w = write(pipefds[wid][1], &workerArgs + bytesWritten,
                         workerArgsSize - bytesWritten);
-      TADD(pipe_write_time, start);
+      TADD(main_write_pipe_time, start);
       if (w == -1) {
         perror("parent write to pipe!!!");
         _exit(0);
@@ -791,7 +752,7 @@ Exit __specpriv_end_invocation(void)
 
   TIME(main_end_invocation);
 
-  TOUT(__specpriv_print_main_times());
+  /* TOUT(__specpriv_print_main_times()); */
   return __specpriv_get_pcb()->exit_taken;
 }
 
@@ -802,13 +763,14 @@ void __specpriv_begin_iter(void)
 {
   DEBUG(printf("iter %u %u\n", myWorkerId, currentIter));
   // XXX gc14 -- will need to change this for multiple stages
-  TOUT(
-      if ( worker_end_iter != 0 )
-        TADD(worker_between_iter_time, worker_end_iter);
-      );
-  TIME(worker_iteration_start);
 
   __specpriv_reset_local();
+  TOUT(
+      if ( worker_end_iter_time != 0 )
+        TADD(worker_between_iter_time, worker_end_iter_time);
+      );
+  TIME(worker_begin_iter_time);
+  TIME(worker_pause_time);
 }
 
 void __specpriv_set_loopID( int n )
@@ -833,14 +795,12 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 
   // XXX gc14 -- will need to change this for multiple stages
   TOUT(
-      if ( myWorkerId != currentIter % __specpriv_num_workers() )
-        TADD(worker_off_iteration_time, worker_iteration_start);
-      else
-        TADD(worker_on_iteration_time, worker_iteration_start);
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
       );
-  TIME(worker_end_iter);
-  uint64_t start;
-  TIME(start);
+  TIME(worker_end_iter_time);
+  TIME(worker_pause_time);
+
   // only misspec on locals if last stage
   if( __specpriv_num_local() > 0 && GET_MY_STAGE(myWorkerId) == GET_NUM_STAGES()-1 )
     __specpriv_misspec("Object lifetime misspeculation");
@@ -858,7 +818,6 @@ void __specpriv_end_iter(uint32_t ckptUsed)
   Iteration globalCurIter = currentIter;
   if (!runOnEveryIter)
     globalCurIter = myWorkerId + (currentIter * numWorkers);
-  TADD(worker_end_iter_checks, start);
 
   //__specpriv_advance_iter(++currentIter);
   __specpriv_advance_iter(globalCurIter, ckptUsed);
@@ -867,6 +826,10 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 // check whether we will checkpoint at the end of current iteration
 uint32_t __specpriv_ckpt_check(void)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -898,6 +861,7 @@ uint32_t __specpriv_ckpt_check(void)
   }
   ckpt_check = 0;
   TADD(worker_checkpoint_check_time, start);
+  TIME(worker_pause_time);
   return 0;
 }
 
