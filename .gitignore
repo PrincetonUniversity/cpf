@@ -1,6 +1,7 @@
 #==============================================================================#
 # File extensions to be ignored anywhere in the tree.
 #==============================================================================#
+.svn
 # Temp files created by most text editors.
 *~
 # Merge files created by git.
