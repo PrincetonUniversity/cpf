@@ -213,6 +213,7 @@ static void __specpriv_worker_setup(Wid wid)
       DEBUG(printf("Read %ld bytes from pipe\n", r));
     }
 
+    TIME(start);
     __specpriv_set_sizeof_private(workerArgs.sizeof_private);
     __specpriv_set_sizeof_redux(workerArgs.sizeof_redux);
     __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
