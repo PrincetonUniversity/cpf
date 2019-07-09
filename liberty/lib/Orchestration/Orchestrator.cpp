@@ -75,7 +75,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::make_unique<PtrResidueRemediator>(&ptrResMan));
 
   // memory specualation remediator (with SLAMP)
-  remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
+  //remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
 
   // memory speculation remediator 2 (with LAMP)
   remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
