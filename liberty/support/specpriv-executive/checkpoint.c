@@ -577,7 +577,6 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
       else
         TADD(worker_intermediate_checkpoint_time, checkpoint_start);
       );
-  TADD(worker_time_in_checkpoints, checkpoint_start);
   TOUT(
     if( numCheckpoints < MAX_CHECKPOINTS )
     {

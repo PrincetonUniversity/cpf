@@ -70,7 +70,7 @@ void __specpriv_copy_io_to_redux(IOEvtSet *evtset, MappedHeap *redux)
   // Leave my list at its current capacity though.
   __specpriv_reset_worker_io();
 
-  TADD(worker_time_in_io,start);
+  TADD(worker_copy_io_to_redux_time, start);
 }
 
 void __specpriv_commit_io(IOEvtSet *evtset, MappedHeap *redux)
@@ -160,7 +160,7 @@ void __specpriv_commit_io(IOEvtSet *evtset, MappedHeap *redux)
     evtset->lists[wid] = 0;
   }
 
-  TADD(worker_time_in_io,start);
+  TADD(worker_commit_io_time, start);
 }
 
 
@@ -195,6 +195,10 @@ static void __specpriv_issue_io(void *buffer, size_t len, FILE *file)
 
 int __specpriv_io_fwrite(void *buffer, size_t size, size_t nmemb, FILE *file)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t start;
   TIME(start);
 
@@ -203,7 +207,8 @@ int __specpriv_io_fwrite(void *buffer, size_t size, size_t nmemb, FILE *file)
   memcpy(buff, buffer, len);
   __specpriv_issue_io(buff, len, file);
 
-  TADD(worker_time_in_io,start);
+  TADD(worker_intermediate_io_time,start);
+  TIME(worker_pause_time);
   return nmemb;
 }
 
@@ -226,32 +231,52 @@ int __specpriv_io_vfprintf(FILE *file, const char *fmt, va_list ap)
   else
     free(buffer);
 
-  TADD(worker_time_in_io,start);
+  TADD(worker_intermediate_io_time,start);
   return len;
 }
 
 int __specpriv_io_printf(const char *fmt, ...)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
+  uint64_t start;
+  TIME(start);
   va_list ap;
   va_start(ap,fmt);
 
-  return __specpriv_io_vfprintf(stdout, fmt, ap);
+  int retval = __specpriv_io_vfprintf(stdout, fmt, ap);
+  TADD(worker_intermediate_io_time, start);
+  TIME(worker_pause_time);
+  return retval;
 }
 
 int __specpriv_io_fprintf(FILE *file, const char *fmt, ...)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
+  uint64_t start;
+  TIME(start);
   va_list ap;
   va_start(ap,fmt);
 
-  return __specpriv_io_vfprintf(file,fmt,ap);
+  int retval = __specpriv_io_vfprintf(file,fmt,ap);
+  TADD(worker_intermediate_io_time, start);
+  TIME(worker_pause_time);
+  return retval;
 }
 
+// gc14 - timer for this will be less accurate since it calls __specpriv_io_printf()
 int __specpriv_io_puts(const char *str)
 {
   __specpriv_io_printf("%s\n",str);
   return 0;
 }
 
+// gc14 - timer for this will be less accurate since it calls __specpriv_io_printf()
 int __specpriv_io_putchar(int c)
 {
   __specpriv_io_printf("%c", c);
@@ -260,6 +285,11 @@ int __specpriv_io_putchar(int c)
 
 int __specpriv_io_fflush(FILE *stream)
 {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
+  TIME(worker_pause_time);
   return 0;
 }
 

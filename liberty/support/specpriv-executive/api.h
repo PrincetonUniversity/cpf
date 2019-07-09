@@ -6,6 +6,7 @@
 
 Wid __specpriv_num_workers(void);
 Wid __specpriv_my_worker_id(void);
+Bool __specpriv_is_on_iter(void);
 
 Bool __specpriv_i_am_main_process(void);
 

@@ -22,6 +22,8 @@ uint64_t rdtsc(void);
 
 #endif
 
+void __specpriv_reset_timers(void);
+void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin );
 void __specpriv_print_worker_times(void);
 void __specpriv_print_main_times(void);
 void __specpriv_print_percentages( void );
@@ -37,7 +39,7 @@ extern uint64_t distill_into_liveout_start, distill_into_liveout_end;
 /******************************************************************************
  * Worker setup time
  */
-extern uint64_t worker_setup_cpu_time;
+extern uint64_t worker_setup_time;
 
 //////// PER-INVOCATION TIMES ////////
 /******************************************************************************
@@ -62,14 +64,11 @@ extern uint64_t worker_total_invocation_time;
   extern uint64_t worker_loop_time;
 
   /******************************************************************************
-   * Worker on iteration time
+   * Worker iteration times
    */
   extern uint64_t worker_on_iteration_time;
-
-  /******************************************************************************
-   * Worker off iteration time
-   */
   extern uint64_t worker_off_iteration_time;
+  extern uint64_t worker_between_iter_time;
 
   /******************************************************************************
    * Worker time in private writes/reads
@@ -85,7 +84,9 @@ extern uint64_t worker_total_invocation_time;
   /******************************************************************************
    * Worker time in io
    */
-  extern uint64_t worker_io_time;
+  extern uint64_t worker_intermediate_io_time;
+  extern uint64_t worker_copy_io_to_redux_time;
+  extern uint64_t worker_commit_io_time;
 
   /******************************************************************************
    * Worker time in produces/consumes
@@ -96,16 +97,26 @@ extern uint64_t worker_total_invocation_time;
   /******************************************************************************
    * Worker time in checkpoints
    */
-  extern uint64_t worker_checkpoint_time;
+  extern uint64_t worker_final_checkpoint_time;
+  extern uint64_t worker_intermediate_checkpoint_time;
+  extern uint64_t worker_checkpoint_check_time;
 
 /******************************************************************************
  * Other statistics
  */
-extern uint64_t worker_number_produces;
-extern uint64_t worker_number_consumes;
-extern uint64_t worker_private_bytes_read;
-extern uint64_t worker_private_bytes_written;
+  extern uint64_t worker_number_produces;
+  extern uint64_t worker_number_consumes;
+  extern uint64_t worker_private_bytes_read;
+  extern uint64_t worker_private_bytes_written;
 
+/******************************************************************************
+ * Miscellaneous temporaries
+ */
+  extern uint64_t worker_pause_time;
+  extern uint64_t worker_begin_iter_time;
+  extern uint64_t worker_end_iter_time;
+
+extern uint64_t get_queue_time;
 extern uint64_t produce_time;
 extern uint64_t consume_time;
 extern uint64_t produce_wait_time;
@@ -113,27 +124,8 @@ extern uint64_t consume_wait_time;
 extern uint64_t produce_actual_time;
 extern uint64_t consume_actual_time;
 
-extern uint64_t pipe_read_time;
-extern uint64_t pipe_write_time;
 
-extern uint64_t worker_iteration_start;
-extern uint64_t worker_set_iter_time;
-extern uint64_t worker_end_iter;
-extern uint64_t worker_end_iter_checks;
-extern uint64_t worker_between_iter_time;
-extern uint64_t worker_off_iteration_time;
-extern uint64_t worker_on_iteration_time;
-
-extern uint64_t get_queue_time;
 extern uint64_t total_produces, total_consumes;
-
-extern uint64_t worker_time_in_checkpoints;
-extern uint64_t worker_final_checkpoint_time;
-extern uint64_t worker_intermediate_checkpoint_time;
-extern uint64_t worker_checkpoint_check_time;
-extern uint64_t worker_time_in_priv_write;
-extern uint64_t worker_time_in_priv_read;
-extern uint64_t worker_time_in_io;
 
 extern uint64_t worker_private_bytes_read;
 extern uint64_t worker_private_bytes_written;
