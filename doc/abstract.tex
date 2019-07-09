@@ -14,9 +14,9 @@ parallelization and numerous insightful speculation schemes have been
 proposed,
 %
 prior work on speculative parallelization fails to yield scalable speedups
-on real hardware beyond a small set of benchmarks, mostly due to high
-communication costs for memory flow speculation and extensive
-privitization.
+on real hardware beyond a small set of benchmarks, due to high
+communication costs for memory flow speculation, extensive privitization,
+or limited applicability.
 % We propose ...
 This work introduces LSD, a Low-cost Speculative DOALL parallelization
 framework that minimizes usage of memory speculation and privitization
@@ -24,9 +24,9 @@ without affecting applicability.
 % 
 LSD involves state-of-the-art static analysis that minimizes
 parallelization preventing loop-carried dependences, a parallelizing
-LLVM-based compiler that carefully selects applied transformations by
-prioritizing low-cost solutions to parallelization inhibitors, and a
-lightweight runtime system for efficient parallel execution and speculation
+LLVM-based compiler that selects minimal-cost solutions to parallelization
+inhibitors from a wide range of enabling transformations, and a lightweight
+runtime system for efficient parallel execution and low-cost speculation
 validation.
 % Result, impact?
 Across a diverse set of 14 C/C++ benchmarks from various suites, including
