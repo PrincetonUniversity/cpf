@@ -289,6 +289,7 @@ void __specpriv_print_worker_times(void)
   }
 #endif
 
+#if 0
 #if TIMER_PRINT_OVERHEAD
   printf("@ invoc %d : WORKER %ld +invoc %ld -invoc %ld "
             "num_check %d time_check %ld "
@@ -302,6 +303,7 @@ void __specpriv_print_worker_times(void)
     worker_private_bytes_written, worker_time_in_priv_write,
     worker_private_bytes_read, worker_time_in_priv_read);
   fflush(stdout);
+#endif
 #endif
 
 }
