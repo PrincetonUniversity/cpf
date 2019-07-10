@@ -300,6 +300,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
 void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
                                                  LoopAA *aa) {
   noctrlspec.setLoopOfInterest(loop->getHeader());
+  unsigned long memDepQueryCnt = 0;
   for (auto nodeI : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
     Value *pdgValueI = nodeI->getT();
     Instruction *i = dyn_cast<Instruction>(pdgValueI);
@@ -316,10 +317,14 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
       if (!j->mayReadOrWriteMemory())
         continue;
 
-      queryIntraIterationMemoryDep(i, j, loop, aa, pdg);
+      ++memDepQueryCnt;
+
       queryLoopCarriedMemoryDep(i, j, loop, aa, pdg);
+      queryIntraIterationMemoryDep(i, j, loop, aa, pdg);
     }
   }
+  DEBUG(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
+               << "\n");
 }
 
 void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
