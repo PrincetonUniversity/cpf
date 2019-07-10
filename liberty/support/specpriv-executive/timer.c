@@ -120,23 +120,22 @@ uint64_t rdtsc(void)
 void __specpriv_reset_timers(void)
 {
     ++InvocationNumber;
-    worker_setup_invocation_time = 0;
-    worker_intermediate_checkpoint_time = 0;
-    worker_final_checkpoint_time = 0;
-    worker_checkpoint_check_time = 0;
     numCheckpoints = 0;
-    worker_private_bytes_read=0;
-    worker_private_bytes_written=0;
+    worker_setup_invocation_time = 0;
     worker_on_iteration_time = 0;
     worker_off_iteration_time = 0;
+    worker_private_read_time = 0;
+    worker_private_write_time = 0;
+    worker_intermediate_io_time = 0;
+    worker_checkpoint_check_time = 0;
     worker_between_iter_time = 0;
-    produce_time = 0;
-    consume_time = 0;
-    produce_wait_time = 0;
-    consume_wait_time = 0;
-    produce_actual_time = 0;
-    consume_actual_time = 0;
-    get_queue_time = 0;
+    worker_intermediate_checkpoint_time = 0;
+    worker_final_checkpoint_time = 0;
+    worker_copy_io_to_redux_time = 0;
+    worker_commit_io_time = 0;
+    worker_private_bytes_read = 0;
+    worker_private_bytes_written = 0;
+    worker_end_iter_time = 0;
 }
 
 void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin )
