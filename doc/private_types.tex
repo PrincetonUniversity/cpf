@@ -1,0 +1,37 @@
+\centering
+\tiny
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|}
+  \hline
+  Type &
+  Spec &
+  No Overlap &
+  Full Overlap &
+  Private Replicated &
+  Copy Back to Main &
+  No Private Read &
+  No Private Write &
+  Cheaper Private Read &
+  Cheaper Private Write &
+  Intermediate Checkpoint &
+  \textbf{Benchmark} \\
+
+%%%%%%%%%%%%%%%%%%% Shared %%%%%%%%%%%%%%%%%%%%%%%%%%
+ \hline
+ Shared & - & $\checkmark$ & - & - & $\checkmark$ & $\checkmark$ & - & - & - &
+ - & gemm \\
+ \hline
+%%%%%%%%%%%%%%%%%%% Overwrite %%%%%%%%%%%%%%%%%%%%%%%%%%
+ \hline
+ Overwrite & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ &
+ $\checkmark$ & $\checkmark$ & - & - & - & blackscholes \\
+ \hline
+%%%%%%%%%%%%%%%%%%% Conservative Private %%%%%%%%%%%%%%%%%%%%%%%%%%
+ Conservative private & - & $\checkmark$ & - & $\checkmark$ &
+ $\checkmark$ & $\checkmark$ & $\checkmark$ & - & - & - & covariance \\
+ \hline
+%%%%%%%%%%%%%%%%%%% Specpriv Private %%%%%%%%%%%%%%%%%%%%%%%%%%
+ SpecPriv Private & $\checkmark$ & - & - & $\checkmark$ &
+ $\checkmark$ & - & - & - & - & $\checkmark$ & 052.alvinn \\
+ \hline
+\end{tabular}
+

@@ -1,0 +1,51 @@
+\section{Motivation}
+\label{sec:motivation}
+
+\begin{table*}[h]
+  \input{private_types}
+  \caption{
+    Comparison of private types~\cite{lamport94}
+  }
+  \label{tab:priv_types}
+\end{table*}
+
+\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+  stepnumber=1, numbersep=5pt}
+\begin{figure*}[t]
+  \centering
+  \scriptsize
+  \subfloat[gemm -- shared]
+  {
+    \label{fig:gemm}
+    \begin{minipage}{7.5cm}
+      \input{figures/gemm_code}
+    \end{minipage}
+  }
+  \hspace{0.5cm}
+  \subfloat[blackscholes -- overwrite]
+  {
+    \label{fig:blackscholes}
+    \begin{minipage}{7.5cm}
+      \input{figures/blackscholes_code}
+    \end{minipage}
+  }
+\end{figure*}
+\begin{figure*}[t]
+  \centering
+  \scriptsize
+  \subfloat[covariance -- nospec-private]
+  {
+    \label{fig:covariance}
+    \begin{minipage}{7.5cm}
+      \input{figures/covariance_code}
+    \end{minipage}
+  }
+  \hspace{0.5cm}
+  \subfloat[052.alvinn -- real private]
+  {
+    \label{fig:alvinn}
+    \begin{minipage}{7.5cm}
+      \input{figures/alvinn_code}
+    \end{minipage}
+  }
+\end{figure*}
