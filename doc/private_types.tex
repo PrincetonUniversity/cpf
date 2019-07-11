@@ -1,37 +1,30 @@
 \centering
 \tiny
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
   \hline
-  Type &
-  Spec &
-  No Overlap &
-  Full Overlap &
-  Private Replicated &
-  Copy Back to Main &
-  No Private Read &
-  No Private Write &
-  Cheaper Private Read &
-  Cheaper Private Write &
-  Intermediate Checkpoint &
-  \textbf{Benchmark} \\
+  Type of Private &
+  Overlap         &
+  Spec Privatization &
+  Other Spec Allowed    &
+  Loads Checks  &
+  Store Checks    &
+  Last-Write Detection &
+  Object Replication \\
 
 %%%%%%%%%%%%%%%%%%% Shared %%%%%%%%%%%%%%%%%%%%%%%%%%
  \hline
- Shared & - & $\checkmark$ & - & - & $\checkmark$ & $\checkmark$ & - & - & - &
- - & gemm \\
+ Shared & No & - & - & - & - & - & - \\
  \hline
 %%%%%%%%%%%%%%%%%%% Overwrite %%%%%%%%%%%%%%%%%%%%%%%%%%
- \hline
- Overwrite & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ &
- $\checkmark$ & $\checkmark$ & - & - & - & blackscholes \\
+ Kill Private & Complete & - & $\checkmark$ & - & - & - & $\checkmark$ \\
  \hline
 %%%%%%%%%%%%%%%%%%% Conservative Private %%%%%%%%%%%%%%%%%%%%%%%%%%
- Conservative private & - & $\checkmark$ & - & $\checkmark$ &
- $\checkmark$ & $\checkmark$ & $\checkmark$ & - & - & - & covariance \\
+ Static Private & No/Partial & - & $\checkmark$ & - & - &
+ $\checkmark$ & $\checkmark$ \\
  \hline
 %%%%%%%%%%%%%%%%%%% Specpriv Private %%%%%%%%%%%%%%%%%%%%%%%%%%
- SpecPriv Private & $\checkmark$ & - & - & $\checkmark$ &
- $\checkmark$ & - & - & - & - & $\checkmark$ & 052.alvinn \\
+ Privateer Private & Any & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &
+ $\checkmark$ & $\checkmark$ \\
  \hline
 \end{tabular}
 
