@@ -608,7 +608,9 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
 
   unsigned long lcDepTotal = 0;
   unsigned long lcDepNotCovered = 0;
-  unsigned long lcMemDepTotal = 0;
+  unsigned long lcRAWMemDepTotal = 0;
+  unsigned long lcWAWMemDepTotal = 0;
+  unsigned long lcWARMemDepTotal = 0;
   unsigned long lcRegDepTotal = 0;
   unsigned long lcCtrlDepTotal = 0;
 
@@ -620,8 +622,14 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
 
       if (edge->isControlDependence())
         ++lcCtrlDepTotal;
-      else if (edge->isMemoryDependence())
-        ++lcMemDepTotal;
+      else if (edge->isMemoryDependence()) {
+        if (edge->isRAWDependence())
+          ++lcRAWMemDepTotal;
+        else if (edge->isWAWDependence())
+          ++lcWAWMemDepTotal;
+        else if (edge->isWARDependence())
+          ++lcWARMemDepTotal;
+      }
       else
         ++lcRegDepTotal;
 
@@ -678,7 +686,9 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
-  DEBUG(errs() << "\nMemory Loop-Carried Deps Count: " << lcMemDepTotal
+  DEBUG(errs() << "\nRAW Memory Loop-Carried Deps Count: " << lcRAWMemDepTotal
+               << "\nWAW Memory Loop-Carried Deps Count: " << lcWAWMemDepTotal
+               << "\nWAR Memory Loop-Carried Deps Count: " << lcWARMemDepTotal
                << "\nRegister Loop-Carried Deps Count: " << lcRegDepTotal
                << "\nControl Loop-Carried Deps Count: " << lcCtrlDepTotal
                << "\n");

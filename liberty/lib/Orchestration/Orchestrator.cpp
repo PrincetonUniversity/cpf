@@ -165,7 +165,7 @@ void Orchestrator::printSelected(SetOfRemedies &sors,
                                  const Remedies_ptr &selected, Criticism &cr) {
   DEBUG(errs() << "----------------------------------------------------\n");
   printRemedies(*selected, true);
-  DEBUG(errs() << " chosen to address criticicm ";
+  DEBUG(errs() << " chosen to address criticism ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
             errs() << "(Mem, ";
@@ -218,7 +218,7 @@ void Orchestrator::printAllRemedies(SetOfRemedies &sors, Criticism &cr) {
     if ((++itR) != sors.end())
       DEBUG(errs() << ", ");
   }
-  DEBUG(errs() << " can address criticicm ";
+  DEBUG(errs() << " can address critisicm ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
             errs() << "(Mem, ";
