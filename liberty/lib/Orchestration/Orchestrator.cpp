@@ -57,8 +57,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-    LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-    SmtxSpeculationManager &smtxLampMan,
+    TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+    SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
   std::vector<Remediator_ptr> remeds;
@@ -93,8 +93,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  auto privRemed = std::make_unique<PrivRemediator>();
-  privRemed->setPDG(pdg);
+  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli);
+  privRemed->setLoopPDG(pdg, A);
   remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
@@ -237,7 +237,8 @@ bool Orchestrator::findBestStrategy(
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-    SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+    TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
+    SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
     LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
