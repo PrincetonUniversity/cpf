@@ -149,6 +149,8 @@ unsigned Selector::computeWeights(
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
   PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
+  TargetLibraryInfo *tli =
+      &proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   ControlSpeculation *ctrlspec =
       proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
   PredictionSpeculation *headerPhiPred =
@@ -225,7 +227,7 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred,
-          mloops, smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
+          mloops, tli, smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
           loopAA, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
