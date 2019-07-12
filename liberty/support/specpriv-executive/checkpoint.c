@@ -267,7 +267,7 @@ static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, Mapped
 
 Checkpoint *__specpriv_get_checkpoint_for_iter(CheckpointManager *mgr, Iteration iter)
 {
-  DEBUG(printf("Worker %u requestst checkpoint for iteration %d\n", __specpriv_my_worker_id(), iter));
+  DEBUG(printf("Worker %u requests checkpoint for iteration %d\n", __specpriv_my_worker_id(), iter));
 
 #if (WHO_DOES_CHECKPOINTS & FASTEST_WORKER) != 0
   __specpriv_commit_zero_or_more_checkpoints( mgr );

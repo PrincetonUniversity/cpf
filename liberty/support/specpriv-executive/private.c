@@ -116,7 +116,11 @@ void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
 
   if (__specpriv_runOnEveryIter()) {
     if (code8 == NUM_RESERVED_SHADOW_VALUES && i > 0)
+    {
+      DEBUG(printf("Performing checkpoint at iteration %d because code8 == %d\n",
+              i, NUM_RESERVED_SHADOW_VALUES););
       __specpriv_worker_perform_checkpoint(0);
+    }
 
     return;
   }
@@ -131,7 +135,11 @@ void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
   //           prevI, i, firstIteration, checkpointGranularity));
 
   if (prevI >= firstIteration && prevR + 1 == curR )
+  {
+    DEBUG(printf("Performing checkpoint because prevI >= firstIteration && prevR + 1 == %d\n",
+            curR););
     __specpriv_worker_perform_checkpoint(0);
+  }
 }
 
 // Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
@@ -159,7 +167,7 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
     TOUT(worker_private_bytes_written += len);
   }
 
-  TADD(worker_private_read_time,start);
+  TADD(worker_private_write_time,start);
   TIME(worker_pause_time);
 }
 
