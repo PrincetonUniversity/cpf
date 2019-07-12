@@ -9,8 +9,6 @@
 unsigned InvocationNumber = 0;
 
 // Timer variables -- per-invocation
-uint64_t main_begin_invocation, main_end_invocation;
-uint64_t worker_begin_invocation, worker_end_invocation;
 uint64_t worker_enter_loop, worker_exit_loop;
 uint64_t worker_begin_waitpid, worker_end_waitpid;
 uint64_t distill_into_liveout_start, distill_into_liveout_end;
@@ -89,6 +87,12 @@ uint64_t worker_total_invocation_time = 0;
   uint64_t worker_intermediate_checkpoint_time = 0;
   uint64_t worker_checkpoint_check_time = 0;
 
+  /******************************************************************************
+   * Worker redux times
+   */
+  uint64_t worker_distill_redux_into_partial_time = 0;
+  uint64_t worker_distill_ommitted_redux_into_partial_time = 0;
+
 /******************************************************************************
  * Other statistics
  */
@@ -103,6 +107,10 @@ uint64_t worker_total_invocation_time = 0;
   uint64_t worker_pause_time = 0;
   uint64_t worker_begin_iter_time = 0;
   uint64_t worker_end_iter_time = 0;
+  uint64_t main_begin_invocation = 0;
+  uint64_t main_end_invocation = 0;
+  uint64_t worker_begin_invocation = 0;
+  uint64_t worker_end_invocation = 0;
 
 uint64_t total_produces, total_consumes;
 
@@ -159,13 +167,17 @@ void __specpriv_print_percentages( void )
   const uint64_t myWorkerId = __specpriv_my_worker_id();
 
   uint64_t total_iteration_time = worker_on_iteration_time + worker_off_iteration_time +
-    worker_private_read_time + worker_private_write_time + worker_intermediate_io_time +
-    worker_intermediate_checkpoint_time;
+    worker_private_read_time + worker_private_write_time + worker_intermediate_io_time;
+  /* uint64_t total_invocation_time = total_iteration_time + worker_setup_invocation_time + */
+  /*   worker_final_checkpoint_time + worker_between_iter_time; */
   uint64_t total_invocation_time = total_iteration_time + worker_setup_invocation_time +
-    worker_final_checkpoint_time;
+    worker_final_checkpoint_time + worker_between_iter_time;
 
   printf("\n*** WORKER %ld @invocation %d times ***\n", myWorkerId, InvocationNumber);
 
+  printf("Complete worker invocation time:          %15lu\n", worker_end_invocation - worker_begin_invocation);
+  printf("Worker cpu set setup time:                %15lu\n", worker_setup_time);
+  printf("Worker read pipe time:                    %15lu\n", worker_read_pipe_time);
   printf("Worker invocation time:                   %15lu\n", total_invocation_time);
   printf("-- Worker invocation setup time:          %15lu\n", worker_setup_invocation_time);
   printf("-- Worker total iteration time:           %15lu\n", total_iteration_time);
@@ -174,7 +186,6 @@ void __specpriv_print_percentages( void )
   printf("---- Worker time in private read:         %15lu\n", worker_private_read_time);
   printf("---- Worker time in private write:        %15lu\n", worker_private_write_time);
   printf("---- Worker time in intermediate IO:      %15lu\n", worker_intermediate_io_time);
-  printf("---- Worker checkpoint check time:        %15lu\n", worker_checkpoint_check_time);
   printf("-- Worker between iteration time:         %15lu\n", worker_between_iter_time);
   printf("---- Worker intermediate checkpoint time: %15lu\n", worker_intermediate_checkpoint_time);
   printf("-- Worker final checkpoint time:          %15lu\n", worker_final_checkpoint_time);
@@ -192,8 +203,8 @@ void __specpriv_print_percentages( void )
          "---- Worker intermediate IO:              %15lf\n"
          "---- Worker checkpoint check:             %15lf\n"
          "-- Worker between iteration:              %15lf\n"
-         "---- Worker intermediate checkpoint time: %15lf\n"
-         "-- Worker final checkpoint time:          %15lf\n"
+         "---- Worker intermediate checkpoint:      %15lf\n"
+         "-- Worker final checkpoint:               %15lf\n"
          "-- Worker time in copy io to redux:       %15lf\n"
          "-- Worker time in commit io:              %15lf\n",
 
