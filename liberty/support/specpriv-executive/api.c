@@ -197,7 +197,6 @@ static void __specpriv_worker_setup(Wid wid)
     while (bytesRead != workerArgsSize) {
       ssize_t r = read(pipefds[myWorkerId][0], &workerArgs + bytesRead,
                workerArgsSize - bytesRead);
-      TADD(worker_read_pipe_time, start);
       if (r == -1) {
         perror("child read from pipe!!!");
         _exit(0);
@@ -212,6 +211,7 @@ static void __specpriv_worker_setup(Wid wid)
       bytesRead += r;
       DEBUG(printf("Read %ld bytes from pipe\n", r));
     }
+    TADD(worker_read_pipe_time, start);
 
     TIME(start);
     __specpriv_set_sizeof_private(workerArgs.sizeof_private);
@@ -228,6 +228,7 @@ static void __specpriv_worker_setup(Wid wid)
         myWorkerId, workerArgs.numCores, workerArgs.chunkSize));
 
     TADD(worker_setup_invocation_time, start);
+    TIME(worker_begin_invocation);
     workerArgs.callback(workerArgs.user, myWorkerId, workerArgs.numCores,
                   workerArgs.chunkSize);
 
