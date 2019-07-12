@@ -208,6 +208,44 @@ void Orchestrator::printSelected(SetOfRemedies &sors,
   DEBUG(errs() << "------------------------------------------------------\n\n");
 }
 
+void Orchestrator::printAllRemedies(SetOfRemedies &sors, Criticism &cr) {
+  if (sors.empty())
+    return;
+  DEBUG(errs() << "\nRemedies ");
+  auto itR = sors.begin();
+  while (itR != sors.end()) {
+    printRemedies(**itR, false);
+    if ((++itR) != sors.end())
+      DEBUG(errs() << ", ");
+  }
+  DEBUG(errs() << " can address criticicm ";
+        if (cr.isControlDependence()) errs() << "(Control, "; else {
+          if (cr.isMemoryDependence())
+            errs() << "(Mem, ";
+          else
+            errs() << "(Reg, ";
+          if (cr.isWARDependence())
+            errs() << "WAR, ";
+          else if (cr.isWAWDependence())
+            errs() << "WAW, ";
+          else if (cr.isRAWDependence())
+            errs() << "RAW, ";
+        }
+        if (cr.isLoopCarriedDependence()) errs() << "LC)";
+        else errs() << "II)";
+
+        errs() << ":\n"
+               << *cr.getOutgoingT();
+        if (Instruction *outgoingI = dyn_cast<Instruction>(cr.getOutgoingT()))
+            liberty::printInstDebugInfo(outgoingI);
+        errs() << " ->\n"
+               << *cr.getIncomingT();
+        if (Instruction *incomingI = dyn_cast<Instruction>(cr.getIncomingT()))
+            liberty::printInstDebugInfo(incomingI);
+        errs() << "\n";);
+  DEBUG(errs() << "\n");
+}
+
 // for now pick the cheapest remedy for each criticism
 // TODO: perform instead global reasoning and consider the best set of
 // remedies for a given set of criticisms
@@ -271,7 +309,7 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds = getRemediators(
-      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, ldi,
+      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, tli, ldi,
       smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
@@ -287,6 +325,14 @@ bool Orchestrator::findBestStrategy(
       }
     }
   }
+
+  // print all remedies for every loop-carried dependence
+  for (Criticism *cr : allCriticisms) {
+    if (cr->isLoopCarriedDependence()) {
+      SetOfRemedies &sors = mapCriticismsToRemeds[cr];
+      printAllRemedies(sors, *cr);
+    }
+ }
 
   #if 0
   // second level remediators, produce both remedies and criticisms
