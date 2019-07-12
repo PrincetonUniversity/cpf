@@ -1,6 +1,6 @@
 \centering
 \tiny
-\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
   \hline
   Type of Private &
   Overlap         &
@@ -9,22 +9,27 @@
   Loads Checks  &
   Store Checks    &
   Last-Write Detection &
-  Object Replication \\
+  CoW Mapping &
+  Copy-out to Main \\
 
 %%%%%%%%%%%%%%%%%%% Shared %%%%%%%%%%%%%%%%%%%%%%%%%%
  \hline
- Shared & No & - & - & - & - & - & - \\
+ Shared & No & - & - & - & - & - & - & - \\
+ \hline
+%%%%%%%%%%%%%%%%%%% Local %%%%%%%%%%%%%%%%%%%%%%%%%%
+ Local Private & Any & - & $\checkmark$ & - & - & - & $\checkmark$ & - \\
  \hline
 %%%%%%%%%%%%%%%%%%% Overwrite %%%%%%%%%%%%%%%%%%%%%%%%%%
- Kill Private & Complete & - & $\checkmark$ & - & - & - & $\checkmark$ \\
+ Kill Private & Complete & - & $\checkmark$ & - & - & - & $\checkmark$ &
+$\checkmark$ \\
  \hline
 %%%%%%%%%%%%%%%%%%% Conservative Private %%%%%%%%%%%%%%%%%%%%%%%%%%
  Static Private & No/Partial & - & $\checkmark$ & - & - &
- $\checkmark$ & $\checkmark$ \\
+ $\checkmark$ & $\checkmark$ & $\checkmark$ \\
  \hline
 %%%%%%%%%%%%%%%%%%% Specpriv Private %%%%%%%%%%%%%%%%%%%%%%%%%%
  Privateer Private & Any & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &
- $\checkmark$ & $\checkmark$ \\
+ $\checkmark$ & $\checkmark$ & $\checkmark$ \\
  \hline
 \end{tabular}
 
