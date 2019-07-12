@@ -21,7 +21,7 @@
 #include "liberty/Orchestration/PtrResidueRemed.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 #include "liberty/Orchestration/MemSpecAARemed.h"
-#include "liberty/Orchestration/MemAllocRemed.h"
+//#include "liberty/Orchestration/MemAllocRemed.h"
 #include "liberty/Orchestration/LoopFissionRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
