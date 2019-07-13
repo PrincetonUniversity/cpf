@@ -5,6 +5,7 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Operator.h"
@@ -13,8 +14,8 @@
 
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Utilities/CaptureUtil.h"
-#include "liberty/Utilities/GlobalMalloc.h"
 
+#include <vector>
 #include <cmath>
 
 using namespace llvm;
@@ -33,42 +34,15 @@ bool storeNull(const StoreInst *sI) {
   return false;
 }
 
-bool findNoCaptureGlobalMallocSrcs(const GlobalValue *global,
-                                   std::vector<const Instruction *> &mallocSrcs,
-                                   const TargetLibraryInfo *tli) {
-  Type *type = global->getType()->getElementType();
-  if (!type->isPointerTy())
-    return false;
+bool findNoCaptureGlobalSrcs(const GlobalValue *global,
+                             std::vector<const Instruction *> &srcs) {
   for (UseIt use = global->user_begin(); use != global->user_end(); ++use) {
     if (const StoreInst *store = dyn_cast<StoreInst>(*use)) {
-      const Instruction *src = liberty::findNoAliasSource(store, *tli);
-      if (src) {
-        mallocSrcs.push_back(src);
-      } else {
-        if (storeNull(store))
-          continue;
-        // nonMalloc.insert(&*global);
-        // nonMallocSrcs[&*global].insert(store);
-        return false;
-      }
+      srcs.push_back(store);
     } else if (const BitCastOperator *bcOp = dyn_cast<BitCastOperator>(*use)) {
       for (UseIt bUse = bcOp->user_begin(); bUse != bcOp->user_end(); ++bUse) {
         if (const StoreInst *bStore = dyn_cast<StoreInst>(*bUse)) {
-          const Instruction *s = liberty::findNoAliasSource(bStore, *tli);
-          if (s) {
-            mallocSrcs.push_back(s);
-          } else {
-            // null is stored usually after a free operation.
-            // Storing null should not be considered nonMalloc.
-            // Undef behavior if the pointer is used with null value.
-            // So we can leverage that and increase GlobalMallocAA
-            // applicability
-            if (storeNull(bStore))
-              continue;
-            // nonMalloc.insert(&*global);
-            // nonMallocSrcs[&*global].insert(bStore);
-            return false;
-          }
+          srcs.push_back(bStore);
         } else if (!isa<LoadInst>(*bUse)) {
           // nonMalloc.insert(&*global);
           return false;
@@ -79,11 +53,45 @@ bool findNoCaptureGlobalMallocSrcs(const GlobalValue *global,
       return false;
     }
   }
+  return true;
+}
+
+bool findNoCaptureGlobalMallocSrcs(const GlobalValue *global,
+                                   std::vector<const Instruction *> &mallocSrcs,
+                                   const TargetLibraryInfo *tli) {
+  Type *type = global->getType()->getElementType();
+  if (!type->isPointerTy())
+    return false;
+  std::vector<const Instruction *> srcs;
+  if (!findNoCaptureGlobalSrcs(global, srcs))
+    return false;
+
+  for (auto storeI : srcs) {
+    const StoreInst *store = dyn_cast<StoreInst>(storeI);
+    const Instruction *s = liberty::findNoAliasSource(store, *tli);
+    if (s) {
+      mallocSrcs.push_back(s);
+    } else {
+      // null is stored usually after a free operation.
+      // Storing null should not be considered nonMalloc.
+      // Undef behavior if the pointer is used with null value.
+      // So we can leverage that and increase GlobalMallocAA
+      // applicability
+      if (storeNull(store))
+        continue;
+      // nonMalloc.insert(&*global);
+      // nonMallocSrcs[&*global].insert(bStore);
+      return false;
+    }
+  }
+  return true;
 }
 
 void findAllocSizeInfo(const Instruction *alloc, const Value **numOfElem,
                        uint64_t &sizeOfElem) {
 
+  sizeOfElem = 0;
+  *numOfElem = nullptr;
   if (auto allocCall = dyn_cast<CallInst>(alloc)) {
     if (allocCall->getNumArgOperands() != 1)
       return;
@@ -106,11 +114,15 @@ void findAllocSizeInfo(const Instruction *alloc, const Value **numOfElem,
 
         if (mallocSizeI->getOpcode() == Instruction::Shl) {
           sizeOfElem = pow(2, sizeOfElemInMalloc->getZExtValue());
+          *numOfElem = N;
         } else if (mallocSizeI->getOpcode() == Instruction::Mul) {
           sizeOfElem = sizeOfElemInMalloc->getZExtValue();
+          *numOfElem = N;
         }
         
-        *numOfElem = N;
+      } else if (auto constAllocSize = dyn_cast<ConstantInt>(mallocSizeI)) {
+        *numOfElem = nullptr;
+        sizeOfElem = constAllocSize->getZExtValue();
       }
     }
   }

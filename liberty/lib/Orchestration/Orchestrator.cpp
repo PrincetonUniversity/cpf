@@ -218,7 +218,7 @@ void Orchestrator::printAllRemedies(SetOfRemedies &sors, Criticism &cr) {
     if ((++itR) != sors.end())
       DEBUG(errs() << ", ");
   }
-  DEBUG(errs() << " can address critisicm ";
+  DEBUG(errs() << " can address criticism ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
             errs() << "(Mem, ";
