@@ -243,7 +243,6 @@ void Orchestrator::printAllRemedies(SetOfRemedies &sors, Criticism &cr) {
         if (Instruction *incomingI = dyn_cast<Instruction>(cr.getIncomingT()))
             liberty::printInstDebugInfo(incomingI);
         errs() << "\n";);
-  DEBUG(errs() << "\n");
 }
 
 // for now pick the cheapest remedy for each criticism
