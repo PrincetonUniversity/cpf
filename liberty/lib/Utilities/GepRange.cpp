@@ -3,6 +3,8 @@
 
 using namespace llvm;
 
+namespace liberty {
+
 const Value *getCanonicalGepRange(const GetElementPtrInst *gep, const Loop *L,
                                   ScalarEvolution *se) {
   if (!gep)
@@ -14,6 +16,7 @@ const Value *getCanonicalGepRange(const GetElementPtrInst *gep, const Loop *L,
   if (numIndices < 1)
     return nullptr;
   const Value *idx0 = *gep->idx_begin();
+
   if (!se->isSCEVable(idx0->getType()))
     return nullptr;
   const SCEVAddRecExpr *addRec =
@@ -53,3 +56,5 @@ const Value *getCanonicalGepRange(const GetElementPtrInst *gep, const Loop *L,
 
   return limit;
 }
+
+} // namespace liberty
