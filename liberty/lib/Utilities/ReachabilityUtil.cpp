@@ -5,15 +5,17 @@
 #include "llvm/IR/Instructions.h"
 
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Utilities/ReachabilityUtil.h"
 
 #include <vector>
 
 using namespace llvm;
 using namespace liberty;
 
-bool noStoreInBetween(const Instruction *firstI, const Instruction *secondI,
-                      std::vector<const Instruction *> &defs,
-                      ModuleLoops &mloops) {
+bool liberty::noStoreInBetween(const Instruction *firstI,
+                               const Instruction *secondI,
+                               std::vector<const Instruction *> &defs,
+                               ModuleLoops &mloops) {
 
   if (defs.empty())
     return true;
