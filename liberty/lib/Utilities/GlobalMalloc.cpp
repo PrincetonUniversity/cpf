@@ -3,6 +3,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/GlobalValue.h"
@@ -14,6 +15,7 @@
 
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Utilities/CaptureUtil.h"
+#include "liberty/Utilities/GlobalMalloc.h"
 
 #include <vector>
 #include <cmath>
@@ -34,8 +36,8 @@ bool storeNull(const StoreInst *sI) {
   return false;
 }
 
-bool findNoCaptureGlobalSrcs(const GlobalValue *global,
-                             std::vector<const Instruction *> &srcs) {
+bool liberty::findNoCaptureGlobalSrcs(const GlobalValue *global,
+                                      std::vector<const Instruction *> &srcs) {
   for (UseIt use = global->user_begin(); use != global->user_end(); ++use) {
     if (const StoreInst *store = dyn_cast<StoreInst>(*use)) {
       srcs.push_back(store);
@@ -56,9 +58,9 @@ bool findNoCaptureGlobalSrcs(const GlobalValue *global,
   return true;
 }
 
-bool findNoCaptureGlobalMallocSrcs(const GlobalValue *global,
-                                   std::vector<const Instruction *> &mallocSrcs,
-                                   const TargetLibraryInfo *tli) {
+bool liberty::findNoCaptureGlobalMallocSrcs(
+    const GlobalValue *global, std::vector<const Instruction *> &mallocSrcs,
+    const TargetLibraryInfo *tli) {
   Type *type = global->getType()->getElementType();
   if (!type->isPointerTy())
     return false;
@@ -87,8 +89,8 @@ bool findNoCaptureGlobalMallocSrcs(const GlobalValue *global,
   return true;
 }
 
-void findAllocSizeInfo(const Instruction *alloc, const Value **numOfElem,
-                       uint64_t &sizeOfElem) {
+void liberty::findAllocSizeInfo(const Instruction *alloc,
+                                const Value **numOfElem, uint64_t &sizeOfElem) {
 
   sizeOfElem = 0;
   *numOfElem = nullptr;
@@ -128,3 +130,23 @@ void findAllocSizeInfo(const Instruction *alloc, const Value **numOfElem,
   }
 }
 
+bool liberty::isGlobalLocalToLoop(const GlobalValue *global, const Loop *L) {
+  for (UseIt use = global->user_begin(); use != global->user_end(); ++use) {
+    if (const Instruction *inst = dyn_cast<Instruction>(*use)) {
+      if (!L->contains(inst))
+        return false;
+    } else if (const Operator *op = dyn_cast<Operator>(*use)) {
+      for (UseIt bUse = op->user_begin(); bUse != op->user_end(); ++bUse) {
+        if (const Instruction *bInst = dyn_cast<Instruction>(*bUse)) {
+          if (!L->contains(bInst))
+            return false;
+        } else {
+          return false;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+}

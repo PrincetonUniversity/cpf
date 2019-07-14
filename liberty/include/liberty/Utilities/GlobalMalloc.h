@@ -1,6 +1,7 @@
 #ifndef GLOBAL_MALLOC_UTIL_H
 #define GLOBAL_MALLOC_UTIL_H
 
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Instructions.h"
 
@@ -23,6 +24,9 @@ bool findNoCaptureGlobalMallocSrcs(const GlobalValue *global,
 
 void findAllocSizeInfo(const Instruction *alloc, const Value **numOfElem,
                        uint64_t &sizeOfElem);
+
+bool isGlobalLocalToLoop(const GlobalValue *gv, const Loop *L);
+
 } // namespace liberty
 
 #endif
