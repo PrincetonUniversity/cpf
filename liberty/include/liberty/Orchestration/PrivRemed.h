@@ -39,8 +39,8 @@ public:
     }
   }
 
-  //StringRef getRemedyName() const { return getPrivRemedyName(); };
-  StringRef getRemedyName() const { return "priv-remedy"; };
+  StringRef getRemedyName() const { return getPrivRemedyName(); };
+  //StringRef getRemedyName() const { return "priv-remedy"; };
 };
 
 class PrivRemediator : public Remediator {
