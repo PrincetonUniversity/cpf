@@ -7,7 +7,7 @@
 
 #define DEFAULT_LOCALITY_REMED_COST 50
 #define PRIVATE_ACCESS_COST 100
-#define LOCAL_ACCESS_COST 5
+#define LOCAL_ACCESS_COST 1
 
 namespace liberty {
 using namespace llvm;

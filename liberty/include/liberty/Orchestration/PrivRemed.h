@@ -1,11 +1,17 @@
 #ifndef LLVM_LIBERTY_PRIVREMED_H
 #define LLVM_LIBERTY_PRIVREMED_H
 
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Orchestration/Remediator.h"
+
+#include "unordered_set"
 
 namespace liberty {
 using namespace llvm;
@@ -13,15 +19,49 @@ using namespace llvm;
 class PrivRemedy : public Remedy {
 public:
   const StoreInst *storeI;
+  const Value *localPtr;
+
+  enum PrivRemedType {
+    Normal = 0, // PartialOverlap
+    FullOverlap,
+    Local
+  };
+
+  PrivRemedType type;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
-  StringRef getRemedyName() const { return "priv-remedy"; };
+
+  StringRef getPrivRemedyName() const {
+    switch (type) {
+    case Normal:
+      return "priv-remedy";
+      break;
+    case FullOverlap:
+      return "priv-full-overlap-remedy";
+      break;
+    case Local:
+      return "priv-local-remedy";
+      break;
+    }
+  }
+
+  StringRef getRemedyName() const { return getPrivRemedyName(); };
+  //StringRef getRemedyName() const { return "priv-remedy"; };
 };
 
 class PrivRemediator : public Remediator {
 public:
-  void setPDG(PDG *loopPDG) { pdg = loopPDG; }
+  PrivRemediator(ModuleLoops &ml, TargetLibraryInfo *tli)
+      : Remediator(), mloops(ml), tli(tli) {}
+
+  void setLoopPDG(PDG *loopPDG, Loop *L) {
+    pdg = loopPDG;
+    Function *f = L->getHeader()->getParent();
+    pdt = &mloops.getAnalysis_PostDominatorTree(f);
+    li = &mloops.getAnalysis_LoopInfo(f);
+    se = &mloops.getAnalysis_ScalarEvolution(f);
+  }
 
   StringRef getRemediatorName() const {
     return "priv-remediator";
@@ -32,8 +72,17 @@ public:
 
 private:
   PDG *pdg;
+  ModuleLoops &mloops;
+  TargetLibraryInfo *tli;
+  PostDominatorTree *pdt;
+  LoopInfo *li;
+  ScalarEvolution *se;
+
+  std::unordered_set<const GlobalValue *> localGVs;
 
   bool isPrivate(const Instruction *I);
+  bool isLocalPrivate(const Instruction *I, const Value *ptr,
+                      DataDepType dataDepTy, const Loop *L);
 };
 
 } // namespace liberty

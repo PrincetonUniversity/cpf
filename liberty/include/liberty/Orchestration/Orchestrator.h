@@ -21,6 +21,7 @@
 #include "liberty/Orchestration/PtrResidueRemed.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 #include "liberty/Orchestration/MemSpecAARemed.h"
+//#include "liberty/Orchestration/MemAllocRemed.h"
 #include "liberty/Orchestration/LoopFissionRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
@@ -57,7 +58,8 @@ public:
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred,
       PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-      SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+      TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
+      SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
       LoopProfLoad &lpl,
@@ -72,15 +74,14 @@ public:
 private:
   std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
 
-  std::vector<Remediator_ptr>
-  getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-                 PredictionSpeculation *loadedValuePred,
-                 PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-                 LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-                 SmtxSpeculationManager &smtxLampMan,
-                 PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-                 const Read &rd, const HeapAssignment &asgn, Pass &proxy,
-                 LoopAA *loopAA);
+  std::vector<Remediator_ptr> getRemediators(
+      Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+      PredictionSpeculation *loadedValuePred,
+      PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+      TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+      SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA);
 
   std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                      unsigned threadBudget, LoopProfLoad *lpl);
@@ -93,6 +94,7 @@ private:
   void printRemedies(Remedies &rs, bool selected);
   void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected,
                      Criticism &cr);
+  void printAllRemedies(SetOfRemedies &sors, Criticism &cr);
 
   unordered_map<std::string, unsigned> remediatorSelectionCnt;
 
