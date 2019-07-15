@@ -489,7 +489,7 @@ void Preprocess::init(ModuleLoops &mloops)
         specUsedFlag = true;
         LoadedValuePredRemedy *loadedValuePredRemedy =
             (LoadedValuePredRemedy *)&*remed;
-        selectedLoadedValuePreds[header].insert(loadedValuePredRemedy->loadI);
+        selectedLoadedValuePreds[header].insert(loadedValuePredRemedy->ptr);
       } else if (remed->getRemedyName().equals("smtx-remedy") ||
                  remed->getRemedyName().equals("smtx-lamp-remedy") ||
                  remed->getRemedyName().equals("mem-spec-aa-remedy")) {
