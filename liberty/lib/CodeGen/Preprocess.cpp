@@ -362,6 +362,60 @@ const RecoveryFunction &Preprocess::getRecoveryFunction(Loop *loop) const
   return recovery.getRecoveryFunction(loop);
 }
 
+bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
+  if (const AllocaInst *alloca = dyn_cast<AllocaInst>(alloc)) {
+    // find uses of alloca by @llvm.lifetime.start and lifetime.end
+    const IntrinsicInst *lifetimeStart = nullptr;
+    const IntrinsicInst *lifetimeEnd = nullptr;
+    for (auto j = alloca->user_begin(); j != alloca->user_end(); ++j) {
+      if (auto userI = dyn_cast<IntrinsicInst>(*j)) {
+        Intrinsic::ID ID = userI->getIntrinsicID();
+        if (ID == Intrinsic::lifetime_start)
+          lifetimeStart = userI;
+        else if (ID == Intrinsic::lifetime_end)
+          lifetimeEnd = userI;
+      } else if (auto userI = dyn_cast<BitCastInst>(*j)) {
+        for (auto k = userI->user_begin(); k != userI->user_end(); ++k) {
+          if (auto kI = dyn_cast<IntrinsicInst>(*k)) {
+            Intrinsic::ID ID = kI->getIntrinsicID();
+            if (ID == Intrinsic::lifetime_start)
+              lifetimeStart = kI;
+            else if (ID == Intrinsic::lifetime_end)
+              lifetimeEnd = kI;
+          }
+        }
+      }
+    }
+    if (!lifetimeStart || !lifetimeEnd)
+      return false;
+
+    // check that the lifetime.start and lifetime.end calls are within the loop
+    if (!L->contains(lifetimeStart) || !L->contains(lifetimeEnd))
+      return false;
+
+    DEBUG(errs() << "Alloca found to be local: " << *alloca << "\n");
+    return true;
+  }
+  return false;
+}
+
+void Preprocess::moveLocalPrivs(HeapAssignment &asgn, const Loop *L) {
+  HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
+  HeapAssignment::AUSet &locals = asgn.getLocalAUs();
+  HeapAssignment::AUSet localPrivAUs;
+  for (auto au : privs) {
+    if (!au->value)
+      continue;
+    if (isLocalPrivateAU(au->value, L))
+      localPrivAUs.insert(au);
+  }
+
+  for (auto au : localPrivAUs) {
+    privs.erase(au);
+    locals.insert(au);
+  }
+}
+
 void Preprocess::init(ModuleLoops &mloops)
 {
   LLVMContext &ctx = mod->getContext();
@@ -487,6 +541,9 @@ void Preprocess::init(ModuleLoops &mloops)
     }
     if (memVerUsed || privUsed || specUsedFlag)
       checkpointNeeded.insert(header);
+
+    // move local-private from private to local heap
+    moveLocalPrivs(asgn, loop);
   }
 
   // if no spec and no need for privitization (no WAW, but AU is written),
