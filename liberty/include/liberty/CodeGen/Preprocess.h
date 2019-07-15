@@ -124,6 +124,8 @@ private:
   bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts,
                              ModuleLoops &mloops);
 
+  void moveLocalPrivs(HeapAssignment &asgn, const Loop *L);
+
   bool addInitializationFunction();
   bool addFinalizationFunction();
 };
