@@ -8,6 +8,7 @@
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Orchestration/PrivRemed.h"
 #include "liberty/Utilities/GepRange.h"
+#include "liberty/Utilities/GetMemOper.h"
 #include "liberty/Utilities/GlobalMalloc.h"
 #include "liberty/Utilities/ReachabilityUtil.h"
 
@@ -16,6 +17,7 @@
 //#define DEFAULT_PRIV_REMED_COST 1
 #define DEFAULT_PRIV_REMED_COST 100
 #define FULL_OVERLAP_PRIV_REMED_COST 70
+#define LOCAL_PRIV_REMED_COST 65
 
 namespace liberty {
 using namespace llvm;
@@ -31,6 +33,8 @@ void PrivRemedy::apply(Task *task) {
 bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<PrivRemedy> privRhs =
       std::static_pointer_cast<PrivRemedy>(rhs);
+  if (this->storeI == privRhs->storeI)
+    return this->localPtr < privRhs->localPtr;
   return this->storeI < privRhs->storeI;
 }
 
@@ -38,6 +42,8 @@ bool PrivRemedy::compare(const Remedy_ptr rhs) const {
 // conservatively ensure that the given store instruction is not part of any
 // loop-carried memory flow (RAW) dependences
 bool PrivRemediator::isPrivate(const Instruction *I) {
+  if (!isa<StoreInst>(I))
+    return false;
   auto pdgNode = pdg->fetchNode(const_cast<Instruction*>(I));
   for (auto edge : pdgNode->getOutgoingEdges()) {
     if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
@@ -45,6 +51,50 @@ bool PrivRemediator::isPrivate(const Instruction *I) {
       return false;
   }
   return true;
+}
+
+const Value *getPtr(const Instruction *I, DataDepType dataDepTy) {
+  const Value *ptr = liberty::getMemOper(I);
+  // if ptr null, check for memcpy/memmove inst.
+  // src pointer is read, dst pointer is written.
+  // choose pointer for current query based on dataDepTy
+  if (!ptr) {
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I)) {
+      if (dataDepTy == DataDepType::WAR)
+        ptr = mti->getRawSource();
+      ptr = mti->getRawDest();
+    }
+  }
+  return ptr;
+}
+
+bool PrivRemediator::isLocalPrivate(const Instruction *I, const Value *ptr,
+                                    DataDepType dataDepTy, const Loop *L) {
+  if (!ptr)
+    return false;
+
+  // handle only global pointers for now
+  if (auto gv = dyn_cast<GlobalValue>(ptr)) {
+    // if global variable is not used outside the loop then it is a local
+    if (!localGVs.count(gv)) {
+      if (!isGlobalLocalToLoop(gv, L))
+        return false;
+      localGVs.insert(gv);
+      DEBUG(errs() << "Global found to be local: " << *gv << "\n");
+    }
+
+    // need to check for private because globals are always initialized. Thus,
+    // even without any use outside of the loop they could still assume initial
+    // value and at some/all iterations read before writing leading to real RAW
+    // deps.
+    if (isPrivate(I)) {
+      DEBUG(errs() << "Private store to global: " << *I << "\n");
+      return true;
+    }
+    DEBUG(errs() << "Private check failed for inst: " << *I << "\n");
+    return false;
+  }
+  return false;
 }
 
 BasicBlock *getLoopEntryBB(const Loop *loop) {
@@ -160,7 +210,31 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
   std::shared_ptr<PrivRemedy> remedy =
       std::shared_ptr<PrivRemedy>(new PrivRemedy());
   remedy->cost = DEFAULT_PRIV_REMED_COST;
+  remedy->storeI = nullptr;
+  remedy->localPtr = nullptr;
 
+  // detect private-locals
+  if (LoopCarried && L) {
+    const Value* ptr1 = getPtr(A, dataDepTy);
+    const Value* ptr2 = getPtr(B, dataDepTy);
+    if (isLocalPrivate(A, ptr1, dataDepTy, L)) {
+      remedResp.depRes = DepResult::NoDep;
+      remedy->localPtr = ptr1;
+      remedy->cost = LOCAL_PRIV_REMED_COST;
+      remedy->type = PrivRemedy::Local;
+      remedResp.remedy = remedy;
+      return remedResp;
+    } else if (isLocalPrivate(B, ptr2, dataDepTy, L)) {
+      remedResp.depRes = DepResult::NoDep;
+      remedy->localPtr = ptr2;
+      remedy->cost = LOCAL_PRIV_REMED_COST;
+      remedy->type = PrivRemedy::Local;
+      remedResp.remedy = remedy;
+      return remedResp;
+    }
+  }
+
+  // look for conservative privitization
   bool WAW = dataDepTy == DataDepType::WAW;
 
   // need to be loop-carried WAW where the privitizable store is either A or B

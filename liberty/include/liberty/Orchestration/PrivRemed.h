@@ -11,16 +11,20 @@
 
 #include "liberty/Orchestration/Remediator.h"
 
+#include "unordered_set"
+
 namespace liberty {
 using namespace llvm;
 
 class PrivRemedy : public Remedy {
 public:
   const StoreInst *storeI;
+  const Value *localPtr;
 
   enum PrivRemedType {
     Normal = 0, // PartialOverlap
-    FullOverlap
+    FullOverlap,
+    Local
   };
 
   PrivRemedType type;
@@ -35,6 +39,9 @@ public:
       break;
     case FullOverlap:
       return "priv-full-overlap-remedy";
+      break;
+    case Local:
+      return "priv-local-remedy";
       break;
     }
   }
@@ -71,7 +78,11 @@ private:
   LoopInfo *li;
   ScalarEvolution *se;
 
+  std::unordered_set<const GlobalValue *> localGVs;
+
   bool isPrivate(const Instruction *I);
+  bool isLocalPrivate(const Instruction *I, const Value *ptr,
+                      DataDepType dataDepTy, const Loop *L);
 };
 
 } // namespace liberty
