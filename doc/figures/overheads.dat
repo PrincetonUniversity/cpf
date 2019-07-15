@@ -19,47 +19,52 @@ ylabel=Percentage of overhead
 correlation             UW:                   94.93%
 gemm                    UW:                   99.998%
 doitgen                 UW:                   99.996%
-dijkstra                UW:                   60%
+dijkstra -- fake        UW:                   60%
 swaptions               UW:                   99.97%
 covariance              UW:                   94.21%
-052.alvinn              UW:                   65.087%
+blackscholes -- off     UW:                   95.766%
+052.alvinn -- off       UW:                   65.087%
 =multi
 2mm                     ReplicableStage:      0.0002%
 3mm                     ReplicableStage:      0.0002%
 correlation             ReplicableStage:      0.0005%
 gemm                    ReplicableStage:      0.0002%
 doitgen                 ReplicableStage:      0.0007%
-dijkstra                ReplicableStage:      1%
+dijkstra -- fake        ReplicableStage:      1%
 swaptions               ReplicableStage:      0.0008%
 covariance              ReplicableStage:      0.0005%
-052.alvinn              ReplicableStage:      0.443%
+blackscholes -- off     ReplicableStage:      0.0.00002%
+052.alvinn -- off       ReplicableStage:      0.443%
 =multi
 2mm                     PrivRead:             0%
 3mm                     PrivRead:             0%
 correlation             PrivRead:             0.0066%
 gemm                    PrivRead:             0%
 doitgen                 PrivRead:             0%
-dijkstra                PrivRead:             15%
+dijkstra -- fake        PrivRead:             15%
 swaptions               PrivRead:             0%
 covariance              PrivRead:             0.007%
-052.alvinn              PrivRead:             12.586%
+blackscholes -- off     PrivRead:             0%
+052.alvinn -- off       PrivRead:             12.586%
 =multi
 2mm                     PrivWrite:            0%
 3mm                     PrivWrite:            0%
 correlation             PrivWrite:            0.44%
 gemm                    PrivWrite:            0%
 doitgen                 PrivWrite:            0%
-dijkstra                PrivWrite:            20%
+dijkstra -- fake        PrivWrite:            20%
 swaptions               PrivWrite:            0.003%
 covariance              PrivWrite:            0.441%
-052.alvinn              PrivWrite:            16.261%
+blackscholes -- off     PrivWrite:            3.937%
+052.alvinn -- off       PrivWrite:            16.261%
 =multi
 2mm                     Checkpoints:          0.0001%
 3mm                     Checkpoints:          0.0002%
 correlation             Checkpoints:          4.62%
 gemm                    Checkpoints:          0.0002%
 doitgen                 Checkpoints:          0.0007%
-dijkstra                Checkpoints:          14%
+dijkstra -- fake        Checkpoints:          14%
 swaptions               Checkpoints:          0.0203%
 covariance              Checkpoints:          5.34%
-052.alvinn              Checkpoints:          5.608%
+blackscholes -- off     Checkpoints:          0.29%
+052.alvinn -- off       Checkpoints:          5.608%
