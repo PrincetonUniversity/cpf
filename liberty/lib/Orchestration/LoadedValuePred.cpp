@@ -1,10 +1,12 @@
 #define DEBUG_TYPE "loaded-value-pred-remed"
 
+#include "liberty/Utilities/GetMemOper.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/ValueTracking.h"
 
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
 
-#define DEFAULT_LOADED_VALUE_PRED_REMED_COST 40
+#define DEFAULT_LOADED_VALUE_PRED_REMED_COST 58
 
 namespace liberty {
 using namespace llvm;
@@ -18,7 +20,88 @@ void LoadedValuePredRemedy::apply(Task *task) {
 bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<LoadedValuePredRemedy> valPredRhs =
       std::static_pointer_cast<LoadedValuePredRemedy>(rhs);
-  return this->loadI < valPredRhs->loadI;
+  return this->ptr < valPredRhs->ptr;
+}
+
+const Value *LoadedValuePredRemediator::getPtr(const Instruction *I,
+                                               DataDepType dataDepTy) {
+  const Value *ptr = liberty::getMemOper(I);
+  // if ptr null, check for memcpy/memmove inst.
+  // src pointer is read, dst pointer is written.
+  // choose pointer for current query based on dataDepTy
+  if (!ptr) {
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I)) {
+      if (dataDepTy == DataDepType::WAR)
+        ptr = mti->getRawSource();
+      ptr = mti->getRawDest();
+    }
+  }
+  return ptr;
+}
+
+Remedies LoadedValuePredRemediator::satisfy(const PDG &pdg, Loop *loop,
+                                            const Criticisms &criticisms) {
+
+  for (auto nodeI : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
+    Value *pdgValueI = nodeI->getT();
+    LoadInst *load = dyn_cast<LoadInst>(pdgValueI);
+    if (!load)
+      continue;
+
+    if (predspec->isPredictable(load, loop)) {
+      Value *ptr = load->getPointerOperand();
+      predictableMemLocs.insert(ptr);
+    }
+  }
+
+  Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
+
+  return remedies;
+}
+
+/// No-loopAA case of pointer comparison.
+bool LoadedValuePredRemediator::mustAliasFast(const Value *ptr1,
+                                              const Value *ptr2,
+                                              const DataLayout &DL) {
+  UO a, b;
+  GetUnderlyingObjects(ptr1, a, DL);
+  if (a.size() != 1)
+    return false;
+  GetUnderlyingObjects(ptr2, b, DL);
+  return a == b;
+}
+
+bool LoadedValuePredRemediator::mustAlias(const Value *ptr1,
+                                          const Value *ptr2) {
+  // Very easy case
+  if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
+    return true;
+
+  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == MustAlias;
+}
+
+bool LoadedValuePredRemediator::isPredictablePtr(const Value *ptr,
+                                                 const DataLayout &DL) {
+  if (!ptr)
+    return false;
+
+  bool isPredPtr = predictableMemLocs.count(ptr);
+  if (isPredPtr)
+    mustAliasWithPredictableMemLocMap[ptr] = ptr;
+  else
+    isPredPtr = mustAliasWithPredictableMemLocMap.count(ptr);
+
+  if (!isPredPtr) {
+    // check if ptr must alias with any of the predictable pointers
+    for (auto predPtr : predictableMemLocs) {
+      if (mustAliasFast(predPtr, ptr, DL) || mustAlias(predPtr, ptr)) {
+        mustAliasWithPredictableMemLocMap[ptr] = predPtr;
+        isPredPtr = true;
+        break;
+      }
+    }
+  }
+  return isPredPtr;
 }
 
 Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
@@ -33,15 +116,29 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
   std::shared_ptr<LoadedValuePredRemedy> remedy =
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
   remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+  const DataLayout &DL = A->getModule()->getDataLayout();
 
   // if A or B is a loop-invariant load instruction report no dep
+  const Value *ptrA = getPtr(A, dataDepTy);
+  const Value *ptrB = getPtr(B, dataDepTy);
   bool predA = predspec->isPredictable(A, L);
   bool predB = predspec->isPredictable(B, L);
   if (predA || predB) {
     ++numNoMemDep;
-    remedy->loadI = (predA) ? dyn_cast<LoadInst>(A) : dyn_cast<LoadInst>(B);
+    remedy->ptr = (predA) ? ptrA : ptrB;
     remedResp.depRes = DepResult::NoDep;
 
+    DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
+                 << "  and  " << *B << '\n');
+  }
+
+  bool predPtrA = isPredictablePtr(ptrA, DL);
+  bool predPtrB = isPredictablePtr(ptrB, DL);
+  if (predPtrA || predPtrB) {
+    ++numNoMemDep;
+    remedy->ptr = (predPtrA) ? mustAliasWithPredictableMemLocMap[ptrA]
+                             : mustAliasWithPredictableMemLocMap[ptrB];
+    remedResp.depRes = DepResult::NoDep;
     DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }

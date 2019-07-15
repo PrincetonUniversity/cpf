@@ -84,7 +84,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // Loop-Invariant Loaded-Value Prediction
-  remeds.push_back(std::make_unique<LoadedValuePredRemediator>(loadedValuePred));
+  remeds.push_back(
+      std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
