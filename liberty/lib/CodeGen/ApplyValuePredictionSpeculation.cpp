@@ -205,7 +205,7 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
 
-  std::unordered_set<const LoadInst *> *selectedLoadedValuePreds =
+  std::unordered_set<const Value *> *selectedLoadedValuePreds =
       preprocess.getSelectedLoadedValuePreds(header);
   if (!selectedLoadedValuePreds)
     return modified;
@@ -228,10 +228,11 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
   {
     LoadInst *load = const_cast<LoadInst*>( i->second );
 
-    if (!selectedLoadedValuePreds->count(load))
+    Value *ptr = load->getPointerOperand();
+
+    if (!selectedLoadedValuePreds->count(ptr))
       continue;
 
-    Value *ptr = load->getPointerOperand();
     if( already.count(ptr) )
       continue;
     already.insert(ptr);
@@ -273,9 +274,10 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
     // Part 1:
     InstInsertPt top = InstInsertPt::Before( header->getFirstNonPHI() );
     //  - in header, perform a store of the predicted value
-    Instruction *stpred = new StoreInst(new_prediction, new_ptr);
-    top << stpred;
-    preprocess.addToLPS(stpred, load);
+    // this seems unnecessary
+    //Instruction *stpred = new StoreInst(new_prediction, new_ptr);
+    //top << stpred;
+    //preprocess.addToLPS(stpred, load);
 
     // Part 2:
     //  - at each backedge,

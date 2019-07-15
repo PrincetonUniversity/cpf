@@ -57,8 +57,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-    LoopDependenceInfo &ldi, SmtxSlampSpeculationManager &smtxMan,
-    SmtxSpeculationManager &smtxLampMan,
+    TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+    SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
   std::vector<Remediator_ptr> remeds;
@@ -84,7 +84,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // Loop-Invariant Loaded-Value Prediction
-  remeds.push_back(std::make_unique<LoadedValuePredRemediator>(loadedValuePred));
+  remeds.push_back(
+      std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
@@ -93,8 +94,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  auto privRemed = std::make_unique<PrivRemediator>();
-  privRemed->setPDG(pdg);
+  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli);
+  privRemed->setLoopPDG(pdg, A);
   remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
@@ -165,7 +166,7 @@ void Orchestrator::printSelected(SetOfRemedies &sors,
                                  const Remedies_ptr &selected, Criticism &cr) {
   DEBUG(errs() << "----------------------------------------------------\n");
   printRemedies(*selected, true);
-  DEBUG(errs() << " chosen to address criticicm ";
+  DEBUG(errs() << " chosen to address criticism ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
             errs() << "(Mem, ";
@@ -208,6 +209,43 @@ void Orchestrator::printSelected(SetOfRemedies &sors,
   DEBUG(errs() << "------------------------------------------------------\n\n");
 }
 
+void Orchestrator::printAllRemedies(SetOfRemedies &sors, Criticism &cr) {
+  if (sors.empty())
+    return;
+  DEBUG(errs() << "\nRemedies ");
+  auto itR = sors.begin();
+  while (itR != sors.end()) {
+    printRemedies(**itR, false);
+    if ((++itR) != sors.end())
+      DEBUG(errs() << ", ");
+  }
+  DEBUG(errs() << " can address criticism ";
+        if (cr.isControlDependence()) errs() << "(Control, "; else {
+          if (cr.isMemoryDependence())
+            errs() << "(Mem, ";
+          else
+            errs() << "(Reg, ";
+          if (cr.isWARDependence())
+            errs() << "WAR, ";
+          else if (cr.isWAWDependence())
+            errs() << "WAW, ";
+          else if (cr.isRAWDependence())
+            errs() << "RAW, ";
+        }
+        if (cr.isLoopCarriedDependence()) errs() << "LC)";
+        else errs() << "II)";
+
+        errs() << ":\n"
+               << *cr.getOutgoingT();
+        if (Instruction *outgoingI = dyn_cast<Instruction>(cr.getOutgoingT()))
+            liberty::printInstDebugInfo(outgoingI);
+        errs() << " ->\n"
+               << *cr.getIncomingT();
+        if (Instruction *incomingI = dyn_cast<Instruction>(cr.getIncomingT()))
+            liberty::printInstDebugInfo(incomingI);
+        errs() << "\n";);
+}
+
 // for now pick the cheapest remedy for each criticism
 // TODO: perform instead global reasoning and consider the best set of
 // remedies for a given set of criticisms
@@ -237,7 +275,8 @@ bool Orchestrator::findBestStrategy(
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred,
     PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-    SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+    TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
+    SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
     LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
@@ -270,7 +309,7 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds = getRemediators(
-      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, ldi,
+      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, tli, ldi,
       smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
@@ -286,6 +325,14 @@ bool Orchestrator::findBestStrategy(
       }
     }
   }
+
+  // print all remedies for every loop-carried dependence
+  for (Criticism *cr : allCriticisms) {
+    if (cr->isLoopCarriedDependence()) {
+      SetOfRemedies &sors = mapCriticismsToRemeds[cr];
+      printAllRemedies(sors, *cr);
+    }
+ }
 
   #if 0
   // second level remediators, produce both remedies and criticisms

@@ -66,7 +66,7 @@ struct Preprocess : public ModulePass {
     return &selectedPrivateSpecLoads;
   }
 
-  std::unordered_set<const LoadInst *> *
+  std::unordered_set<const Value *> *
   getSelectedLoadedValuePreds(const BasicBlock *loopHeader) {
     if (selectedLoadedValuePreds.count(loopHeader))
       return &selectedLoadedValuePreds[loopHeader];
@@ -106,7 +106,7 @@ private:
       selectedCtrlSpecDeps;
   std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
       selectedPrivateSpecLoads;
-  std::unordered_map<const BasicBlock *, std::unordered_set<const LoadInst *>>
+  std::unordered_map<const BasicBlock *, std::unordered_set<const Value *>>
       selectedLoadedValuePreds;
 
   std::unordered_set<const BasicBlock *> separationSpecUsed;
@@ -123,6 +123,8 @@ private:
   bool fixStaticContexts();
   bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts,
                              ModuleLoops &mloops);
+
+  void moveLocalPrivs(HeapAssignment &asgn, const Loop *L);
 
   bool addInitializationFunction();
   bool addFinalizationFunction();
