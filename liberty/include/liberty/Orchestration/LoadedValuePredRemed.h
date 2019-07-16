@@ -19,9 +19,7 @@ public:
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
-  StringRef getRemedyName() const {
-    return "loop-invariant-loaded-value-pred-remedy";
-  };
+  StringRef getRemedyName() const { return "invariant-value-pred-remedy"; };
 };
 
 class LoadedValuePredRemediator : public Remediator {
@@ -30,7 +28,7 @@ public:
       : Remediator(), predspec(ps), loopAA(aa) {}
 
   StringRef getRemediatorName() const {
-    return "loop-invariant-loaded-value-pred-remediator";
+    return "invariant-value-pred-remediator";
   }
 
   Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
