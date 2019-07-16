@@ -16,6 +16,7 @@ using namespace llvm;
 class LoadedValuePredRemedy : public Remedy {
 public:
   const Value *ptr; // pointer of loop-invariant load instruction
+  bool write;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;

@@ -423,7 +423,8 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
   for (auto au : privs) {
     // check if au was in localPrivs and in none of the other types of priv
     if (localPrivAUs.count(au) && !privateerPrivAUs.count(au) &&
-        !normalPrivAUs.count(au) && !killPrivAUs.count(au))
+        !normalPrivAUs.count(au) && !killPrivAUs.count(au) &&
+        !predPrivAUs.count(au))
       exclusivelyLocalPrivAUs.insert(au);
   }
 
@@ -431,6 +432,26 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
     privs.erase(au);
     locals.insert(au);
   }
+}
+
+void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
+  /*
+  HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
+  HeapAssignment::AUSet &kills = asgn.getKillPrivAUs();
+  HeapAssignment::AUSet exclusivelyKillAUs;
+  for (auto au : privs) {
+    if ((killPrivAUs.count(au) || predPrivAUs.count(au)) &&
+         !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
+         !localPrivAUs.count(au))
+       exclusivelyKillAUs.insert(au);
+  }
+
+  for (auto au : exclusivelyKillAUs) {
+    privs.erase(au);
+    kills.insert(au);
+  }
+
+  */
 }
 
 void Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
@@ -441,10 +462,6 @@ void Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
          "Failed to create AU objects?!");
   for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
     relAUs.insert(i->au);
-}
-
-void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
-  // transfer to new killPriv heap
 }
 
 void Preprocess::init(ModuleLoops &mloops)
@@ -513,7 +530,6 @@ void Preprocess::init(ModuleLoops &mloops)
         LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
         if (localityRemed->privateLoad)
           selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
-
         if (localityRemed->getLocalityRemedyName().equals(
                 "locality-private-remedy")) {
           if (const StoreInst *privS =
@@ -527,6 +543,9 @@ void Preprocess::init(ModuleLoops &mloops)
         LoadedValuePredRemedy *loadedValuePredRemedy =
             (LoadedValuePredRemedy *)&*remed;
         selectedLoadedValuePreds[header].insert(loadedValuePredRemedy->ptr);
+        if (loadedValuePredRemedy->write)
+          collectRelevantAUs(loadedValuePredRemedy->ptr, spresults, loop_ctx,
+                             predPrivAUs);
       } else if (remed->getRemedyName().equals("smtx-remedy") ||
                  remed->getRemedyName().equals("smtx-lamp-remedy") ||
                  remed->getRemedyName().equals("mem-spec-aa-remedy")) {
