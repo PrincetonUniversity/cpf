@@ -1,0 +1,21 @@
+\begin{lstlisting}[morekeywords={psum_array},belowskip=0pt]
+float output_act[NOU];
+
+for (epoch = 0; epoch < NUM_EPOCHS; epoch++) {
+  ...
+  float psum_array[NHU+1];
+
+  for ( i = 0; i < NHU+1; i++ )
+    psum_array[i] = 0;
+  for( i = 0; i < NOU; i++ ) {
+    for ( j = 0; j < NHU+1; j++ ) {
+      ...
+      psum_array[j] += delta[i] * weights[i][j];
+      ...
+    }
+  }
+  for ( i = 0; i < NHU+1; i++ )
+    delta[i] = hidden[i] * (1 - hidden[i]) * psum_aray[i];
+  ...
+}
+\end{lstlisting}
