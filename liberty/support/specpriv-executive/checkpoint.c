@@ -163,9 +163,14 @@ Checkpoint *__specpriv_alloc_checkpoint(CheckpointManager *mgr)
     chkpt->io_events.num[ wid ] = 0;
   }
 
-  heap_init( &chkpt->heap_priv,   "chkpt-private", HEAP_SIZE, (void*)PRIV_ADDR,   name);
-  heap_init( &chkpt->heap_shadow, "chkpt-shadow",  HEAP_SIZE, (void*)SHADOW_ADDR, name);
-  heap_init( &chkpt->heap_redux,  "chkpt-redux",   HEAP_SIZE, (void*)REDUX_ADDR,  name);
+  heap_init( &chkpt->heap_priv,     "chkpt-private",     HEAP_SIZE, (void*)PRIV_ADDR,   name);
+  DEBUG(printf("Opened chkpt-private in shm\n"); fflush(stdout););
+  heap_init( &chkpt->heap_killpriv, "chkpt-killprivate", HEAP_SIZE, (void*)KILLPRIV_ADDR, name);
+  DEBUG(printf("Opened chkpt-killprivate in shm\n"); fflush(stdout););
+  heap_init( &chkpt->heap_shadow,   "chkpt-shadow",      HEAP_SIZE, (void*)SHADOW_ADDR, name);
+  DEBUG(printf("Opened chkpt-shadow in shm\n"); fflush(stdout););
+  heap_init( &chkpt->heap_redux,    "chkpt-redux",       HEAP_SIZE, (void*)REDUX_ADDR,  name);
+  DEBUG(printf("Opened chkpt-redux in shm\n"); fflush(stdout););
 
   return chkpt;
 }
@@ -175,6 +180,7 @@ void __specpriv_destroy_checkpoint(Checkpoint *chkpt)
   heap_fini( &chkpt->heap_redux );
   heap_fini( &chkpt->heap_shadow );
   heap_fini( &chkpt->heap_priv );
+  heap_fini( &chkpt->heap_killpriv );
 
   __specpriv_free_meta( chkpt );
 }
@@ -195,6 +201,7 @@ void __specpriv_init_checkpoint_manager(CheckpointManager *mgr)
   __specpriv_init_checkpoint_list( &mgr->free );
 
   mgr->main_checkpoint = __specpriv_alloc_checkpoint(mgr);
+  DEBUG(printf("Allocated checkpoint manager\n"););
   assert( mgr->main_checkpoint && "This should never fail");
 
   mgr->main_checkpoint->type = CL_Main;
@@ -267,7 +274,7 @@ static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, Mapped
 
 Checkpoint *__specpriv_get_checkpoint_for_iter(CheckpointManager *mgr, Iteration iter)
 {
-  DEBUG(printf("Worker %u requests checkpoint for iteration %d\n", __specpriv_my_worker_id(), iter));
+  DEBUG(printf("Worker %u requests checkpoint object for iteration %d\n", __specpriv_my_worker_id(), iter));
 
 #if (WHO_DOES_CHECKPOINTS & FASTEST_WORKER) != 0
   __specpriv_commit_zero_or_more_checkpoints( mgr );
@@ -342,6 +349,24 @@ static Bool __specpriv_combine_private(Checkpoint *older, Checkpoint *newer)
   return misspec;
 }
 
+static Bool __specpriv_combine_killprivate( Checkpoint *older, Checkpoint *newer )
+{
+  MappedHeap commit_killpriv, partial_killpriv;
+  mapped_heap_init( &commit_killpriv );
+  mapped_heap_init( &partial_killpriv );
+  heap_map_anywhere( &older->heap_killpriv, &commit_killpriv );
+  heap_map_anywhere( &newer->heap_killpriv, &partial_killpriv );
+
+  // no need for shadow heaps
+  __specpriv_distill_committed_killprivate_into_partial(
+      older, &commit_killpriv, newer, &partial_killpriv );
+
+  heap_unmap( &partial_killpriv );
+  heap_unmap( &commit_killpriv );
+
+  return 0; // never misspecs
+}
+
 static Bool __specpriv_combine_redux(Checkpoint *older, Checkpoint *newer)
 {
   Bool misspec = 0;
@@ -386,6 +411,7 @@ static Bool __specpriv_combine_checkpoints(Checkpoint *older, Checkpoint *newer)
   // during this operation.
 
   Bool misspec = __specpriv_combine_private(older,newer)
+              || __specpriv_combine_killprivate(older, newer)
               || __specpriv_combine_redux(older,newer);
 
 
@@ -478,12 +504,14 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
       rec = &checkpoints[ numCheckpoints ];
   );
 
-  MappedHeap partial_priv, partial_shadow, partial_redux;
+  MappedHeap partial_priv, partial_killpriv, partial_shadow, partial_redux;
   mapped_heap_init( &partial_priv );
+  mapped_heap_init( &partial_killpriv );
   mapped_heap_init( &partial_shadow );
   mapped_heap_init( &partial_redux );
 
   heap_map_anywhere( &chkpt->heap_priv, &partial_priv );
+  heap_map_anywhere( &chkpt->heap_killpriv, &partial_killpriv );
   heap_map_anywhere( &chkpt->heap_shadow, &partial_shadow );
   heap_map_anywhere( &chkpt->heap_redux, &partial_redux );
 
@@ -496,6 +524,7 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
   TOUT( if(rec) TIME(rec->private_start); );
   {
     __specpriv_distill_worker_private_into_partial(chkpt, &partial_priv, &partial_shadow);
+    __specpriv_distill_worker_killprivate_into_partial(chkpt, &partial_killpriv);
   }
   TOUT( if(rec) TIME(rec->private_stop); );
 

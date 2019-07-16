@@ -23,16 +23,25 @@ void __specpriv_advance_iter(Iteration, uint32_t);
 // return true if misspeculation is detected during this operation.
 Bool __specpriv_distill_worker_private_into_partial(Checkpoint *partial, MappedHeap *partial_priv, MappedHeap *partial_shadow);
 
+Bool __specpriv_distill_worker_killprivate_into_partial(
+  Checkpoint *partial, MappedHeap *partial_killpriv );
 
 // partial <-- later(committed,partial)
 // where committed comes from an EARLIER checkpoint-group of iterations.
 // return true if misspeculation is detected during this operation.
 Bool __specpriv_distill_committed_private_into_partial(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow, Checkpoint *partial, MappedHeap *partial_priv, MappedHeap *partial_shadow);
 
+Bool __specpriv_distill_committed_killprivate_into_partial(
+    Checkpoint *commit, MappedHeap *commit_killpriv,
+    Checkpoint *partial, MappedHeap *partial_killpriv);
+
 // main <-- later(main,committed)
 // where main comes from an EARLIER checkpoint-group of iterations.
 // return true if misspeculation is detected during this operation.
 Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow);
+
+Bool __specpriv_distill_committed_killprivate_into_main( Checkpoint *commit,
+    MappedHeap *commit_killpriv );
 
 #endif
 

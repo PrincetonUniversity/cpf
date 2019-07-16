@@ -10,6 +10,7 @@ uint64_t rdtsc(void);
 
 #if TIMER != 0
 
+/* extern uint64_t timers_hit; */
 #define TOUT(...)   do { __VA_ARGS__ ; } while(0)
 #define TIME(v)     do { v = rdtsc() ; } while(0)
 #define TADD(d,s)   do { d += rdtsc() - s; } while(0)
