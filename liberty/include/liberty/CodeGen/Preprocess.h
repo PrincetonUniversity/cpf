@@ -123,6 +123,7 @@ private:
   HeapAssignment::AUSet normalPrivAUs;
   HeapAssignment::AUSet localPrivAUs;
   HeapAssignment::AUSet killPrivAUs;
+  HeapAssignment::AUSet predPrivAUs;
   HeapAssignment::AUSet privateerPrivAUs;
 
   void init(ModuleLoops &mloops);
