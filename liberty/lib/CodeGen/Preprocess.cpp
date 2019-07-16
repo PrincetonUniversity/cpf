@@ -399,7 +399,7 @@ bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
   return false;
 }
 
-void Preprocess::moveLocalPrivs(HeapAssignment &asgn, const Loop *L) {
+void Preprocess::moveStackLocals(HeapAssignment &asgn, const Loop *L) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
   HeapAssignment::AUSet &locals = asgn.getLocalAUs();
   HeapAssignment::AUSet localPrivAUs;
@@ -414,6 +414,37 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn, const Loop *L) {
     privs.erase(au);
     locals.insert(au);
   }
+}
+
+void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
+  HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
+  HeapAssignment::AUSet &locals = asgn.getLocalAUs();
+  HeapAssignment::AUSet exclusivelyLocalPrivAUs;
+  for (auto au : privs) {
+    // check if au was in localPrivs and in none of the other types of priv
+    if (localPrivAUs.count(au) && !privateerPrivAUs.count(au) &&
+        !normalPrivAUs.count(au) && !killPrivAUs.count(au))
+      exclusivelyLocalPrivAUs.insert(au);
+  }
+
+  for (auto au : exclusivelyLocalPrivAUs) {
+    privs.erase(au);
+    locals.insert(au);
+  }
+}
+
+void Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
+                                    Ctx *loop_ctx,
+                                    HeapAssignment::AUSet &relAUs) {
+  Ptrs aus;
+  assert(spresults.getUnderlyingAUs(ptr, loop_ctx, aus) &&
+         "Failed to create AU objects?!");
+  for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+    relAUs.insert(i->au);
+}
+
+void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
+  // transfer to new killPriv heap
 }
 
 void Preprocess::init(ModuleLoops &mloops)
@@ -435,9 +466,6 @@ void Preprocess::init(ModuleLoops &mloops)
   const Read &spresults = rp.getProfileInfo();
   HeapAssignment &asgn = selector.getAssignment();
 
-  // collect all the AUs that appeared in selected conservative privitization
-  // remedies
-  HeapAssignment::AUSet consevPrivAUs;
   // was memory versioning used at all?
   bool memVerUsedAll = false;
   // was any speculation used?
@@ -485,6 +513,15 @@ void Preprocess::init(ModuleLoops &mloops)
         LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
         if (localityRemed->privateLoad)
           selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
+
+        if (localityRemed->getLocalityRemedyName().equals(
+                "locality-private-remedy")) {
+          if (const StoreInst *privS =
+                  dyn_cast<StoreInst>(localityRemed->privateI)) {
+            collectRelevantAUs(privS->getPointerOperand(), spresults, loop_ctx,
+                               privateerPrivAUs);
+          }
+        }
       } else if (remed->getRemedyName().equals("invariant-value-pred-remedy")) {
         specUsedFlag = true;
         LoadedValuePredRemedy *loadedValuePredRemedy =
@@ -522,17 +559,22 @@ void Preprocess::init(ModuleLoops &mloops)
           memVerUsed = true;
           memVerUsedAll = true;
         }
-      } else if (remed->getRemedyName().equals("priv-remedy")) {
-        privUsed = true;
-
+      } else if (remed->getRemedyName().equals("priv-remedy") ||
+                 remed->getRemedyName().equals("priv-local-remedy") ||
+                 remed->getRemedyName().equals("priv-full-overlap-remedy")) {
         PrivRemedy *privRemed = (PrivRemedy *)&*remed;
-        Ptrs aus;
-        assert(spresults.getUnderlyingAUs(
-                   privRemed->storeI->getPointerOperand(), loop_ctx, aus) &&
-               "Failed to create AU objects for priv store?!");
-
-        for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
-          consevPrivAUs.insert(i->au);
+        specUsedFlag |= privRemed->ctrlSpecUsed;
+        if (remed->getRemedyName().equals("priv-remedy")) {
+          privUsed = true;
+          collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
+                             loop_ctx, normalPrivAUs);
+        } else if (remed->getRemedyName().equals("priv-local-remedy")) {
+          collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
+                             loop_ctx, localPrivAUs);
+        } else if (remed->getRemedyName().equals("priv-full-overlap-remedy")) {
+          collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
+                             loop_ctx, killPrivAUs);
+        }
       }
     }
     if (specUsedFlag) {
@@ -542,9 +584,12 @@ void Preprocess::init(ModuleLoops &mloops)
     if (memVerUsed || privUsed || specUsedFlag)
       checkpointNeeded.insert(header);
 
-    // move local-private from private to local heap
-    moveLocalPrivs(asgn, loop);
+    // move local-private stack objects from private to local heap
+    moveStackLocals(asgn, loop);
   }
+
+  moveLocalPrivs(asgn);
+  moveKillPrivs(asgn);
 
   // if no spec and no need for privitization (no WAW, but AU is written),
   // then make the AU shared instead of private
@@ -560,7 +605,8 @@ void Preprocess::init(ModuleLoops &mloops)
     HeapAssignment::AUSet &shared = asgn.getSharedAUs();
     HeapAssignment::AUSet nonPrivAUs;
     for (auto au : privs) {
-      if (!consevPrivAUs.count(au))
+      if (!normalPrivAUs.count(au) && !localPrivAUs.count(au) &&
+          !killPrivAUs.count(au))
         nonPrivAUs.insert(au);
     }
 
