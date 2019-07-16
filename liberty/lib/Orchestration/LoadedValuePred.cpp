@@ -20,6 +20,8 @@ void LoadedValuePredRemedy::apply(Task *task) {
 bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<LoadedValuePredRemedy> valPredRhs =
       std::static_pointer_cast<LoadedValuePredRemedy>(rhs);
+  if (this->ptr == valPredRhs->ptr)
+    return this->write < valPredRhs->write;
   return this->ptr < valPredRhs->ptr;
 }
 
@@ -136,9 +138,17 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
   bool predPtrB = isPredictablePtr(ptrB, DL);
   if (predPtrA || predPtrB) {
     ++numNoMemDep;
-    remedy->ptr = (predPtrA) ? mustAliasWithPredictableMemLocMap[ptrA]
-                             : mustAliasWithPredictableMemLocMap[ptrB];
+    if (predPtrA) {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrA];
+      if (A->mayWriteToMemory())
+        remedy->write = true;
+    } else {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrB];
+      if (B->mayWriteToMemory())
+        remedy->write = true;
+    }
     remedResp.depRes = DepResult::NoDep;
+
     DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }

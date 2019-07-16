@@ -118,13 +118,25 @@ private:
   std::unordered_map<const BasicBlock *, const Instruction *> reduxUpdateInst;
   const PHINode *indVarPhi;
 
+  // collect all the AUs that appeared in various types of selected
+  // privitization remedies
+  HeapAssignment::AUSet normalPrivAUs;
+  HeapAssignment::AUSet localPrivAUs;
+  HeapAssignment::AUSet killPrivAUs;
+  HeapAssignment::AUSet predPrivAUs;
+  HeapAssignment::AUSet privateerPrivAUs;
+
   void init(ModuleLoops &mloops);
 
   bool fixStaticContexts();
   bool demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveouts,
                              ModuleLoops &mloops);
 
-  void moveLocalPrivs(HeapAssignment &asgn, const Loop *L);
+  void moveStackLocals(HeapAssignment &asgn, const Loop *L);
+  void moveLocalPrivs(HeapAssignment &asgn);
+  void moveKillPrivs(HeapAssignment &asgn);
+  void collectRelevantAUs(const Value *ptr, const Read &spresults,
+                          Ctx *loop_ctx, HeapAssignment::AUSet &relAUs);
 
   bool addInitializationFunction();
   bool addFinalizationFunction();

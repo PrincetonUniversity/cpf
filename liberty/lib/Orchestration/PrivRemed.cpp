@@ -38,17 +38,148 @@ bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   return this->storeI < privRhs->storeI;
 }
 
+bool PrivRemediator::mustAlias(const Value *ptr1, const Value *ptr2) {
+  // Very easy case
+  if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
+    return true;
+
+  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == MustAlias;
+}
+
+bool PrivRemediator::instMustKill(const Instruction *inst, const Value *ptr,
+                                  const Loop *L) {
+  const Value *killptr = nullptr;
+  if (const StoreInst *store = dyn_cast<StoreInst>(inst)) {
+    killptr = store->getPointerOperand();
+  } else if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(inst)) {
+    killptr = mti->getRawDest();
+  }
+  if (!killptr)
+    return false;
+
+  if (mustAlias(killptr, ptr)) {
+    DEBUG(errs() << "There can be no loop-carried flow mem deps to because "
+                    "killed by "
+                 << *inst << " (Provided that control spec is validated)\n");
+    return true;
+  }
+
+  return false;
+}
+
+bool PrivRemediator::blockMustKill(const BasicBlock *bb, const Value *ptr,
+                                   const Instruction *before, const Loop *L) {
+  // We try to cache the results.
+  // Cache results are only valid if we are going to consider
+  // the whole block, i.e. <pt> is not in this basic block.
+
+  const BasicBlock *beforebb = before->getParent();
+  BBPtrPair key(bb, ptr);
+  if (bbKills.count(key)) {
+    if (!bbKills[key]) {
+      return false;
+    }
+
+    if (bb != beforebb) {
+      return bbKills[key];
+    }
+  }
+
+  // Search this block for any instruction which
+  // MUST define the pointer and which happens
+  // before.
+  for (BasicBlock::const_iterator j = bb->begin(), z = bb->end(); j != z; ++j) {
+    const Instruction *inst = &*j;
+
+    if (inst == before)
+      break;
+
+    if (!inst->mayWriteToMemory())
+      continue;
+
+    // Avoid infinite recursion.
+    // Temporarily pessimize this block.
+    // We will reassign this more precisely before we return.
+    const bool pessimize = !bbKills.count(key);
+    if (pessimize)
+      bbKills[key] = false;
+
+    const bool iKill = instMustKill(inst, ptr, L);
+
+    // Un-pessimize
+    if (pessimize)
+      bbKills.erase(key);
+
+    if (iKill) {
+      DEBUG(errs() << "\t(in inst " << *inst << ")\n");
+      bbKills[key] = true;
+
+      return true;
+    }
+  }
+
+  if (bb != beforebb)
+    bbKills[key] = false;
+
+  return false;
+}
+
+bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
+                                         const Instruction *before) {
+  if (!L)
+    return false;
+
+  const BasicBlock *beforebb = before->getParent();
+  ControlSpeculation::LoopBlock iter =
+      ControlSpeculation::LoopBlock(const_cast<BasicBlock *>(beforebb));
+
+  while (!iter.isBeforeIteration()) {
+    const BasicBlock *bb = iter.getBlock();
+    if (!bb)
+      return false;
+    if (!L->contains(bb))
+      break;
+
+    if (blockMustKill(bb, ptr, before, L))
+      return true;
+
+    if (bb == L->getHeader())
+      break;
+
+    ControlSpeculation::LoopBlock next = specDT->idom(iter);
+    if (next == iter)
+      // self-loop. avoid infinite loop
+      return false;
+
+    iter = next;
+  }
+  return false;
+}
+
 // verify that noone from later iteration reads the written value by this store.
 // conservatively ensure that the given store instruction is not part of any
 // loop-carried memory flow (RAW) dependences
-bool PrivRemediator::isPrivate(const Instruction *I) {
+// If failed to prove statically, try spec check using killflow + ctrl spec
+bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
+                               bool &ctrlSpecUsed) {
   if (!isa<StoreInst>(I))
     return false;
-  auto pdgNode = pdg->fetchNode(const_cast<Instruction*>(I));
+  auto pdgNode = pdg->fetchNode(const_cast<Instruction *>(I));
   for (auto edge : pdgNode->getOutgoingEdges()) {
     if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
-        edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT()))
-      return false;
+        edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT())) {
+
+      // check if LC mem RAW can be removed with killflow + ctrl spec
+      LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT());
+      if (!loadI)
+        return false;
+      Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand());
+
+      if (!isPointerKillBefore(L, loadPtr, loadI))
+        return false;
+
+      ctrlSpecUsed = true;
+    }
   }
   return true;
 }
@@ -69,7 +200,8 @@ const Value *getPtr(const Instruction *I, DataDepType dataDepTy) {
 }
 
 bool PrivRemediator::isLocalPrivate(const Instruction *I, const Value *ptr,
-                                    DataDepType dataDepTy, const Loop *L) {
+                                    DataDepType dataDepTy, const Loop *L,
+                                    bool &ctrlSpecUsed) {
   if (!ptr)
     return false;
 
@@ -87,7 +219,7 @@ bool PrivRemediator::isLocalPrivate(const Instruction *I, const Value *ptr,
     // even without any use outside of the loop they could still assume initial
     // value and at some/all iterations read before writing leading to real RAW
     // deps.
-    if (isPrivate(I)) {
+    if (isPrivate(I, L, ctrlSpecUsed)) {
       DEBUG(errs() << "Private store to global: " << *I << "\n");
       return true;
     }
@@ -212,19 +344,20 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
   remedy->cost = DEFAULT_PRIV_REMED_COST;
   remedy->storeI = nullptr;
   remedy->localPtr = nullptr;
+  remedy->ctrlSpecUsed = false;
 
   // detect private-locals
   if (LoopCarried && L) {
     const Value* ptr1 = getPtr(A, dataDepTy);
     const Value* ptr2 = getPtr(B, dataDepTy);
-    if (isLocalPrivate(A, ptr1, dataDepTy, L)) {
+    if (isLocalPrivate(A, ptr1, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr1;
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
       return remedResp;
-    } else if (isLocalPrivate(B, ptr2, dataDepTy, L)) {
+    } else if (isLocalPrivate(B, ptr2, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr2;
       remedy->cost = LOCAL_PRIV_REMED_COST;
@@ -238,12 +371,16 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
   bool WAW = dataDepTy == DataDepType::WAW;
 
   // need to be loop-carried WAW where the privitizable store is either A or B
+  bool privateA = isPrivate(A, L, remedy->ctrlSpecUsed);
+  bool privateB = false;
+  if (!privateA)
+    privateB = isPrivate(B, L, remedy->ctrlSpecUsed);
   if (LoopCarried && WAW &&
-      ((isa<StoreInst>(A) && isPrivate(A)) ||
-       (isa<StoreInst>(B) && isPrivate(B)))) {
+      ((isa<StoreInst>(A) && privateA) ||
+       (isa<StoreInst>(B) && privateB))) {
     ++numPrivNoMemDep;
     remedResp.depRes = DepResult::NoDep;
-    if (isa<StoreInst>(A) && isPrivate(A))
+    if (isa<StoreInst>(A) && privateA)
       remedy->storeI = dyn_cast<StoreInst>(A);
     else
       remedy->storeI = dyn_cast<StoreInst>(B);

@@ -1,39 +1,65 @@
+\begin{table*}[h]
 \centering
 \tiny
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
-  \hline
-  Type of Private &
-  Overlap         &
-  Spec Privatization &
-  Other Spec Allowed    &
-  Loads Checks  &
-  Store Checks    &
-  Last-Write Detection &
-  CoW Mapping &
-  Copy-out to Main \\
-
-%%%%%%%%%%%%%%%%%%% Shared %%%%%%%%%%%%%%%%%%%%%%%%%%
- \hline
- Shared & No & - & - & - & - & - & - & - \\
- \hline
-%%%%%%%%%%%%%%%%%%% Local %%%%%%%%%%%%%%%%%%%%%%%%%%
- Local Private & Any & - & $\checkmark$ & - & - & - & $\checkmark$ & - \\
- \hline
-%%%%%%%%%%%%%%%%%%% Overwrite %%%%%%%%%%%%%%%%%%%%%%%%%%
- Kill Private & Complete & - & $\checkmark$ & - & - & - & $\checkmark$ &
-$\checkmark$ \\
- \hline
-%%%%%%%%%%%%%%%%%%% Conservative Private %%%%%%%%%%%%%%%%%%%%%%%%%%
- Static Private & No/Partial & - & $\checkmark$ & - & - &
- $\checkmark$ & $\checkmark$ & $\checkmark$ \\
- \hline
-%%%%%%%%%%%%%%%%%%% Loop-invariant Value Pred %%%%%%%%%%%%%%%%%%%%%%%%%%
- Predictable Private & Any & $\checkmark$ & $\checkmark$ & - & - & - & $\checkmark$ &
-$\checkmark$ \\
- \hline
-%%%%%%%%%%%%%%%%%%% Specpriv Private %%%%%%%%%%%%%%%%%%%%%%%%%%
- Privateer Private & Any & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &
- $\checkmark$ & $\checkmark$ & $\checkmark$ \\
- \hline
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+\multirow{2}{*}{Type of Private} & \multirow{2}{*}{Overlap} &
+\multicolumn{3}{c|}{Privatization Criteria} &
+\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Other Spec \\ Allowed\end{tabular}}
+& \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive \\ Load
+Checks\end{tabular}} & \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive\\
+Store Checks \end{tabular}} &
+\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive\\ Last Write
+Detection\end{tabular}} & \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}CoW\\
+Mapping\end{tabular}} & \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Copy-out\\
+to Main\end{tabular}} \\ \cline{3-5}
+ &  & Static & Cheap Spec & Mem Spec &  &  &  &  &  &  \\ \hline
+Shared & No & $\checkmark$ & - & - & - & - & - &  & - & - \\ \hline
+Local Private & Any & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & - & $\checkmark$ & - \\ \hline
+Kill Private & Complete & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & - & $\checkmark$ & $\checkmark$ \\ \hline
+Predictable Private & Any & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & - & $\checkmark$ & $\checkmark$ \\ \hline
+Privateer Private & Any & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\ \hline
 \end{tabular}
+\caption{
+    Comparison of private types
+ }
+\label{tab:priv_types}
+\end{table*}
+
+%\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+%  \hline
+%  Type of Private &
+%  Overlap         &
+%  Spec Privatization &
+%  Other Spec Allowed    &
+%  Loads Checks  &
+%  Store Checks    &
+%  Last-Write Detection &
+%  CoW Mapping &
+%  Copy-out to Main \\
+%
+%%%%%%%%%%%%%%%%%%%% Shared %%%%%%%%%%%%%%%%%%%%%%%%%%
+% \hline
+% Shared & No & - & - & - & - & - & - & - \\
+% \hline
+%%%%%%%%%%%%%%%%%%%% Local %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Local Private & Any & - & $\checkmark$ & - & - & - & $\checkmark$ & - \\
+% \hline
+%%%%%%%%%%%%%%%%%%%% Overwrite %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Kill Private & Complete & - & $\checkmark$ & - & - & - & $\checkmark$ &
+%$\checkmark$ \\
+% \hline
+%%%%%%%%%%%%%%%%%%%% Conservative Private %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Static Private & No/Partial & - & $\checkmark$ & - & - &
+% $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+% \hline
+%%%%%%%%%%%%%%%%%%%% Loop-invariant Value Pred %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Predictable Private & Any & $\checkmark$ & $\checkmark$ & - & - & - & $\checkmark$ &
+%$\checkmark$ \\
+% \hline
+%%%%%%%%%%%%%%%%%%%% Specpriv Private %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Privateer Private & Any & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &
+% $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+% \hline
+%\end{tabular}
 
