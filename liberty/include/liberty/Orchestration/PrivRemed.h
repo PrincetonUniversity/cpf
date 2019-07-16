@@ -9,7 +9,10 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Speculation/LoopDominators.h"
 
 #include "unordered_set"
 
@@ -20,6 +23,7 @@ class PrivRemedy : public Remedy {
 public:
   const StoreInst *storeI;
   const Value *localPtr;
+  bool ctrlSpecUsed;
 
   enum PrivRemedType {
     Normal = 0, // PartialOverlap
@@ -52,8 +56,9 @@ public:
 
 class PrivRemediator : public Remediator {
 public:
-  PrivRemediator(ModuleLoops &ml, TargetLibraryInfo *tli)
-      : Remediator(), mloops(ml), tli(tli) {}
+  PrivRemediator(ModuleLoops &ml, TargetLibraryInfo *tli, LoopAA *aa,
+                 ControlSpeculation *cs)
+      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs) {}
 
   void setLoopPDG(PDG *loopPDG, Loop *L) {
     pdg = loopPDG;
@@ -61,6 +66,8 @@ public:
     pdt = &mloops.getAnalysis_PostDominatorTree(f);
     li = &mloops.getAnalysis_LoopInfo(f);
     se = &mloops.getAnalysis_ScalarEvolution(f);
+    cs->setLoopOfInterest(L->getHeader());
+    specDT = std::make_unique<LoopDom>(*cs, L);
   }
 
   StringRef getRemediatorName() const {
@@ -74,15 +81,32 @@ private:
   PDG *pdg;
   ModuleLoops &mloops;
   TargetLibraryInfo *tli;
+  LoopAA *loopAA;
   PostDominatorTree *pdt;
   LoopInfo *li;
   ScalarEvolution *se;
+  ControlSpeculation *cs;
+  std::unique_ptr<LoopDom> specDT;
 
   std::unordered_set<const GlobalValue *> localGVs;
+  std::unordered_set<const AllocaInst *> localAllocas;
 
-  bool isPrivate(const Instruction *I);
+  typedef std::pair<const BasicBlock *, const Value *> BBPtrPair;
+  typedef DenseMap<BBPtrPair, bool> BBKills;
+
+  // we can summarize BBs in terms of which values they kill
+  BBKills bbKills;
+
+  bool isPrivate(const Instruction *I, const Loop *L, bool &ctrlSpecUsed);
   bool isLocalPrivate(const Instruction *I, const Value *ptr,
-                      DataDepType dataDepTy, const Loop *L);
+                      DataDepType dataDepTy, const Loop *L, bool &ctrlSpecUsed);
+
+  bool mustAlias(const Value *ptr1, const Value *ptr2);
+  bool instMustKill(const Instruction *inst, const Value *ptr, const Loop *L);
+  bool blockMustKill(const BasicBlock *bb, const Value *ptr,
+                     const Instruction *before, const Loop *L);
+  bool isPointerKillBefore(const Loop *L, const Value *ptr,
+                           const Instruction *before);
 };
 
 } // namespace liberty
