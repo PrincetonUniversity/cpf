@@ -7,8 +7,8 @@
 #define TIMER             (0)
 
 // If timing is enabled, what statistics/format to print
-#define TIMER_PRINT_TIMELINE  (1)
-#define TIMER_PRINT_OVERHEAD  (1)
+#define TIMER_PRINT_TIMELINE  (0)
+#define TIMER_PRINT_OVERHEAD  (0)
 
 // Enable debug messages? 0 (off) or 1 (on)
 #define DEBUGGING         (0)
