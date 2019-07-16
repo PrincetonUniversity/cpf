@@ -23,7 +23,7 @@ static MappedHeap   *mapped_meta;
 // priv0  - CoW by workers
 // redux0 - private to main; worker has corresponding private heap.
 static Heap         shared, ro;
-static MappedHeap   mshared, mro, mpriv0, mredux0;
+static MappedHeap   mshared, mro, mpriv0, mredux0, mkillpriv0;
 
 
 // These heaps are 'owned' by each worker
@@ -49,7 +49,7 @@ static ReductionInfo *first_reduction_info,
                      *last_reduction_info;
 
 
-static Len sizeof_private, sizeof_redux;
+static Len sizeof_private, sizeof_killprivate, sizeof_redux;
 static Len sizeof_ro;
 static Len sizeof_local;
 
@@ -91,6 +91,7 @@ void __specpriv_initialize_main_heaps(void)
   mapped_heap_init(&mshared);
   mapped_heap_init(&mro);
   mapped_heap_init(&mpriv0);
+  mapped_heap_init(&mkillpriv0);
   mapped_heap_init(&mredux0);
   mapped_heap_init(&myLocal);
   sizeof_private = sizeof_redux = 0;
@@ -106,6 +107,7 @@ void __specpriv_initialize_main_heaps(void)
 
   // Map the /right/ version of the private, redux heaps.
   heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_priv, &mpriv0);
+  heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_killpriv, &mkillpriv0);
   heap_map_shared( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0);
 
   // Create reduction heaps for each worker.
@@ -133,6 +135,7 @@ void __specpriv_destroy_main_heaps(void)
   heap_unmap(&mshared);
   heap_unmap(&mro);
   heap_unmap(&mpriv0);
+  heap_unmap(&mkillpriv0);
   heap_unmap(&mredux0);
   heap_unmap(&myLocal);
 
@@ -193,9 +196,26 @@ void __specpriv_worker_remap_private(void)
     heap_alloc( &mpriv0, sizeof_private );
 }
 
+void __specpriv_worker_unmap_killprivate( void )
+{
+  if ( mkillpriv0.heap )
+    heap_unmap( &mkillpriv0 );
+}
+
+void __specpriv_worker_remap_killprivate( void )
+{
+  __specpriv_worker_unmap_killprivate();
+
+  ParallelControlBlock *pcb = __specpriv_get_pcb();
+  heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_killpriv, &mkillpriv0 );
+  if ( sizeof_killprivate )
+    heap_alloc( &mkillpriv0, sizeof_killprivate );
+}
+
 void __specpriv_fiveheaps_begin_invocation(void)
 {
   sizeof_private = heap_used( &mpriv0 );
+  sizeof_killprivate = heap_used( &mkillpriv0 );
   sizeof_redux = heap_used( &mredux0 );
   sizeof_ro = heap_used( &mro );
 }
@@ -206,6 +226,8 @@ void __specpriv_initialize_worker_heaps(void)
 
   // re-map the committed version of heap 'priv' as copy-on-write
   __specpriv_worker_remap_private();
+
+  // __specpriv_worker_remap_killprivate();
 
   // re-map the committed version of heap 'ro' as copy-on-write
   // added due to process spawning once at startup
@@ -311,6 +333,18 @@ void __specpriv_free_priv(void *ptr)
   heap_free(&mpriv0, ptr);
 }
 
+void *__specpriv_alloc_killpriv(Len size, SubHeap subheap)
+{
+  assert( __specpriv_i_am_main_process() );
+  return heap_alloc( &mkillpriv0, size );
+}
+
+void __specpriv_free_killpriv( void *ptr )
+{
+  assert( __specpriv_i_am_main_process() );
+  heap_free( &mkillpriv0, ptr );
+}
+
 void *__specpriv_alloc_redux(Len size, SubHeap subheap, ReductionType type,
                              uint8_t reg, void *depAU, Len depSize,
                              uint8_t depType) {
@@ -389,6 +423,11 @@ Len __specpriv_sizeof_private(void)
   return sizeof_private;
 }
 
+Len __specpriv_sizeof_killprivate(void)
+{
+  return sizeof_killprivate;
+}
+
 Len __specpriv_sizeof_redux(void)
 {
   return sizeof_redux;
@@ -407,6 +446,11 @@ Len __specpriv_sizeof_local(void)
 void __specpriv_set_sizeof_private(Len sp)
 {
   sizeof_private = sp;
+}
+
+void __specpriv_set_sizeof_killprivate(Len sp)
+{
+  sizeof_killprivate = sp;
 }
 
 void __specpriv_set_sizeof_redux(Len sr)

@@ -55,7 +55,6 @@ void heap_map_shared(Heap *h, MappedHeap *mh)
     exit(0);
   }
 
-
   int flags = MAP_NORESERVE | MAP_SHARED;
   if( h->base )
     flags |= MAP_FIXED;
