@@ -353,6 +353,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     if (isLocalPrivate(A, ptr1, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr1;
+      remedy->storeI = dyn_cast<StoreInst>(A);
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
@@ -360,6 +361,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     } else if (isLocalPrivate(B, ptr2, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr2;
+      remedy->storeI = dyn_cast<StoreInst>(B);
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
