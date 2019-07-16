@@ -94,7 +94,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli);
+  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA, ctrlspec);
   privRemed->setLoopPDG(pdg, A);
   remeds.push_back(std::move(privRemed));
 
