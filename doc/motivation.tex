@@ -4,7 +4,7 @@
 \begin{table*}[h]
   \input{private_types}
   \caption{
-    Comparison of private types~\cite{lamport94}
+    Comparison of private types
   }
   \label{tab:priv_types}
 \end{table*}
@@ -33,6 +33,25 @@
 \begin{figure*}[t]
   \centering
   \scriptsize
+  \subfloat[052.alvinn -- local]
+  {
+    \label{fig:alvinn_local}
+    \begin{minipage}{7.5cm}
+      \input{figures/alvinn_local_code}
+    \end{minipage}
+  }
+  \hspace{0.5cm}
+  \subfloat[dijkstra -- predictable]
+  {
+    \label{fig:dijkstra}
+    \begin{minipage}{7.5cm}
+      \input{figures/dijkstra_code}
+    \end{minipage}
+  }
+\end{figure*}
+\begin{figure*}[t]
+  \centering
+  \scriptsize
   \subfloat[covariance -- nospec-private]
   {
     \label{fig:covariance}
@@ -43,9 +62,9 @@
   \hspace{0.5cm}
   \subfloat[052.alvinn -- real private]
   {
-    \label{fig:alvinn}
+    \label{fig:alvinn_specpriv}
     \begin{minipage}{7.5cm}
-      \input{figures/alvinn_code}
+      \input{figures/alvinn_specpriv_code}
     \end{minipage}
   }
 \end{figure*}
