@@ -123,7 +123,7 @@ Speculative Enablers
         %         Loads from or stores to such objects cannot depend on memory accesses in other iterations.
         %         Extra validation on top of separation speculation validation: object lifetime speculation must validate that short-lived objects never outlive their iteration. Thread-local checks.
 
-    \item Memory Flow Speculation (SmtxSlampRemed & SmtxLampRemed)
+    \item Memory Flow Speculation (SmtxSlampRemed \& SmtxLampRemed)
         % Assumes the absence of flow dependences between memory operations when not manifested during profiling.
         % Provides as much or more an enabling effect than many other types of speculation.
         % Expensive validation. Requires communication among concurrent threads.
