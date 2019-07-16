@@ -485,7 +485,7 @@ void Preprocess::init(ModuleLoops &mloops)
         LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
         if (localityRemed->privateLoad)
           selectedPrivateSpecLoads[header].insert(localityRemed->privateLoad);
-      } else if (remed->getRemedyName().equals("loaded-value-pred-remedy")) {
+      } else if (remed->getRemedyName().equals("invariant-value-pred-remedy")) {
         specUsedFlag = true;
         LoadedValuePredRemedy *loadedValuePredRemedy =
             (LoadedValuePredRemedy *)&*remed;
