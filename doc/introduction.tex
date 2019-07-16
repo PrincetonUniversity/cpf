@@ -1,3 +1,123 @@
 \section{Introduction}
 
 \textbf{XXX} Fill this in \textbf{XXX}
+
+% AutoPar is important.
+
+Coincident with the introduction of multicore, the processor industry has
+fallen well short of the decades-old single-threaded performance growth
+trend. The burden of extracting sufficient multicore-appropriate parallelism
+to overcome this sequential performance deficit has fallen on programmers
+and compilers. Yet, despite many new tools, languages, and libraries
+designed for multicore, the difficulty of parallelism extraction keeps
+multicore grossly underutilized.
+
+Even the most complex, irregular, and sequential codes can have many
+multicore-appropriate threads.  Over the last decade, new forms of efficient
+speculative transformations, better analyses, and novel transformations that
+arrange dependences more efficiently have increasingly enabled the
+extraction of multicore-appropriate threads from sequential codes.
+
+Over the last two decades, compiler researchers have made steady progress
+toward the goal of automatically parallelizing even the most complex of
+sequential programs~\cite{Campanoni:2012:HAP:2259016.2259028,
+johnson:12:pldi, kim:12:cgo, kim:10:micro, raman:10:asplos,
+ottoni:05:micro, raman:cgo:08, malhke-doall paper, johnson:17:cgo}.
+%
+Even though collectively a large set of general-purpose C/C++ programs has
+been parallelized, each of the existing compilers is the best option for a
+different set of benchmarks, as shown in table~\ref{table:parcompilers}.
+%
+These research prototypes show that the capabilities of the compiler's
+analyses and transformations for automatic parallelization are not lacking.
+Rather, their limitations lie in the lack of compiler support for strong
+interactions between them.
+%
+Namely, the problem is how to integrate all these great advancements into a
+single unified and reliable compiler framework that automatically combines
+their strengths.
+
+The best way to make the routine and transparent extraction of
+multicore-appropriate threads from sequential codes a reality is to sneak it
+into tools already widely used.  For this reason, we will release this
+technology into the LLVM compiler mainline.
+
+% Spec is important.
+
+Speculation is a compilation strategy that enables automatic parallelization
+to ignore rare or impossible dependences, thus instead optimize for the
+common case. However, there are still problems.  Speculative systems work
+well when assisted by hardware extensions, but much work remains before a
+software-only speculative system can efficiently run on commodity hardware
+for a large, real world applications.
+
+Static analysis is simply too imprecise to enable aggressive
+parallelization.  Even if static analysis were perfect, the dependence
+patterns of real applications are frequently driven by the program input, or
+experience a phase change during program execution, meaning that static
+dependence analysis cannot be enough.  Speculation allows the compiler to
+overcome static analysis and optimize for an expected case.
+
+Speculative parallelization exploits simplifying assumptions about the
+input code to deliver increased parallel performance.  However, the
+parallel code must validate those assumptions at runtime to guarantee
+observable program behavior.  Most speculative systems perform this
+validation by instrumenting operations within the parallel region to
+log or communicate speculative events to a validation system.  These
+validation checks add to parallel region latency in the common
+case, not only during recovery.  Alternatively, speculative systems can
+speculate different properties, allowing for cheap, independent,
+and infrequent checking.
+
+Research into speculation has shown incredible benefits for the
+applicability and aggressiveness of parallelizing transformations. Yet
+speculative runtime systems face real challenges that prevent their
+widespread adoption~\cite{cascaval:08:stmtoy:short}. Speculation has a
+significant effect on runtime scalability.  Even if we assume that
+misspeculation never occurs, validating speculative assumptions during a
+speculative region may have a large impact on performance. The compiler
+system must balance the enabling effects of speculation with the runtime
+cost of validation.
+
+Many proposals speculate low-level properties of the code.  Software
+Transactional Memories (STMs) present an abstraction that facilitates
+speculating the independence of memory transactions.  This reduces to
+comparing the read and write sets of adjacent transactions.  As transactions
+grow, the number of memory operations within that transaction can become
+prohibitively large. Further, instrumenting every memory operation with the
+transaction to log or communicate every access---approximately one tenth of
+all dynamic instructions---leads to an excessive overhead, even in the
+absence of transaction rollbacks.
+
+% Privateer is important.
+Privateer~\cite{johnson:12:pldi:short} project attempted to speculate that
+certain parts of data structures are {\em separated} during program
+execution.  This offers three benefits over STMs.
+First, {\bf separation properties can be validated quickly, infrequently,
+and without communication or logging.}  This practically eliminates
+overhead of speculative validation, and thus decreases latency while
+improving scalability.  Second, separation properties {\bf fit well with modern data
+structures,} since the different objects within a data structure have a
+natural separation property.  Thus, separation has a
+large enabling effect on parallelization.  Third,
+these properties are easily identified by compilers despite
+weaknesses of analysis.  The Privateer compiler system
+employs separation speculation without intense analysis, and
+does not assume any programmer hints or ``oracles'' during evaluation.
+
+% Privateer has some limitations.
+
+%There is also a question of whether fragile and imprecise static
+%analysis will overly pessimize a speculative runtime system.
+%Although the indeterminate dependences can be
+%removed via speculation, each additional speculative assumption
+%adds to the validation overhead.
+
+%STMs represent a natural first step towards speculative support
+%systems, since the transactional metaphor resembles the cognitive level of
+%compiler writers who focus on automatic parallelization.  However, it
+%proves a nightmare for scalable validation of speculative
+%properties~\cite{cascaval:08:stmtoy}.
+
+
+% Why we are better than Privateer?

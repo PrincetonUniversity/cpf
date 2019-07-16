@@ -17,25 +17,30 @@ Enablers.
 
 %  How to query Enabler?
 
-One thing that hinders these Enablers from working in a coordinated way is the
-phase-ordering problem, which means one transformation could be disabled by a
-previous transformation. Another problem is the increasing implementation and
-maintainance difficulty when more and more Enablers are put in the framework. To
-avoid these problems, we carefully organize the framework in a way that all
-Enablers are modular and independent. As a first step, all loop-carried
-dependences are identified by the frontend and passed to each Enabler, who tries
-to address each dependence by its best effort and returns a remedy along with
-the cost if a way to remove the dependence is available. If all dependences are
-removable by at least one Enablers, the parallel code generation part will
-choose the remedy with the lowest cost for each dependence and generate the
-parallel binary. This scheme seperates the desicion part from the actual
-transformation and allows us to evaluate the cost of each dependence separetely
-and choose the most profitable plan instead of applying all transformations in a
-fixed order. For simplicity, we assigned to each Enabler a predefined cost in
-this work. Yet in Table. \ref{table:enabler-stats}, we provided the statistics of the
-applicable and chosen Enabler to show how this framework makes the tradeoff when
-more than one Enablers are available. This study is not available for a
-traditional approach of transformations.
+One thing that hinders these Enablers from working in a coordinated way is
+the phase-ordering problem, which means one transformation could be disabled
+by a previous transformation. Another problem is the increasing
+implementation and maintainance difficulty when more and more Enablers are
+put in the framework. To avoid these problems, we carefully organize the
+framework in a way that all Enablers are modular and independent. As a first
+step, all loop-carried dependences are identified by the frontend and passed
+to each Enabler, who tries to address each dependence by its best effort and
+returns a remedy along with the cost if a way to remove the dependence is
+available. If all dependences are removable by at least one Enablers, the
+parallel code generation part will choose the remedy with the lowest cost
+for each dependence and generate the parallel binary. This scheme seperates
+the desicion part from the actual transformation and allows us to evaluate
+the cost of each dependence separetely and choose the most profitable plan
+instead of applying all transformations in a fixed order. For simplicity, we
+assigned to each Enabler a predefined cost in this work. Yet in Table.
+\ref{table:enabler-stats}, we provided the statistics of the applicable and
+chosen Enabler to show how this framework makes the tradeoff when more than
+one Enablers are available. This study is not available for a traditional
+approach of transformations.
+
+The analysis passes and the transformation passes are seperated. Even though
+it has been suggested before, in this work, we have a smaller set of
+Enablers with stronger capability.
 
 % Enabler Description
 \subsection{Enabler Description}
@@ -314,20 +319,53 @@ Second Level Enabler
 % Discuss about LLVM
 \subsection{LLVM Related Issues}
 
-In order to make best use of LLVM, we have to let it generate the simplest
-intermediate representation (IR) without introducing optimizations that might
-disable any Enabler of this framework. We carefully selected a set of LLVM
-optimizations and added some other modifications to generate a proper IR to work
-on.
+To make best use of LLVM, we have to let it generate the simplest
+intermediate representation (IR) without introducing optimizations that
+might disable any Enabler of this framework. We carefully selected a set of
+LLVM optimizations and added some other modifications to generate a proper
+IR to work on.
 
 Other modifications:
 
 \begin{itemize}
-\item alloca
+\item Optimization Level
 
-We don’t want to do o3 because we don’t want to mess up the IR but we need some
-intrinsic provided by CLANG -o3 three things
+% For example?
+LLVM optimization passes are important to simplify the IR however some of
+them are destructive to parallelization. The previous approach was using no
+optimization to generate the first IR and then applying a selected set of
+LLVM passes to optmize the code. However, we noticed that when no
+optimization is used in the frontend (\textit{clang -O0 -Xclang
+-disable-O0-optnone}), some LLVM intrinsics which can be helpful to the
+framework are lost. For example, for stack variables that are allocated in
+an inner loop, LLVM should move the \textit{alloca} to the function header
+and provide a pair of lifetime start/end intrinsics. The lifetime intrinsic
+does not come with no optimization. To get around this, we chose
+optimization level 1 for only Clang frontend optimizations and disabled LLVM
+Opt passes (\textit{-O1 -Xclang -disable-llvm-passes}). This gives us the
+intended behavior.
 
-\item create phi for sink
-\item aggresive inlining (pointers with context)
+
+\item PHI Node
+
+PHI nodes introduce more complicated data flow. LLVM will sink some
+duplicated instructions into PHI nodes and create extra hassle for our
+system to identify loop-carried data and create separation for different
+objects. We disabled several options in LLVM passes to inhibit this
+behavior.
+
+\item Inlining
+
+Inlining is a huge deal for parallelizing programs. For sequential program,
+the inlining optimization is needed when the cost of calling a function is
+big. The tradeoff is between speed and code size. Large functions that are
+called multiple times are usually not inlined. However, for parallelization,
+inlining can help us differenciate callsites and improve the accuracy of
+both static analysis and memory profiling. In this work, we adopted an
+aggresive approach of inlining with which most functions in the hot loops
+are inlined. The tradeoff here is mainly between the accuracy and the
+complexity (speed) of analysis. To reduce the complexity and improve the
+speed, we identified functions that are not called in profile runs and
+skipped inlining for them because they can be speculated away.
+
 \end{itemize}
