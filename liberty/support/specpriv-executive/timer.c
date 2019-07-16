@@ -5,6 +5,10 @@
 #include "timer.h"
 #include "private.h"
 
+/* #if TIMER != 0 */
+/* uint64_t timers_hit = 0; */
+/* #endif */
+
 // The INVOCATION number
 unsigned InvocationNumber = 0;
 
@@ -121,6 +125,7 @@ unsigned numCheckpoints;
 uint64_t rdtsc(void)
 {
   uint32_t a, d;
+  /* timers_hit++; */
   __asm__ volatile("rdtscp" : "=a" (a), "=d" (d));
   return ((uint64_t)a) | (((uint64_t)d) <<32 );
 }
@@ -144,6 +149,7 @@ void __specpriv_reset_timers(void)
     worker_private_bytes_read = 0;
     worker_private_bytes_written = 0;
     worker_end_iter_time = 0;
+    /* timers_hit = 0; */
 }
 
 void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin )
@@ -229,6 +235,7 @@ void __specpriv_print_percentages( void )
   printf("Number of checkpoints:                    %15u\n",  numCheckpoints);
   printf("Number of private bytes written:          %15lu\n", worker_private_bytes_written);
   printf("Number of private bytes read:             %15lu\n", worker_private_bytes_read);
+  /* printf("Number of timers hit:                     %15lu\n", timers_hit); */
   printf("*** END WORKER %ld @invocation %d times ***\n",   myWorkerId, InvocationNumber);
   fflush(stdout);
 #endif
