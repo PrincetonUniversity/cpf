@@ -17,7 +17,7 @@
 //#define DEFAULT_PRIV_REMED_COST 1
 #define DEFAULT_PRIV_REMED_COST 100
 #define FULL_OVERLAP_PRIV_REMED_COST 70
-#define LOCAL_PRIV_REMED_COST 65
+#define LOCAL_PRIV_REMED_COST 55
 
 namespace liberty {
 using namespace llvm;
