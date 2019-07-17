@@ -150,3 +150,15 @@ bool liberty::isGlobalLocalToLoop(const GlobalValue *global, const Loop *L) {
   }
   return true;
 }
+
+bool liberty::isLoopInvariantGlobal(const GlobalValue *global, const Loop *L) {
+  std::vector<const Instruction *> srcs;
+  bool noCaptureGV = findNoCaptureGlobalSrcs(global, srcs);
+  if (!noCaptureGV)
+    return false;
+  for (auto src : srcs) {
+    if (L->contains(src))
+      return false;
+  }
+  return true;
+}
