@@ -1044,7 +1044,7 @@ struct Api
     // other version of runtime with subheaps
     //return (15ULL << 43);
 
-    return (7ULL << 44);
+    return (15ULL << 43);
   }
 
   static uint64_t getCodeForHeap(HeapAssignment::Type heap)
@@ -1052,11 +1052,12 @@ struct Api
     // These magic numbers must correspond with
     // the codes in support/specpriv-executive/api.c
     const uint64_t codes[] =
-      { /* ro       */ (5ULL << 44),
-        /* shared   */ (4ULL << 44),
-        /* redux    */ (2ULL << 44),
-        /* local    */ (6ULL << 44),
-        /* priv     */ (3ULL << 44)
+      { /* ro       */ (5ULL << 43),
+        /* shared   */ (4ULL << 43),
+        /* redux    */ (2ULL << 43),
+        /* local    */ (6ULL << 43),
+        /* priv     */ (3ULL << 43),
+        /* killpriv */ (8ULL << 43)
       };
 
     // other version of runtime with subheaps
@@ -1076,7 +1077,7 @@ struct Api
   static StringRef getNameForHeap(HeapAssignment::Type heap)
   {
     StringRef names[] =
-      { "ro", "shared",  "redux", "local", "priv", "unclassified" };
+      { "ro", "shared",  "redux", "local", "killpriv", "priv", "unclassified" };
 
     return names[heap];
   }

@@ -100,6 +100,7 @@ struct WorkerArgs {
   int64_t numCores;
   int64_t chunkSize;
   unsigned sizeof_private;
+  unsigned sizeof_killprivate;
   unsigned sizeof_redux;
   unsigned sizeof_ro;
   unsigned sizeof_local;
@@ -215,6 +216,7 @@ static void __specpriv_worker_setup(Wid wid)
 
     TIME(start);
     __specpriv_set_sizeof_private(workerArgs.sizeof_private);
+    __specpriv_set_sizeof_killprivate(workerArgs.sizeof_killprivate);
     __specpriv_set_sizeof_redux(workerArgs.sizeof_redux);
     __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
     __specpriv_set_sizeof_local(workerArgs.sizeof_local);
@@ -248,6 +250,7 @@ void __parallel_begin(void)
 {
   // We are in the main process.
   myWorkerId = MAIN_PROCESS;
+  DEBUG(printf("called __parallel_begin()\nMy worker id: %u\n", myWorkerId););
 
   // Determine number of workers from environment
   // variable.
@@ -353,6 +356,7 @@ void __spawn_workers_begin(void) {
 // Called once by main process on program shutdown
 void __parallel_end(void)
 {
+  DEBUG(printf("called __parallel_end()\nMy worker id: %u\n", myWorkerId););
   assert( myWorkerId == MAIN_PROCESS );
 
 #if (AFFINITY & MP0STARTUP) != 0
@@ -411,7 +415,7 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
 #endif
 
   // gc14 -- misspec test
-  /* _exit(0); */
+  _exit(0);
 }
 
 // Called by __specpriv_spawn_workers on each worker
@@ -592,6 +596,7 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
   workerArgs.user = user;
   workerArgs.numCores = numCores;
   workerArgs.chunkSize = chunkSize;
+  workerArgs.sizeof_killprivate = __specpriv_sizeof_killprivate();
   workerArgs.sizeof_private = __specpriv_sizeof_private();
   workerArgs.sizeof_redux = __specpriv_sizeof_redux();
   workerArgs.sizeof_ro = __specpriv_sizeof_ro();
@@ -815,8 +820,8 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   // gc14 -- commented out for misspec test
-  /* if( pcb->misspeculation_happened ) */
-  /*   _exit(0); */
+  if( pcb->misspeculation_happened )
+    _exit(0);
 
   ++currentIter;
   Iteration globalCurIter = currentIter;

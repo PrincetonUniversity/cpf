@@ -227,7 +227,7 @@ void __specpriv_initialize_worker_heaps(void)
   // re-map the committed version of heap 'priv' as copy-on-write
   __specpriv_worker_remap_private();
 
-  // __specpriv_worker_remap_killprivate();
+  __specpriv_worker_remap_killprivate();
 
   // re-map the committed version of heap 'ro' as copy-on-write
   // added due to process spawning once at startup
