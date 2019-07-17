@@ -84,7 +84,7 @@ bool LoadedValuePredRemediator::mustAlias(const Value *ptr1,
 
 bool LoadedValuePredRemediator::isPredictablePtr(const Value *ptr,
                                                  const DataLayout &DL) {
-  if (!ptr)
+  if (!ptr || nonPredictableMemLocs.count(ptr))
     return false;
 
   bool isPredPtr = predictableMemLocs.count(ptr);
@@ -103,6 +103,9 @@ bool LoadedValuePredRemediator::isPredictablePtr(const Value *ptr,
       }
     }
   }
+
+  if (!isPredPtr)
+    nonPredictableMemLocs.insert(ptr);
   return isPredPtr;
 }
 

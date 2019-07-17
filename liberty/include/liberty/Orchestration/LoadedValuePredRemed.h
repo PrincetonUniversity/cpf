@@ -51,6 +51,7 @@ private:
   LoopAA *loopAA;
 
   std::unordered_set<const Value *> predictableMemLocs;
+  std::unordered_set<const Value *> nonPredictableMemLocs;
   std::unordered_map<const Value *, const Value *>
       mustAliasWithPredictableMemLocMap;
 };
