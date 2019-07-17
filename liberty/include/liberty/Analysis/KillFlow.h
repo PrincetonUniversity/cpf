@@ -181,10 +181,14 @@ namespace liberty
     ScalarEvolution *getSE(const Function *cf);
     LoopInfo *getLI(const Function *cf);
 
+    BasicBlock *getLoopEntryBB(const Loop *loop);
     bool aliasBasePointer(const Value *gepptr, const Value *killgepptr,
-                          const Value **numElemAU, ScalarEvolution *se,
+                          const GlobalValue **gvSrc, ScalarEvolution *se,
                           const Loop *L);
-    bool matchingIdx(const Value *idx, const Value *killidx, const Value *numElemAU,
+    bool killAllIdx(const Value *killidx, const Value *basePtr,
+                    const GlobalValue *gvSrc, ScalarEvolution *se,
+                    const Loop *L, const Loop *innerL, bool firstIndex);
+    bool matchingIdx(const Value *idx, const Value *killidx,
                      ScalarEvolution *se, const Loop *L);
     bool greaterThan(const SCEV *killTripCount, const SCEV *tripCount,
                      ScalarEvolution *se, const Loop *L);

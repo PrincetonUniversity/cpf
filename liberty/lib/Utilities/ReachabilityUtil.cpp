@@ -31,6 +31,8 @@ bool liberty::noStoreInBetween(const Instruction *firstI,
         break;
     }
   }
+  if (!intraprocedural)
+    return true;
 
   bool storeInBetween = false;
   DominatorTree *dt =
