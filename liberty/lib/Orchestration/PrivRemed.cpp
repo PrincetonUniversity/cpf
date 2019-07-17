@@ -393,9 +393,14 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
 
-    // TODO: this restriction could be relaxed. Generalize beyond self-WAW
-    if (A != B)
+    if (A != B) {
+      // treat it as full_overlap. if it is not a fullOverlap there will be
+      // self-WAW for either A or B that will not be reported as FullOverlap and
+      // the underlying AUs will remain in the private family
+      remedy->type = PrivRemedy::FullOverlap;
+      remedResp.remedy = remedy;
       return remedResp;
+    }
 
     const StoreInst *privStore = remedy->storeI;
 
