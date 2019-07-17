@@ -6,15 +6,19 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/Introspection.h"
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "liberty/Utilities/GepRange.h"
+#include "liberty/Utilities/GlobalMalloc.h"
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Utilities/ReachabilityUtil.h"
 
 #include "AnalysisTimeout.h"
 #include <ctime>
 #include <cmath>
+#include <unordered_set>
 
 namespace liberty
 {
@@ -123,7 +127,6 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           DEBUG(errs() << "Killed by " << *intrinsic << '\n');
           return true;
         }
-
         return false;
       }
     }
@@ -191,9 +194,28 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     bbKills.clear();
   }
 
+  BasicBlock *KillFlow::getLoopEntryBB(const Loop *loop) {
+    BasicBlock *header = loop->getHeader();
+    BranchInst *term = dyn_cast<BranchInst>(header->getTerminator());
+    BasicBlock *headerSingleInLoopSucc = nullptr;
+    if (term) {
+      for (unsigned sn = 0; sn < term->getNumSuccessors(); ++sn) {
+        BasicBlock *succ = term->getSuccessor(sn);
+        if (loop->contains(succ)) {
+          if (headerSingleInLoopSucc) {
+            headerSingleInLoopSucc = nullptr;
+            break;
+          } else
+            headerSingleInLoopSucc = succ;
+        }
+      }
+    }
+    return headerSingleInLoopSucc;
+  }
+
   bool KillFlow::aliasBasePointer(const Value *gepptr, const Value *killgepptr,
-                                  const Value **numElemAU, ScalarEvolution *se,
-                                  const Loop *L) {
+                                  const GlobalValue **gvSrc,
+                                  ScalarEvolution *se, const Loop *L) {
     if (killgepptr == gepptr)
       return true;
 
@@ -213,99 +235,10 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     if (globalSrc != killGlobalSrc)
       return false;
     else if (globalSrc) {
-      bool noStoreInLoop = true;
-      bool nonMallocStore = false;
-      for (auto use = globalSrc->user_begin(); use != globalSrc->user_end();
-           ++use) {
-        if (const StoreInst *store = dyn_cast<StoreInst>(*use)) {
-          if (L->contains(store)) {
-            noStoreInLoop = false;
-            break;
-          }
-        } else if (const BitCastOperator *bcOp =
-                       dyn_cast<BitCastOperator>(*use)) {
-          for (auto bUse = bcOp->user_begin(); bUse != bcOp->user_end();
-               ++bUse) {
-            if (const StoreInst *store = dyn_cast<StoreInst>(*bUse)) {
-              if (L->contains(store)) {
-                noStoreInLoop = false;
-                break;
-              }
-
-              if (!nonMallocStore)
-                continue;
-              const Type *type = globalSrc->getType()->getElementType();
-              if (!type->isPointerTy())
-                continue;
-              const Type *elemType = (dyn_cast<PointerType>(type))->getElementType();
-              if (elemType != killgepptr->getType())
-                continue;
-              if (!elemType->isSized())
-                continue;
-              uint64_t elemSize = DL->getTypeSizeInBits(const_cast<Type*>(elemType));
-              if (elemSize == 0)
-                continue;
-
-              // bits->bytes
-              elemSize = elemSize / 8;
-
-              const Instruction *src = liberty::findNoAliasSource(store, *tli);
-              if (!src) {
-                nonMallocStore = true;
-                continue;
-              }
-              if (auto allocCall = dyn_cast<CallInst>(src)) {
-                if (allocCall->getNumArgOperands() != 1)
-                  continue;
-                const Value *mallocArg = allocCall->getArgOperand(0);
-                if (const Instruction *mallocSizeI =
-                        dyn_cast<Instruction>(mallocArg)) {
-                  if (auto binMallocSizeI = dyn_cast<BinaryOperator>(mallocSizeI)) {
-                    const ConstantInt *sizeOfElemInMalloc = nullptr;
-                    const Value* N = nullptr;
-                    if (isa<ConstantInt>(binMallocSizeI->getOperand(0))) {
-                      sizeOfElemInMalloc =
-                          dyn_cast<ConstantInt>(binMallocSizeI->getOperand(0));
-                      N = binMallocSizeI->getOperand(1);
-                    } else if (isa<ConstantInt>(
-                                   binMallocSizeI->getOperand(1))) {
-                      sizeOfElemInMalloc =
-                          dyn_cast<ConstantInt>(binMallocSizeI->getOperand(1));
-                      N = binMallocSizeI->getOperand(0);
-                    }
-                    if (!sizeOfElemInMalloc)
-                      continue;
-
-                    uint64_t sizeOfElem;
-                    if (mallocSizeI->getOpcode() == Instruction::Shl) {
-                      sizeOfElem = pow(2, sizeOfElemInMalloc->getZExtValue());
-                    } else if (mallocSizeI->getOpcode() == Instruction::Mul) {
-                      sizeOfElem = sizeOfElemInMalloc->getZExtValue();
-                    }
-
-                    if (elemSize != sizeOfElem)
-                      continue;
-
-                    *numElemAU = N;
-                  }
-                }
-                // TODO: handle also malloc with contant size allocation
-              }
-            } else if (!isa<LoadInst>(*bUse)) {
-              *numElemAU = nullptr;
-              return false;
-            }
-          }
-        } else if (!isa<LoadInst>(*use)) {
-          *numElemAU = nullptr;
-          return false;
-        }
-      }
-      if (!noStoreInLoop || nonMallocStore)
-        *numElemAU = nullptr;
-      return noStoreInLoop;
+      *gvSrc = globalSrc;
+      // check if globalSrc is loop-invariant (no defs inside the loop)
+      return isLoopInvariantGlobal(globalSrc, L);
     }
-
     return false;
   }
 
@@ -372,42 +305,133 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       if (globalSrc != killGlobalSrc)
         return false;
       else if (globalSrc) {
-        bool noStoreInLoop = true;
-        for (auto use = globalSrc->user_begin(); use != globalSrc->user_end();
-             ++use) {
-          if (const StoreInst *store = dyn_cast<StoreInst>(*use)) {
-            if (L->contains(store)) {
-              noStoreInLoop = false;
-              break;
-            }
-          } else if (const BitCastOperator *bcOp =
-                         dyn_cast<BitCastOperator>(*use)) {
-            for (auto bUse = bcOp->user_begin(); bUse != bcOp->user_end();
-                 ++bUse) {
-              if (const StoreInst *store = dyn_cast<StoreInst>(*bUse)) {
-                if (L->contains(store)) {
-                  noStoreInLoop = false;
-                  break;
-                }
-              } else if (!isa<LoadInst>(*bUse)) {
-                return false;
-              }
-            }
-          } else if (!isa<LoadInst>(*use)) {
-            return false;
-          }
-        }
-        return noStoreInLoop;
+        return isLoopInvariantGlobal(globalSrc, L);
       }
     }
     return false;
   }
 
+  bool KillFlow::killAllIdx(const Value *killidx, const Value *basePtr,
+                            const GlobalValue *baseGVSrc, ScalarEvolution *se,
+                            const Loop *L, const Loop *innerL,
+                            bool firstIndex) {
+
+    // Examine if killidx goes across the whole allocation unit; if
+    // that's the case then no need to check the dominated idx, it will be
+    // contained in one of the indexes of the kill.
+
+    if (!firstIndex || !baseGVSrc)
+      return false;
+
+    killidx = bypassExtInsts(killidx);
+
+    if (!se->isSCEVable(killidx->getType()))
+      return false;
+
+    // checks for base ptr type
+    const PointerType *baseObjTy = dyn_cast<PointerType>(basePtr->getType());
+    if (!baseObjTy)
+      return false;
+    const Type *elemObjTy = baseObjTy->getElementType();
+
+    if (!elemObjTy->isIntegerTy() && !elemObjTy->isFloatingPointTy() &&
+        !elemObjTy->isPointerTy() && !elemObjTy->isStructTy()) {
+      // we do not handle other types
+      return false;
+    }
+
+    const Type *type = baseGVSrc->getType()->getElementType();
+    if (!type->isPointerTy())
+      return false;
+    const Type *elemType = (dyn_cast<PointerType>(type))->getElementType();
+
+    if (elemType != elemObjTy)
+      // if (elemType != privObj->getType())
+      return false;
+
+    if (!elemType->isSized())
+      return false;
+    uint64_t gvElemSize = DL->getTypeSizeInBits(const_cast<Type *>(elemType));
+    if (gvElemSize == 0)
+      return false;
+    // bits->bytes
+    gvElemSize /= 8;
+
+    const Value *killLimit = nullptr;
+    if (isa<SCEVUnknown>(se->getSCEV(const_cast<Value *>(killidx)))) {
+      killLimit = getLimitUnknown(killidx, innerL);
+    } else if (auto *killAddRec = dyn_cast<SCEVAddRecExpr>(
+                   se->getSCEV(const_cast<Value *>(killidx)))) {
+      killLimit = getCanonicalRange(killAddRec, innerL, se);
+    }
+    if (!killLimit)
+      return false;
+
+    std::vector<const Instruction *> mallocSrcs;
+    bool noCaptureMallocOnly =
+        findNoCaptureGlobalMallocSrcs(baseGVSrc, mallocSrcs, tli);
+    if (!noCaptureMallocOnly || mallocSrcs.empty())
+      return false;
+
+    // examine if full overlap for all the malloc sources
+    for (auto srcI : mallocSrcs) {
+      // TODO: check if there is a path from srcI to ptrPrivStore. not
+      // checking is more conservative
+
+      // if (L->contains(srcI))
+      //  return false;
+
+      const Value *numOfElem = nullptr;
+      uint64_t sizeOfElem;
+      findAllocSizeInfo(srcI, &numOfElem, sizeOfElem);
+      if (sizeOfElem == 0)
+        return false;
+      if (numOfElem == nullptr)
+        return false;
+
+      // check that sizeOfElem in malloc matches the one of the global
+      // pointer which is the base pointer of the store
+      if (sizeOfElem != gvElemSize)
+        return false;
+
+      if (killLimit != numOfElem) {
+        // if both of them are loads from a global check that there is no
+        // store in between them (aka both loads return the same value)
+
+        if (!isa<Instruction>(killLimit) || !isa<Instruction>(numOfElem))
+          return false;
+        const Instruction *killLimitI = dyn_cast<Instruction>(killLimit);
+        const Instruction *numOfElemI = dyn_cast<Instruction>(numOfElem);
+
+        const GlobalValue *numOfElemGV = liberty::findGlobalSource(numOfElem);
+        const GlobalValue *killLimitGV = liberty::findGlobalSource(killLimit);
+        if (numOfElemGV != killLimitGV || !killLimitGV)
+          return false;
+
+        std::vector<const Instruction *> srcs;
+        bool noCaptureGV = findNoCaptureGlobalSrcs(killLimitGV, srcs);
+        if (!noCaptureGV)
+          return false;
+
+        // if zero initialized and only one def, then numOfElemI and killLimitI
+        // got the same value
+        bool zeroInitialized = false;
+        if (const GlobalVariable *gVar = dyn_cast<GlobalVariable>(killLimitGV))
+          zeroInitialized = gVar->getInitializer()->isZeroValue();
+
+        // we need to ensure that there is no store to the global between
+        // numOfElem and killLimit
+        if ((!zeroInitialized || srcs.size() != 1) &&
+            !noStoreInBetween(numOfElemI, killLimitI, srcs, *mloops))
+          return false;
+      }
+    }
+    return true;
+  }
+
   // kill idx should be equal or include the other inst's idx
-  // or it kills the whole AU (no need to check inst's idx)
   bool KillFlow::matchingIdx(const Value *idx, const Value *killidx,
-                             const Value *numElemAU, ScalarEvolution *se,
-                             const Loop *L) {
+                             ScalarEvolution *se, const Loop *L) {
     if (idx == killidx)
       return true;
 
@@ -417,11 +441,14 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       return (ciIdx->getSExtValue() == ciKillIdx->getSExtValue());
     }
 
-    if (se->isSCEVable(killidx->getType())) {
+    idx = bypassExtInsts(idx);
+    killidx = bypassExtInsts(killidx);
+    if (idx == killidx)
+      return true;
 
+    if (se->isSCEVable(killidx->getType())) {
       auto *killAddRec =
           dyn_cast<SCEVAddRecExpr>(se->getSCEV(const_cast<Value *>(killidx)));
-
       const SCEVAddRecExpr *addRec = nullptr;
       if (se->isSCEVable(idx->getType()))
         addRec =
@@ -463,83 +490,6 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           return false;
 
         return true;
-      } else if (killAddRec && numElemAU) {
-        // the dominated idx is not an add expr and we cannot compare directly.
-        // Examine if kill ovewrites the whole allocation unit; if that's the
-        // case then no need to check the dominated idx, it will be contained in
-        // one of the indexes of the kill.
-        if (!killAddRec->isAffine() ||
-            !se->hasLoopInvariantBackedgeTakenCount(killAddRec->getLoop()))
-          return false;
-
-
-        const SCEV *killStart = killAddRec->getOperand(0);
-        if (const SCEVConstant *killStartConst =
-                dyn_cast<SCEVConstant>(killStart))
-          if (killStartConst->getAPInt() != 0)
-            return false;
-
-        const SCEV *killStep = killAddRec->getOperand(1);
-        if (const SCEVConstant *killStepConst =
-                dyn_cast<SCEVConstant>(killStep))
-          if (killStepConst->getAPInt() != 1)
-            return false;
-
-        const SCEV *killTripCount =
-            se->getBackedgeTakenCount(killAddRec->getLoop());
-        auto *killSMax = dyn_cast<SCEVSMaxExpr>(killTripCount);
-        if (!killSMax)
-          return false;
-
-        const SCEVUnknown *killSMax1 = nullptr;
-        if (auto *vcastKill = dyn_cast<SCEVCastExpr>(killSMax->getOperand(1)))
-          killSMax1 = dyn_cast<SCEVUnknown>(vcastKill->getOperand());
-        else
-          killSMax1 = dyn_cast<SCEVUnknown>(killSMax->getOperand(1));
-
-        if (!killSMax1)
-          return false;
-
-        const Value *killLimit = killSMax1->getValue();
-        if (!killLimit)
-          return false;
-
-        // compare that with the number of elements in unique malloc src
-        const GlobalValue *globalSrc = liberty::findGlobalSource(numElemAU);
-        const GlobalValue *killGlobalSrc = liberty::findGlobalSource(killLimit);
-        if (globalSrc != killGlobalSrc)
-          return false;
-        else if (globalSrc) {
-          bool noMoreThanOneStore = true;
-          bool storeFound = false;
-          for (auto use = globalSrc->user_begin(); use != globalSrc->user_end();
-               ++use) {
-            if (isa<StoreInst>(*use)) {
-              if (storeFound) {
-                noMoreThanOneStore = false;
-                break;
-              } else
-                storeFound = true;
-            } else if (const BitCastOperator *bcOp =
-                           dyn_cast<BitCastOperator>(*use)) {
-              for (auto bUse = bcOp->user_begin(); bUse != bcOp->user_end();
-                   ++bUse) {
-                if (isa<StoreInst>(*bUse)) {
-                  if (storeFound) {
-                    noMoreThanOneStore = false;
-                    break;
-                  } else
-                    storeFound = true;
-                } else if (!isa<LoadInst>(*bUse)) {
-                  return false;
-                }
-              }
-            } else if (!isa<LoadInst>(*use)) {
-              return false;
-            }
-          }
-          return noMoreThanOneStore;
-        }
       }
     }
     return false;
@@ -614,7 +564,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       }
     }
 
-    if (bb != beforebb && bb != afterbb && isa<GetElementPtrInst>(ptr) && L) {
+    //if (bb != beforebb && bb != afterbb && isa<GetElementPtrInst>(ptr) && L) {
+    if (bb != beforebb && bb != afterbb && L) {
       LoopInfo *li = getLI(bb->getParent());
 
       if (li->isLoopHeader(bb)) {
@@ -630,6 +581,16 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           ScalarEvolution *se = getSE(bb->getParent());
 
           for (auto loopBB : innerLoop->getBlocks()) {
+            // check that loopBB postdominates the entry BB of inner loop
+            // (postdominator is intraprocedural)
+            const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
+            if (!innerLoopEntryBB ||
+                (innerLoopEntryBB->getParent() != loopBB->getParent()))
+              return false;
+            auto pdt = getPDT(innerLoopEntryBB->getParent());
+            if (!pdt->dominates(loopBB, innerLoopEntryBB))
+              return false;
+
             for (BasicBlock::const_iterator k = loopBB->begin(),
                                             e = loopBB->end();
                  k != e; ++k) {
@@ -644,25 +605,31 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
                   unsigned killNumIndices = killgep->getNumIndices();
 
                   const GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptr);
+                  if (!gep)
+                    return false;
                   const Value *gepptr = gep->getPointerOperand();
                   unsigned numIndices = gep->getNumIndices();
 
                   if (killNumIndices != numIndices)
                     continue;
 
-                  const Value *numElemAU = nullptr;
-                  if (!aliasBasePointer(gepptr, killgepptr, &numElemAU, se, L))
+                  const GlobalValue *gvSrc = nullptr;
+                  if (!aliasBasePointer(gepptr, killgepptr, &gvSrc, se, L))
                     continue;
 
                   bool iKill = true;
                   auto killidx = killgep->idx_begin();
+                  bool firstIndex = true;
                   for (auto idx = gep->idx_begin(); idx != gep->idx_end();
                        ++idx) {
 
-                    if (!matchingIdx(*idx, *killidx, numElemAU, se, L)) {
+                    if (!matchingIdx(*idx, *killidx, se, L) &&
+                        !killAllIdx(*killidx, killgepptr, gvSrc, se, L,
+                                    innerLoop, firstIndex)) {
                       iKill = false;
                       break;
                     }
+                    firstIndex = false;
                     ++killidx;
                   }
 

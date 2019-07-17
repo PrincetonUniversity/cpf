@@ -404,6 +404,51 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     // interest. If full-overlap is proved for this write then assign
     // PrivRemedy::FullOverlap type to the remedy.
 
+    // ensure that on every iter of loop of interest the private store will
+    // execute the same number of times.
+    //
+    // the most accurate approach would be to explore all the ctrl deps until
+    // you reach the branch of the header of the loop of interest.
+    //
+    // for now we use a more conservative but a bit simpler approach.
+    // check if the private store executes on every iter of the loop of interest
+    // or in every iter of an inner loop which executes on every iter of outer
+    // loop. This approach address only loop depth of 1 and does not take
+    // advantage of loop-invariant if-statements; still in practise is very
+    // common. Note also that this approach requires that all involved BBs are
+    // in the same function (postdominator is intraprocedural)
+
+    const BasicBlock *loopEntryBB = getLoopEntryBB(L);
+    if (!loopEntryBB)
+      return remedResp;
+
+    if (loopEntryBB->getParent() != privStore->getFunction())
+      return remedResp;
+    const Loop *innerLoop = nullptr;
+    if (pdt->dominates(privStore->getParent(), loopEntryBB)) {
+      // private store executes on every iter of loop of interest
+    } else {
+      // private store does not postdominate loop of interest entry BB.
+      // check if private store executes on every iter of inner loop that runs
+      // for loopInvariant iterations and the header of inner loop executes on
+      // every iter of loop of interest
+      innerLoop = li->getLoopFor(privStore->getParent());
+      if (!innerLoop)
+        return remedResp;
+      if (innerLoop->getHeader()->getParent() != loopEntryBB->getParent())
+        return remedResp;
+      if (!pdt->dominates(innerLoop->getHeader(), loopEntryBB))
+        return remedResp;
+      const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
+      if (!innerLoopEntryBB)
+        return remedResp;
+      if (!pdt->dominates(privStore->getParent(), innerLoopEntryBB))
+        return remedResp;
+      if (!se->hasLoopInvariantBackedgeTakenCount(innerLoop) &&
+          !hasLoopInvariantTripCountUnknownSCEV(innerLoop))
+        return remedResp;
+    }
+
     // check if address of store is either a loop-invariant (to the loop of
     // interest), or a gep with only constant or affine SCEVAddRecExpr (to loop
     // with loop-invariant trip counts) indices
@@ -425,77 +470,37 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
         else if (isTransLoopInvariant(idxV, L))
           continue;
         else if (se->isSCEVable(idxV->getType())) {
-          const SCEVAddRecExpr *addRec =
-              dyn_cast<SCEVAddRecExpr>(se->getSCEV(const_cast<Value *>(idxV)));
-          if (!addRec)
-            return remedResp;
-          if (!addRec->isAffine())
-            return remedResp;
-
-          if (scevLoop && scevLoop != addRec->getLoop())
+          // TODO: add extra check: the max value of the SCEV should also be
+          // loop-invariant (in terms of loop L)
+          if (const SCEVAddRecExpr *addRec = dyn_cast<SCEVAddRecExpr>(
+                  se->getSCEV(const_cast<Value *>(idxV)))) {
+            if (!addRec)
               return remedResp;
-          scevLoop = addRec->getLoop();
-          if (scevLoop == L || !L->contains(scevLoop))
-            return remedResp;
+            if (!addRec->isAffine())
+              return remedResp;
 
-          if (!se->hasLoopInvariantBackedgeTakenCount(scevLoop))
-            return remedResp;
+            if (scevLoop && scevLoop != addRec->getLoop())
+              return remedResp;
+            scevLoop = addRec->getLoop();
+            if (scevLoop == L || !L->contains(scevLoop))
+              return remedResp;
 
-          if (!isLoopInvariantSCEV(addRec->getStart(), L, se) ||
-              !isLoopInvariantSCEV(addRec->getStepRecurrence(*se), L, se))
-            return remedResp;
+            if (!se->hasLoopInvariantBackedgeTakenCount(scevLoop))
+              return remedResp;
+
+            if (!isLoopInvariantSCEV(addRec->getStart(), L, se) ||
+                !isLoopInvariantSCEV(addRec->getStepRecurrence(*se), L, se))
+              return remedResp;
+          } else if (isa<SCEVUnknown>(
+                         se->getSCEV(const_cast<Value *>(idxV)))) {
+            if (!innerLoop || !getLimitUnknown(idxV, innerLoop))
+              return remedResp;
+          }
 
         } else
           return remedResp;
       }
     }
-
-    // ensure that on every iter of loop of interest the private store will
-    // execute the same number of times.
-    //
-    // the most accurate approach would be to explore all the ctrl deps until
-    // you reach the branch of the header of the loop of interest.
-    //
-    // for now we use a more conservative but a bit simpler approach.
-    // check if the private store executes on every iter of the loop of interest
-    // or in every iter of an inner loop which executes on every iter of outer
-    // loop. This approach address only loop depth of 1 and does not take
-    // advantage of loop-invariant if-statements; still in practise is very
-    // common. Note also that this approach requires that all involved BBs are
-    // in the same function (postdominator is intraprocedural)
-
-    const BasicBlock *loopEntryBB = getLoopEntryBB(L);
-    if (!loopEntryBB)
-      return remedResp;
-
-    if (loopEntryBB->getParent() != privStore->getFunction())
-      return remedResp;
-    if(pdt->dominates(privStore->getParent(), loopEntryBB)) {
-      // private store executes on every iter of loop of interest
-      remedy->type = PrivRemedy::FullOverlap;
-      remedResp.remedy = remedy;
-      return remedResp;
-    }
-
-    // private store does not postdominate loop of interest entry BB.
-    // check if private store executes on every iter of inner loop that runs for
-    // loopInvariant iterations and the header of inner loop executes on every
-    // iter of loop of interest
-    const Loop *innerLoop;
-    innerLoop = li->getLoopFor(privStore->getParent());
-    if (!innerLoop)
-      return remedResp;
-    if (innerLoop->getHeader()->getParent() != loopEntryBB->getParent())
-      return remedResp;
-    if (!pdt->dominates(innerLoop->getHeader(), loopEntryBB))
-      return remedResp;
-    const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
-    if (!innerLoopEntryBB)
-      return remedResp;
-    if (!pdt->dominates(privStore->getParent(), innerLoopEntryBB))
-      return remedResp;
-    if (!se->hasLoopInvariantBackedgeTakenCount(innerLoop))
-      return remedResp;
 
     // success. private store executes same number of times on every loop of
     // interest iter
