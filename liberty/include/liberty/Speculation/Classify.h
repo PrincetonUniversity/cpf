@@ -24,6 +24,7 @@ struct HeapAssignment : public UpdateOnClone
       Shared,
       Redux,
       Local,
+      KillPrivate,
       Private,
       Unclassified,
     FirstHeap=ReadOnly, LastHeap=Private, NumClassifications=Unclassified+1 };
@@ -65,6 +66,7 @@ struct HeapAssignment : public UpdateOnClone
   const AUSet &getSharedAUs() const;
   const AUSet &getLocalAUs() const;
   const AUSet &getPrivateAUs() const;
+  const AUSet &getKillPrivAUs() const;
   const AUSet &getReadOnlyAUs() const;
   const ReduxAUSet &getReductionAUs() const;
   const ReduxDepAUSet &getReduxDepAUs() const;
@@ -83,6 +85,7 @@ struct HeapAssignment : public UpdateOnClone
   AUSet &getSharedAUs();
   AUSet &getLocalAUs();
   AUSet &getPrivateAUs();
+  AUSet &getKillPrivAUs();
   AUSet &getReadOnlyAUs();
   ReduxAUSet &getReductionAUs();
   ReduxDepAUSet &getReduxDepAUs();
@@ -120,7 +123,7 @@ private:
 
   /// Sets of shared,local,private and read-only AUs
   /// indexed by loop within this function.
-  AUSet shareds, locals, privs, ros;
+  AUSet shareds, locals, kill_privs, privs, ros;
   ReduxAUSet reduxs;
   ReduxDepAUSet reduxdeps;
   ReduxRegAUSet reduxregs; // collects all the register reductions

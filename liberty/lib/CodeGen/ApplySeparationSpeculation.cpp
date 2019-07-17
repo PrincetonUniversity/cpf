@@ -1263,6 +1263,7 @@ bool ApplySeparationSpec::reallocateDynamicAUs()
   modified |= reallocateInst(asgn, asgn.getSharedAUs(),   HeapAssignment::Shared );
   modified |= reallocateInst(asgn, asgn.getLocalAUs(),    HeapAssignment::Local );
   modified |= reallocateInst(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
+  modified |= reallocateInst(asgn, asgn.getKillPrivAUs(),  HeapAssignment::KillPrivate );
   modified |= reallocateInst(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
   modified |= reallocateInst(asgn, asgn.getReductionAUs());

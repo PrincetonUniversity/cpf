@@ -435,7 +435,6 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
 }
 
 void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
-  /*
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
   HeapAssignment::AUSet &kills = asgn.getKillPrivAUs();
   HeapAssignment::AUSet exclusivelyKillAUs;
@@ -450,8 +449,6 @@ void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
     privs.erase(au);
     kills.insert(au);
   }
-
-  */
 }
 
 void Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
