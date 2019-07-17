@@ -43,7 +43,7 @@ bool PrivRemediator::mustAlias(const Value *ptr1, const Value *ptr2) {
   if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
     return true;
 
-  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == MustAlias;
+  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == LoopAA::MustAlias;
 }
 
 bool PrivRemediator::instMustKill(const Instruction *inst, const Value *ptr,
