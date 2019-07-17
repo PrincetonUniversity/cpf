@@ -43,7 +43,12 @@ bool PrivRemediator::mustAlias(const Value *ptr1, const Value *ptr2) {
   if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
     return true;
 
-  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == LoopAA::MustAlias;
+  PtrsPair key(ptr1, ptr2);
+  if (ptrsMustAlias.count(key))
+    return ptrsMustAlias[key];
+
+  ptrsMustAlias[key] = loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == LoopAA::MustAlias;
+  return ptrsMustAlias[key];
 }
 
 bool PrivRemediator::instMustKill(const Instruction *inst, const Value *ptr,
@@ -133,8 +138,16 @@ bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
   ControlSpeculation::LoopBlock iter =
       ControlSpeculation::LoopBlock(const_cast<BasicBlock *>(beforebb));
 
+  std::unordered_set<const BasicBlock *> visited;
   while (!iter.isBeforeIteration()) {
     const BasicBlock *bb = iter.getBlock();
+    // TODO: not sure why for some loops, this gets stuck within an inner loop
+    // and needs to check for visited (dijistra was one of the benchmarks that
+    // had this problem)
+    // need to check LoopDominators for any potential bug
+    if (visited.count(bb))
+      break;
+    visited.insert(bb);
     if (!bb)
       return false;
     if (!L->contains(bb))

@@ -93,9 +93,12 @@ private:
 
   typedef std::pair<const BasicBlock *, const Value *> BBPtrPair;
   typedef DenseMap<BBPtrPair, bool> BBKills;
-
   // we can summarize BBs in terms of which values they kill
   BBKills bbKills;
+
+  typedef std::pair<const Value*, const Value *> PtrsPair;
+  typedef DenseMap<PtrsPair, bool> PtrsMustAlias;
+  PtrsMustAlias ptrsMustAlias;
 
   bool isPrivate(const Instruction *I, const Loop *L, bool &ctrlSpecUsed);
   bool isLocalPrivate(const Instruction *I, const Value *ptr,
