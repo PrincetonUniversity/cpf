@@ -31,8 +31,10 @@ bool liberty::noStoreInBetween(const Instruction *firstI,
         break;
     }
   }
+
+  // conservatively report false for interprocedural queries
   if (!intraprocedural)
-    return true;
+    return false;
 
   bool storeInBetween = false;
   DominatorTree *dt =
@@ -43,7 +45,7 @@ bool liberty::noStoreInBetween(const Instruction *firstI,
                         ? &mloops.getAnalysis_LoopInfo(firstI->getFunction())
                         : nullptr;
 
-  // more conservative check that it should be.
+  // more conservative check than it should be.
   // even if there is a path from firstI to src, could check if there is at
   // least one path that does not pass through secondI (e.g. using exclusionSet
   // of LLVM 9.0 version of isPotentiallyReachable)
@@ -52,5 +54,5 @@ bool liberty::noStoreInBetween(const Instruction *firstI,
     if (storeInBetween)
       break;
   }
-  return storeInBetween;
+  return !storeInBetween;
 }
