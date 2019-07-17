@@ -738,6 +738,16 @@ void HeapAssignment::print(raw_ostream &fout) const
       fout << "[sh=" << sh << ']';
     fout << ' ' << *au << ' ' << name << " #regression\n";
   }
+  fout << "  Found " << kill_privs.size() << " kill private AUs:\n";
+  for ( AUSet::const_iterator i=kill_privs.begin(), e=kill_privs.end(); i != e; ++i )
+  {
+    AU *au = *i;
+    fout << "    o kill_priv";
+    int sh = getSubHeap(au);
+    if ( sh != -1 )
+      fout << "[sh=" << sh << ']';
+    fout << ' ' << *au << ' ' << name << " #regression\n";
+  }
   fout << "  Found " << ros.size() << " read-only (live-in) AUs:\n";
   for(AUSet::const_iterator i=ros.begin(), e=ros.end(); i!=e; ++i)
   {
@@ -992,6 +1002,7 @@ HeapAssignment::Type HeapAssignment::classify(AU *au) const
 HeapAssignment::AUSet &HeapAssignment::getSharedAUs() {  return shareds; }
 HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
 HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() { return privs; }
+HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() { return kill_privs; }
 HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() { return ros; }
 HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() { return reduxs; }
 HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() { return reduxdeps; }
@@ -1000,6 +1011,7 @@ HeapAssignment::ReduxRegAUSet &HeapAssignment::getReduxRegAUs() { return reduxre
 const HeapAssignment::AUSet &HeapAssignment::getSharedAUs() const { return shareds; }
 const HeapAssignment::AUSet &HeapAssignment::getLocalAUs() const { return locals; }
 const HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() const { return privs; }
+const HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() const { return kill_privs; }
 const HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() const { return ros; }
 const HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() const { return reduxs; }
 const HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() const { return reduxdeps; }
