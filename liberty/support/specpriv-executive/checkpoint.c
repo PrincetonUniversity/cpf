@@ -549,6 +549,7 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
   heap_unmap( &partial_redux );
   heap_unmap( &partial_shadow );
   heap_unmap( &partial_priv );
+  heap_unmap( &partial_killpriv );
 
   ++chkpt->num_workers;
   if( __specpriv_num_workers() == chkpt->num_workers )
@@ -634,23 +635,27 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
 
     DEBUG(printf(" * complete checkpoint %d\n", chkpt->iteration));
 
-    MappedHeap commit_priv, commit_shadow, commit_redux;
+    MappedHeap commit_priv, commit_killpriv, commit_shadow, commit_redux;
     mapped_heap_init( &commit_priv );
     mapped_heap_init( &commit_shadow );
     mapped_heap_init( &commit_redux );
+    mapped_heap_init( &commit_killpriv );
 
     heap_map_anywhere( &chkpt->heap_priv, &commit_priv );
+    heap_map_anywhere( &chkpt->heap_killpriv, &commit_killpriv );
     heap_map_anywhere( &chkpt->heap_shadow, &commit_shadow );
     heap_map_anywhere( &chkpt->heap_redux, &commit_redux );
 
     __specpriv_commit_io( &chkpt->io_events, &commit_redux );
     __specpriv_distill_committed_private_into_main( chkpt, &commit_priv, &commit_shadow );
+    __specpriv_distill_committed_killprivate_into_main( chkpt, &commit_killpriv );
     __specpriv_distill_committed_redux_into_main(&commit_redux,
                                                  chkpt->lastUpdateIteration);
     mgr->main_checkpoint->iteration = chkpt->iteration;
 
     heap_unmap( &commit_redux );
     heap_unmap( &commit_shadow );
+    heap_unmap( &commit_killpriv );
     heap_unmap( &commit_priv );
 
     // Free this checkpoint.
