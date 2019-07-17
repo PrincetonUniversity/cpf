@@ -44,9 +44,9 @@
 #define SLOWEST_WORKER    (1<<1)
 
 // Pointer coding
-#define POINTER_BITS      (44)
+#define POINTER_BITS      (43)
 
-#define POINTER_MASK      (7ULL << POINTER_BITS)
+#define POINTER_MASK      (15ULL << POINTER_BITS)
 
 #define META_ADDR         (1ULL << POINTER_BITS)
 #define REDUX_ADDR        (2ULL << POINTER_BITS)
@@ -55,6 +55,7 @@
 #define RO_ADDR           (5ULL << POINTER_BITS)
 #define LOCAL_ADDR        (6ULL << POINTER_BITS)
 #define SHADOW_ADDR       (7ULL << POINTER_BITS)
+#define KILLPRIV_ADDR     (8ULL << POINTER_BITS)
 
 
 // Sizes of kibi-, mibi-, and gibi-bytes

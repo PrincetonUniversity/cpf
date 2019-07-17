@@ -190,8 +190,8 @@ static void __specpriv_worker_setup(Wid wid)
 
   // wait and read from pipe until killed
   while (1) {
-    DEBUG(fflush(stdout));
     TIME(start);
+    DEBUG(fflush(stdout));
 
     ssize_t bytesRead = 0;
     while (bytesRead != workerArgsSize) {
@@ -410,7 +410,8 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
     fprintf(stderr,"Reason: %s\n", reason);
 #endif
 
-  _exit(0);
+  // gc14 -- misspec test
+  /* _exit(0); */
 }
 
 // Called by __specpriv_spawn_workers on each worker
@@ -813,8 +814,9 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 #endif
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
-  if( pcb->misspeculation_happened )
-    _exit(0);
+  // gc14 -- commented out for misspec test
+  /* if( pcb->misspeculation_happened ) */
+  /*   _exit(0); */
 
   ++currentIter;
   Iteration globalCurIter = currentIter;
