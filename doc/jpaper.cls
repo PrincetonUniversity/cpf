@@ -201,6 +201,6 @@ ASPLOS Submission \#\asplossubmissionnumber -- Confidential Draft -- Do Not Dist
 \RequirePackage{url}
 
 % Scientific units.
-% \RequirePackage[squaren]{SIunits}
+\RequirePackage[squaren]{SIunits}
 
 \endinput
