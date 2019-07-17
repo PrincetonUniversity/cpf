@@ -34,6 +34,7 @@ struct s_checkpoint
   CheckpointLife  type;
 
   Heap            heap_priv;
+  Heap            heap_killpriv;
   Heap            heap_shadow;
   Heap            heap_redux;
 

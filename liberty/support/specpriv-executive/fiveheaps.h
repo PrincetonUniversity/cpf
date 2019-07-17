@@ -47,11 +47,13 @@ void __specpriv_set_first_reduction_info(ReductionInfo *frI);
 // Determine the size allocated in the private
 // and redux heaps BEFORE the invocation began.
 unsigned __specpriv_sizeof_private(void);
+unsigned __specpriv_sizeof_killprivate(void);
 unsigned __specpriv_sizeof_redux(void);
 unsigned __specpriv_sizeof_local(void);
 
 unsigned __specpriv_sizeof_ro(void);
 void __specpriv_set_sizeof_private(unsigned sp);
+void __specpriv_set_sizeof_killprivate(unsigned sp);
 void __specpriv_set_sizeof_redux(unsigned sr);
 void __specpriv_set_sizeof_ro(unsigned sr);
 void __specpriv_set_sizeof_local(unsigned sr);

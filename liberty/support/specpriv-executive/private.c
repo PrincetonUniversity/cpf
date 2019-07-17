@@ -970,6 +970,30 @@ Bool __specpriv_distill_worker_private_into_partial(
   return 0;
 }
 
+Bool __specpriv_distill_worker_killprivate_into_partial(
+  Checkpoint *partial, MappedHeap *partial_killpriv )
+{
+  uint32_t wid = __specpriv_my_worker_id();
+  const unsigned len = __specpriv_sizeof_killprivate();
+
+  // if off iteration, don't commit anything
+  if ( !__specpriv_is_on_iter() )
+    return 0;
+
+  if ( len > 0 )
+  {
+    DEBUG(
+        printf("Worker %u distilling %u kill private bytes to partial checkpoint\n",
+          wid, len);
+        );
+    // no shadow memory to deal with and we only need the latest iteration's values so
+    // memcpy works
+    memcpy( &partial->heap_killpriv, partial_killpriv->base, len );
+  }
+
+  return 0; // never misspecs
+}
+
 // partial <-- later(committed,partial)
 // where committed comes from an EARLIER checkpoint-group of iterations.
 Bool __specpriv_distill_committed_private_into_partial(
@@ -1029,6 +1053,21 @@ Bool __specpriv_distill_committed_private_into_partial(
   return 0;
 }
 
+Bool __specpriv_distill_committed_killprivate_into_partial(
+    Checkpoint *commit, MappedHeap *commit_killpriv,
+    Checkpoint *partial, MappedHeap *partial_killpriv)
+{
+  const unsigned len = __specpriv_sizeof_killprivate();
+  if ( len > 0 )
+  {
+    DEBUG(
+        printf("Distilling %lu bytes of committed kill private into partial", len);
+        );
+    // shouldn't copy anything from older checkpoint to newer one
+    /* memcpy( &commit->heap_killpriv, &partial->heap_killpriv, len ); */
+  }
+}
+
 
 Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow)
 {
@@ -1054,6 +1093,22 @@ Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHe
     for(unsigned i=low; i<high; ++i)
       if( WAS_WRITTEN_EVER( src_s[i] ) )
         dst_p[i] = src_p[i];
+  }
+
+  return 0;
+}
+
+Bool __specpriv_distill_committed_killprivate_into_main( Checkpoint *commit,
+    MappedHeap *commit_killpriv )
+{
+  unsigned len = __specpriv_sizeof_killprivate();
+
+  if ( len > 0 )
+  {
+    DEBUG(
+        printf("Distilling %u bytes from cimmitted to main\n", len);
+        );
+    memcpy( (void *) commit_killpriv->base, (void *) PRIV_ADDR, len );
   }
 
   return 0;
