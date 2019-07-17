@@ -166,7 +166,7 @@ void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t 
 
 void __specpriv_print_percentages( void )
 {
-#if TIMER_PRINT_TIMELINE
+#if TIMER_PRINT_TIMELINE | TIMER
 
   if ( __specpriv_i_am_main_process() )
     return;
