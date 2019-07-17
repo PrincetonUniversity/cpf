@@ -27,6 +27,8 @@ void findAllocSizeInfo(const Instruction *alloc, const Value **numOfElem,
 
 bool isGlobalLocalToLoop(const GlobalValue *gv, const Loop *L);
 
+bool isLoopInvariantGlobal(const GlobalValue *global, const Loop *L);
+
 } // namespace liberty
 
 #endif
