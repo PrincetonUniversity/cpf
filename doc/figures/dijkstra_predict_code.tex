@@ -2,7 +2,7 @@
 // predicted to be 0 at start of every iteration
 int g_qCount = 0;
 
-for ( i = 0; j = N/2; i < N; i++, j++ ) {
+for ( int i = 0; int j = N/2; i < N; i++, j++ ) {
   ...
   enqueue( i, 0, NONE );
   g_qCount++;
@@ -11,13 +11,14 @@ for ( i = 0; j = N/2; i < N; i++, j++ ) {
     g_qCount--;
     for ( k = 0; k < NUM_NODES; k++ ) {
       ...
-      if ( not_done ) {
-        iCost = some_val;
+      if ( valid_node ) {
+        ...
         enqueue( i, iDist + iCost, iNode );
         g_qCount++;
       }
     }
   }
+  ...
 }
 
 \end{lstlisting}

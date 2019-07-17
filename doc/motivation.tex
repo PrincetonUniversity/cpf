@@ -27,7 +27,7 @@
 \begin{figure*}[t]
   \centering
   \scriptsize
-  \subfloat[052.alvinn -- local]
+  \subfloat[052.alvinn -- stack local]
   {
     \label{fig:alvinn_local}
     \begin{minipage}{7.5cm}
@@ -35,30 +35,41 @@
     \end{minipage}
   }
   \hspace{0.5cm}
-  \subfloat[dijkstra -- predictable]
+  \subfloat[dijkstra -- global local]
   {
     \label{fig:dijkstra}
     \begin{minipage}{7.5cm}
-      \input{figures/dijkstra_code}
+      \input{figures/dijkstra_glocal_code}
     \end{minipage}
   }
 \end{figure*}
 \begin{figure*}[t]
   \centering
   \scriptsize
-  \subfloat[covariance -- nospec-private]
+  \subfloat[dijkstra -- predictable]
   {
-    \label{fig:covariance}
+    \label{fig:dijkstra}
     \begin{minipage}{7.5cm}
-      \input{figures/covariance_code}
-    \end{minipage}
-  }
-  \hspace{0.5cm}
-  \subfloat[052.alvinn -- real private]
-  {
-    \label{fig:alvinn_specpriv}
-    \begin{minipage}{7.5cm}
-      \input{figures/alvinn_specpriv_code}
+      \input{figures/dijkstra_predict_code}
     \end{minipage}
   }
 \end{figure*}
+% \begin{figure*}[t]
+%   \centering
+%   \scriptsize
+%   \subfloat[covariance -- nospec-private]
+%   {
+%     \label{fig:covariance}
+%     \begin{minipage}{7.5cm}
+%       \input{figures/covariance_code}
+%     \end{minipage}
+%   }
+%   \hspace{0.5cm}
+%   \subfloat[052.alvinn -- real private]
+%   {
+%     \label{fig:alvinn_specpriv}
+%     \begin{minipage}{7.5cm}
+%       \input{figures/alvinn_specpriv_code}
+%     \end{minipage}
+%   }
+% \end{figure*}
