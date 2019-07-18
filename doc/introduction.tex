@@ -4,6 +4,8 @@
 
 % AutoPar is important.
 
+% Text from google-fellowship-2012/intel-19-autopar/cal19_collab
+
 Coincident with the introduction of multicore, the processor industry has
 fallen well short of the decades-old single-threaded performance growth
 trend. The burden of extracting sufficient multicore-appropriate parallelism
@@ -51,7 +53,7 @@ well when assisted by hardware extensions, but much work remains before a
 software-only speculative system can efficiently run on commodity hardware
 for a large, real world applications.
 
-Static analysis is simply too imprecise to enable aggressive
+Static analysis alone is simply too imprecise to enable aggressive
 parallelization.  Even if static analysis were perfect, the dependence
 patterns of real applications are frequently driven by the program input, or
 experience a phase change during program execution, meaning that static
@@ -121,3 +123,10 @@ does not assume any programmer hints or ``oracles'' during evaluation.
 
 
 % Why we are better than Privateer?
+
+% Using static analysis to disprove some dependences
+% Better static analysis
+
+% (A way to let Enablers work nicely together)
+% Make fine-grained separation of private objects and use cheap speculation
+% Reduce the process-based runtime spawning overhead

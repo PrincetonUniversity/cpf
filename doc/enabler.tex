@@ -17,7 +17,7 @@ Enablers.
 
 %  How to query Enabler?
 
-One thing that hinders these Enablers from working in a coordinated way is
+One thing that hinders these Enablers from working coordinately is
 the phase-ordering problem, which means one transformation could be disabled
 by a previous transformation. Another problem is the increasing
 implementation and maintainance difficulty when more and more Enablers are
@@ -60,14 +60,14 @@ Non Speculative Enablers
         % Stronger but more expensive than PrivRemed
         % Process-based parallelization enforces this remediator
 
-    \item Counted Loop Detection (CountedIVRemed)
+    % \item Counted Loop Detection (CountedIVRemed)
         % Removes loop-carried register and control dependences related to induction variables on counted loops
 
     \item TXIO (TXIORemed)
         % I/O deferral
         % Delays execution of instructions with side-effects, such as I/O operations
 
-    \item Conservative Loop Fission (LoopFissionRemed)
+    % \item Conservative Loop Fission (LoopFissionRemed) ???
         % Separate non-DOALL SCCs to an initial sequential stage (loop in this case)
         % Only small sequential stages considered
         % No usage of speculative remediators to achieve separation
@@ -133,7 +133,7 @@ Speculative Enablers
         % Demonstrates the power of collaboration among remediators, and between speculation techniques and static analysis.
         % Provides at least as much coverage as all the remediators addressing mem deps combined (only excludes SLAMP mem spec and localityaa).
 
-    \item Speculative Loop Fission (LoopFissionRemed)
+    % \item Speculative Loop Fission (LoopFissionRemed) ???
         % Same as Conservative Loop Fission apart from the fact that it requires usage of speculative remediators to achieve separation
 
     \item Pointer-Residue Speculation (PtrResidueRemed)
