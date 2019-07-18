@@ -17,7 +17,7 @@
 //#define DEFAULT_PRIV_REMED_COST 1
 #define DEFAULT_PRIV_REMED_COST 100
 #define FULL_OVERLAP_PRIV_REMED_COST 70
-#define LOCAL_PRIV_REMED_COST 65
+#define LOCAL_PRIV_REMED_COST 55
 
 namespace liberty {
 using namespace llvm;
@@ -281,6 +281,17 @@ bool isTransLoopInvariant(const Value *val, const Loop *L) {
   return false;
 }
 
+bool isLoopInvariantValue(const Value *V, const Loop *L) {
+  if (L->isLoopInvariant(V)) {
+    return true;
+  } else if (isTransLoopInvariant(V, L)) {
+    return true;
+  } else if (const GlobalValue *globalSrc = liberty::findGlobalSource(V)) {
+    return isLoopInvariantGlobal(globalSrc, L);
+  } else
+    return false;
+}
+
 bool extractValuesInSCEV(const SCEV *scev,
                          std::unordered_set<const Value *> &involvedVals,
                          ScalarEvolution *se) {
@@ -320,25 +331,7 @@ bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L, ScalarEvolution *se) {
     return false;
   bool allLoopInvariant = true;
   for (auto val : involvedVals) {
-    if (L->isLoopInvariant(val)) {
-      continue;
-    } else if (isTransLoopInvariant(val, L)) {
-      continue;
-    } else if (const GlobalValue *globalSrc = liberty::findGlobalSource(val)) {
-      std::vector<const Instruction *> srcs;
-      bool noCaptureGV = findNoCaptureGlobalSrcs(globalSrc, srcs);
-      if (!noCaptureGV) {
-        allLoopInvariant = false;
-        break;
-      }
-      for (auto src : srcs) {
-        if (L->contains(src)) {
-          allLoopInvariant = false;
-          break;
-        }
-      }
-    } else
-      allLoopInvariant = false;
+    allLoopInvariant &= isLoopInvariantValue(val, L);
     if (!allLoopInvariant)
       break;
   }
@@ -447,24 +440,43 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       // private store executes on every iter of loop of interest
     } else {
       // private store does not postdominate loop of interest entry BB.
-      // check if private store executes on every iter of inner loop that runs
-      // for loopInvariant iterations and the header of inner loop executes on
-      // every iter of loop of interest
+      // check if private store executes on every iter of an inner loop and the
+      // header of inner loop executes on every iter of its parent loop. check
+      // same properties on every parent loop until the loop of interest is
+      // reached.
       innerLoop = li->getLoopFor(privStore->getParent());
       if (!innerLoop)
         return remedResp;
       if (innerLoop->getHeader()->getParent() != loopEntryBB->getParent())
         return remedResp;
-      if (!pdt->dominates(innerLoop->getHeader(), loopEntryBB))
-        return remedResp;
+      // check that store executes on every iter of inner loop
       const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
       if (!innerLoopEntryBB)
         return remedResp;
       if (!pdt->dominates(privStore->getParent(), innerLoopEntryBB))
         return remedResp;
-      if (!se->hasLoopInvariantBackedgeTakenCount(innerLoop) &&
-          !hasLoopInvariantTripCountUnknownSCEV(innerLoop))
+      // check that the inner loop that contains the store is a subloop of the
+      // loop of interest
+      if (!L->contains(innerLoop))
         return remedResp;
+
+      // go over all the parent loops until the loop of interest is reached
+      const Loop *parentL = innerLoop->getParentLoop();
+      const Loop *childL = innerLoop;
+      do {
+        if (!parentL)
+          return remedResp;
+        const BasicBlock *parLEntryBB = getLoopEntryBB(parentL);
+        if (!parLEntryBB)
+          return remedResp;
+        if (childL->getHeader()->getParent() != parLEntryBB->getParent())
+          return remedResp;
+        if (!pdt->dominates(childL->getHeader(), parLEntryBB))
+          return remedResp;
+        const Loop *tmpL = parentL;
+        parentL = parentL->getParentLoop();
+        childL = tmpL;
+      } while (childL != L);
     }
 
     // check if address of store is either a loop-invariant (to the loop of
@@ -473,14 +485,15 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     //
     const Value *ptrPrivStore = privStore->getPointerOperand();
     const Loop* scevLoop = nullptr;
-    if (!L->isLoopInvariant(ptrPrivStore) &&
-        !isa<GetElementPtrInst>(ptrPrivStore))
-      return remedResp;
-    else if (!L->isLoopInvariant(ptrPrivStore)) {
+    if (L->isLoopInvariant(ptrPrivStore)) {
+      // good
+    } else if (isa<GlobalValue>(ptrPrivStore)) {
+      // good
+    } else if (isa<GetElementPtrInst>(ptrPrivStore)) {
       const GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptrPrivStore);
       // traverse all the indices of the gep, make sure that they are all
       // constant or affine SCEVAddRecExpr (to loops with loop-invariant trip
-      // counts, and with loop-invariant step and start)
+      // counts, and with loop-invariant step, start and limit/max_val)
       for (auto idx = gep->idx_begin(); idx != gep->idx_end(); ++idx) {
         const Value *idxV = *idx;
         if (L->isLoopInvariant(idxV))
@@ -488,8 +501,6 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
         else if (isTransLoopInvariant(idxV, L))
           continue;
         else if (se->isSCEVable(idxV->getType())) {
-          // TODO: add extra check: the max value of the SCEV should also be
-          // loop-invariant (in terms of loop L)
           if (const SCEVAddRecExpr *addRec = dyn_cast<SCEVAddRecExpr>(
                   se->getSCEV(const_cast<Value *>(idxV)))) {
             if (!addRec)
@@ -500,7 +511,8 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
             if (scevLoop && scevLoop != addRec->getLoop())
               return remedResp;
             scevLoop = addRec->getLoop();
-            if (scevLoop == L || !L->contains(scevLoop))
+            //if (scevLoop == L || !L->contains(scevLoop))
+            if (scevLoop != innerLoop)
               return remedResp;
 
             if (!se->hasLoopInvariantBackedgeTakenCount(scevLoop))
@@ -509,16 +521,23 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
             if (!isLoopInvariantSCEV(addRec->getStart(), L, se) ||
                 !isLoopInvariantSCEV(addRec->getStepRecurrence(*se), L, se))
               return remedResp;
+
+            auto limit = getCanonicalRange(addRec, innerLoop, se);
+            if (!isLoopInvariantValue(limit, L))
+              return remedResp;
           } else if (isa<SCEVUnknown>(
                          se->getSCEV(const_cast<Value *>(idxV)))) {
-            if (!innerLoop || !getLimitUnknown(idxV, innerLoop))
+            // detect pseudo-canonical IV (0, +, 1) and return max value
+            auto limit = getLimitUnknown(idxV, innerLoop);
+            if (!innerLoop || !limit || !isLoopInvariantValue(limit, L))
               return remedResp;
           }
 
         } else
           return remedResp;
       }
-    }
+    } else
+      return remedResp;
 
     // success. private store executes same number of times on every loop of
     // interest iter
