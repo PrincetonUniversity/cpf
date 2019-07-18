@@ -210,16 +210,36 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
   if (!selectedLoadedValuePreds)
     return modified;
 
+  auto selectedCtrlSpecDeps = preprocess.getSelectedCtrlSpecDeps(header);
+
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
   DominatorTree &dt = mloops.getAnalysis_DominatorTree( fcn );
 
   std::vector<BasicBlock*> entries;
-  std::vector<BasicBlock*> backedges;
+  //std::vector<BasicBlock*> backedges;
   for(pred_iterator i=pred_begin(header), e=pred_end(header); i!=e; ++i)
-    if( loop->contains(*i) )
-      backedges.push_back(*i);
-    else
+    //if( loop->contains(*i) )
+    //  backedges.push_back(*i);
+    if (!loop->contains(*i))
       entries.push_back(*i);
+
+  std::vector<BasicBlock *> endIter;
+  for (Loop::block_iterator i = loop->block_begin(), e = loop->block_end();
+       i != e; ++i) {
+    BasicBlock *bb = *i;
+    TerminatorInst *term = bb->getTerminator();
+    for (unsigned sn = 0, N = term->getNumSuccessors(); sn < N; ++sn) {
+      BasicBlock *dest = term->getSuccessor(sn);
+
+      // Loop back edge
+      if (dest == header)
+        endIter.push_back(bb);
+
+      // Loop exit
+      else if (!loop->contains(dest))
+        endIter.push_back(bb);
+    }
+  }
 
   const ProfileGuidedPredictionSpeculator &predspec = getAnalysis< ProfileGuidedPredictionSpeculator >();
   Remat remat;
@@ -280,16 +300,22 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
     //preprocess.addToLPS(stpred, load);
 
     // Part 2:
-    //  - at each backedge,
+    //  - at each backedge and exiting block,
     //    - load the pointer
     //    - compare to the predicted value.
     ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
     Constant *predict = Api(mod).getPredict();
-    for(unsigned j=0; j<backedges.size(); ++j)
+    for(unsigned j=0; j<endIter.size(); ++j)
     {
-      BasicBlock *pred = backedges[j];
+      BasicBlock *pred = endIter[j];
+      // do not add checks to header. header is guaranteed to have the correct
+      // values if all other checks pass
+      if (pred == header)
+        continue;
+      TerminatorInst *predT = dyn_cast<TerminatorInst>(pred->getTerminator());
 
-      if( ctrlspec->isSpeculativelyDead(pred,header) )
+      if (ctrlspec->isSpeculativelyDead(pred, header) && selectedCtrlSpecDeps &&
+          predT && selectedCtrlSpecDeps->count(predT))
         continue;
 
       // look if there a BB that stores redux and other loop-carried variables
