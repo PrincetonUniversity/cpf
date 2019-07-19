@@ -11,6 +11,7 @@
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 #include "liberty/Utilities/GepRange.h"
+#include "liberty/Utilities/GetMemOper.h"
 #include "liberty/Utilities/GlobalMalloc.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/ReachabilityUtil.h"
@@ -753,6 +754,21 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       return res;
     }
 
+    // use ptr1 & ptr2 for load/store cases
+    const Value *ptr1 = liberty::getMemOper(i1);
+    const Value *ptr2 = liberty::getMemOper(i2);
+    // handle cases where the gep is bitcasted before the mem operation
+    if (ptr1) {
+      auto bitcast1 = dyn_cast<BitCastInst>(ptr1);
+      if (bitcast1)
+        ptr1 = bitcast1->getOperand(0);
+    }
+    if (ptr2) {
+      auto bitcast2 = dyn_cast<BitCastInst>(ptr2);
+      if (bitcast2)
+        ptr2 = bitcast2->getOperand(0);
+    }
+
     if( Rel == Same )
     {
       if( L->contains(i1) && L->contains(i2) )
@@ -771,7 +787,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           if( const StoreInst *store = dyn_cast< StoreInst >(i1) )
           {
             ++numEligibleForwardStoreQueries;
-            if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
+            //if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
+            if( pointerKilledBetween(L,ptr1,i1,i2) )
             {
               ++numKilledForwardStoreFlows;
               //res = ModRefResult(res & ~Mod);
@@ -782,7 +799,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           if( const LoadInst *load = dyn_cast< LoadInst >(i2) )
           {
             ++numEligibleBackwardLoadQueries;
-            if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
+            //if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
+            if( pointerKilledBetween(L,ptr2,i1,i2) )
             {
               ++numKilledBackwardLoadFlows;
               //res = ModRefResult(res & ~Mod);
@@ -794,7 +812,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           if( const LoadInst *load = dyn_cast< LoadInst >(i1) )
           {
             ++numEligibleForwardLoadQueries;
-            if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
+            //if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
+            if( pointerKilledBetween(L,ptr1,i1,i2) )
             {
               ++numKilledForwardLoad;
               res = NoModRef;
@@ -805,7 +824,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           if( const StoreInst *store = dyn_cast< StoreInst >(i2) )
           {
             ++numEligibleBackwardStoreQueries;
-            if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
+            //if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
+            if( pointerKilledBetween(L,ptr2,i1,i2) )
             {
               ++numKilledBackwardStore;
               res = NoModRef;
@@ -818,8 +838,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     }
 
     const Instruction *earlier = i1, *later = i2;
-    if( Rel == After )
+    const Value *earlierPtr = ptr1, *laterPtr = ptr2;
+    if( Rel == After ) {
       std::swap(earlier,later);
+      std::swap(earlierPtr, laterPtr);
+    }
 
     time_t queryStart=0;
     if( AnalysisTimeout > 0 )
@@ -834,7 +857,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       if( const LoadInst *load = dyn_cast< LoadInst >(later) )
       {
         ++numEligibleBackwardLoadQueries;
-        if( pointerKilledBefore(L, load->getPointerOperand(), load, queryStart, AnalysisTimeout) )
+        //if( pointerKilledBefore(L, load->getPointerOperand(), load, queryStart, AnalysisTimeout) )
+        if( pointerKilledBefore(L, laterPtr, load, queryStart, AnalysisTimeout) )
         {
           ++numKilledBackwardLoadFlows;
           DEBUG(errs() << "Removed the mod bit at AAA\n");
@@ -871,7 +895,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       if( const StoreInst *store = dyn_cast< StoreInst >(later) )
       {
         ++numEligibleBackwardStoreQueries;
-        if( pointerKilledBefore(L, store->getPointerOperand(), store, queryStart, AnalysisTimeout) )
+        //if( pointerKilledBefore(L, store->getPointerOperand(), store, queryStart, AnalysisTimeout) )
+        if( pointerKilledBefore(L, laterPtr, store, queryStart, AnalysisTimeout) )
         {
           ++numKilledBackwardStore;
           // no dependence between this store and insts from previous iteration possible
@@ -897,7 +922,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       if( const StoreInst *store = dyn_cast< StoreInst >(earlier) )
       {
         ++numEligibleForwardStoreQueries;
-        if( pointerKilledAfter(L, store->getPointerOperand(), store, queryStart, AnalysisTimeout) )
+        //if( pointerKilledAfter(L, store->getPointerOperand(), store, queryStart, AnalysisTimeout) )
+        if( pointerKilledAfter(L, earlierPtr, store, queryStart, AnalysisTimeout) )
         {
           ++numKilledForwardStoreFlows;
           //res = ModRefResult(res & ~Mod);
@@ -929,7 +955,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       if( const LoadInst *load = dyn_cast< LoadInst >(earlier) )
       {
         ++numEligibleForwardLoadQueries;
-        if( pointerKilledAfter(L, load->getPointerOperand(), load, queryStart, AnalysisTimeout) )
+        //if( pointerKilledAfter(L, load->getPointerOperand(), load, queryStart, AnalysisTimeout) )
+        if( pointerKilledAfter(L, earlierPtr, load, queryStart, AnalysisTimeout) )
         {
           DEBUG(errs() << "Killed dep: load inst as earlier : " << *load << "\n later is "  << *later << "\n");
           ++numKilledForwardLoad;
