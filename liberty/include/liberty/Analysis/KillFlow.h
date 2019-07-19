@@ -22,12 +22,17 @@ namespace liberty
     typedef std::pair<const BasicBlock *, const Value *> BBPtrPair;
     typedef DenseMap< BBPtrPair, bool > BBKills;
 
+    typedef std::pair<const Instruction *, const Instruction *> InstPtrPair;
+    typedef DenseMap<InstPtrPair, bool> NoStoresBetween;
+
     // We can summarize functions in terms of
     // which values they kill.
     FcnKills fcnKills;
 
     // And we can summarize BBs in the same way
     BBKills bbKills;
+
+    NoStoresBetween noStoresBetween;
 
     // Hold reference to this.
     ModuleLoops *mloops;
