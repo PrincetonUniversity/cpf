@@ -1056,8 +1056,8 @@ struct Api
         /* shared   */ (4ULL << 43),
         /* redux    */ (2ULL << 43),
         /* local    */ (6ULL << 43),
-        /* priv     */ (3ULL << 43),
-        /* killpriv */ (8ULL << 43)
+        /* killpriv */ (8ULL << 43),
+        /* priv     */ (3ULL << 43)
       };
 
     // other version of runtime with subheaps
