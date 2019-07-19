@@ -181,6 +181,40 @@ public:
 
     LLVMContext &ctx = gep1->getType()->getContext();
 
+    // extra case (a variant of cond 1): check that base pointers must-alias,
+    // base pointer's type is a pointer to a struct (array of structs) and
+    // there is a statically different field index (skip the array level idx,
+    // aka first index of the gep)
+    const PointerType *gepPtrOpType =
+        dyn_cast<PointerType>(gep1->getPointerOperandType());
+    if (gepPtrOpType && gepPtrOpType->getElementType()->isStructTy() &&
+        gep1->getNumIndices() > 1 && gep2->getNumIndices() > 1) {
+
+      bool staticallyDiffIndexFound = false;
+      User::const_op_iterator ix1 = gep1->idx_begin() + 1, e1 = gep1->idx_end(),
+                              ix2 = gep2->idx_begin() + 1, e2 = gep2->idx_end();
+      while (ix1 != e1 && ix2 != e2) {
+        Value *cv1 = *ix1, *cv2 = *ix2;
+
+        if (areStaticallyDifferent(cv1, cv2, Rel, L, tracer)) {
+          staticallyDiffIndexFound = true;
+          break;
+        }
+
+        ++ix1;
+        ++ix2;
+      }
+
+      if (staticallyDiffIndexFound) {
+        // 0. Check if the base pointers must alias.
+        if (getTopAA()->alias(gep1->getPointerOperand(), 1, Same,
+                              gep2->getPointerOperand(), 1, 0) == MustAlias) {
+          ++numNoAlias;
+          return NoAlias;
+        }
+      }
+    }
+
     gep_type_iterator gi1 = gep_type_begin(gep1),
                       gi2 = gep_type_begin(gep2);
 
@@ -248,7 +282,6 @@ public:
 
     if( !cv1 || !cv2 )
       return MayAlias;
-
 
     //sot : operator* is no longer supported in LLVM 5.0 for gep_type_iterator
     // replaced with getIndexedType for Sequential Type and getStructTypeOrNull for Structs
