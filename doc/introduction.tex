@@ -1,5 +1,7 @@
 \section{Introduction}
 
+% SIMONE: overall = I like the flow, but I think it would be nice to (i) anticipate the novelty of this paper and (ii) highlight much more it. For example, early in the introduction we can say that today's approaches are either speculative without the use of static analysis or conservative without the use of speculative techniqeus. Both approaches have advantages and disadvantages. We are the first ones to put them together to leverage their advantages and avoid their weaknesses.
+
 % AutoPar is important.
 %Coincident with the introduction of multicore, the processor industry has
 %fallen well short of the decades-old single-threaded performance growth
@@ -46,6 +48,7 @@ parallelism extraction would result in enormous increase in programmer effort.
 Moreover, for programs with complex control and data flow, even CGP extraction
 can be very difficult, and most such programs remain without a CGP extracted
 version.
+% SIMONE: should we say, instead, that these programs either don't have CGP at all (e.g., GCC) or what they have is enough for a few cores only and it is a weak-scaling rather than strong scaling (e.g., Chrome has CGP where one tab is assigned to one thread; the more tabs, the more threads, the more CGP => weak scaling)?
 
 %autopar is very useful
 Automatic parallelization is an attractive approach to make efficient use of
@@ -62,12 +65,15 @@ analysis. Static dependence analysis (including alias analysis and control flow
 analysis) are undecidable and difficult in practice, and so compilers rely upon
 imprecise static analysis that is insufficient to enable parallelization of
 general-purpose programs by itself.
+%SIMONE: should we say, instead, that the conservativeness of static analysis forces parallelizing compilers either to parallelize small loops, which reduces the optimization coverage as well as it stresses communication demand, or to be applicable only to regular code (e.g., scientific applications)?
+%
 %Static analysis alone is simply too imprecise to enable aggressive
 %parallelization.
 Even if static analysis was perfect, the dependence patterns of real
 applications are frequently driven by the program input, or experience a phase
 change during program execution, meaning that static dependence analysis cannot
 be enough.
+% SIMONE: I like this point, but I would write it as a missing opportunity for static analysis. Something like "On top of being conservative, static analysis needs to describe program facts that are true independently with the input. This leads to missing opportunity for parallelizing compilers because programs experience phases ..."
 
 %speculation necessary
 Speculation allows the compiler to overcome static analysis, optimize for an
@@ -133,6 +139,7 @@ Privateer, similarly to other speculative techniques, in the interest of
 aggressive parallelization take the extreme of the extreme step of disregarding
 static analysis and relying entirely on profiling, losing the understanding of
 what needs to be speculated and what not.
+% SIMONE: FYI I understand what this paragraph aims to say, but it needs some rewriting
 
 The compiler system must balance the enabling effects of speculation with the
 runtime cost of validation.
