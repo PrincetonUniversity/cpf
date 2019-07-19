@@ -1,5 +1,43 @@
 \section{Evaluation}
 
-\begin{figure*}
-  \includegraphics[width=\textwidth]{figures/overheads}
+LSD is evaluated against 10 C and C++ benchmarks in the LLVM Compiler
+Infrastructure (revision ...). The benchmarks are selected from previous
+automatic DOALL parallelization papers (cite Privateer, SMTLite, ...). We
+exclude benchmarks for lack of a FORTRAN front-end , duplicate behavior, or
+no significant Spec-DOALL coverage exhibiting.
+
+Machine(CPU, Turbo boost)/OS/compiler(gcc, llvm, optimization level)
+
+
+\subsection{Parallelization Performance}
+Figures Needed:
+\begin{itemize}
+\item General Speed Plot: With different cores (1-28), all benchmarks
+\item Speedup Comparison: 24 cores performance compared with Privateer
+Runtime breakdown (how to minimize the overhead?)
+
+\end{itemize}
+
+
+\subsection{Static Analysis and Enablers}
+Figures Needed:
+\begin{itemize}
+\item CAF: with and without; no topping; with only BasicLoopAA and ScevAA
+\item Coverage: Spec-DOALL percentage of coverage of each benchmark
+\item Enablers: Enablers used for each benchmark
+\item Optimization level: Performance with different optimization levels
+\end{itemize}
+
+Discussion Needed:
+
+
+\subsection{Overhead Breakdown}
+
+\begin{figure*}[htp]
+  \includegraphics[width=0.9\textwidth]{figures/overheads}
 \end{figure*}
+
+\subsection{Power Consumption}
+
+Power and energy stats here
+
