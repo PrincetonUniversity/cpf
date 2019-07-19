@@ -192,6 +192,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   {
     fcnKills.clear();
     bbKills.clear();
+    noStoresBetween.clear();
   }
 
   BasicBlock *KillFlow::getLoopEntryBB(const Loop *loop) {
@@ -421,9 +422,25 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
         // we need to ensure that there is no store to the global between
         // numOfElem and killLimit
-        if ((!zeroInitialized || srcs.size() != 1) &&
-            !noStoreInBetween(numOfElemI, killLimitI, srcs, *mloops))
-          return false;
+        if ((!zeroInitialized || srcs.size() != 1)) {
+          InstPtrPair ikey(numOfElemI, killLimitI);
+          bool noStoreBetween;
+          if (noStoresBetween.count(ikey)) {
+            noStoreBetween = noStoresBetween[ikey];
+          } else {
+            const Instruction *noExtNumOfElemI =
+                dyn_cast<Instruction>(bypassExtInsts(numOfElemI));
+            const Instruction *noExtKillLimitI =
+                dyn_cast<Instruction>(bypassExtInsts(killLimitI));
+            if (!noExtNumOfElemI || !noExtKillLimitI)
+              return false;
+            noStoreBetween = noStoreInBetween(noExtNumOfElemI, noExtKillLimitI,
+                                              srcs, *mloops);
+            noStoresBetween[ikey] = noStoreBetween;
+          }
+          if (!noStoreBetween)
+            return false;
+        }
       }
     }
     return true;
@@ -697,7 +714,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     return true;
   }
 
-  KillFlow::KillFlow() : ModulePass(ID), fcnKills(), bbKills(), mloops(0), effectiveNextAA(0), effectiveTopAA(0) {}
+  KillFlow::KillFlow()
+      : ModulePass(ID), fcnKills(), bbKills(), noStoresBetween(), mloops(0),
+        effectiveNextAA(0), effectiveTopAA(0) {}
 
   KillFlow::~KillFlow() {}
 
