@@ -294,6 +294,15 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       if (!killLimit || !limit)
         return false;
 
+      if (killLimit == limit)
+        return true;
+
+      if (isa<ConstantInt>(killLimit) && isa<ConstantInt>(limit)) {
+        const ConstantInt *ciLimit = dyn_cast<ConstantInt>(limit);
+        const ConstantInt *ciKillLimit = dyn_cast<ConstantInt>(killLimit);
+        return (ciLimit->getSExtValue() <= ciKillLimit->getSExtValue());
+      }
+
       if (!isa<Instruction>(killLimit) || !isa<Instruction>(limit))
         return false;
 
@@ -456,6 +465,14 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         return false;
 
       if (killLimit != numOfElem) {
+
+        if (isa<ConstantInt>(killLimit) && isa<ConstantInt>(numOfElem)) {
+          const ConstantInt *ciLimit = dyn_cast<ConstantInt>(numOfElem);
+          const ConstantInt *ciKillLimit = dyn_cast<ConstantInt>(killLimit);
+          if (ciLimit->getSExtValue() != ciKillLimit->getSExtValue())
+            return false;
+          continue;
+        }
 
         // if both of them are loads from a global check that there is no
         // store in between them (aka both loads return the same value)
@@ -721,10 +738,6 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
                       !killAllIdx(*killidx, killgepptr, gvSrc, se, L, innerLoop,
                                   idxID)) {
                     iKill = false;
-
-                    if (before)
-                      errs() << "last minute fail: " << *before << "\n";
-
                     break;
                   }
                   ++idxID;
