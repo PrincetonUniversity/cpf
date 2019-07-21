@@ -588,6 +588,13 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     BBPtrPair key(bb,ptr);
 
+    // for pointerKilledBefore queries we allow the use of the ptr of the other
+    // instruction instead of solely the ptr of the before inst
+    // (see Backward kills for loop-carried queries to modref)
+    if (!after)
+      key.second = before;
+
+
     if( bbKills.count(key) )
     {
       if( !bbKills[key] )
@@ -943,6 +950,16 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           res = NoModRef;
         }
 
+        // check whether the pointer of the earlier op (from previous iter) is
+        // killed before the load
+        else if (earlierPtr &&
+                 pointerKilledBefore(L, earlierPtr, load, queryStart,
+                                     AnalysisTimeout)) {
+          ++numKilledBackwardLoadFlows;
+          DEBUG(errs() << "Removed the mod bit at AAA\n");
+          // res = ModRefResult(res & ~Mod);
+          res = NoModRef;
+        }
       }
 
 
@@ -980,6 +997,16 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           // no dependence between this store and insts from previous iteration possible
           res = NoModRef;
         }
+
+        // check whether the pointer of the earlier op (from previous iter) is
+        // killed before the load
+        else if (earlierPtr &&
+                 pointerKilledBefore(L, earlierPtr, store, queryStart,
+                                     AnalysisTimeout)) {
+          ++numKilledBackwardStore;
+          res = NoModRef;
+        }
+
 
       }
 
