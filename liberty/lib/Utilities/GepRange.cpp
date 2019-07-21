@@ -54,6 +54,10 @@ const Value *liberty::getCanonicalRange(const SCEVAddRecExpr *addRec,
   if (!se->hasLoopInvariantBackedgeTakenCount(L))
     return nullptr;
   const SCEV *tripCount = se->getBackedgeTakenCount(L);
+
+  if (auto *sConst = dyn_cast<SCEVConstant>(tripCount))
+    return sConst->getValue();
+
   auto *sMax = dyn_cast<SCEVSMaxExpr>(tripCount);
   if (!sMax)
     return nullptr;
