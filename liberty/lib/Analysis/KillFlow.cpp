@@ -316,13 +316,72 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   bool KillFlow::killAllIdx(const Value *killidx, const Value *basePtr,
                             const GlobalValue *baseGVSrc, ScalarEvolution *se,
                             const Loop *L, const Loop *innerL,
-                            bool firstIndex) {
+                            unsigned idxID) {
 
     // Examine if killidx goes across the whole allocation unit; if
     // that's the case then no need to check the dominated idx, it will be
     // contained in one of the indexes of the kill.
+    const PointerType *basePtrTy = dyn_cast<PointerType>(basePtr->getType());
+    if (basePtrTy && basePtrTy->getElementType()->isArrayTy() && idxID == 1) {
+      ArrayType *auType = dyn_cast<ArrayType>(basePtrTy->getElementType());
+      uint64_t numOfElemInAU = auType->getNumElements();
+      // check that the killidx starts from 0 up to numOfElemInAU with step 1
 
-    if (!firstIndex || !baseGVSrc)
+      if (!se->isSCEVable(killidx->getType()))
+        return false;
+      auto *killAddRec =
+          dyn_cast<SCEVAddRecExpr>(se->getSCEV(const_cast<Value *>(killidx)));
+      if (!killAddRec)
+        return false;
+
+      const Value *killLimit = getCanonicalRange(killAddRec, innerL, se);
+      if (!killLimit)
+        return false;
+
+      if (const ConstantInt *ciKillLimit = dyn_cast<ConstantInt>(killLimit)) {
+        if (ciKillLimit->getZExtValue() == numOfElemInAU)
+          return true;
+        else if (ciKillLimit->getZExtValue() == numOfElemInAU - 1) {
+          // check if there is a write to the same base pointer at index
+          // numOfElemInAU - 1 in the loop exit BB
+          const BasicBlock *exitBB = innerL->getExitBlock();
+          if (!exitBB)
+            return false;
+          for (const Instruction &exitI : *exitBB) {
+            if (auto exitS = dyn_cast<StoreInst>(&exitI)) {
+              if (const GetElementPtrInst *exitGep =
+                      dyn_cast<GetElementPtrInst>(exitS->getPointerOperand())) {
+
+                const GlobalValue *gvSrc = nullptr;
+                auto exitGepBasePtr = exitGep->getPointerOperand();
+                auto exitGepBasePtrTy = exitGep->getPointerOperandType();
+                if (exitGep->hasAllConstantIndices() &&
+                    exitGep->getNumIndices() == 2 &&
+                    exitGepBasePtrTy == basePtrTy &&
+                    aliasBasePointer(exitGepBasePtr, basePtr, &gvSrc, se, L)) {
+                  // first idx should be equal to zero, second should equal to
+                  // numOfElemInAU - 1
+                  auto firstIdxC = dyn_cast<ConstantInt>(exitGep->idx_begin());
+                  auto secondIdxC =
+                      dyn_cast<ConstantInt>(exitGep->idx_begin() + 1);
+                  if (firstIdxC && firstIdxC->getZExtValue() == 0 &&
+                      secondIdxC &&
+                      secondIdxC->getZExtValue() == numOfElemInAU - 1) {
+                    loopKillAlongInsts[innerL->getHeader()].insert(&exitI);
+                    return true;
+                  }
+                }
+              }
+            }
+          }
+          return false;
+        } else
+          return false;
+      }
+      return false;
+    }
+
+    if (idxID || !baseGVSrc)
       return false;
 
     killidx = bypassExtInsts(killidx);
@@ -397,6 +456,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         return false;
 
       if (killLimit != numOfElem) {
+
         // if both of them are loads from a global check that there is no
         // store in between them (aka both loads return the same value)
 
@@ -525,7 +585,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     // Cache results are only valid if we are going to consider
     // the whole block, i.e. <pt> is not in this basic block.
 
+
     BBPtrPair key(bb,ptr);
+
     if( bbKills.count(key) )
     {
       if( !bbKills[key] )
@@ -591,81 +653,102 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
         if ((after && innerLoop->contains(after)) ||
             (before && innerLoop->contains(before)))
-          // do not update the bbKills cache is in this case
+          // do not update the bbKills cache in this case
           return false;
 
-        if (innerLoop->getSubLoops().empty()) {
+        const BasicBlock *innerLHeader = innerLoop->getHeader();
+        if (loopKillAlongInsts.count(innerLHeader)) {
+          auto killAlongInsts = &loopKillAlongInsts[innerLHeader];
+          if ((before && killAlongInsts->count(before)) ||
+              (after && killAlongInsts->count(after)))
+            return false;
+        }
 
-          ScalarEvolution *se = getSE(bb->getParent());
+        ScalarEvolution *se = getSE(bb->getParent());
 
-          for (auto loopBB : innerLoop->getBlocks()) {
-            // check that loopBB postdominates the entry BB of inner loop
-            // (postdominator is intraprocedural)
-            const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
-            if (!innerLoopEntryBB ||
-                (innerLoopEntryBB->getParent() != loopBB->getParent()))
-              return false;
-            auto pdt = getPDT(innerLoopEntryBB->getParent());
-            if (!pdt->dominates(loopBB, innerLoopEntryBB))
-              return false;
+        for (auto loopBB : innerLoop->getBlocks()) {
+          // check that loopBB postdominates the entry BB of inner loop
+          // (postdominator is intraprocedural)
+          const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
+          if (!innerLoopEntryBB ||
+              (innerLoopEntryBB->getParent() != loopBB->getParent()))
+            return false;
+          auto pdt = getPDT(innerLoopEntryBB->getParent());
+          if (!pdt->dominates(loopBB, innerLoopEntryBB))
+            return false;
 
-            for (BasicBlock::const_iterator k = loopBB->begin(),
-                                            e = loopBB->end();
-                 k != e; ++k) {
-              const Instruction *loopInst = &*k;
+          for (BasicBlock::const_iterator k = loopBB->begin(),
+                                          e = loopBB->end();
+               k != e; ++k) {
+            const Instruction *loopInst = &*k;
 
-              if (const StoreInst *store = dyn_cast<StoreInst>(loopInst)) {
-                const Value *storeptr = store->getPointerOperand();
+            if (const StoreInst *store = dyn_cast<StoreInst>(loopInst)) {
+              const Value *storeptr = store->getPointerOperand();
 
-                if (const GetElementPtrInst *killgep = dyn_cast<GetElementPtrInst>(storeptr)) {
+              if (const GetElementPtrInst *killgep =
+                      dyn_cast<GetElementPtrInst>(storeptr)) {
 
-                  const Value *killgepptr = killgep->getPointerOperand();
-                  unsigned killNumIndices = killgep->getNumIndices();
+                const Value *killgepptr = killgep->getPointerOperand();
+                unsigned killNumIndices = killgep->getNumIndices();
 
-                  const GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptr);
-                  if (!gep)
+                const GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptr);
+                if (!gep)
+                  return false;
+                const Value *gepptr = gep->getPointerOperand();
+                unsigned numIndices = gep->getNumIndices();
+
+                if (killNumIndices != numIndices)
+                  continue;
+
+                const GlobalValue *gvSrc = nullptr;
+                if (!aliasBasePointer(gepptr, killgepptr, &gvSrc, se, L))
+                  continue;
+
+                bool iKill = true;
+                auto killidx = killgep->idx_begin();
+                unsigned idxID = 0;
+                for (auto idx = gep->idx_begin(); idx != gep->idx_end();
+                     ++idx) {
+
+                  if (!matchingIdx(*idx, *killidx, se, L) &&
+                      !killAllIdx(*killidx, killgepptr, gvSrc, se, L, innerLoop,
+                                  idxID)) {
+                    iKill = false;
+
+                    if (before)
+                      errs() << "last minute fail: " << *before << "\n";
+
+                    break;
+                  }
+                  ++idxID;
+                  ++killidx;
+                }
+
+                if (loopKillAlongInsts.count(innerLHeader)) {
+                  auto killAlongInsts = &loopKillAlongInsts[innerLHeader];
+                  if ((before && killAlongInsts->count(before)) ||
+                      (after && killAlongInsts->count(after)))
                     return false;
-                  const Value *gepptr = gep->getPointerOperand();
-                  unsigned numIndices = gep->getNumIndices();
+                }
 
-                  if (killNumIndices != numIndices)
-                    continue;
+                if (iKill) {
+                  DEBUG(errs() << "\t(in inst " << *loopInst << ")\n");
+                  // bbKills[key] = true;
 
-                  const GlobalValue *gvSrc = nullptr;
-                  if (!aliasBasePointer(gepptr, killgepptr, &gvSrc, se, L))
-                    continue;
-
-                  bool iKill = true;
-                  auto killidx = killgep->idx_begin();
-                  bool firstIndex = true;
-                  for (auto idx = gep->idx_begin(); idx != gep->idx_end();
-                       ++idx) {
-
-                    if (!matchingIdx(*idx, *killidx, se, L) &&
-                        !killAllIdx(*killidx, killgepptr, gvSrc, se, L,
-                                    innerLoop, firstIndex)) {
-                      iKill = false;
-                      break;
-                    }
-                    firstIndex = false;
-                    ++killidx;
-                  }
-
-                  if (iKill) {
-                    DEBUG(errs() << "\t(in inst " << *loopInst << ")\n");
-                    bbKills[key] = true;
-
-                    DEBUG(errs() << "There can be no loop-carried flow mem "
-                                    "deps to because killed by "
-                                 << *store << '\n');
-                    return true;
-                  }
+                  DEBUG(errs() << "There can be no loop-carried flow mem "
+                                  "deps to because killed by "
+                               << *store << '\n');
+                  return true;
                 }
               }
             }
           }
         }
       }
+      // bbKills[key] = false in some cases breaks the correctness
+      // TODO: figure out how to memoize all the false bbKills without
+      // affecting correctness!
+      return false;
     }
 
     if( bb != beforebb && bb != afterbb )
@@ -759,14 +842,12 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     const Value *ptr2 = liberty::getMemOper(i2);
     // handle cases where the gep is bitcasted before the mem operation
     if (ptr1) {
-      auto bitcast1 = dyn_cast<BitCastInst>(ptr1);
-      if (bitcast1)
-        ptr1 = bitcast1->getOperand(0);
+      while (auto cast1 = dyn_cast<CastInst>(ptr1))
+        ptr1 = cast1->getOperand(0);
     }
     if (ptr2) {
-      auto bitcast2 = dyn_cast<BitCastInst>(ptr2);
-      if (bitcast2)
-        ptr2 = bitcast2->getOperand(0);
+      while (auto cast2 = dyn_cast<CastInst>(ptr2))
+        ptr2 = cast2->getOperand(0);
     }
 
     if( Rel == Same )
@@ -784,8 +865,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         else
         */
         {
-          if( const StoreInst *store = dyn_cast< StoreInst >(i1) )
-          {
+          if (isa<StoreInst>(i1)) {
             ++numEligibleForwardStoreQueries;
             //if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
             if( pointerKilledBetween(L,ptr1,i1,i2) )
@@ -796,8 +876,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             }
           }
 
-          if( const LoadInst *load = dyn_cast< LoadInst >(i2) )
-          {
+          if (isa<LoadInst>(i2)) {
             ++numEligibleBackwardLoadQueries;
             //if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
             if( pointerKilledBetween(L,ptr2,i1,i2) )
@@ -809,8 +888,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           }
 
           // handle WAR
-          if( const LoadInst *load = dyn_cast< LoadInst >(i1) )
-          {
+          if (isa<LoadInst>(i1)) {
             ++numEligibleForwardLoadQueries;
             //if( pointerKilledBetween(L,load->getPointerOperand(),i1,i2) )
             if( pointerKilledBetween(L,ptr1,i1,i2) )
@@ -821,8 +899,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           }
 
           // handle WAW
-          if( const StoreInst *store = dyn_cast< StoreInst >(i2) )
-          {
+          if (isa<StoreInst>(i2)) {
             ++numEligibleBackwardStoreQueries;
             //if( pointerKilledBetween(L,store->getPointerOperand(),i1,i2) )
             if( pointerKilledBetween(L,ptr2,i1,i2) )
@@ -865,6 +942,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           //res = ModRefResult(res & ~Mod);
           res = NoModRef;
         }
+
       }
 
 
@@ -902,6 +980,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           // no dependence between this store and insts from previous iteration possible
           res = NoModRef;
         }
+
       }
 
     }

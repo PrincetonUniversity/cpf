@@ -34,6 +34,9 @@ namespace liberty
 
     NoStoresBetween noStoresBetween;
 
+    DenseMap<const BasicBlock *, SmallPtrSet<const Instruction *, 1>>
+        loopKillAlongInsts;
+
     // Hold reference to this.
     ModuleLoops *mloops;
     const TargetLibraryInfo *tli;
@@ -192,7 +195,7 @@ namespace liberty
                           const Loop *L);
     bool killAllIdx(const Value *killidx, const Value *basePtr,
                     const GlobalValue *gvSrc, ScalarEvolution *se,
-                    const Loop *L, const Loop *innerL, bool firstIndex);
+                    const Loop *L, const Loop *innerL, unsigned idxID);
     bool matchingIdx(const Value *idx, const Value *killidx,
                      ScalarEvolution *se, const Loop *L);
     bool greaterThan(const SCEV *killTripCount, const SCEV *tripCount,
