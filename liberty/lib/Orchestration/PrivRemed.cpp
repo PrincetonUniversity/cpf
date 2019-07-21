@@ -523,7 +523,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
               return remedResp;
 
             auto limit = getCanonicalRange(addRec, innerLoop, se);
-            if (!isLoopInvariantValue(limit, L))
+            if (!limit || !isLoopInvariantValue(limit, L))
               return remedResp;
           } else if (isa<SCEVUnknown>(
                          se->getSCEV(const_cast<Value *>(idxV)))) {
