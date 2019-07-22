@@ -14,7 +14,7 @@
 %Parallelization is necessary
 
 Multicore architectures are ubiquitous in systems ranging from mobile to
-"warehouse scale`` systems. Thus, parallelism is more important than ever to
+``warehouse scale" systems. Thus, parallelism is more important than ever to
 harvest more performance from current hardware.  This burden of extracting
 sufficient parallelism has fallen on programmers and compilers. Yet, despite
 many new tools, languages, and libraries designed for multicore, multicore
@@ -42,11 +42,13 @@ Google revealed, in a candid disclosure, that their multicore utilization rarely
 exceeds 20\%~\cite{barroso:07:computer}. Other researchers have also
 subsequently corroborated this observation~\cite{chung:13:isca}.
 %
-Asking programmers to address this underutilization with finer-grained
-parallelism extraction would result in enormous increase in programmer effort.
-%
 To make matters worse, for programs with complex control and data flow, even CGP
 extraction is often extremely difficult.
+%
+Asking programmers to address this underutilization with finer-grained
+parallelism extraction would result in enormous increase in programmers' effort.
+%
+
 %can be very difficult, and most such programs remain without a CGP extracted
 %version.
 %
@@ -58,9 +60,9 @@ extraction is often extremely difficult.
 
 %autopar is very useful
 Automatic parallelization is an attractive approach to make efficient use of
-multicore systems, yielding improved performance even in already parallelized
+multicore systems, yielding performance improvement even for already parallelized
 applications (e.g, reduced maximum latency on each parallel task of a
-CFG-parallelized application). Unfortunately, even after 15 years of multicore,
+CGP-parallelized application). Unfortunately, even after 15 years of multicore,
 automatic parallelization is still mostly limited to scientific and
 data-intensive applications.
 %the routine extraction of TLP remains elusive.
@@ -68,7 +70,7 @@ data-intensive applications.
 %analyis limitations
 Major impediments to automatic parallelization are the limitations of static
 analysis. Static dependence analysis (including alias analysis and control flow
-analysis) are undecidable and difficult in practice, and so compilers rely upon
+analysis) are undecidable and difficult in practice, so compilers rely upon
 imprecise static analysis that limits parallelizing compilers applicability to
 regular code patterns (e.g., scientific applications) and small loops, or forces
 expensive inter-thread communication that severely hinders scalability.
@@ -79,7 +81,7 @@ expensive inter-thread communication that severely hinders scalability.
 %Static analysis alone is simply too imprecise to enable aggressive
 %parallelization.
 In addition to being conservative, static analysis describes program facts that
-are true independently of the input, leading to missed opportunities for
+are true independently of the input, resulting in missed opportunities for
 parallelizing compilers.
 %the dependence patterns of real applications are frequently driven by the
 %program input, or experience a phase change during program execution
@@ -102,7 +104,7 @@ parallelizing transformations~\cite{Uncovering_malhke, privateer}.
 Yet, speculative runtime systems face real challenges that prevent their
 widespread adoption~\cite{cascaval:08:stmtoy:short, ..}. Even if we assume that
 misspeculation never occurs, validating speculative assumptions during a
-speculative region may have a large impact on performance.
+speculative region may heavily degrade performance.
 %
 Most speculative systems perform this validation by instrumenting operations
 within the parallel region to log or communicate speculative events to a
@@ -138,7 +140,7 @@ state-of-the-art Spec-DOALL parallelization system, that exhibits more scalable
 speedups compared to prior work.
 %
 Privateer partitions memory objects into several categories/families according
-to observed, via profiling, access patterns.  Speculating that certain
+to observed access patterns via profiling.  Speculating that certain
 individual memory access pairs are independent is avoided by just speculating
 separation of the families and some other simple properties.  However, detection
 of privatizable memory objects relies solely on memory and control profiling.
@@ -187,7 +189,7 @@ parallelization. We focus on DOALL parallelization, as a first step, since it is
 a simple, yet very effective~\cite{Uncovering Mahlke paper}, and well-studied,
 especially in terms of speculation, parallelization technique.
 %
-LSD consists of CAF~\cite{..}, a state-of-the-art static analysis that maximizes
+LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that maximizes
 statically disproven loop-carried dependences, a set of profilers that generate
 speculative assumptions, a parallelizing LLVM-based compiler that selects
 minimal-cost solutions to parallelization inhibitors from a wide range of
