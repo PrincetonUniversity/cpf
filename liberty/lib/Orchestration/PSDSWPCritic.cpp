@@ -1,4 +1,5 @@
 #define DEBUG_TYPE "ps-dswp-critic"
+#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
 
@@ -1506,6 +1507,26 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
   parallelStageWeight = getParalleStageWeight(*ps);
 
   adjustPipeline(*ps, pdg);
+
+  // Jul 22, ZY: avoid DSWP
+  // Check if there is a sequential stage
+#ifdef AVOID_DSWP
+  bool is_DSWP = 0;
+  for (PipelineStrategy::Stages::const_iterator i = ps->stages.begin(), e = ps->stages.end(); i != e;
+       ++i) {
+    const PipelineStage &pstage = *i;
+    if (pstage.type == PipelineStage::Sequential){
+      is_DSWP = 1;
+      break;
+    }
+  }
+
+  if (is_DSWP){
+    res.expSpeedup = 0;
+    res.ps = nullptr;
+    return res;
+  }
+#endif
 
   Criticisms tmpCriticisms;
   populateCriticisms(*ps, tmpCriticisms, pdg);
