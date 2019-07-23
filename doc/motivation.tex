@@ -1,59 +1,150 @@
 \section{Motivation}
 \label{sec:motivation}
 
-\input{private_types}
+This work is motivated by the excessive use of memory speculation of
+prior speculative systems that limited their efficiency.
+%
+In this section, we present a code example taken from MiBench~\cite{} benchmark
+dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
+analysis along with cheap-to-validate speculative assumptions can infer
+high-level program properties without the need for expensive memory speculation,
+and enable scalable parallelization.
 
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
 \begin{figure*}[t]
   \centering
   \scriptsize
-  \subfloat[gemm -- shared]
-  {
-    \label{fig:gemm}
-    \begin{minipage}{7.5cm}
-      \input{figures/gemm_code}
-    \end{minipage}
-  }
-  \hspace{0.5cm}
-  \subfloat[blackscholes -- overwrite]
-  {
-    \label{fig:blackscholes}
-    \begin{minipage}{7.5cm}
-      \input{figures/blackscholes_code}
-    \end{minipage}
-  }
-\end{figure*}
-\begin{figure*}[t]
-  \centering
-  \scriptsize
-  \subfloat[052.alvinn -- stack local]
-  {
-    \label{fig:alvinn_local}
-    \begin{minipage}{7.5cm}
-      \input{figures/alvinn_local_code}
-    \end{minipage}
-  }
-  \hspace{0.5cm}
-  \subfloat[dijkstra -- global local]
+  \subfloat[dijkstra]
   {
     \label{fig:dijkstra}
     \begin{minipage}{7.5cm}
-      \input{figures/dijkstra_glocal_code}
+      \input{figures/dijkstra_all}
     \end{minipage}
   }
 \end{figure*}
-\begin{figure*}[t]
-  \centering
-  \scriptsize
-  \subfloat[dijkstra -- predictable]
-  {
-    \label{fig:dijkstra}
-    \begin{minipage}{7.5cm}
-      \input{figures/dijkstra_predict_code}
-    \end{minipage}
-  }
-\end{figure*}
+
+1) global variable g\_qCount
+
+- speculative assumption:  g\_qCount is always zero at the beginning of the
+iteration (value prediction)
+
+- static analysis: alias analysis
+
+- validation cost: perform load before loop exits or on backedges and compared
+  predicted value with loaded value
+
+-This value prediction can be seen as a store in the beginning of every
+iteration that kills any data flow for this memory object from previous
+iterations.  Any memory operation with a pointer must-aliasing with this
+predicted global value address cannot source or sink RAW loop-carried memory
+dependencies.  WAW loop-carried can also be ignored as the final content of this
+memory location is predictable.  No need to perform any action to validate or
+log (for last write) any of these individual memory operations.
+
+2) global variable iPrev
+
+- speculative assumption: the branch "if (qHead)" is always taken (control speculation)
+
+- static analysis: alias analysis, killflow, noCaptureGlobal analysis passes
+
+- validation cost: no validation cost for control spec (just misspecs if branch
+  is not taken)
+
+- Using the speculative assumption, killflow analysis can infer that the store
+  in line 15 kills all other accesses of this global
+variable (killed operations are identified by quering alias analysis). Given this
+property, any RAW loop-carried dependence is disproved.  Additionally, static
+analysis can enumerate all uses of this global, since it is not captured, and
+detect that this global is used only within this loop, namely it is not a
+live-out.  Thus, there is no need to log stores and keep track of the last
+written value to it.
+
+3) TODO: example with blackscholes
+
+For all the above memory objects, Privateer~\cite{} would require expensive
+logging on most of their accesses,
+%either for validation checks or for identifying who wrote last what
+yielding sub-optimal speedups as clearly
+exhibited by our experimental results in section ~\ref{eval}.
+%all these objects are classified as privatizable by Privateer
+
+%showcases how fine-grained collaboration between static analysis and speculative
+%assumptions can infer high-level program properties without the need for
+%expensive memory speculation.
+
+%use alvinn for value pred + alias analysis
+
+%Note that WAR dependences can be ignored thanks to the process-based runtime
+%system.
+
+
+\input{private_types}
+
+%\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+%  stepnumber=1, numbersep=5pt}
+%\begin{figure*}[t]
+%  \centering
+%  \scriptsize
+%  \subfloat[dijkstra -- predictable]
+%  {
+%    \label{fig:dijkstra}
+%    \begin{minipage}{7.5cm}
+%      \input{figures/dijkstra_predict_code}
+%    \end{minipage}
+%  }
+%  \hspace{0.5cm}
+%  \subfloat[dijkstra -- overwrite]
+%  {
+%    \label{fig:blackscholes}
+%    \begin{minipage}{7.5cm}
+%      \input{figures/dijkstra_overwrite_code}
+%    \end{minipage}
+%  }
+%\end{figure*}
+%
+%
+%
+%
+%\begin{figure*}[t]
+%  \centering
+%  \scriptsize
+%  \subfloat[gemm -- shared]
+%  {
+%    \label{fig:gemm}
+%    \begin{minipage}{7.5cm}
+%      \input{figures/gemm_code}
+%    \end{minipage}
+%  }
+%  \hspace{0.5cm}
+%  \subfloat[blackscholes -- overwrite]
+%  {
+%    \label{fig:blackscholes}
+%    \begin{minipage}{7.5cm}
+%      \input{figures/blackscholes_code}
+%    \end{minipage}
+%  }
+%\end{figure*}
+%\begin{figure*}[t]
+%  \centering
+%  \scriptsize
+%  \subfloat[052.alvinn -- stack local]
+%  {
+%    \label{fig:alvinn_local}
+%    \begin{minipage}{7.5cm}
+%      \input{figures/alvinn_local_code}
+%    \end{minipage}
+%  }
+%  \hspace{0.5cm}
+%  \subfloat[dijkstra -- global local]
+%  {
+%    \label{fig:dijkstra}
+%    \begin{minipage}{7.5cm}
+%      \input{figures/dijkstra_glocal_code}
+%    \end{minipage}
+%  }
+%\end{figure*}
+
 % \begin{figure*}[t]
 %   \centering
 %   \scriptsize
