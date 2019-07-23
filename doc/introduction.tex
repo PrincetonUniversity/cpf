@@ -206,7 +206,7 @@ This paper presents LSD, an instantiation of this proposed framework for DOALL
 parallelization. We focus on DOALL parallelization, as a first step, since it is
 a simple, yet very effective~\cite{Uncovering Mahlke paper}, and well-studied
 parallelization technique.
-%
+% SIMONE = I would use a different argument for why we chose DOALL. I would say that DOALL is the ideal parallelization, because it is simple to orchestrate, brings high TLP with low overhead. Finally, it is the most studied parallelization technique in literature by both pure static analysis-based approaches and speculation-based approaches.
 LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that
 maximizes statically disproven loop-carried dependences, a set of profilers that
 generate speculative assumptions, a parallelizing LLVM-based compiler that
