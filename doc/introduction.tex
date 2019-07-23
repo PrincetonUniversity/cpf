@@ -111,7 +111,8 @@ within the parallel region to log or communicate speculative events to a
 validation system.  These validation checks add to parallel region latency in
 the common case, not only during recovery.
 
-Many proposals speculate low-level properties of the code.
+Many proposals speculate low-level properties of the code, namely dependences
+between individual operations.
 %
 Such speculative systems work well when assisted by hardware
 extensions~\cite{TLS papers...}, but yield small speedups, if any, when running
@@ -152,7 +153,7 @@ expensive logging and checks at every memory access, similarly to STM systems.
 %
 
 The common observed pattern that limits the gains of speculative systems is
-excessive usage of expensive-to-validate speculation and insufficient, if any,
+needless usage of expensive-to-validate speculation and insufficient, if any,
 leverage of statically provable properties of the code.
 
 To attain the coverage of speculative techniques while minimizing usage of
@@ -162,40 +163,53 @@ we propose a unified parallelization framework that combines both static and
 speculative techniques.
 %
 This combination is not as simple as using a static and a speculative compiler
-in a sequence~\cite{clusterDOALL,...}; this simple combination would be
-undesirable as the limitations of each compiler are still present.
+in a sequence~\cite{clusterDOALL,...}; this simple setup would be undesirable as
+the limitations of each compiler are still present.
 %
-We suggest that the selected parallelization plan contains, if necessary, both
-speculative and conservative parallelization enabling transformations.
+We suggest that the selected parallelization plan for each target loop contains,
+if necessary, both speculative and conservative parallelization enabling
+transformations; the most efficient option for each parallelization obstacle is
+chosen.
 %
-In terms of ordering, an intuitive approach would be to consider all the
-conservative tranformations before the speculative ones. We disprove this
-intuition for certain cases. We propose instead that all techniques are
-considered together and that the more efficient option for each parallelization
-obstacle is chosen.
+% Sadly, this could be true in principle given our remediators but there is no
+% such example in our current benchmarks.
+%In terms of ordering, an intuitive approach would be to consider all the
+%conservative tranformations before the speculative ones. We disprove this
+%intuition for certain cases. We propose instead that all techniques are
+%considered together and that the more efficient option for each parallelization
+%obstacle is chosen.
 %
-Our proposed framework also includes enhanced program analysis.  In prior work,
-static analysis and speculative assumptions are considered separetely, each
+
+Our unified proposed framework also involves enhanced program analysis though
+the coexistence of static analysis and speculation. In prior work, static
+analysis and speculative assumptions are often considered separetely, each
 disproving different memory dependences. Instead, we propose that static analyis
-works synergistically with speculative assumptions to infer program properties
-that would not be discovered in isolation.
+works synergistically with, cheap-to-validate, speculative assumptions to infer
+program properties that would not be discovered in isolation. This significantly
+minimizes the usage of memory speculation of prior work.
 %similarly to how collaboration of static analysis passes works instead of
 %additive, multiplicative effect work synergistically together ctrl
-%spec+killflow, value_pred+alias analysis
+%spec+killflow, value_pred+alias analysis Privatization is a huge issue, prior
+%work either did static detection, or detection via memory profiling or asusmed
+%certain memory layout.
 
+
+
+%Similarly to Privateer, we believe that reasoning about high-level properties
+%of memory patterns is cheaper than reasoning about individual mem ops.
 
 This paper presents LSD, an instantiation of this proposed framework for DOALL
 parallelization. We focus on DOALL parallelization, as a first step, since it is
-a simple, yet very effective~\cite{Uncovering Mahlke paper}, and well-studied,
-especially in terms of speculation, parallelization technique.
+a simple, yet very effective~\cite{Uncovering Mahlke paper}, and well-studied
+parallelization technique.
 %
-LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that maximizes
-statically disproven loop-carried dependences, a set of profilers that generate
-speculative assumptions, a parallelizing LLVM-based compiler that selects
-minimal-cost solutions to parallelization inhibitors from a wide range of
-enabling transformations, and a lightweight, unified (for both speculative and
-non-speculative) runtime system for efficient parallel execution and low-cost
-speculation validation.
+LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that
+maximizes statically disproven loop-carried dependences, a set of profilers that
+generate speculative assumptions, a parallelizing LLVM-based compiler that
+selects minimal-cost solutions to parallelization inhibitors from a wide range
+of enabling transformations, and a lightweight, unified (for both speculative
+and non-speculative) runtime system for efficient parallel execution and
+low-cost speculation validation.
 %
 
 LSD achieves scalable automatic parallelization on commodity shared-memory
@@ -206,6 +220,6 @@ execution and Yx compared to Privateer.
 %better or as good as prior work
 These speedups are thanks to effective usage of static properties of the code in
 conjunction with cheap speculative assumptions, careful selection of applied
-transformations and a lightweight process-based runtime.  No prior work is able
-to parallelize all these benchmarks without any usage of memory speculation,
-thus no prior work could achieve comparable results.
+transformations and a lightweight process-based runtime system.  No prior work
+is able to parallelize all these benchmarks with such sparse usage of memory
+speculation, thus no prior work could achieve comparable results.
