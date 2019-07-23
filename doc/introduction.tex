@@ -85,10 +85,13 @@ are true independently of the input, resulting in missed opportunities for
 parallelizing compilers.
 %the dependence patterns of real applications are frequently driven by the
 %program input, or experience a phase change during program execution
-Current static parallelizing compilers~\cite{HELIX, PS-DSWP, SUIF, non-SPEC
-doall ...} when applicable can deliver good predictable speedups, but they all
-suffer from the aforementioned limitations, and consequently fail to enable
-aggressive and scalable parallelization for most general-purpose applications.
+Current static parallelizing compilers~\cite{campanoni:2012:iscgo,
+raman:2008:iscgo, suif:94:stanford}
+% TODO: cite non spec DOALL
+when applicable can deliver good
+predictable speedups, but they all suffer from the aforementioned
+limitations, and consequently fail to enable aggressive and scalable
+parallelization for most general-purpose applications.
 
 %speculation necessary
 Speculation allows the compiler to overcome static analysis' constraints,
@@ -96,15 +99,17 @@ optimize for an expected
 %/common
 case, and ignore rare or impossible dependences.  Research into speculation has
 shown incredible potential for the applicability and aggressiveness of
-parallelizing transformations~\cite{Uncovering_malhke, privateer}.
+parallelizing transformations~\cite{zhong:08:hpca, johnson:12:pldi:short}.
 %Speculative parallelization exploits simplifying assumptions about the input
 %code to deliver increased parallel performance.
 %
 %speculation problems
 Yet, speculative runtime systems face real challenges that prevent their
-widespread adoption~\cite{cascaval:08:stmtoy:short, ..}. Even if we assume that
-misspeculation never occurs, validating speculative assumptions during a
-speculative region may heavily degrade performance.
+widespread adoption~\cite{cascaval:08:stmtoy:short}.
+% TODO: Add more citations here
+Even if we assume
+that misspeculation never occurs, validating speculative assumptions during
+a speculative region may heavily degrade performance.
 %
 Most speculative systems perform this validation by instrumenting operations
 within the parallel region to log or communicate speculative events to a
@@ -115,14 +120,15 @@ Many proposals speculate low-level properties of the code, namely dependences
 between individual operations.
 %
 Such speculative systems work well when assisted by hardware
-extensions~\cite{TLS papers...}, but yield small speedups, if any, when running
-on commodity hardware.
+extensions~\cite{TLS papers...}, but yield small speedups, if any, when
+running on commodity hardware.
 %TODO: other software-spec apart from STM, more recent ones ??
-For example, Software Transactional Memories (STMs)~\cite{stmlite, ..} present
-an abstraction that facilitates speculating the independence of memory
-transactions (i.e., memory speculation). Validation requires logging or
-communication for most of the memory accesses within each transaction and
-becomes prohibitively expensive as the size of transaction grows.
+For example, Software Transactional Memories
+(STMs)~\cite{mehrara:09:stmlite} present an abstraction that facilitates
+speculating the independence of memory transactions (i.e., memory
+speculation). Validation requires logging or communication for most of the
+memory accesses within each transaction and becomes prohibitively expensive
+as the size of transaction grows.
 %
 %This reduces to comparing the read and write sets of adjacent transactions.  As
 %transactions grow, the number of memory operations within that transaction can
@@ -137,8 +143,8 @@ generic transactional systems by speculating higher-level properties whose
 validation does not require logging or communication.
 %
 A prominent work of this class is Privateer~\cite{johnson:12:pldi:short}, a
-state-of-the-art Spec-DOALL parallelization system, that exhibits more scalable
-speedups compared to prior work.
+state-of-the-art Spec-DOALL parallelization system, that exhibits more
+scalable speedups compared to prior work.
 %
 Privateer partitions memory objects into several categories/families according
 to observed access patterns via profiling.  Speculating that certain
@@ -161,9 +167,9 @@ expensive speculation,
 %expensive memory speculation.
 we propose a unified parallelization framework that combines both static and
 speculative techniques.
-%
+% TODO: add more citations here
 This combination is not as simple as using a static and a speculative compiler
-in a sequence~\cite{clusterDOALL,...}; this simple setup would be undesirable as
+in a sequence~\cite{kim:12:cgo}; this simple setup would be undesirable as
 the limitations of each compiler are still present.
 %
 We suggest that the selected parallelization plan for each target loop contains,
@@ -200,10 +206,10 @@ minimizes the usage of memory speculation of prior work.
 
 This paper presents LSD, an instantiation of this proposed framework for DOALL
 parallelization. We focus on DOALL parallelization, as a first step, since it is
-a simple, yet very effective~\cite{Uncovering Mahlke paper}, and well-studied
+a simple, yet very effective~\cite{zhong:08:hpca}, and well-studied
 parallelization technique.
-%
-LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that
+% TODO: need to fix the bib
+LSD consists of a state-of-the-art static analysis (CAF~\cite{CAF, }) that
 maximizes statically disproven loop-carried dependences, a set of profilers that
 generate speculative assumptions, a parallelizing LLVM-based compiler that
 selects minimal-cost solutions to parallelization inhibitors from a wide range
