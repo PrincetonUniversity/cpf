@@ -213,7 +213,8 @@ parallelization. We focus on DOALL parallelization, as a first step, since it is
 a simple, yet very effective~\cite{zhong:08:hpca}, and well-studied
 parallelization technique.
 % TODO: need to fix the bib
-LSD consists of a state-of-the-art static analysis (CAF~\cite{CAF, }) that
+% SIMONE = I would use a different argument for why we chose DOALL. I would say that DOALL is the ideal parallelization, because it is simple to orchestrate, brings high TLP with low overhead. Finally, it is the most studied parallelization technique in literature by both pure static analysis-based approaches and speculation-based approaches.
+LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that
 maximizes statically disproven loop-carried dependences, a set of profilers that
 generate speculative assumptions, a parallelizing LLVM-based compiler that
 selects minimal-cost solutions to parallelization inhibitors from a wide range
