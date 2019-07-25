@@ -16,7 +16,6 @@
 %multicore grossly underutilized.
 
 %Parallelization is necessary
-
 Multicore architectures are ubiquitous in systems ranging from mobile to
 ``warehouse scale" systems. Thus, parallelism is more important than ever to
 harvest more performance from current hardware.  This burden of extracting
@@ -52,7 +51,6 @@ extraction is often extremely difficult.
 Asking programmers to address this underutilization with finer-grained
 parallelism extraction would result in enormous increase in programmers' effort.
 %
-
 %can be very difficult, and most such programs remain without a CGP extracted
 %version.
 %
@@ -73,14 +71,12 @@ data-intensive applications.
 
 %analyis limitations
 Major impediments to automatic parallelization are the limitations of static
-analysis. Static dependence analysis (including alias analysis and control flow
-analysis) are undecidable and difficult in practice, so compilers rely upon
-imprecise static analysis that limits parallelizing compilers applicability to
-regular code patterns (e.g., scientific applications) and small loops, or forces
-expensive inter-thread communication that severely hinders scalability.
-%TODO: ADD citations to non-spec parallelizing compilers.  is there a reference
-%that shows that HELIX byitself does not scale to more cores?  cite PS-DSWP and
-%doall non-spec parallelization (e.g., SUIF)
+analysis, especially for general-purpose C/C++ programs. Static dependence
+analysis (including alias analysis and control flow analysis) are undecidable
+and difficult in practice, so compilers rely upon imprecise static analysis that
+limits parallelizing compilers applicability to regular code patterns (e.g.,
+scientific applications) and small loops, or forces expensive inter-thread
+communication that severely hinders scalability.
 %
 %Static analysis alone is simply too imprecise to enable aggressive
 %parallelization.
@@ -90,12 +86,10 @@ parallelizing compilers.
 %the dependence patterns of real applications are frequently driven by the
 %program input, or experience a phase change during program execution
 Current static parallelizing compilers~\cite{campanoni:2012:iscgo,
-raman:2008:iscgo, suif:94:stanford}
-% TODO: cite non spec DOALL
-when applicable can deliver good
-predictable speedups, but they all suffer from the aforementioned
-limitations, and consequently fail to enable aggressive and scalable
-parallelization for most general-purpose applications.
+raman:2008:iscgo, suif:94:stanford} when applicable can deliver good predictable
+speedups, but they all suffer from the aforementioned limitations, and
+consequently fail to enable aggressive and scalable parallelization for most
+general-purpose applications.
 
 %speculation necessary
 Speculation allows the compiler to overcome static analysis' constraints,
@@ -107,130 +101,140 @@ parallelizing transformations~\cite{zhong:08:hpca, johnson:12:pldi:short}.
 %Speculative parallelization exploits simplifying assumptions about the input
 %code to deliver increased parallel performance.
 %
+
 %speculation problems
-Yet, speculative runtime systems face real challenges that prevent their
-widespread adoption~\cite{cascaval:08:stmtoy:short}.
+Yet, speculative systems face real challenges that prevent their widespread
+adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 % TODO: Add more citations here
-Even if we assume
-that misspeculation never occurs, validating speculative assumptions during
-a speculative region may heavily degrade performance.
+Even if we assume that misspeculation never occurs, validating speculative
+assumptions adds to the parallel region's latency in the common case, not only
+during recovery, and may heavily degrade performance.
 %
-Most speculative systems perform this validation by instrumenting operations
-within the parallel region to log or communicate speculative events to a
-validation system.  These validation checks add to parallel region latency in
-the common case, not only during recovery.
+In particular, validation of memory flow speculation requires instrumenting
+memory operations within the parallel region to log or communicate speculative
+accesses to a validation system. As the size of the speculative region
+increases, the validation cost becomes prohibitively expensive and outweighs any
+parallelization benefit.
+%read/write sets grow
+%
+Many speculative parallelizing compilers avoid checks on data flows that can be
+disproven by static analysis~\cite{stmlite, LRPD,..}, and some suggest
+cheaper-to-validate speculative assumptions to remove a few additional
+checks~\cite{privateer, ..}.
+%speculating higher-level properties whose validation does not require logging
+%or communication.
+%
+Still, current speculative systems do not sufficiently leverage static and
+easy-to-validate assumptions; hence they fail to avoid excessive use of memory
+flow speculation for most general-purpose C/C++ programs.
+%
+Note that even with minimal checks for data flows, current systems often also
+need to monitor large write sets to determine the last written values and
+produce a correct live-out memory state at the end of the parallel region.
+%merge correctly speculative states privatization
 
-Many proposals speculate low-level properties of the code, namely dependences
-between individual operations.
 %
-Such speculative systems work well when assisted by hardware
-extensions~\cite{TLS papers...}, but yield small speedups, if any, when
-running on commodity hardware.
-%TODO: other software-spec apart from STM, more recent ones ??
-For example, Software Transactional Memories
-(STMs)~\cite{mehrara:09:stmlite} present an abstraction that facilitates
-speculating the independence of memory transactions (i.e., memory
-speculation). Validation requires logging or communication for most of the
-memory accesses within each transaction and becomes prohibitively expensive
-as the size of transaction grows.
-%
-%This reduces to comparing the read and write sets of adjacent transactions.  As
-%transactions grow, the number of memory operations within that transaction can
-%become prohibitively large. Further, instrumenting every memory operation with
-%the transaction to log or communicate every access---approximately one tenth of
-%all dynamic instructions---leads to an excessive overhead, even in the absence
-%of transaction rollbacks.
-
-%privateer
-Other speculative systems attempt to avoid the excessive memory speculation of
-generic transactional systems by speculating higher-level properties whose
-validation does not require logging or communication.
-%
-A prominent work of this class is Privateer~\cite{johnson:12:pldi:short}, a
-state-of-the-art Spec-DOALL parallelization system, that exhibits more
-scalable speedups compared to prior work.
-%
-Privateer partitions memory objects into several categories/families according
-to observed access patterns via profiling.  Speculating that certain
-individual memory access pairs are independent is avoided by just speculating
-separation of the families and some other simple properties.  However, detection
-of privatizable memory objects relies solely on memory and control profiling.
-Therefore, validation for a substantial set of memory objects still requires
-expensive logging and checks at every memory access, similarly to STM systems.
-% and occassional communication among workers
-%cheap spec for short-lived or read-only has also been discussed in other spec
-%systems such as cluster-doall and corD
+%the problem is bookeeping and communication for validation and handling
+%speculative state and privatization.
+%need speculation for RAW and privatization for output/anti (false) deps.
+%not easy to privatize objects with pointers and hard to statically determinate
+%layout (~\cite{Privateer}).
+%Privateer is the only fully automatic system capable of privatizing data
+%structures in languages with pointers,type  casts,  and  dynamic  allocation
 %
 
-The common observed pattern that limits the gains of speculative systems is
-needless usage of expensive-to-validate speculation and insufficient, if any,
-leverage of statically provable properties of the code.
-
-To attain the coverage of speculative techniques while minimizing usage of
-expensive speculation,
-%expensive memory speculation.
-we propose a unified parallelization framework that combines both static and
-speculative techniques.
-% TODO: add more citations here
-This combination is not as simple as using a static and a speculative compiler
-in a sequence~\cite{kim:12:cgo}; this simple setup would be undesirable as
-the limitations of each compiler are still present.
+To attain the parallelization coverage of speculative techniques, while
+minimizing the usage of memory flow speculation and the cost of privatization,
+%we propose reasoning using a collaboration of static analysis with
+%cheap-to-validate speculative assumptions.
+we propose that static analysis works synergistically with cheap-to-validate
+speculative assumptions to infer program properties that would not be
+discoverable in isolation.
 %
-We suggest that the selected parallelization plan for each target loop contains,
-if necessary, both speculative and conservative parallelization enabling
-transformations; the most efficient option for each parallelization obstacle is
-chosen.
+Of these properties, prior work would have required memory speculation to reason
+about data flow related ones, and would have failed to reason about certain
+output dependence related ones. The latter are essential for efficient
+privatization, a key enabler of
+parallelization~\cite{7,21,22,29,32_from_privateer}.
 %
-% Sadly, this could be true in principle given our remediators but there is no
-% such example in our current benchmarks.
-%In terms of ordering, an intuitive approach would be to consider all the
-%conservative tranformations before the speculative ones. We disprove this
-%intuition for certain cases. We propose instead that all techniques are
-%considered together and that the more efficient option for each parallelization
-%obstacle is chosen.
+The distinguishing factor is that prior work uses static analysis and
+speculative assumptions separately, each inferring different program properties
+in isolation, while we combine the strengths of static and speculative analysis
+and allow resolution of multi-logic queries.
 %
-
-Our unified proposed framework also involves enhanced program analysis though
-the coexistence of static analysis and speculation. In prior work, static
-analysis and speculative assumptions are often considered separetely, each
-disproving different memory dependences. Instead, we propose that static analyis
-works synergistically with, cheap-to-validate, speculative assumptions to infer
-program properties that would not be discovered in isolation. This significantly
-minimizes the usage of memory speculation of prior work.
-%similarly to how collaboration of static analysis passes works instead of
-%additive, multiplicative effect work synergistically together ctrl
-%spec+killflow, value_pred+alias analysis Privatization is a huge issue, prior
-%work either did static detection, or detection via memory profiling or asusmed
-%certain memory layout.
+Individual static or speculative analysis algorithms yield a multiplicative
+improvement to the overall precision of the ensemble, rather than the additive
+improvements of the sum-of-parts approach of prior work.
+%each reason for a different thing/logic.  infer properties that would require
+%expensive runtime monitoring and checks.
+%
+This idea is inspired by the benefits of collaboration among static analysis
+algorithms in CAF~\cite{johnson:17:cgo}.
 
 
+% text from CAF
+%Using  an  understanding  of  eachalgorithm’spartiality
+%anddecomposition, these algorithmsisolateforeign premises—facts
+%about the program which the analysis algorithm needs inorder to make further
+%derivations,  yet which cannot be derived by this algorithm alone.A
+%collaborative analysis formulates foreign premises in the native query language.
+%Theensemble delegates thoseforeign premise queriesto other analysis algorithms
+%to combinethe strengths of its members.
 
+%we propose a unified parallelization framework that combines both static and
+%speculative techniques.
+%
+%This combination is not as simple as using a static and a speculative compiler
+%in a sequence~\cite{kim:12:cgo}; this simple setup would be undesirable as
+%the limitations of each compiler are still present.
+%
+%We suggest that the selected parallelization plan for each target loop contains,
+%if necessary, both speculative and conservative parallelization enabling
+%transformations; the most efficient option for each parallelization obstacle is
+%chosen.
+%
 %Similarly to Privateer, we believe that reasoning about high-level properties
 %of memory patterns is cheaper than reasoning about individual mem ops.
 
-This paper presents LSD, an instantiation of this proposed framework for DOALL
-parallelization. We focus on DOALL parallelization, as a first step, since it is
-a simple, yet very effective~\cite{zhong:08:hpca}, and well-studied
-parallelization technique.
-% TODO: need to fix the bib
-% SIMONE = I would use a different argument for why we chose DOALL. I would say that DOALL is the ideal parallelization, because it is simple to orchestrate, brings high TLP with low overhead. Finally, it is the most studied parallelization technique in literature by both pure static analysis-based approaches and speculation-based approaches.
-LSD consists of a state-of-the-art static analysis (CAF~\cite{..}) that
-maximizes statically disproven loop-carried dependences, a set of profilers that
-generate speculative assumptions, a parallelizing LLVM-based compiler that
-selects minimal-cost solutions to parallelization inhibitors from a wide range
-of enabling transformations, and a lightweight, unified (for both speculative
-and non-speculative) runtime system for efficient parallel execution and
-low-cost speculation validation.
+This paper presents LSD, a DOALL parallelization framework, that leverages
+enhached program analysis through the collaboration of static and speculative
+analysis to enable more effective and scalable parallelization compared to prior
+work.
 %
+%a planning phase for  transformation selection
+%Our proposed framework also involves a planner that carefully selects from a
+%large set of conservative and speculative enabling transformations the most
+%efficient option for each parallelization obstacle.
+%
+LSD includes state-of-the-art static analysis (CAF~\cite{johnson:cgo:17}),
+%that maximizes statically disproven loop-carried dependences
+speculative analysis passes that interpret speculative assumptions produced by a
+set of profilers, a parallelizing
+%LLVM-based
+compiler that selects minimal-cost solutions to parallelization inhibitors from
+a wide range of enabling transformations, and a lightweight, unified (for both
+speculative and non-speculative) runtime system for efficient parallel execution
+and low-cost speculation validation.
+%
+
+We focus on DOALL, because it is the ideal parallelization technique when
+applicable. It is simple to orchestrate, delivers high thread-level parallelism
+with low communication overheads, and it is the most studied parallelization
+technique in literature by both pure static analysis-based
+approaches~\cite{..,.,..} and speculation-based approaches~\cite{..,..,..,..}.
+Further, its potential coverage is extensive when paired with
+speculation~\cite{zhong:08:hpca}, but still results of prior work on real
+hardware are underwhelming.
 
 LSD achieves scalable automatic parallelization on commodity shared-memory
 machines without any programmer hints.  We evaluate LSD on a set of 12 C/C++
 programs that appear on prior DOALL parallelization systems' papers. On a
-28-core machine, LSD yield a geomean whole-program speedup of Xx over sequential
-execution and Yx compared to Privateer.
+28-core machine, LSD yields a geomean whole-program speedup of Xx over
+sequential execution and Yx compared to a state-of-the-art spec-DOALL system.
 %better or as good as prior work
 These speedups are thanks to effective usage of static properties of the code in
 conjunction with cheap speculative assumptions, careful selection of applied
 transformations and a lightweight process-based runtime system.  No prior work
 is able to parallelize all these benchmarks with such sparse usage of memory
-speculation, thus no prior work could achieve comparable results.
+speculation and so efficient and effective privatization; thus no prior work
+could achieve comparable results.
