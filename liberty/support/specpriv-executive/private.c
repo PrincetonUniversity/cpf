@@ -988,7 +988,7 @@ Bool __specpriv_distill_worker_killprivate_into_partial(
         );
     // no shadow memory to deal with and we only need the latest iteration's values so
     // memcpy works
-    memcpy( &partial->heap_killpriv, partial_killpriv->base, len );
+    /* memcpy( (uint8_t *) partial_killpriv->base, (uint8_t *) KILLPRIV_ADDR, len ); */
   }
 
   return 0; // never misspecs

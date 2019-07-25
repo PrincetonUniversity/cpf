@@ -29,6 +29,7 @@ compile_manually: $(manual_bcs)
 #
 # Include Makefile.common so we know what to do.
 #
+# Comment this line out below to use compile_manually target lmao
 include $(LEVEL)/Makefile.common
 
 # specprivexecutive.bc

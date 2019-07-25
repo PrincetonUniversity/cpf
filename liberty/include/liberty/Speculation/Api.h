@@ -1045,6 +1045,7 @@ struct Api
     //return (15ULL << 43);
 
     return (15ULL << 43);
+    /* return (7ULL << 44); */
   }
 
   static uint64_t getCodeForHeap(HeapAssignment::Type heap)
