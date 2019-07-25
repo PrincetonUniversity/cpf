@@ -1,14 +1,103 @@
-\section{Motivation}
+\section{Background and Motivation}
 \label{sec:motivation}
 
-This work is motivated by the excessive use of memory speculation of
-prior speculative systems that limited their efficiency.
+\subsection{DOALL parallelization}
+
+In DOALL parallelization, loop iterations need to run independently of each
+other.  There cannot be any loop-carried (cross-iteration) memory flows (RAW
+dependences), unless a reduction is identified. Loop-carried false and anti (WAW
+and WAR) memory dependences need to be handled by privatization or reduction.
+At the end of parallel invocation, workers need to merge their memory states to
+a single live-out memory state.  Merging reduction objects is inexpensive and
+does not require bookkeeping during the parallel invocation.  Merging private
+objects though can be very expensive. For every memory location of private
+objects the last written value needs to be determined. If it cannot be
+determined statically, then it needs to be tracked dynamically, resulting in
+significant bookkeeping for all the involved stores.
+
+\subsection{Automatic DOALL software-only systems}
+
+table with comparison with related work (automatic doall par on real hw)
+
+STMLite, privateer, LRPD, ClusterDoall,
+Polaris, CorD, SUIF
+
+use of static analysis
+
+cheap spec techniques usage
+
+privatization support
+
+handling c/c++ complex data structures, pointers
+
+privatization cost
+
+reductions support
+
+scalable results (cores used)
+
+
+%Many proposals speculate low-level properties of the code, namely dependences
+%between individual operations.
+%%
+%Such speculative systems work well when assisted by hardware
+%extensions~\cite{TLS_papers...}, but yield small speedups, if any, when
+%running on commodity hardware.
+%%TODO: other software-spec apart from STM, more recent ones ??
+%For example, Software Transactional Memories
+%(STMs)~\cite{mehrara:09:stmlite} present an abstraction that facilitates
+%speculating the independence of memory transactions (i.e., memory
+%speculation). Validation requires logging or communication for most of the
+%memory accesses within each transaction and becomes prohibitively expensive
+%as the size of transaction grows.
+%%
+%%This reduces to comparing the read and write sets of adjacent transactions.  As
+%%transactions grow, the number of memory operations within that transaction can
+%%become prohibitively large. Further, instrumenting every memory operation with
+%%the transaction to log or communicate every access---approximately one tenth of
+%%all dynamic instructions---leads to an excessive overhead, even in the absence
+%%of transaction rollbacks.
+%
+%%privateer
+%
+%%An alternative approach is to reduce memory
+%
+%
+%Other speculative systems attempt to avoid the excessive memory speculation of
+%generic transactional systems by speculating higher-level properties whose
+%validation does not require logging or communication.
+%%
+%A prominent work of this class is Privateer~\cite{johnson:12:pldi:short}, a
+%state-of-the-art Spec-DOALL parallelization system, that exhibits more
+%scalable speedups compared to prior work.
+%%
+%Privateer partitions memory objects into several categories/families according
+%to observed access patterns via profiling.  Speculating that certain
+%individual memory access pairs are independent is avoided by just speculating
+%separation of the families and some other simple properties.  However, detection
+%of privatizable memory objects relies solely on memory and control profiling.
+%Therefore, validation for a substantial set of memory objects still requires
+%expensive logging and checks at every memory access, similarly to STM systems.
+%% and occassional communication among workers
+%%cheap spec for short-lived or read-only has also been discussed in other spec
+%%systems such as cluster-doall and corD
+%%
+
+\subsection{Motivational example}
+
+This work is motivated by the excessive use of memory speculation and expensive
+privatization of prior speculative systems that limited their efficiency.
 %
 In this section, we present a code example taken from MiBench~\cite{} benchmark
 dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
 analysis along with cheap-to-validate speculative assumptions can infer
-high-level program properties without the need for expensive memory speculation,
-and enable scalable parallelization.
+high-level program properties and enable scalable parallelization.
+%
+We focus on two memory objects that would cause inefficiencies on prior
+parallelization systems.
+%
+For each of these objects we examine how we can tackle DOALL parallelization
+inhibitors; in particular loop-carried memory dependences.
 
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
@@ -24,23 +113,77 @@ and enable scalable parallelization.
   }
 \end{figure*}
 
-1) global variable g\_qCount
+%showcases how fine-grained collaboration between static analysis and speculative
+%assumptions can infer high-level program properties without the need for
+%expensive memory speculation.
 
-- speculative assumption:  g\_qCount is always zero at the beginning of the
-iteration (value prediction)
+%Dependence has three conditions. We say there is a memorydependence  from
+%instructioni1to  instructioni2iff(alias)the footprint of operationi1may-aliasthe
+%footprint ofi2, and(feasible-path) there is a feasible path of execution
+%fromi1toi2which (no-kill) does not contain an operation which over-writes the
+%common memory footprint. Footprint denotes theset of memory locations read or
+%written by the instruction.
 
-- static analysis: alias analysis
+
+1) global object g\_qCount
+
+Static analysis and cheap speculation in isolation:
+
+- Static analysis: reports loop-carried RAW and WAW deps for g\_qCount
+
+- Invariant Loaded value prediction:
+
+speculative assumption: Profiling shows that the first load of g\_qCount in
+  each iteration is always zero
+
+LC data flows: speculatively disproves the loop-carried
+RAW dependence on g\_qCount
+
+LC output deps: Can only handle load operations and cannot interpret store
+operations.
 
 - validation cost: perform load before loop exits or on backedges and compared
   predicted value with loaded value
 
--This value prediction can be seen as a store in the beginning of every
+- privatization cost: monitor store operations and log last update during loop
+  execution
+%dynamic resolution to determine last written value
+
+
+Combination of static and speculative analysis:
+
+- speculative assumption:  g\_qCount is always zero at the beginning of the
+iteration (value prediction)
+
+- speculative analysis: identify predictable live-ins/live-outs
+
+- static analysis: alias analysis
+
+LC data flows:
+This value prediction can be seen as a store in the beginning of every
 iteration that kills any data flow for this memory object from previous
 iterations.  Any memory operation with a pointer must-aliasing with this
 predicted global value address cannot source or sink RAW loop-carried memory
-dependencies.  WAW loop-carried can also be ignored as the final content of this
+dependencies.
+
+LC output deps: WAW loop-carried can also be ignored as the final content of this
 memory location is predictable.  No need to perform any action to validate or
 log (for last write) any of these individual memory operations.
+
+interestingly this goes beyond the classical definition of privatization
+definition~\cite{tu-padua-array-privatization-1994}  that requires that every
+load of a privatizable element is preceded by a store to the element in the same
+iteration of the loop. In this scenario, global variable g\_qCount is first
+loaded at every iteration, a data flow exists.
+
+Not only detected as private and avoid mem spec for RAW but avoid dynamic
+resolution to determine last written value (live-out value).
+
+No prior work could detect and so effectively handle this new case of
+privatization.
+
+- privatization cost: none
+%avoid dynamic resolution to determine last written value (live-out value)
 
 2) global variable iPrev
 
@@ -60,18 +203,19 @@ detect that this global is used only within this loop, namely it is not a
 live-out.  Thus, there is no need to log stores and keep track of the last
 written value to it.
 
-3) TODO: example with blackscholes
+%3) TODO: example with blackscholes
 
-For all the above memory objects, Privateer~\cite{} would require expensive
-logging on most of their accesses,
+For all the above memory objects, Privateer~\cite{}, the state-of-the-art DOALL
+system that we mainly compare against, would require expensive logging on most
+of their accesses,
 %either for validation checks or for identifying who wrote last what
-yielding sub-optimal speedups as clearly
-exhibited by our experimental results in section ~\ref{eval}.
+yielding sub-optimal speedups as clearly exhibited by our experimental results
+in section ~\ref{eval}.
 %all these objects are classified as privatizable by Privateer
 
-%showcases how fine-grained collaboration between static analysis and speculative
-%assumptions can infer high-level program properties without the need for
-%expensive memory speculation.
+Note that our framework is not limited to static global allocations.  It can
+handle linked or recursive data structures, pointers,type  casts,  and  dynamic
+allocation.
 
 %use alvinn for value pred + alias analysis
 
