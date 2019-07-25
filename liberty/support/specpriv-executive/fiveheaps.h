@@ -24,6 +24,8 @@ void *__specpriv_alloc_local(Len size, SubHeap subheap);
 void __specpriv_free_local(void *ptr);
 void *__specpriv_alloc_priv(Len size, SubHeap subheap);
 void __specpriv_free_priv(void *ptr);
+void *__specpriv_alloc_killpriv(Len size, SubHeap subheap);
+void __specpriv_free_killpriv(void *ptr);
 
 void *__specpriv_alloc_unclassified(Len size);
 void __specpriv_free_unclassified(void *ptr);
@@ -37,6 +39,7 @@ void *__specpriv_alloc_worker_redux(Len size);
 void __specpriv_free_worker_redux(void *ptr);
 
 void __specpriv_reset_local(void);
+void __specpriv_reset_num_local(void);
 void __specpriv_add_num_local(int n);
 int __specpriv_num_local(void);
 

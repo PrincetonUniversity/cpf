@@ -222,6 +222,7 @@ static void __specpriv_worker_setup(Wid wid)
     __specpriv_set_sizeof_local(workerArgs.sizeof_local);
 
     __specpriv_set_first_reduction_info(workerArgs.first_reduction_info);
+    // DEBUG(printf("Read sizeof_local as %u\n", workerArgs.sizeof_local););
 
     __specpriv_worker_starts(workerArgs.firstIter, myWorkerId);
 
@@ -626,6 +627,7 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
         _exit(0);
       }
       DEBUG(printf("Parent wrote %ld bytes to pipe %d\n", w, wid));
+      // DEBUG(printf("Should have gotten %u for sizeof_local\n", workerArgs.sizeof_local););
       DEBUG(fflush(stdout));
       bytesWritten += w;
     }
@@ -694,11 +696,16 @@ Exit __specpriv_join_children(void)
   for(;;)
   {
     if( pcb->misspeculation_happened )
+    {
+      DEBUG(printf("Misspec happened before workers done ¯\\_(ツ)_/¯\n"););
       break;
+    }
 
     Checkpoint *front = pcb->checkpoints.used.first;
     if( front && front->iteration == LAST_ITERATION )
       break;
+
+    /* DEBUG(printf("Checkpoint not ready yet, sleeping for 1 ms\n");); */
 
     // Sleep
     wt.tv_sec = 0;
@@ -726,7 +733,11 @@ Exit __specpriv_join_children(void)
       }
 
     if( allDone )
+    {
+      DEBUG(printf("All workers finished!\n"););
       break;
+    }
+    /* DEBUG(printf("Not done yet, sleeping for 1 us\n");); */
 
     wt.tv_sec = 0;
     wt.tv_nsec = 1000; // 1 microsecond
@@ -746,7 +757,10 @@ Exit __specpriv_join_children(void)
   TIME(distill_into_liveout_end);
 
   if( pcb->misspeculation_happened )
+  {
+    DEBUG(printf("Misspec happened after distilling ¯\\_(ツ)_/¯\n"););
     return 0;
+  }
   else
     return pcb->exit_taken;
 }
@@ -772,7 +786,8 @@ void __specpriv_begin_iter(void)
   DEBUG(printf("iter %u %u\n", myWorkerId, currentIter));
   // XXX gc14 -- will need to change this for multiple stages
 
-  __specpriv_reset_local();
+  /* __specpriv_reset_local(); */
+  __specpriv_reset_num_local();
   TOUT(
       if ( worker_end_iter_time != 0 )
         TADD(worker_between_iter_time, worker_end_iter_time);
