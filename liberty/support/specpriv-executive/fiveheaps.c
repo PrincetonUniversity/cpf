@@ -173,11 +173,17 @@ void __specpriv_worker_unmap_local(void)
 
 void __specpriv_worker_remap_local(void)
 {
-  __specpriv_worker_unmap_local(); // not sure if we need to do this
+  Wid myWid = __specpriv_my_worker_id();
+  __specpriv_worker_unmap_local();
 
   heap_map_cow( &local, &myLocal );
   if ( sizeof_local )
+  {
     heap_alloc( &myLocal, sizeof_local );
+    DEBUG(printf("Worker %u preserving %u bytes from previous map in local\n", myWid, sizeof_local););
+    DEBUG(printf("Local heap is now %u bytes\n", heap_used(&myLocal)););
+    DEBUG(printf("Next alloc to local heap should return %p\n", myLocal.next); fflush(stdout););
+  }
 }
 
 void __specpriv_worker_unmap_private(void)
@@ -218,6 +224,7 @@ void __specpriv_fiveheaps_begin_invocation(void)
   sizeof_killprivate = heap_used( &mkillpriv0 );
   sizeof_redux = heap_used( &mredux0 );
   sizeof_ro = heap_used( &mro );
+  sizeof_local = heap_used( &myLocal );
 }
 
 void __specpriv_initialize_worker_heaps(void)
@@ -299,24 +306,31 @@ void __specpriv_free_ro(void *ptr)
 
 void *__specpriv_alloc_local(Len size, SubHeap subheap)
 {
-  if( __specpriv_i_am_main_process() )
-    // during recovery
-    return __specpriv_alloc_shared(size, subheap);
+  /* if( __specpriv_i_am_main_process() ) */
+  /* { */
+  /*   DEBUG(printf("Main allocated %u bytes in local\n", size);); */
+  /*   return __specpriv_alloc_shared(size, subheap); */
+  /* } */
+  Wid myWid = __specpriv_my_worker_id();
 
+  /* DEBUG(printf("Worker %u preparing to alloc at %p\n", myWid, myLocal.next);); */
   void *p = heap_alloc(&myLocal, size);
+  /* DEBUG(printf("Worker %u allocated %u in local at %p\n", myWid, size, p); fflush(stdout);); */
   ++numLocalAUs;
   return p;
 }
 
 void __specpriv_free_local(void *ptr)
 {
-  if( __specpriv_i_am_main_process() )
-  {
+  /* if( __specpriv_i_am_main_process() ) */
+  /* { */
     // during recovery
-    __specpriv_free_shared(ptr);
-    return;
-  }
+    /* __specpriv_free_shared(ptr); */
+    /* return; */
+  /* } */
+  Wid myWid = __specpriv_my_worker_id();
 
+  /* DEBUG(printf("Worker %u freed %p in local\n", myWid, ptr); fflush(stdout);); */
   --numLocalAUs;
   heap_free(&myLocal,ptr);
 }
@@ -336,12 +350,15 @@ void __specpriv_free_priv(void *ptr)
 void *__specpriv_alloc_killpriv(Len size, SubHeap subheap)
 {
   assert( __specpriv_i_am_main_process() );
-  return heap_alloc( &mkillpriv0, size );
+  void *p =  heap_alloc( &mkillpriv0, size );
+  DEBUG(printf("Allocating %u at %p to kill priv heap\n", size, p););
+  return p;
 }
 
 void __specpriv_free_killpriv( void *ptr )
 {
   assert( __specpriv_i_am_main_process() );
+  DEBUG(printf("Freeing at %p from kill priv heap\n", ptr););
   heap_free( &mkillpriv0, ptr );
 }
 
@@ -395,6 +412,11 @@ void __specpriv_free_redux(void *ptr)
 void __specpriv_reset_local(void)
 {
   heap_reset(&myLocal);
+  numLocalAUs = 0;
+}
+
+void __specpriv_reset_num_local(void)
+{
   numLocalAUs = 0;
 }
 

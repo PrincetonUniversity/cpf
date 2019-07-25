@@ -703,6 +703,7 @@ bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const He
     //if (gv->isExternallyInitialized()) {
     if (gv->hasExternalLinkage()) {
       // do not realllocate externally defined objects such as stdout or stderr
+      DEBUG(errs() << gv->getName() << " has external linkage -- not reallocating\n");
       continue;
     }
 
@@ -913,6 +914,7 @@ bool ApplySeparationSpec::reallocateStaticAUs()
   modified |= reallocateGlobals(asgn, asgn.getSharedAUs(),   HeapAssignment::Shared );
   modified |= reallocateGlobals(asgn, asgn.getLocalAUs(),    HeapAssignment::Local );
   modified |= reallocateGlobals(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
+  modified |= reallocateGlobals(asgn, asgn.getKillPrivAUs(), HeapAssignment::KillPrivate );
   modified |= reallocateGlobals(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
   modified |= reallocateGlobals(asgn, asgn.getReductionAUs());
