@@ -491,9 +491,15 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       // good
     } else if (isa<GetElementPtrInst>(ptrPrivStore)) {
       const GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptrPrivStore);
+
+      // the base pointer of the gep should be loop-invariant (no support
+      // yet for 2D arrays etc.)
+      if (!isLoopInvariantValue(gep->getPointerOperand(), L))
+        return remedResp;
+
       // traverse all the indices of the gep, make sure that they are all
       // constant or affine SCEVAddRecExpr (to loops with loop-invariant trip
-      // counts, and with loop-invariant step, start and limit/max_val)
+      // counts, and with loop-invariant step, start and limit/max_val).
       for (auto idx = gep->idx_begin(); idx != gep->idx_end(); ++idx) {
         const Value *idxV = *idx;
         if (L->isLoopInvariant(idxV))
@@ -515,6 +521,9 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
             if (scevLoop != innerLoop)
               return remedResp;
 
+            // check for loop-invariant offset from base pointer (start, step
+            // and loop trip count)
+
             if (!se->hasLoopInvariantBackedgeTakenCount(scevLoop))
               return remedResp;
 
@@ -522,9 +531,6 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
                 !isLoopInvariantSCEV(addRec->getStepRecurrence(*se), L, se))
               return remedResp;
 
-            auto limit = getCanonicalRange(addRec, innerLoop, se);
-            if (!limit || !isLoopInvariantValue(limit, L))
-              return remedResp;
           } else if (isa<SCEVUnknown>(
                          se->getSCEV(const_cast<Value *>(idxV)))) {
             // detect pseudo-canonical IV (0, +, 1) and return max value
