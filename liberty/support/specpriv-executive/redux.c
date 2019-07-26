@@ -198,6 +198,7 @@ static void __specpriv_reduce_f32_add(float *src_au, float *dst_au, uint32_t siz
 
 #if REDUCTION == VECTOR
 
+  /* printf("Using vector reduction\n"); */
   int hi = N-floatsPerVec;
   int lo=0;
 
@@ -849,6 +850,8 @@ static void __specpriv_do_reduction_hh(
 
 Bool __specpriv_distill_worker_redux_into_partial(MappedHeap * partial_redux,
                                                   Iteration *partialLastUpIter) {
+  uint64_t start;
+  TIME(start);
   assert( !__specpriv_i_am_main_process() );
 
   DEBUG(printf("__specpriv_distill_worker_redux_into_partial\n"));
@@ -869,6 +872,7 @@ Bool __specpriv_distill_worker_redux_into_partial(MappedHeap * partial_redux,
     __specpriv_do_reduction_pp(native_au, dst_au, info, info->depAU, dst_dep_au,
                                srcUpdateIter, partialLastUpIter);
   }
+  TADD(worker_redux_to_partial_time, start);
 
   return 0;
 }
@@ -877,18 +881,23 @@ Bool __specpriv_distill_committed_redux_into_partial(
     MappedHeap * committed, MappedHeap * partial, Iteration committedLastUpIter,
     Iteration *partialLastUpIter) {
   //  assert( !__specpriv_i_am_main_process() );
+  uint64_t start;
+  TIME(start);
 
   DEBUG(printf("__specpriv_distill_committed_redux_into_partial\n"));
 
   ReductionInfo *info = __specpriv_first_reduction_info();
   for(; info; info = info->next)
     __specpriv_do_reduction_hh(committed, partial, info, committedLastUpIter, partialLastUpIter);
+  TADD(worker_committed_redux_to_partial_time, start);
 
   return 0;
 }
 
 Bool __specpriv_distill_committed_redux_into_main(
     MappedHeap * committed, Iteration committedLastUpIter) {
+  uint64_t start;
+  TIME(start);
   assert( __specpriv_i_am_main_process() );
 
   DEBUG(printf("__specpriv_distill_committed_redux_into_main\n"));
@@ -909,6 +918,7 @@ Bool __specpriv_distill_committed_redux_into_main(
     __specpriv_do_reduction_pp(src_au, native_au, info, src_dep_au, info->depAU,
                                committedLastUpIter, &dstUpdateIter);
   }
+  TADD(worker_redux_to_main_time, start);
 
   return 0;
 }

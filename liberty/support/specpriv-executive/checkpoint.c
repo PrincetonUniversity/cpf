@@ -495,7 +495,7 @@ Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr)
 }
 
 
-static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
+static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt, Iteration iter)
 {
   CheckpointRecord *rec = 0;
   (void) rec;
@@ -503,6 +503,8 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
     if( numCheckpoints < MAX_CHECKPOINTS )
       rec = &checkpoints[ numCheckpoints ];
   );
+  uint64_t start;
+  TIME(start);
 
   MappedHeap partial_priv, partial_killpriv, partial_shadow, partial_redux;
   mapped_heap_init( &partial_priv );
@@ -519,12 +521,14 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
 
   if( chkpt->num_workers == 0 )
     __specpriv_initialize_partial_checkpoint(chkpt, &partial_shadow, &partial_redux);
+  TADD(worker_prepare_checkpointing_time, start);
 
   // Commit /my/ private values to the partial heap
   TOUT( if(rec) TIME(rec->private_start); );
   {
     __specpriv_distill_worker_private_into_partial(chkpt, &partial_priv, &partial_shadow);
-    __specpriv_distill_worker_killprivate_into_partial(chkpt, &partial_killpriv);
+    if ( iter == LAST_ITERATION ) // ezpz
+      __specpriv_distill_worker_killprivate_into_partial(chkpt, &partial_killpriv);
   }
   TOUT( if(rec) TIME(rec->private_stop); );
 
@@ -546,16 +550,22 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt)
 
   chkpt->redux_used = heap_used( &partial_redux );
 
+  TIME(start);
   heap_unmap( &partial_redux );
   heap_unmap( &partial_shadow );
   heap_unmap( &partial_priv );
   heap_unmap( &partial_killpriv );
 
   ++chkpt->num_workers;
+  DEBUG(printf("Finished distilling worker into partial %p\n", (void *)chkpt););
   if( __specpriv_num_workers() == chkpt->num_workers )
+  {
+    DEBUG(printf("Checkpoint object complete\n"););
     chkpt->type = CL_Complete;
+  }
 
   rec = 0;
+  TADD(worker_unprepare_checkpointing_time, start);
 }
 
 void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
@@ -583,14 +593,17 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
     _exit(0);
   }
 
+  uint64_t lock_start;
+  TIME(lock_start);
   acquire_lock( &chkpt->lock );
+  TADD(worker_acquire_lock_time, lock_start);
   {
     DEBUG( if (isFinalCheckpoint) printf("Worker %u's final checkpoint\n",
           __specpriv_my_worker_id()));
     DEBUG(printf("Worker %u begins checkpointing at iteration %u\n",
       __specpriv_my_worker_id(), effectiveIter));
 
-    __specpriv_worker_perform_checkpoint_locked(chkpt);
+    __specpriv_worker_perform_checkpoint_locked(chkpt, effectiveIter);
 
     DEBUG(printf("Worker %u ends checkpointing at iteration %u\n",
       __specpriv_my_worker_id(), effectiveIter));
