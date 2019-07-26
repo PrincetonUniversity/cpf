@@ -17,7 +17,7 @@
 
 %Parallelization is necessary
 Multicore architectures are ubiquitous in systems ranging from mobile to
-``warehouse scale" systems. Thus, parallelism is more important than ever to
+``warehouse scale'' systems. Thus, parallelism is more important than ever to
 harvest more performance from current hardware.  This burden of extracting
 sufficient parallelism has fallen on programmers and compilers. Yet, despite
 many new tools, languages, and libraries designed for multicore, multicore
@@ -72,24 +72,31 @@ data-intensive applications.
 %analyis limitations
 Major impediments to automatic parallelization are the limitations of static
 analysis, especially for general-purpose C/C++ programs. Static dependence
-analysis (including alias analysis and control flow analysis) are undecidable
-and difficult in practice, so compilers rely upon imprecise static analysis that
+analysis (including alias analysis and control flow analysis) is undecidable and
+difficult in practice, so compilers rely upon imprecise static analysis that
 limits parallelizing compilers applicability to regular code patterns (e.g.,
 scientific applications) and small loops, or forces expensive inter-thread
 communication that severely hinders scalability.
 %
 %Static analysis alone is simply too imprecise to enable aggressive
-%parallelization.
-In addition to being conservative, static analysis describes program facts that
-are true independently of the input, resulting in missed opportunities for
-parallelizing compilers.
+%parallelization.  In addition to being conservative, static analysis describes
+%program facts that are true independently of the input, resulting in missed
+%opportunities for parallelizing compilers.
+%
+Efforts to augment static analysis with low-cost run-time analysis are limited
+to simple cases where a predicate can be extracted outside the loop of
+interest~\cite{hybrid_analysis, suif:94:stanford, polaris}.
+%TODO: check if it is only affine loops for hybrid. that's the case for suif and
+%polaris
+%
 %the dependence patterns of real applications are frequently driven by the
 %program input, or experience a phase change during program execution
-Current static parallelizing compilers~\cite{campanoni:2012:iscgo,
-raman:2008:iscgo, suif:94:stanford} when applicable can deliver good predictable
-speedups, but they all suffer from the aforementioned limitations, and
-consequently fail to enable aggressive and scalable parallelization for most
-general-purpose applications.
+Overall, current analysis-based parallelizing
+compilers~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
+polaris, sensitivity} when applicable can deliver good predictable speedups, but
+they all suffer from the aforementioned limitations, and consequently fail to
+enable aggressive and scalable parallelization for most general-purpose
+applications.
 
 %speculation necessary
 Speculation allows the compiler to overcome static analysis' constraints,
@@ -196,7 +203,7 @@ algorithms in CAF~\cite{johnson:17:cgo}.
 %of memory patterns is cheaper than reasoning about individual mem ops.
 
 This paper presents LSD, a DOALL parallelization framework, that leverages
-enhached program analysis through the collaboration of static and speculative
+enhanced program analysis through the collaboration of static and speculative
 analysis to enable more effective and scalable parallelization compared to prior
 work.
 %
