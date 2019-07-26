@@ -1,0 +1,45 @@
+\small
+\centering
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|}
+\hline
+\multirow{2}{*}{Technique}   &
+\multirow{2}{*}{\parbox[c]{1cm}{Fully\\ Auto}} &
+\multirow{2}{*}{\parbox[c]{1.1cm}{Support \\Spec}} &
+\multirow{2}{*}{\parbox[c]{1.15cm}{Support \\Dynamic}} &
+\multicolumn{2}{c|}{Privatization} &
+\multicolumn{2}{c|}{Reductoin} &
+\multirow{2}{*}{\parbox[c]{1.1cm}{Efficient \\Priv}} &
+\multirow{2}{*}{\parbox[c]{1.8cm}{Cheap Spec\\ for Mem}} &
+\multirow{2}{*}{\#Workers} \\
+
+\cline{5-8}
+& &  &
+& Static   & Speculative   & Static & Speculation &
+& & \\ \hline
+
+%%% LRPD %%%
+LRPD & \checkmark & \checkmark & X & ?   & \checkmark   & ?  & \checkmark  & X    & X    & 14    \\ \hline
+
+%%% SUIF %%%
+SUIF    & \checkmark & X & X & ?   & ?   & ?  & ?  & X    & X    & 32?   \\ \hline
+
+
+%%% Sensitivity %%%
+Sensitivity    & \checkmark & \checkmark & X & \checkmark   & \checkmark   & \checkmark  & \checkmark  & \checkmark    & ?    & 4 \\ \hline
+
+
+%%% STMLite %%%
+STMLite & \checkmark & \checkmark & \checkmark & X   & X   & X  & X  & X    & X    & 8 \\ \hline
+
+%%% Array Privatization %%%
+\parbox[l]{1.9cm}{Array \\Privatization\\ (Tu \& Padua)} & \checkmark & X & X & \checkmark   & X   & X  & X  & \checkmark    & X    & 8?    \\ \hline
+
+%%% ClusterDOALL %%%
+ClusterDOALL   & \checkmark & \checkmark & \checkmark & X   & \checkmark   & X  & X  & X    & X    & 120   \\ \hline
+
+%%% Privateer %%%
+Privateer & \checkmark & \checkmark & \checkmark & X   & \checkmark   & X  & \checkmark  & \checkmark    & \checkmark    & 24    \\ \hline
+
+%%% LSD %%%
+\parbox[l]{1.9cm}{LSD\\(This work)}    & \checkmark & \checkmark & \checkmark & \checkmark   & \checkmark   & \checkmark  & \checkmark  & \checkmark    & \checkmark    & 28    \\ \hline
+\end{tabular}

@@ -116,6 +116,20 @@ uint64_t worker_total_invocation_time = 0;
   uint64_t worker_begin_invocation = 0;
   uint64_t worker_end_invocation = 0;
 
+/******************************************************************************
+ * Hardcore debugging timers
+ */
+  uint64_t worker_prepare_checkpointing_time = 0;
+  uint64_t worker_unprepare_checkpointing_time = 0;
+  uint64_t worker_redux_to_partial_time = 0;
+  uint64_t worker_committed_redux_to_partial_time = 0;
+  uint64_t worker_redux_to_main_time = 0;
+  uint64_t worker_private_to_partial_time = 0;
+  uint64_t worker_committed_private_to_partial_time = 0;
+  uint64_t worker_killpriv_to_partial_time = 0;
+  uint64_t worker_committed_killpriv_to_partial_time = 0;
+  uint64_t worker_acquire_lock_time = 0;
+
 uint64_t total_produces, total_consumes;
 
 CheckpointRecord checkpoints[ MAX_CHECKPOINTS ];
@@ -134,6 +148,7 @@ void __specpriv_reset_timers(void)
 {
     ++InvocationNumber;
     numCheckpoints = 0;
+    worker_read_pipe_time = 0;
     worker_setup_invocation_time = 0;
     worker_on_iteration_time = 0;
     worker_off_iteration_time = 0;
@@ -150,6 +165,16 @@ void __specpriv_reset_timers(void)
     worker_private_bytes_written = 0;
     worker_end_iter_time = 0;
     /* timers_hit = 0; */
+    worker_prepare_checkpointing_time = 0;
+    worker_unprepare_checkpointing_time = 0;
+    worker_acquire_lock_time = 0;
+    worker_redux_to_partial_time = 0;
+    worker_committed_redux_to_partial_time = 0;
+    worker_redux_to_main_time = 0; // this is run in main so won't see shit in workers
+    worker_private_to_partial_time = 0;
+    worker_committed_private_to_partial_time = 0;
+    worker_killpriv_to_partial_time = 0;
+    worker_committed_killpriv_to_partial_time = 0;
 }
 
 void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin )
@@ -194,9 +219,19 @@ void __specpriv_print_percentages( void )
   printf("---- Worker time in intermediate IO:      %15lu\n", worker_intermediate_io_time);
   printf("-- Worker between iteration time:         %15lu\n", worker_between_iter_time);
   printf("---- Worker intermediate checkpoint time: %15lu\n", worker_intermediate_checkpoint_time);
+  printf("------ Worker prepare checkpoint time:    %15lu\n", worker_prepare_checkpointing_time);
+  printf("------ Worker acquire lock time:          %15lu\n", worker_acquire_lock_time);
+  printf("------ Worker redux to partial:           %15lu\n", worker_redux_to_partial_time);
+  printf("------ Committed redux to partial:        %15lu\n", worker_committed_redux_to_partial_time);
+  printf("------ Worker private to partial:         %15lu\n", worker_private_to_partial_time);
+  printf("------ Committed private to partial:      %15lu\n", worker_committed_private_to_partial_time);
+  printf("------ Worker killpriv to partial:        %15lu\n", worker_killpriv_to_partial_time);
+  printf("------ Committed killpriv to partial:     %15lu\n", worker_committed_killpriv_to_partial_time);
+  printf("------ Worker unprepare checkpoint time:  %15lu\n", worker_unprepare_checkpointing_time);
   printf("-- Worker final checkpoint time:          %15lu\n", worker_final_checkpoint_time);
   printf("-- Worker time in copy io to redux:       %15lu\n", worker_copy_io_to_redux_time);
   printf("-- Worker time in commit io:              %15lu\n", worker_commit_io_time);
+  printf("-- Distill redux to main:                 %15lu\n", worker_redux_to_main_time);
 
   printf("//// WORKER %ld percentages ////\n", myWorkerId);
   printf("Worker invocation:                        %15lf\n"
