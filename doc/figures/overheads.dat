@@ -1,5 +1,5 @@
-=stacked;Useful Work;Replicable Stage;Private Reads;Private Writes;Checkpoints;
-colors=grey3,grey5,grey2,black,grey6
+=stacked;FAIL;Setup;Useful Work;Replicable Stage;Private Reads;Private Writes;Checkpoints;
+colors=red,grey3,grey5,grey2,black,grey6,grey1
 # colors=green,black,red,yellow,magenta
 # =patterns
 column=last
@@ -14,57 +14,86 @@ legendfill=
 yformat=%g%%
 xlabel=Benchmark
 ylabel=Percentage of overhead
-2mm                     UW:                   99.988%
-3mm                     UW:                   99.966%
-correlation             UW:                   94.93%
-gemm                    UW:                   99.998%
-doitgen                 UW:                   99.996%
-dijkstra -- fake        UW:                   60%
-swaptions               UW:                   99.97%
-covariance              UW:                   94.21%
-blackscholes -- off     UW:                   95.766%
-052.alvinn -- off       UW:                   65.087%
+2mm                      FAIL:                0%
+3mm                      FAIL:                0%
+correlation              FAIL:                0%
+gemm                     FAIL:                0%
+doitgen                  FAIL:                0%
+dijkstra                 FAIL:                0%
+swaptions                FAIL:                100%
+covariance               FAIL:                0%
+blackscholes             FAIL:                0%
+052.alvinn               FAIL:                0%
+179.art_wait             FAIL:                100%
+=multi
+2mm                     Setup:                0.017%
+3mm                     Setup:                0.03%
+correlation             Setup:                0.0003%
+gemm                    Setup:                0.0003%
+doitgen                 Setup:                0.003%
+dijkstra                Setup:                0.003%
+swaptions               Setup:                0%
+covariance              Setup:                0.0006%
+blackscholes            Setup:                0.00008%
+052.alvinn              Setup:                4.13%
+179.art_wait            Setup:                0%
+=multi
+2mm                     UW:                   99.98%
+3mm                     UW:                   99.969%
+correlation             UW:                   99.076%
+gemm                    UW:                   99.999%
+doitgen                 UW:                   99.995%
+dijkstra                UW:                   99.97%
+swaptions -- nope              UW:                   99.97%
+covariance              UW:                   99.985%
+blackscholes -- off     UW:                   95.5%
+052.alvinn              UW:                   75.6%
+179.art_wait            UW:                   0%
 =multi
 2mm                     ReplicableStage:      0.0002%
-3mm                     ReplicableStage:      0.0002%
-correlation             ReplicableStage:      0.0005%
+3mm                     ReplicableStage:      0.0003%
+correlation             ReplicableStage:      0.0003%
 gemm                    ReplicableStage:      0.0002%
-doitgen                 ReplicableStage:      0.0007%
-dijkstra -- fake        ReplicableStage:      1%
+doitgen                 ReplicableStage:      0.0003%
+dijkstra                ReplicableStage:      0.0017%
 swaptions               ReplicableStage:      0.0008%
-covariance              ReplicableStage:      0.0005%
-blackscholes -- off     ReplicableStage:      0.0.00002%
-052.alvinn -- off       ReplicableStage:      0.443%
+covariance              ReplicableStage:      0.0003%
+blackscholes -- off     ReplicableStage:      0.00003%
+052.alvinn              ReplicableStage:      1.41%
+179.art_wait            ReplicableStage:      0%
 =multi
 2mm                     PrivRead:             0%
 3mm                     PrivRead:             0%
-correlation             PrivRead:             0.0066%
+correlation             PrivRead:             0%
 gemm                    PrivRead:             0%
 doitgen                 PrivRead:             0%
-dijkstra -- fake        PrivRead:             15%
+dijkstra                PrivRead:             0%
 swaptions               PrivRead:             0%
-covariance              PrivRead:             0.007%
+covariance              PrivRead:             0%
 blackscholes -- off     PrivRead:             0%
-052.alvinn -- off       PrivRead:             12.586%
+052.alvinn -- off       PrivRead:             0%
+179.art_wait            PrivRead:             0%
 =multi
 2mm                     PrivWrite:            0%
 3mm                     PrivWrite:            0%
-correlation             PrivWrite:            0.44%
+correlation             PrivWrite:            0.496%
 gemm                    PrivWrite:            0%
 doitgen                 PrivWrite:            0%
-dijkstra -- fake        PrivWrite:            20%
+dijkstra                PrivWrite:            0.0004%
 swaptions               PrivWrite:            0.003%
-covariance              PrivWrite:            0.441%
-blackscholes -- off     PrivWrite:            3.937%
-052.alvinn -- off       PrivWrite:            16.261%
+covariance              PrivWrite:            0%
+blackscholes -- off     PrivWrite:            3.9%
+052.alvinn -- off       PrivWrite:            2.04%
+179.art_wait            PrivWrite:            0%
 =multi
-2mm                     Checkpoints:          0.0001%
-3mm                     Checkpoints:          0.0002%
-correlation             Checkpoints:          4.62%
-gemm                    Checkpoints:          0.0002%
-doitgen                 Checkpoints:          0.0007%
-dijkstra -- fake        Checkpoints:          14%
+2mm                     Checkpoints:          0.0002%
+3mm                     Checkpoints:          0.0007%
+correlation             Checkpoints:          0.428%
+gemm                    Checkpoints:          0.0008%
+doitgen                 Checkpoints:          0.0001%
+dijkstra                Checkpoints:          0.02%
 swaptions               Checkpoints:          0.0203%
-covariance              Checkpoints:          5.34%
-blackscholes -- off     Checkpoints:          0.29%
-052.alvinn -- off       Checkpoints:          5.608%
+covariance              Checkpoints:          0.013%
+blackscholes -- off     Checkpoints:          0.6%
+052.alvinn -- off       Checkpoints:          16.8%
+179.art_wait            Checkpoints:          0%
