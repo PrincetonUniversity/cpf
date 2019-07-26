@@ -117,6 +117,20 @@ extern uint64_t worker_total_invocation_time;
   extern uint64_t worker_begin_iter_time;
   extern uint64_t worker_end_iter_time;
 
+/******************************************************************************
+ * Hardcore debugging timers
+ */
+  extern uint64_t worker_prepare_checkpointing_time;
+  extern uint64_t worker_unprepare_checkpointing_time;
+  extern uint64_t worker_redux_to_partial_time;
+  extern uint64_t worker_committed_redux_to_partial_time;
+  extern uint64_t worker_redux_to_main_time;
+  extern uint64_t worker_private_to_partial_time;
+  extern uint64_t worker_committed_private_to_partial_time;
+  extern uint64_t worker_killpriv_to_partial_time;
+  extern uint64_t worker_committed_killpriv_to_partial_time;
+  extern uint64_t worker_acquire_lock_time;
+
 extern uint64_t get_queue_time;
 extern uint64_t produce_time;
 extern uint64_t consume_time;
