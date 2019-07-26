@@ -892,6 +892,8 @@ Bool __specpriv_distill_worker_private_into_partial(
   Checkpoint *partial,
   MappedHeap *partial_priv, MappedHeap *partial_shadow)
 {
+  uint64_t start;
+  TIME(start);
   const unsigned len = __specpriv_sizeof_private();
 
   if( len > 0 )
@@ -967,12 +969,15 @@ Bool __specpriv_distill_worker_private_into_partial(
     partial->shadow_highest_exclusive = shadow_highest_exclusive;
 
   __specpriv_reset_shadow_range();
+  TADD(worker_private_to_partial_time, start);
   return 0;
 }
 
 Bool __specpriv_distill_worker_killprivate_into_partial(
   Checkpoint *partial, MappedHeap *partial_killpriv )
 {
+  uint64_t start;
+  TIME(start);
   uint32_t wid = __specpriv_my_worker_id();
   const unsigned len = __specpriv_sizeof_killprivate();
 
@@ -988,8 +993,9 @@ Bool __specpriv_distill_worker_killprivate_into_partial(
         );
     // no shadow memory to deal with and we only need the latest iteration's values so
     // memcpy works
-    /* memcpy( (uint8_t *) partial_killpriv->base, (uint8_t *) KILLPRIV_ADDR, len ); */
+    memcpy( (uint8_t *) partial_killpriv->base, (uint8_t *) KILLPRIV_ADDR, len );
   }
+  TADD(worker_committed_killpriv_to_partial_time, start);
 
   return 0; // never misspecs
 }
@@ -1000,6 +1006,8 @@ Bool __specpriv_distill_committed_private_into_partial(
   Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow,
   Checkpoint *partial, MappedHeap *partial_priv, MappedHeap *partial_shadow)
 {
+  uint64_t start;
+  TIME(start);
   const unsigned len = __specpriv_sizeof_private();
 
   if( len > 0 )
@@ -1050,6 +1058,7 @@ Bool __specpriv_distill_committed_private_into_partial(
   if( partial->shadow_highest_exclusive < commit->shadow_highest_exclusive )
     partial->shadow_highest_exclusive = commit->shadow_highest_exclusive;
 
+  TADD(worker_committed_private_to_partial_time, start);
   return 0;
 }
 
@@ -1057,6 +1066,8 @@ Bool __specpriv_distill_committed_killprivate_into_partial(
     Checkpoint *commit, MappedHeap *commit_killpriv,
     Checkpoint *partial, MappedHeap *partial_killpriv)
 {
+  uint64_t start;
+  TIME(start);
   const unsigned len = __specpriv_sizeof_killprivate();
   if ( len > 0 )
   {
@@ -1066,6 +1077,9 @@ Bool __specpriv_distill_committed_killprivate_into_partial(
     // shouldn't copy anything from older checkpoint to newer one
     /* memcpy( &commit->heap_killpriv, &partial->heap_killpriv, len ); */
   }
+  TADD(worker_committed_killpriv_to_partial_time, start);
+
+  return 0;
 }
 
 
@@ -1108,7 +1122,8 @@ Bool __specpriv_distill_committed_killprivate_into_main( Checkpoint *commit,
     DEBUG(
         printf("Distilling %u bytes from cimmitted to main\n", len);
         );
-    memcpy( (void *) commit_killpriv->base, (void *) PRIV_ADDR, len );
+    /* memcpy( (void *) commit_killpriv->base, (void *) PRIV_ADDR, len ); */
+    memcpy( (void *) PRIV_ADDR, (void *) commit_killpriv->base, len );
   }
 
   return 0;
