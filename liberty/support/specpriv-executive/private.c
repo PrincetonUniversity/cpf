@@ -351,7 +351,7 @@ void __specpriv_private_read_1b(void *ptr, const char *name)
   // TODO optimize
   TOUT(
       // gc14 -- kinda funky since this is the only read fn that calls
-      // __specpriv_private_read_range
+      // __specpriv_private_read_range -- hopefully never actually called
       __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
         worker_pause_time);
       );
