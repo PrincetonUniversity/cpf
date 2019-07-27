@@ -100,6 +100,26 @@ significant bookkeeping for all the involved stores.
 %Table ~\ref{related_work} summarizes comparison with prior work.
 
 
+\subsubsection{Analysis-based Approaches}
+
+static analysis limitations
+
+Efforts to augment static analysis with low-cost run-time analysis are limited
+to simple cases where a predicate can be extracted outside the loop of
+interest~\cite{hybrid_analysis, suif:94:stanford, polaris}.
+%TODO: check if it is only affine loops for hybrid. that's the case for suif and
+%polaris
+%
+%the dependence patterns of real applications are frequently driven by the
+%program input, or experience a phase change during program execution
+Overall, current analysis-based parallelizing
+compilers~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
+polaris, sensitivity} when applicable can deliver good predictable speedups, but
+they all suffer from the aforementioned limitations, and consequently fail to
+enable aggressive and scalable parallelization for most general-purpose
+applications.
+
+
 \subsection{Motivational example}
 
 This work is motivated by the excessive use of memory speculation and expensive

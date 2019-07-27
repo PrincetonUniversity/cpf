@@ -33,23 +33,28 @@ remains a grossly underutilized technology.
 %applications.
 Manually expressing parallelism is tedious and error-prone. The programmers that
 do attempt parallelism typically rely on popular approaches (e.g.,
-PThreads~\cite{pthread:web}, Map-Reduce~\cite{dean:08:cacm}, and
-OpenMP~\cite{openmp:web}) that focus on extracting coarse grained parallelism
-(CGP) from hot loops in applications.
+PThreads~\cite{pthread:web}, OpenMP~\cite{openmp:web}) that focus on extracting
+coarse grained parallelism from a few hot loops with simple control and data
+flow. Even if manual parallelization is successfully applied,
+%a program is manually parallelized,
+it is still an unappealing option due to the high maintenance cost of parallel
+code compared to sequential (five times more expensive according to
+Google~\cite{google_cite_simone}).
 %
 %CGP can be extremely beneficial in cluster and warehouse-scale systems, but has
-%limitations on multicore.
-Programs with CGP are not ideally suited though for multicore as they tend to
-stress multicore's shared resources, such as caches and memory bandwidth.
-Google revealed, in a candid disclosure, that their multicore utilization rarely
-exceeds 20\%~\cite{barroso:07:computer}. Other researchers have also
-subsequently corroborated this observation~\cite{chung:13:isca}.
+%limitations on multicore.  Programs with CGP are not ideally suited though for
+%multicore as they tend to stress multicore's shared resources, such as caches
+%and memory bandwidth.  Google revealed, in a candid disclosure, that their
+%multicore utilization rarely exceeds 20\%~\cite{barroso:07:computer}. Other
+%researchers have also subsequently corroborated this
+%observation~\cite{chung:13:isca}.
 %
-To make matters worse, for programs with complex control and data flow, even CGP
-extraction is often extremely difficult.
+%To make matters worse, for programs with complex control and data flow, even
+%CGP extraction is often extremely difficult.
 %
-Asking programmers to address this underutilization with finer-grained
-parallelism extraction would result in enormous increase in programmers' effort.
+%Asking programmers to address this underutilization with finer-grained
+%parallelism extraction would result in enormous increase in programmers'
+%effort.
 %
 %can be very difficult, and most such programs remain without a CGP extracted
 %version.
@@ -62,11 +67,12 @@ parallelism extraction would result in enormous increase in programmers' effort.
 
 %autopar is very useful
 Automatic parallelization is an attractive approach to make efficient use of
-multicore systems, yielding performance improvement even for already parallelized
-applications (e.g, reduced maximum latency on each parallel task of a
-CGP-parallelized application). Unfortunately, even after 15 years of multicore,
-automatic parallelization is still mostly limited to scientific and
-data-intensive applications.
+multicore systems.
+%, yielding performance improvement even for already parallelized applications
+%(e.g, reduced maximum latency on each parallel task of a CGP-parallelized
+%application).
+Unfortunately, even after 15 years of multicore, automatic parallelization is
+still mostly limited to scientific and data-intensive applications.
 %the routine extraction of TLP remains elusive.
 
 %analyis limitations
@@ -83,20 +89,22 @@ communication that severely hinders scalability.
 %program facts that are true independently of the input, resulting in missed
 %opportunities for parallelizing compilers.
 %
-Efforts to augment static analysis with low-cost run-time analysis are limited
-to simple cases where a predicate can be extracted outside the loop of
-interest~\cite{hybrid_analysis, suif:94:stanford, polaris}.
-%TODO: check if it is only affine loops for hybrid. that's the case for suif and
-%polaris
+
+%Efforts to augment static analysis with low-cost run-time analysis are limited
+%to simple cases where a predicate can be extracted outside the loop of
+%interest~\cite{hybrid_analysis, suif:94:stanford, polaris}.
 %
-%the dependence patterns of real applications are frequently driven by the
-%program input, or experience a phase change during program execution
-Overall, current analysis-based parallelizing
-compilers~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
-polaris, sensitivity} when applicable can deliver good predictable speedups, but
-they all suffer from the aforementioned limitations, and consequently fail to
-enable aggressive and scalable parallelization for most general-purpose
-applications.
+%%TODO: check if it is only affine loops for hybrid. that's the case for suif and
+%%polaris
+%
+%%the dependence patterns of real applications are frequently driven by the
+%%program input, or experience a phase change during program execution
+%Overall, current analysis-based parallelizing
+%compilers~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
+%polaris, sensitivity} when applicable can deliver good predictable speedups, but
+%they all suffer from the aforementioned limitations, and consequently fail to
+%enable aggressive and scalable parallelization for most general-purpose
+%applications.
 
 %speculation necessary
 Speculation allows the compiler to overcome static analysis' constraints,
@@ -135,7 +143,7 @@ Still, current software speculative systems do not sufficiently leverage static
 and easy-to-validate assumptions; hence they fail to avoid excessive use of
 memory flow speculation for most general-purpose C/C++ programs.
 %
-Note that even with minimal checks for data flows, current systems often also
+Note that even with minimal checks for data flows, prior proposals often also
 need to monitor large write sets to determine the last written values and
 produce a correct live-out memory state at the end of the parallel region.
 %merge correctly speculative states privatization
@@ -174,6 +182,13 @@ improvement to the overall precision of the ensemble, rather than the additive
 improvements of the sum-of-parts approach of prior work.
 %each reason for a different thing/logic.  infer properties that would require
 %expensive runtime monitoring and checks.
+%
+For example, control speculation asserts the absence of memory dependences to or
+from speculatively dead operations, while kill-flow analysis disproves memory
+dependences by finding killing operations along all feasible paths between two
+operations. If kill-flow queries control speculation for speculative control
+flow information, then they can disprove together memory dependences that would
+otherwise require memory flow speculation.
 %
 This idea is inspired by the benefits of collaboration among static analysis
 algorithms in CAF~\cite{johnson:17:cgo}.
