@@ -2,21 +2,7 @@
 \section{Background and Motivation}
 \label{sec:motivation}
 
-\subsection{DOALL parallelization}
-
-In DOALL parallelization, loop iterations need to run independently of each
-other.  There cannot be any loop-carried (cross-iteration) memory flows (RAW
-dependences), unless a reduction is identified. Loop-carried false and anti (WAW
-and WAR) memory dependences need to be handled by privatization or reduction.
-At the end of parallel invocation, workers need to merge their memory states to
-a single live-out memory state.  Merging reduction objects is inexpensive and
-does not require bookkeeping during the parallel invocation.  Merging private
-objects though can be very expensive. For every memory location of private
-objects the last written value needs to be determined. If it cannot be
-determined statically, then it needs to be tracked dynamically, resulting in
-significant bookkeeping for all the involved stores.
-
-\subsection{Automatic DOALL software-only systems}
+\subsection{Automatic DOALL Software-only Systems}
 
 \begin{table*}
   \include{figures/related-work-tab}
@@ -32,6 +18,23 @@ significant bookkeeping for all the involved stores.
   \caption{Comparison of applicability and profitability.}
   \label{fig:profit-appli-compare}
 \end{figure}
+
+
+\subsection{DOALL parallelization}
+
+In DOALL parallelization, loop iterations need to run independently of each
+other.  There cannot be any loop-carried (cross-iteration) memory flows (RAW
+dependences), unless a reduction is identified. Loop-carried false and anti (WAW
+and WAR) memory dependences need to be handled by privatization or reduction.
+At the end of parallel invocation, workers need to merge their memory states to
+a single live-out memory state.  Merging reduction objects is inexpensive and
+does not require bookkeeping during the parallel invocation.  Merging private
+objects though can be very expensive. For every memory location of private
+objects the last written value needs to be determined. If it cannot be
+determined statically, then it needs to be tracked dynamically, resulting in
+significant bookkeeping for all the involved stores.
+
+
 
 
 %Many proposals speculate low-level properties of the code, namely dependences
