@@ -1,45 +1,51 @@
+% !TEX root = ../paper.tex
+\newcommand{\sbcheck}{\textcolor{ForestGreen}{\checkmark}}
+\newcommand{\sbcross}{\textcolor{RubineRed}{X}}
 \small
 \centering
 \begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|}
 \hline
 \multirow{2}{*}{Technique}   &
-\multirow{2}{*}{\parbox[c]{1cm}{Fully\\ Auto}} &
-\multirow{2}{*}{\parbox[c]{1.1cm}{Support \\Spec}} &
-\multirow{2}{*}{\parbox[c]{1.15cm}{Support \\Dynamic}} &
-\multicolumn{2}{c|}{Privatization} &
-\multicolumn{2}{c|}{Reductoin} &
-\multirow{2}{*}{\parbox[c]{1.1cm}{Efficient \\Priv}} &
-\multirow{2}{*}{\parbox[c]{1.8cm}{Cheap Spec\\ for Mem}} &
-\multirow{2}{*}{\#Workers} \\
+\multirow{2}{*}{\parbox[c]{1.1cm}{Fully\\ Automatic}} &
+\multirow{2}{*}{\parbox[c]{1.1cm}{Supports \\Spec}} &
+\multirow{2}{*}{\parbox[c]{1.15cm}{Supports \\Dynamic}} &
+\multicolumn{2}{c|}{Supports Privatization} &
+\multicolumn{2}{c|}{Supports Reduction} &
+\multirow{2}{*}{\parbox[c]{1.4cm}{Efficient \\Privatization}} &
+\multirow{2}{*}{\parbox[c]{0.8cm}{Cheap \\ Spec}} &
+\multirow{2}{*}{\#Cores} \\
 
 \cline{5-8}
 & &  &
-& Static   & Speculative   & Static & Speculation &
+& Static   & Spec   & Static & Spec &
 & & \\ \hline
 
 %%% LRPD %%%
-LRPD & \checkmark & \checkmark & X & ?   & \checkmark   & ?  & \checkmark  & X    & X    & 14    \\ \hline
+\parbox[l]{2.4cm}{LRPD \cite{rauchwerger:95:sigplan,dang:02:ipdps}} & \sbcheck  & \sbcheck  & \sbcross & ?  & \sbcheck    & ?  & \sbcheck   & \sbcross    & \sbcross    & 14    \\ \hline
 
+%%% Polaris %%%
+\parbox[l]{2.4cm}{Polaris \cite{tu:94:lcpc,blume:96:icpp}}    & \sbcheck  & \sbcross & \sbcross & \sbcheck    & \sbcross   & \sbcheck   & \sbcross  & \sbcheck    & \sbcross    & 8  \\ \hline
+{}
 %%% SUIF %%%
-SUIF    & \checkmark & X & X & ?   & ?   & ?  & ?  & X    & X    & 32?   \\ \hline
+\parbox[l]{2.4cm}{SUIF \cite{suif:94:stanford,hall:05:toplas}}    & \sbcheck  & \sbcross & \sbcross & \sbcheck   & \sbcross   & \sbcheck  & \sbcross  & \sbcross    & \sbcross    & 4, 8   \\ \hline
 
 
 %%% Sensitivity %%%
-Sensitivity    & \checkmark & \checkmark & X & \checkmark   & \checkmark   & \checkmark  & \checkmark  & \checkmark    & ?    & 4 \\ \hline
+\parbox[l]{2.4cm}{Sensitivity \cite{Rus:07:ics}}   & \sbcheck  & \sbcheck  & \sbcross & \sbcheck    & \sbcheck    & \sbcheck   & \sbcheck   & \sbcheck     & ?    & 4 \\ \hline
 
 
 %%% STMLite %%%
-STMLite & \checkmark & \checkmark & \checkmark & X   & X   & X  & X  & X    & X    & 8 \\ \hline
+\parbox[l]{2.4cm} {STMLite \cite{mehrara:09:stmlite}} & \sbcheck  & \sbcheck  & \sbcheck  & \sbcross   & \sbcross   & \sbcross  & \sbcross  & \sbcross    & \sbcross    & 8 \\ \hline
 
-%%% Array Privatization %%%
-\parbox[l]{1.9cm}{Array \\Privatization\\ (Tu \& Padua)} & \checkmark & X & X & \checkmark   & X   & X  & X  & \checkmark    & X    & 8?    \\ \hline
+% %%% Array Privatization %%%
+% \parbox[l]{1.9cm}{Array \\Privatization\\ (Tu \& Padua)} & \sbcheck  & \sbcross & \sbcross & \sbcheck    & \sbcross   & \sbcross  & \sbcross  & \sbcheck     & \sbcross    & 8?    \\ \hline
 
 %%% ClusterDOALL %%%
-ClusterDOALL   & \checkmark & \checkmark & \checkmark & X   & \checkmark   & X  & X  & X    & X    & 120   \\ \hline
+\parbox[l]{2.4cm}{ClusterDOALL \cite{kim:12:cgo}}   & \sbcheck  & \sbcheck  & \sbcheck  & \sbcross   & \sbcheck    & \sbcross  & \sbcross  & \sbcross & \sbcheck     & 120   \\ \hline
 
 %%% Privateer %%%
-Privateer & \checkmark & \checkmark & \checkmark & X   & \checkmark   & X  & \checkmark  & \checkmark    & \checkmark    & 24    \\ \hline
+\parbox[l]{2.4cm}{Privateer \cite{johnson:12:pldi}} & \sbcheck  & \sbcheck  & \sbcheck  & \sbcross   & \sbcheck    & \sbcross  & \sbcheck   & \sbcross & \sbcheck     & 24    \\ \hline
 
 %%% LSD %%%
-\parbox[l]{1.9cm}{LSD\\(This work)}    & \checkmark & \checkmark & \checkmark & \checkmark   & \checkmark   & \checkmark  & \checkmark  & \checkmark    & \checkmark    & 28    \\ \hline
+\parbox[l]{2.4cm}{LSD (This work)}    & \sbcheck  & \sbcheck  & \sbcheck  & \sbcheck    & \sbcheck    & \sbcheck   & \sbcheck   & \sbcheck     & \sbcheck     & 28    \\ \hline
 \end{tabular}

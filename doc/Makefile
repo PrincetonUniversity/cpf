@@ -1,5 +1,5 @@
 PAPER = paper
-TEX = $(wildcard *.tex)
+TEX = $(wildcard *.tex) figures/*
 BIB = references.bib
 FIGS = $(wildcard figures/*.pdf figures/*.png graphs/*.pdf graphs/*.png)
 
@@ -15,4 +15,3 @@ $(PAPER).pdf: $(TEX) $(BIB) $(FIGS) jpaper.cls
 
 clean:
 	rm -f *.aux *.bbl *.blg *.log *.out $(PAPER).pdf
-
