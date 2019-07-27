@@ -3,49 +3,50 @@
 \newcommand{\sbcross}{\textcolor{RubineRed}{X}}
 \small
 \centering
-\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|}
 \hline
 \multirow{2}{*}{Technique}   &
-\multirow{2}{*}{\parbox[c]{1.1cm}{Fully\\ Automatic}} &
-\multirow{2}{*}{\parbox[c]{1.1cm}{Supports \\Spec}} &
-\multirow{2}{*}{\parbox[c]{1.15cm}{Supports \\Dynamic}} &
+% \multirow{2}{*}{\parbox[c]{1.1cm}{\centering Fully\\ Automatic}} &
+\multirow{2}{*}{\parbox[c]{1cm}{\centering Supports \\Spec}} &
+\multirow{2}{*}{\parbox[c]{2cm}{\centering Supports Ptrs \\ and DynAlloc}} &
 \multicolumn{2}{c|}{Supports Privatization} &
 \multicolumn{2}{c|}{Supports Reduction} &
-\multirow{2}{*}{\parbox[c]{1.4cm}{Efficient \\Privatization}} &
-\multirow{2}{*}{\parbox[c]{0.8cm}{Cheap \\ Spec}} &
-\multirow{2}{*}{\#Cores} \\
+\multirow{2}{*}{\parbox[c]{1.4cm}{\centering Efficient \\Privatization}} &
+\multirow{2}{*}{\parbox[c]{0.7cm}{\centering Cheap \\ Spec}} &
+\multirow{2}{*}{\parbox[c]{0.7cm}{\centering \#Cores}} \\
 
-\cline{5-8}
-& &  &
-& Static   & Spec   & Static & Spec &
-& & \\ \hline
+\cline{4-7}
+&  &
+& \parbox[c]{1.1cm}{\centering Static}   & \parbox[c]{1.1cm}{\centering Spec}
+& \parbox[c]{1.1cm}{\centering Static} & \parbox[c]{1.1cm}{\centering Spec}
+& & & \\ \hline
 
 %%% LRPD %%%
-\parbox[l]{2.4cm}{LRPD \cite{rauchwerger:95:sigplan,dang:02:ipdps}} & \sbcheck  & \sbcheck  & \sbcross & ?  & \sbcheck    & ?  & \sbcheck   & \sbcross    & \sbcross    & 14    \\ \hline
+\parbox[l]{2.4cm}{LRPD \cite{rauchwerger:95:sigplan,dang:02:ipdps}} & \sbcheck  & \sbcross & ?  & \sbcheck    & ?  & \sbcheck   & \sbcross    & \sbcross    & 14    \\ \hline
 
 %%% Polaris %%%
-\parbox[l]{2.4cm}{Polaris \cite{tu:94:lcpc,blume:96:icpp}}    & \sbcheck  & \sbcross & \sbcross & \sbcheck    & \sbcross   & \sbcheck   & \sbcross  & \sbcheck    & \sbcross    & 8  \\ \hline
-{}
+\parbox[l]{2.4cm}{Polaris \cite{tu:94:lcpc,blume:96:icpp}} & \sbcross & \sbcross & \sbcheck    & \sbcross   & \sbcheck   & \sbcross  & \sbcheck    & \sbcross    & 8  \\ \hline
+
 %%% SUIF %%%
-\parbox[l]{2.4cm}{SUIF \cite{suif:94:stanford,hall:05:toplas}}    & \sbcheck  & \sbcross & \sbcross & \sbcheck   & \sbcross   & \sbcheck  & \sbcross  & \sbcross    & \sbcross    & 4, 8   \\ \hline
+\parbox[l]{2.4cm}{SUIF \cite{suif:94:stanford,hall:05:toplas}} & \sbcross & \sbcross & \sbcheck   & \sbcross   & \sbcheck  & \sbcross  & \sbcross    & \sbcross    & 4, 8   \\ \hline
 
 
 %%% Sensitivity %%%
-\parbox[l]{2.4cm}{Sensitivity \cite{Rus:07:ics}}   & \sbcheck  & \sbcheck  & \sbcross & \sbcheck    & \sbcheck    & \sbcheck   & \sbcheck   & \sbcheck     & ?    & 4 \\ \hline
+\parbox[l]{2.4cm}{Sensitivity \cite{Rus:07:ics}}  & \sbcheck  & \sbcross & \sbcheck    & \sbcheck    & \sbcheck   & \sbcheck   & \sbcheck     & ?    & 4 \\ \hline
 
 
 %%% STMLite %%%
-\parbox[l]{2.4cm} {STMLite \cite{mehrara:09:stmlite}} & \sbcheck  & \sbcheck  & \sbcheck  & \sbcross   & \sbcross   & \sbcross  & \sbcross  & \sbcross    & \sbcross    & 8 \\ \hline
+\parbox[l]{2.4cm} {STMLite \cite{mehrara:09:stmlite}} & \sbcheck  & \sbcheck  & \sbcross   & \sbcross   & \sbcross  & \sbcross  & \sbcross    & \sbcross    & 8 \\ \hline
 
 % %%% Array Privatization %%%
 % \parbox[l]{1.9cm}{Array \\Privatization\\ (Tu \& Padua)} & \sbcheck  & \sbcross & \sbcross & \sbcheck    & \sbcross   & \sbcross  & \sbcross  & \sbcheck     & \sbcross    & 8?    \\ \hline
 
 %%% ClusterDOALL %%%
-\parbox[l]{2.4cm}{ClusterDOALL \cite{kim:12:cgo}}   & \sbcheck  & \sbcheck  & \sbcheck  & \sbcross   & \sbcheck    & \sbcross  & \sbcross  & \sbcross & \sbcheck     & 120   \\ \hline
+\parbox[l]{2.4cm}{ClusterDOALL \cite{kim:12:cgo}}  & \sbcheck  & \sbcheck  & \sbcross   & \sbcheck    & \sbcross  & \sbcross  & \sbcross & \sbcheck     & 120   \\ \hline
 
 %%% Privateer %%%
-\parbox[l]{2.4cm}{Privateer \cite{johnson:12:pldi}} & \sbcheck  & \sbcheck  & \sbcheck  & \sbcross   & \sbcheck    & \sbcross  & \sbcheck   & \sbcross & \sbcheck     & 24    \\ \hline
+\parbox[l]{2.4cm}{Privateer \cite{johnson:12:pldi}}  & \sbcheck  & \sbcheck  & \sbcross   & \sbcheck    & \sbcross  & \sbcheck   & \sbcross & \sbcheck     & 24    \\ \hline
 
 %%% LSD %%%
-\parbox[l]{2.4cm}{LSD (This work)}    & \sbcheck  & \sbcheck  & \sbcheck  & \sbcheck    & \sbcheck    & \sbcheck   & \sbcheck   & \sbcheck     & \sbcheck     & 28    \\ \hline
+\parbox[l]{2.4cm}{LSD (This work)} & \sbcheck  & \sbcheck  & \sbcheck    & \sbcheck    & \sbcheck   & \sbcheck   & \sbcheck     & \sbcheck     & 28    \\ \hline
 \end{tabular}
