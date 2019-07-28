@@ -399,9 +399,14 @@ bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
   return false;
 }
 
+// TODO: create new family for local-privates
+// temporarily move them to killPrivs (no need to memcpy to main memory though
+// and breaks the separation logic semantics, all objects of a family should
+// share the same property)
 void Preprocess::moveStackLocals(HeapAssignment &asgn, const Loop *L) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
-  HeapAssignment::AUSet &locals = asgn.getLocalAUs();
+  //HeapAssignment::AUSet &locals = asgn.getLocalAUs();
+  HeapAssignment::AUSet &kills = asgn.getKillPrivAUs();
   HeapAssignment::AUSet localPrivAUs;
   for (auto au : privs) {
     if (!au->value)
@@ -412,13 +417,15 @@ void Preprocess::moveStackLocals(HeapAssignment &asgn, const Loop *L) {
 
   for (auto au : localPrivAUs) {
     privs.erase(au);
-    locals.insert(au);
+    //locals.insert(au);
+    kills.insert(au);
   }
 }
 
 void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
-  HeapAssignment::AUSet &locals = asgn.getLocalAUs();
+  //HeapAssignment::AUSet &locals = asgn.getLocalAUs();
+  HeapAssignment::AUSet &kills = asgn.getKillPrivAUs();
   HeapAssignment::AUSet exclusivelyLocalPrivAUs;
   for (auto au : privs) {
     // check if au was in localPrivs and in none of the other types of priv
@@ -430,7 +437,8 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
 
   for (auto au : exclusivelyLocalPrivAUs) {
     privs.erase(au);
-    locals.insert(au);
+    //locals.insert(au);
+    kills.insert(au);
   }
 }
 
