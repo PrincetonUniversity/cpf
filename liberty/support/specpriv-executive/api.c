@@ -786,8 +786,10 @@ void __specpriv_begin_iter(void)
   DEBUG(printf("iter %u %u\n", myWorkerId, currentIter));
   // XXX gc14 -- will need to change this for multiple stages
 
-  /* __specpriv_reset_local(); */
-  __specpriv_reset_num_local();
+   __specpriv_reset_local();
+
+   // use the following for the private locals only
+  //__specpriv_reset_num_local();
   TOUT(
       if ( worker_end_iter_time != 0 )
         TADD(worker_between_iter_time, worker_end_iter_time);
