@@ -2,6 +2,22 @@
 \section{Background and Motivation}
 \label{sec:motivation}
 
+\subsection{DOALL parallelization}
+
+In DOALL parallelization, loop iterations need to run independently of each
+other.
+%
+There cannot be any loop-carried (cross-iteration) memory flows (RAW
+dependences), unless a reduction is identified. Loop-carried false and anti (WAW
+and WAR) memory dependences need to be handled by privatization or reduction.
+At the end of parallel invocation, workers need to merge their memory states to
+a single live-out memory state.  Merging reduction objects is inexpensive and
+does not require bookkeeping during the parallel invocation.  Merging private
+objects though can be very expensive. For every memory location of private
+objects the last written value needs to be determined. If it cannot be
+determined statically, then it needs to be tracked dynamically, resulting in
+significant bookkeeping for all the involved stores.
+
 \subsection{Automatic DOALL Software-only Systems}
 
 \begin{table*}
@@ -18,22 +34,6 @@
   \caption{Comparison of applicability and profitability.}
   \label{fig:profit-appli-compare}
 \end{figure}
-
-
-\subsection{DOALL parallelization}
-
-In DOALL parallelization, loop iterations need to run independently of each
-other.  There cannot be any loop-carried (cross-iteration) memory flows (RAW
-dependences), unless a reduction is identified. Loop-carried false and anti (WAW
-and WAR) memory dependences need to be handled by privatization or reduction.
-At the end of parallel invocation, workers need to merge their memory states to
-a single live-out memory state.  Merging reduction objects is inexpensive and
-does not require bookkeeping during the parallel invocation.  Merging private
-objects though can be very expensive. For every memory location of private
-objects the last written value needs to be determined. If it cannot be
-determined statically, then it needs to be tracked dynamically, resulting in
-significant bookkeeping for all the involved stores.
-
 
 
 
@@ -124,273 +124,253 @@ enable aggressive and scalable parallelization for most general-purpose
 applications.
 
 
-\subsection{Motivational example}
-
-This work is motivated by the excessive use of memory speculation and expensive
-privatization of prior speculative systems that limited their efficiency.
-%
-In this section, we present a code example taken from MiBench~\cite{} benchmark
-dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
-analysis along with cheap-to-validate speculative assumptions can infer
-high-level program properties and enable scalable parallelization.
-%
-We focus on two memory objects that would cause inefficiencies on prior
-parallelization systems.
-%
-For each of these objects, we examine how we can tackle DOALL parallelization
-inhibitors; in particular loop-carried memory dependences, and exhibit the
-multiplicative effect of collaboration in terms of analysis accuracy.
-
-First, a quick description of the used static and speculative analyses in our
-example:
-%
-\begin{itemize}
-%
-\item \textit{Static Analysis} (see ~\cite{johnson:17:cgo} for more information)
-%
-  \begin{itemize}
-%
-  \item \textit{Alias Analysis}: an ensemble of analysis algorithms that
-determine whether the footprint of an operation alias the footprint of another
-operation.
-%
-  \item \textit{Kill-Flow}: searches for killing operations along all feasible
-paths between two operations. It searches blocks which post-dominate the source
-of the queried dependence and dominate the destination.
-%
-  \item \textit{No-Capture Source}: identifies global variables or allocators
-whose address is never captured. Such objects can only be referenced through
-addresses computed from the object's name. The algorithm, thus, can enumerate,
-transitively, all uses of that object.
-%
-\end{itemize}
-%
-\item \textit{Speculative Analysis}
-%
-\begin{itemize}
-%
-  %\item \textit{Loop-Invariant Loaded Value Prediction}:
-  \item \textit{Value Prediction Speculation~\cite{}}: identifies, using
-value-prediction, profiling the predictable outcome of certain instructions.
-%cite F.  Gabbay  and  A.  Mendelson.    Can  program  profiling  supportvalue
-%prediction?
-%
-  \item \textit{Control Speculation~\cite{}}: identifies, using edge profiling,
-speculatively dead code and asserts absence of memory dependences to or from
-speculatively dead operations.
-%cite W. Y. Chen, S. A. Mahlke, and W. W. Hwu.  Tolerating first levelmemory
-%access latency in high-performance systems
-%
-\end{itemize}
-%
-\end{itemize}
-%
-
-\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
-  stepnumber=1, numbersep=5pt}
-\begin{figure*}[t]
-  \centering
-  \scriptsize
-  \subfloat[dijkstra]
-  {
-    \label{fig:dijkstra}
-    \begin{minipage}{7.5cm}
-      \input{figures/dijkstra_all}
-    \end{minipage}
-  }
-\end{figure*}
-
-%showcases how fine-grained collaboration between static analysis and speculative
-%assumptions can infer high-level program properties without the need for
-%expensive memory speculation.
-
-%Dependence has three conditions. We say there is a memorydependence  from
-%instructioni1to  instructioni2iff(alias)the footprint of operationi1may-aliasthe
-%footprint ofi2, and(feasible-path) there is a feasible path of execution
-%fromi1toi2which (no-kill) does not contain an operation which over-writes the
-%common memory footprint. Footprint denotes theset of memory locations read or
-%written by the instruction.
-
-1) global object \textit{g\_qCount}
-
-\textbf{Static analysis and inexpensive speculation in isolation}:
-%
-%Analysis Results:
-Static analysis cannot disprove all loop-carried RAW and WAW dependences on
-accesses of g\_qCount.
-%
-Profile information indicates that the first load of g\_qCount in each iteration
-always returns zero.  Using this information, value prediction removes the
-loop-carried RAW dependence sinking on this load.
-%
-Removal of this dependence prevents usage of memory speculation for this
-particular load.
-%
-Presence of WAW dependences though necessitates privatization of the memory
-object, and value prediction cannot reason about store instructions and cannot
-give any additional information related to output dependences.
-%
-%Cost
-The cost in this case includes the validation overhead for value prediction
-(perform load before loop exits or on backedges and compared predicted value
-with loaded value) and the privatizaition cost (monitor stores participating in
-the WAW dependences to determine last written value). Bookkeping for
-privatization is the dominant cost as it requires updating metadata multiple
-times per loop iteration (given that some stores are within inner loops).
-%dynamic resolution to determine last written value
+\subsubsection{Speculation-based Approaches}
+TODO: add related work on spec discussion (more details compared to intro and
+related to the information in the table)
 
 
-\textbf{Collaboration of static and speculative analysis}:
+All prior speculative techniques require monitoring of extensive read and write
+sets.
+
+(even if no checks for reads are needed, still need to monitor write sets.)
+
+
+After discussion about privateer:
+
+By carefully looking into the evaluation results of Privateer, this major
+bottleneck of speculative parallelization (shared by all prior spec-DOALL
+techniques) becomes apparent.
 %
-This value prediction can be seen as a store before the first load of g\_qCount
-that kills any data flow for this memory object from previous iterations.
+Usage of memory speculation and privatization handling result into monitoring of
+extended read and write sets.
 %
-An extended speculative analysis removes, similarly to the first case, the
-loop-carried RAW dependence, but additionally queries alias analysis for
-must-aliasing accesses with the load's address. If these accesses are dominated
-by the load, then loop-carried RAW or WAW dependences from or to these accesses
-can be ignored.
+Privateer monitors on average (per parallelized program) 23.7 GB for reads and
+18.4 GB for writes.  This monitoring wastes up to 45\% of the time of parallel
+workers.
 %
-This remvoes the need to perform dynamic resolution of the last written value;
-the final content of this memory location is predictable.
-%any action to log (for last write) any of these individual memory operations.
+These overheads are particularly high for the dijkstra benchmark whose speedup
+is limited to only 4.8x on 24 cores.
 %
-%Interestingly, this case of privatization goes beyond the classical definition
-%of privatization definition~\cite{tu-padua-array-privatization-1994}  that
-%requires that every load of a privatizable element is preceded by a store to
-%the element in the same iteration of the loop. In this scenario, global
-%variable g\_qCount is first loaded at every iteration, a data flow exists.
+Interestingly for the case of the blackscholes benchmark, even though there is
+no usage of memory speculation, and thus no need to monitor read sets, just for
+handling WAW dependences, 4.0 GB of writes are monitored (per program
+execution), and 15\% of the workers' time is wasted.
 %
+Apart from bookkeeping during loop execution, blackscholes is also negatively
+impacted by the cost of merging the parallel workers' speculative state during
+checkpointing.
+%the size of the write set is significant (4.0 GB). Workers spent 15\% of their
+%time just monitoring all these writes.
+
+Instrumenting writes and reads does not only add overhead due to bookkeeping, it
+also prevents other optimizations.
 %
-The cost in this case only includes the small validation overhead for value
-prediction. There is no bookkeping cost for privatization.
+One such optimization is vectorization.  There has been a lot of progress in
+vectorization in recent years~\cite{.., llvm, MIT, inte}, and when applicable,
+vectorization yields significant speedups.
 %
-No prior work could detect and so effectively handle this new case of
-privatization.
-%- privatization cost: none avoid dynamic resolution to determine last written
-%value (live-out value)
-
-%TODO: use this first
-2) global object \textit{iPrev}
-
-- speculative assumption: the branch "if (qHead)" is always taken (control speculation)
-
-- static analysis: alias analysis, killflow, noCaptureGlobal analysis passes
-
-- validation cost: no validation cost for control spec (just misspecs if branch
-  is not taken)
-
-- Using the speculative assumption, killflow analysis can infer that the store
-  in line 15 kills all other accesses of this global
-variable (killed operations are identified by quering alias analysis). Given this
-property, any RAW loop-carried dependence is disproved.  Additionally, static
-analysis can enumerate all uses of this global, since it is not captured, and
-detect that this global is used only within this loop, namely it is not a
-live-out.  Thus, there is no need to log stores and keep track of the last
-written value to it.
-
-%3) TODO: example with blackscholes
-
-For all the above memory objects, Privateer~\cite{}, the state-of-the-art DOALL
-system that we mainly compare against, would require expensive logging on most
-of their accesses,
-%either for validation checks or for identifying who wrote last what
-yielding sub-optimal speedups as clearly exhibited by our experimental results
-in section ~\ref{eval}.
-%all these objects are classified as privatizable by Privateer
-
-Note that our framework is not limited to static global allocations.  It can
-handle linked or recursive data structures, pointers,type  casts,  and  dynamic
-allocation.
-
-%use alvinn for value pred + alias analysis
-
-%Note that WAR dependences can be ignored thanks to the process-based runtime
-%system.
+For example, use of vectorization (with clang 5.0) on 052.alvinn yields 30\%
+speedup for full program execution.  Unfortunately, current speculative systems,
+including Privateer, often introduce runtime calls for instrumentation of writes
+and reads within vectorizable inner loops. These calls prevent vectorization and
+reduce even further the speedup over sequential execution.
+%
+%TODO: add code example with hidden_delta loop This work nullifies the need for
+%instrumention in this loop and enables vectorization.
+%
+Note that the sequential version of 052.alvinn in Privateer's evaluated was not
+vectorized. A vectorized sequential version would result in reduced speedup for
+Privateer as shown in section ~\ref{eval}.
 
 
-\input{private_types}
+%\subsection{Motivational examples}
 
+%%
+%In this section, we present a code example taken from MiBench~\cite{} benchmark
+%dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
+%analysis along with cheap-to-validate speculative assumptions can infer
+%high-level program properties and enable scalable parallelization.
+%%
+%We focus on two memory objects that would cause inefficiencies on prior
+%parallelization systems.
+%%
+%For each of these objects, we examine how we can tackle DOALL parallelization
+%inhibitors; in particular loop-carried memory dependences, and exhibit the
+%multiplicative effect of collaboration in terms of analysis accuracy.
+%
+%First, a quick description of the used static and speculative analyses in our
+%example:
+%%
+%\begin{itemize}
+%%
+%\item \textit{Static Analysis} (see ~\cite{johnson:17:cgo} for more information)
+%%
+%  \begin{itemize}
+%%
+%  \item \textit{Alias Analysis}: an ensemble of analysis algorithms that
+%determine whether the footprint of an operation alias the footprint of another
+%operation.
+%%
+%  \item \textit{Kill-Flow}: searches for killing operations along all feasible
+%paths between two operations. It searches blocks which post-dominate the source
+%of the queried dependence and dominate the destination.
+%%
+%  \item \textit{No-Capture Source}: identifies global variables or allocators
+%whose address is never captured. Such objects can only be referenced through
+%addresses computed from the object's name. The algorithm, thus, can enumerate,
+%transitively, all uses of that object.
+%%
+%\end{itemize}
+%%
+%\item \textit{Speculative Analysis}
+%%
+%\begin{itemize}
+%%
+%  %\item \textit{Loop-Invariant Loaded Value Prediction}:
+%  \item \textit{Value Prediction Speculation~\cite{}}: identifies, using
+%value-prediction, profiling the predictable outcome of certain instructions.
+%%cite F.  Gabbay  and  A.  Mendelson.    Can  program  profiling  supportvalue
+%%prediction?
+%%
+%  \item \textit{Control Speculation~\cite{}}: identifies, using edge profiling,
+%speculatively dead code and asserts absence of memory dependences to or from
+%speculatively dead operations.
+%%cite W. Y. Chen, S. A. Mahlke, and W. W. Hwu.  Tolerating first levelmemory
+%%access latency in high-performance systems
+%%
+%\end{itemize}
+%%
+%\end{itemize}
+%%
+%
 %\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
 %  stepnumber=1, numbersep=5pt}
 %\begin{figure*}[t]
 %  \centering
 %  \scriptsize
-%  \subfloat[dijkstra -- predictable]
+%  \subfloat[dijkstra]
 %  {
 %    \label{fig:dijkstra}
 %    \begin{minipage}{7.5cm}
-%      \input{figures/dijkstra_predict_code}
-%    \end{minipage}
-%  }
-%  \hspace{0.5cm}
-%  \subfloat[dijkstra -- overwrite]
-%  {
-%    \label{fig:blackscholes}
-%    \begin{minipage}{7.5cm}
-%      \input{figures/dijkstra_overwrite_code}
+%      \input{figures/dijkstra_all}
 %    \end{minipage}
 %  }
 %\end{figure*}
 %
+%%showcases how fine-grained collaboration between static analysis and speculative
+%%assumptions can infer high-level program properties without the need for
+%%expensive memory speculation.
+%
+%%Dependence has three conditions. We say there is a memorydependence  from
+%%instructioni1to  instructioni2iff(alias)the footprint of operationi1may-aliasthe
+%%footprint ofi2, and(feasible-path) there is a feasible path of execution
+%%fromi1toi2which (no-kill) does not contain an operation which over-writes the
+%%common memory footprint. Footprint denotes theset of memory locations read or
+%%written by the instruction.
+%
+%1) global object \textit{g\_qCount}
+%
+%\textbf{Static analysis and inexpensive speculation in isolation}:
+%%
+%%Analysis Results:
+%Static analysis cannot disprove all loop-carried RAW and WAW dependences on
+%accesses of g\_qCount.
+%%
+%Profile information indicates that the first load of g\_qCount in each iteration
+%always returns zero.  Using this information, value prediction removes the
+%loop-carried RAW dependence sinking on this load.
+%%
+%Removal of this dependence prevents usage of memory speculation for this
+%particular load.
+%%
+%Presence of WAW dependences though necessitates privatization of the memory
+%object, and value prediction cannot reason about store instructions and cannot
+%give any additional information related to output dependences.
+%%
+%%Cost
+%The cost in this case includes the validation overhead for value prediction
+%(perform load before loop exits or on backedges and compared predicted value
+%with loaded value) and the privatizaition cost (monitor stores participating in
+%the WAW dependences to determine last written value). Bookkeping for
+%privatization is the dominant cost as it requires updating metadata multiple
+%times per loop iteration (given that some stores are within inner loops).
+%%dynamic resolution to determine last written value
 %
 %
+%\textbf{Collaboration of static and speculative analysis}:
+%%
+%This value prediction can be seen as a store before the first load of g\_qCount
+%that kills any data flow for this memory object from previous iterations.
+%%
+%An extended speculative analysis removes, similarly to the first case, the
+%loop-carried RAW dependence, but additionally queries alias analysis for
+%must-aliasing accesses with the load's address. If these accesses are dominated
+%by the load, then loop-carried RAW or WAW dependences from or to these accesses
+%can be ignored.
+%%
+%This remvoes the need to perform dynamic resolution of the last written value;
+%the final content of this memory location is predictable.
+%%any action to log (for last write) any of these individual memory operations.
+%%
+%%Interestingly, this case of privatization goes beyond the classical definition
+%%of privatization definition~\cite{tu-padua-array-privatization-1994}  that
+%%requires that every load of a privatizable element is preceded by a store to
+%%the element in the same iteration of the loop. In this scenario, global
+%%variable g\_qCount is first loaded at every iteration, a data flow exists.
+%%
+%%
+%The cost in this case only includes the small validation overhead for value
+%prediction. There is no bookkeping cost for privatization.
+%%
+%No prior work could detect and so effectively handle this new case of
+%privatization.
+%%- privatization cost: none avoid dynamic resolution to determine last written
+%%value (live-out value)
 %
-%\begin{figure*}[t]
-%  \centering
-%  \scriptsize
-%  \subfloat[gemm -- shared]
-%  {
-%    \label{fig:gemm}
-%    \begin{minipage}{7.5cm}
-%      \input{figures/gemm_code}
-%    \end{minipage}
-%  }
-%  \hspace{0.5cm}
-%  \subfloat[blackscholes -- overwrite]
-%  {
-%    \label{fig:blackscholes}
-%    \begin{minipage}{7.5cm}
-%      \input{figures/blackscholes_code}
-%    \end{minipage}
-%  }
-%\end{figure*}
-%\begin{figure*}[t]
-%  \centering
-%  \scriptsize
-%  \subfloat[052.alvinn -- stack local]
-%  {
-%    \label{fig:alvinn_local}
-%    \begin{minipage}{7.5cm}
-%      \input{figures/alvinn_local_code}
-%    \end{minipage}
-%  }
-%  \hspace{0.5cm}
-%  \subfloat[dijkstra -- global local]
-%  {
-%    \label{fig:dijkstra}
-%    \begin{minipage}{7.5cm}
-%      \input{figures/dijkstra_glocal_code}
-%    \end{minipage}
-%  }
-%\end{figure*}
+%%TODO: use this first
+%2) global object \textit{iPrev}
+%
+%- speculative assumption: the branch "if (qHead)" is always taken (control speculation)
+%
+%- static analysis: alias analysis, killflow, noCaptureGlobal analysis passes
+%
+%- validation cost: no validation cost for control spec (just misspecs if branch
+%  is not taken)
+%
+%- Using the speculative assumption, killflow analysis can infer that the store
+%  in line 15 kills all other accesses of this global
+%variable (killed operations are identified by quering alias analysis). Given this
+%property, any RAW loop-carried dependence is disproved.  Additionally, static
+%analysis can enumerate all uses of this global, since it is not captured, and
+%detect that this global is used only within this loop, namely it is not a
+%live-out.  Thus, there is no need to log stores and keep track of the last
+%written value to it.
+%
+%%3) TODO: example with blackscholes
+%
+%For all the above memory objects, Privateer~\cite{}, the state-of-the-art DOALL
+%system that we mainly compare against, would require expensive logging on most
+%of their accesses,
+%%either for validation checks or for identifying who wrote last what
+%yielding sub-optimal speedups as clearly exhibited by our experimental results
+%in section ~\ref{eval}.
+%%all these objects are classified as privatizable by Privateer
+%
+%Note that our framework is not limited to static global allocations.  It can
+%handle linked or recursive data structures, pointers,type  casts,  and  dynamic
+%allocation.
+%
+%%use alvinn for value pred + alias analysis
+%
+%%Note that WAR dependences can be ignored thanks to the process-based runtime
+%%system.
 
-% \begin{figure*}[t]
-%   \centering
-%   \scriptsize
-%   \subfloat[covariance -- nospec-private]
-%   {
-%     \label{fig:covariance}
-%     \begin{minipage}{7.5cm}
-%       \input{figures/covariance_code}
-%     \end{minipage}
-%   }
-%   \hspace{0.5cm}
-%   \subfloat[052.alvinn -- real private]
-%   {
-%     \label{fig:alvinn_specpriv}
-%     \begin{minipage}{7.5cm}
-%       \input{figures/alvinn_specpriv_code}
-%     \end{minipage}
-%   }
-% \end{figure*}
+
+
+This work is motivated by this excessive use of memory speculation and expensive
+privatization of prior speculative systems that significantly limits their
+efficiency.
+%
+We show that use of cheap-to-validatate speculation in conjuction with static
+analysis allows inferance of high-level properties that prevent expensive
+bookkeeping and checks.
