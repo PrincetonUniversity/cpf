@@ -8,7 +8,7 @@ In DOALL parallelization, loop iterations need to run independently of each
 other.
 %
 There cannot be any loop-carried (cross-iteration) memory flows (RAW
-dependences), unless a reduction is identified. Loop-carried false and anti (WAW
+dependences), unless a reduction is identified. Loop-carried output and anti (WAW
 and WAR) memory dependences need to be handled by privatization or reduction.
 At the end of parallel invocation, workers need to merge their memory states to
 a single live-out memory state.  Merging reduction objects is inexpensive and
@@ -29,11 +29,202 @@ significant bookkeeping for all the involved stores.
     \vspace{-5pt}
 \end{table*}
 
-\begin{figure}
+\begin{figure}[ht]
   \includegraphics[width=\columnwidth]{figures/profit-appli-compare}
   \caption{Comparison of applicability and profitability.}
   \label{fig:profit-appli-compare}
 \end{figure}
+
+To make a DOALL automatic on software-only systems, the most important job is to
+remove all loop-carried memory dependences. There are two ways to do it - the
+analysis-based or the speculation-based approach.
+
+\subsubsection{Analysis-based Approaches}
+
+With analysis, we can prove a dependence is not there or is can be handled by
+privatization or reduction, two major enablers for parallelism. Early works
+including SUIF~\cite{blume:96:icpp} and Polaris~\cite{suif:94:stanford} only
+used static analysis to remove dependences. Using static analysis means all the
+information should be available at compile time. However, there are a lot of
+programs with input-sensitive dependences which are removable for certain
+inputs. A line of work based on Polaris, namely LD~\cite{rauchwerger:94:ics},
+LRPD~\cite{rauchwerger:99:pds}, and R-LRPD~\cite{dang:02:ipdps}, leverages
+run-time analysis to check dependences based on the input and extends the
+applicability of analysis-based DOALL systems.  Hybrid
+Analysis~\cite{rus:03:hybrid} and Sensitivity Analysis~\cite{Rus:07:ics} combine
+static analysis and run-time analysis to generate cheap predicates for memory
+dependences, which reduce the run-time overhead.
+
+Analysis-based systems when applicable can deliver good predictable
+speedups~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
+Rus:07:ics}, especially for scientific benchmarks.
+% However, with the wide adoption of
+% programming languages, with dynamic memory allocation and pointers, e.g., C and
+% C++.
+% TODO: change word "obvious"
+However, the shortcomings of analysis-based systems are obvious. Static
+analysis alone is simply too imprecise to enable aggressive parallelization.
+With run-time analysis, the predicates are either too expensive or too
+complicated to extract.
+
+\subsubsection{Speculation-based Approaches}
+
+Speculation allows the compiler to overcome analysis' constraints by ignoring
+rare or impossible dependences and uses validation and recovery to guarantee
+correctness. Software transactional memory systems like
+STMLite~\cite{mehrara:09:stmlite}, inspired by hardware transactional systems
+and specialized for automatic parallelism, present an abstraction that
+facilitates speculating the independence of memory transactions (i.e., memory
+speculation). The validation part of this approach requires logging or
+communication for most of the memory accesses within each transaction and
+becomes prohibitively expensive as the size of transaction grows.
+% resulting in scalability and profitability problems.
+Recent
+works~\cite{ctian:2008:micro,johnson:12:pldi,mehrara:09:stmlite,kim:12:cgo}
+attempt to avoid the excessive memory speculation of generic transactional
+systems by using privatization, reduction, and/or speculation of higher-level
+properties whose validation does not require logging or communication.
+
+% A prominent work of this class is Privateer~\cite{johnson:12:pldi:short}, a
+% state-of-the-art Spec-DOALL parallelization system, that exhibits more scalable
+% speedups compared to prior work.
+
+% Privateer partitions memory objects into several categories/families according
+% to observed access patterns via profiling.  Speculating that certain
+% individual memory access pairs are independent is avoided by just speculating
+% separation of the families and some other simple properties.  However, detection
+% of privatizable memory objects relies solely on memory and control profiling.
+% Therefore, validation for a substantial set of memory objects still requires
+% expensive logging and checks at every memory access, similarly to STM systems.
+% % and occassional communication among workers
+% %cheap spec for short-lived or read-only has also been discussed in other spec
+% %systems such as cluster-doall and corD
+
+The analysis-based approach and speculation-based approach are in general
+detached. A type of rudimentary attempt to combine these two are shown in
+ClusterDOALL~\cite{kim:12:cgo}, which uses two compilers, one based on static
+analysis and one based on speculation to identify both opportunities. Other
+attempts including using peephole optimizations to remove unnecessary
+speculations and using static analysis to generate the PDG before parallelizing
+it are also implicitly shown in~\cite{johnson:12:pldi,ctian:2008:micro}.
+However, there is no work focusing on a meaningful integration between static
+analysis and speculation.
+
+% All prior speculative techniques require monitoring of extensive read and write
+% sets.
+
+% (even if no checks for reads are needed, still need to monitor write sets.)
+
+
+
+
+After discussion about privateer:
+
+By carefully looking into the evaluation results of Privateer, this major
+bottleneck of speculative parallelization (shared by all prior spec-DOALL
+techniques) becomes apparent.
+%
+Usage of memory speculation and privatization handling result into monitoring of
+extended read and write sets.
+%
+Privateer monitors on average (per parallelized program) 23.7 GB for reads and
+18.4 GB for writes.  This monitoring wastes up to 45\% of the time of parallel
+workers.
+%
+These overheads are particularly high for the dijkstra benchmark whose speedup
+is limited to only 4.8x on 24 cores.
+%
+Interestingly for the case of the blackscholes benchmark, even though there is
+no usage of memory speculation, and thus no need to monitor read sets, just for
+handling WAW dependences, 4.0 GB of writes are monitored (per program
+execution), and 15\% of the workers' time is wasted.
+%
+Apart from bookkeeping during loop execution, blackscholes is also negatively
+impacted by the cost of merging the parallel workers' speculative state during
+checkpointing.
+%the size of the write set is significant (4.0 GB). Workers spent 15\% of their
+%time just monitoring all these writes.
+
+Instrumenting writes and reads does not only add overhead due to bookkeeping, it
+also prevents other optimizations.
+%
+One such optimization is vectorization.  There has been a lot of progress in
+vectorization in recent years~\cite{.., llvm, MIT, inte}, and when applicable,
+vectorization yields significant speedups.
+%
+For example, use of vectorization (with clang 5.0) on 052.alvinn yields 30\%
+speedup for full program execution.  Unfortunately, current speculative systems,
+including Privateer, often introduce runtime calls for instrumentation of writes
+and reads within vectorizable inner loops. These calls prevent vectorization and
+reduce even further the speedup over sequential execution.
+%
+%TODO: add code example with hidden_delta loop This work nullifies the need for
+%instrumention in this loop and enables vectorization.
+%
+Note that the sequential version of 052.alvinn in Privateer's evaluated was not
+vectorized. A vectorized sequential version would result in reduced speedup for
+Privateer as shown in section ~\ref{eval}.
+
+% Using analysis means proving a dependence is not there,
+% either for all input or for a specific input set. If a dependence can be
+% statically disproved, we don't need to do anything special for it. If a
+% dependence can be removed with certain inputs, we can add a predicate before
+% executing it and branch out based on the predicate result. Another way to
+% resolve dependence is using speculation, we can speculate that a dependence
+% never manifests,
+
+% RAW
+% The most important type of dependence is the flow (read-after-write RAW)
+% dependence. If RAW dependences actually manifest in a loop, the loop is not
+% DOALLable without extra transformations. If a dependence cannot be statically
+% disproved but never or seldom manifests from profiling information, we can use
+% speculation to remove it and recover if manifests.
+
+% RAR
+% Not a real dependence.
+
+% WAR
+% The anti (write-after-read, WAR) dependence is problemetic when two workers
+% don't execute the instruction in order. With privatization, these dependences
+% are removed for free because the source where different worker read from and
+% write to is splitted in two.
+
+% WAW
+
+% The output (write-after-write, WAW) dependence.
+
+% In a privatization system, the WAW hazard is also removed for free. However,
+% for the live-outs (copy-outs) of a loop, the final value of them can be written
+% in any iteration, so there needs to be a mechanism to track who writes last.
+
+% For both analysis-based and speculative systems, WAW dependences are in general
+% hard to remove. However, with certain property of a memory object, all WAW
+% dependences related to that object canbe safely removed. For example, if an
+% array is always fully overwritten at the beginning of a loop, we only need to
+% take the values from the last iteration.
+
+
+
+
+% Efforts to augment static analysis with low-cost run-time analysis are limited
+% to simple cases where a predicate can be extracted outside the loop of
+% interest~\cite{hybrid_analysis, suif:94:stanford, polaris}.
+
+%TODO: check if it is only affine loops for hybrid. that's the case for suif and
+%polaris
+%
+%the dependence patterns of real applications are frequently driven by the
+%program input, or experience a phase change during program execution
+
+% Overall, current analysis-based parallelizing
+% compilers~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
+% polaris, sensitivity} when applicable can deliver good predictable speedups, but
+% they all suffer from the aforementioned limitations, and consequently fail to
+% enable aggressive and scalable parallelization for most general-purpose
+% applications.
+
+
+
 
 
 
@@ -104,83 +295,9 @@ significant bookkeeping for all the involved stores.
 %Table ~\ref{related_work} summarizes comparison with prior work.
 
 
-\subsubsection{Analysis-based Approaches}
-
-static analysis limitations
-
-Efforts to augment static analysis with low-cost run-time analysis are limited
-to simple cases where a predicate can be extracted outside the loop of
-interest~\cite{hybrid_analysis, suif:94:stanford, polaris}.
-%TODO: check if it is only affine loops for hybrid. that's the case for suif and
-%polaris
-%
-%the dependence patterns of real applications are frequently driven by the
-%program input, or experience a phase change during program execution
-Overall, current analysis-based parallelizing
-compilers~\cite{campanoni:2012:iscgo, raman:2008:iscgo, suif:94:stanford,
-polaris, sensitivity} when applicable can deliver good predictable speedups, but
-they all suffer from the aforementioned limitations, and consequently fail to
-enable aggressive and scalable parallelization for most general-purpose
-applications.
 
 
-\subsubsection{Speculation-based Approaches}
-TODO: add related work on spec discussion (more details compared to intro and
-related to the information in the table)
 
-
-All prior speculative techniques require monitoring of extensive read and write
-sets.
-
-(even if no checks for reads are needed, still need to monitor write sets.)
-
-
-After discussion about privateer:
-
-By carefully looking into the evaluation results of Privateer, this major
-bottleneck of speculative parallelization (shared by all prior spec-DOALL
-techniques) becomes apparent.
-%
-Usage of memory speculation and privatization handling result into monitoring of
-extended read and write sets.
-%
-Privateer monitors on average (per parallelized program) 23.7 GB for reads and
-18.4 GB for writes.  This monitoring wastes up to 45\% of the time of parallel
-workers.
-%
-These overheads are particularly high for the dijkstra benchmark whose speedup
-is limited to only 4.8x on 24 cores.
-%
-Interestingly for the case of the blackscholes benchmark, even though there is
-no usage of memory speculation, and thus no need to monitor read sets, just for
-handling WAW dependences, 4.0 GB of writes are monitored (per program
-execution), and 15\% of the workers' time is wasted.
-%
-Apart from bookkeeping during loop execution, blackscholes is also negatively
-impacted by the cost of merging the parallel workers' speculative state during
-checkpointing.
-%the size of the write set is significant (4.0 GB). Workers spent 15\% of their
-%time just monitoring all these writes.
-
-Instrumenting writes and reads does not only add overhead due to bookkeeping, it
-also prevents other optimizations.
-%
-One such optimization is vectorization.  There has been a lot of progress in
-vectorization in recent years~\cite{.., llvm, MIT, inte}, and when applicable,
-vectorization yields significant speedups.
-%
-For example, use of vectorization (with clang 5.0) on 052.alvinn yields 30\%
-speedup for full program execution.  Unfortunately, current speculative systems,
-including Privateer, often introduce runtime calls for instrumentation of writes
-and reads within vectorizable inner loops. These calls prevent vectorization and
-reduce even further the speedup over sequential execution.
-%
-%TODO: add code example with hidden_delta loop This work nullifies the need for
-%instrumention in this loop and enables vectorization.
-%
-Note that the sequential version of 052.alvinn in Privateer's evaluated was not
-vectorized. A vectorized sequential version would result in reduced speedup for
-Privateer as shown in section ~\ref{eval}.
 
 
 %\subsection{Motivational examples}
