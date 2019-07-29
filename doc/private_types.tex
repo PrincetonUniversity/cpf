@@ -4,7 +4,8 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
 \hline
-\multirow{2}{*}{Type of Private} & \multirow{2}{*}{Overlap} &
+\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Types of Private \\Memory Objects
+\end{tabular}} & \multirow{2}{*}{Overlap} &
 \multicolumn{3}{c|}{Privatization Criteria} &
 \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Other Spec \\ Allowed\end{tabular}}
 & \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive\\
@@ -17,19 +18,21 @@ Committed\end{tabular}}
 Mapping\end{tabular}}
 \\ \cline{3-5}
  &  & Static & Cheap Spec & Mem Spec &  &  &  &  & \\ \hline
-Shared & No & $\checkmark$ & - & - & - & - & - & - & Shared \\ \hline
+Independent & No & $\checkmark$ & - & - & - & - & - & - & Shared \\ \hline
 Local Private & Any & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & - & CoW \\ \hline
 Kill Private & Complete & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & $\checkmark$ & CoW \\ \hline
 Predictable Private & Any & - & $\checkmark$ & - & $\checkmark$ & - & - & $\checkmark$ & CoW \\ \hline
-No Mem Check Private & No/Partial & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & $\checkmark$ & $\checkmark$ & CoW  \\ \hline
-Privateer Private & Any & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & CoW \\ \hline
+%No Mem Check Private & No/Partial & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & $\checkmark$ & $\checkmark$ & CoW  \\ \hline
+Just Private & Any & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & CoW \\ \hline
 \end{tabular}
 }
 \caption{
-    Comparison of private types
+    Comparison of different types of private memory objects
  }
 \label{tab:priv_types}
 \end{table*}
+
+%TODO: remove overlap? and change name of kill-private
 
 %\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
 %  \hline
