@@ -1,7 +1,7 @@
 % !TEX root = paper.tex
 \section{Introduction}
 % SIMONE: title = I would change it to emphasize the main novelty of this work, which is merging static analysis and speculation to reach more than the sum of the parts
-{}
+
 % SIMONE: version 1 of Section 1: overall feedback = I think it improved since version 0. However, I think it is too long, but there are opportunities to shrink it considerably. This will bring the description of the novelty of the paper much sooner. For example, consider the paragraph about privateer. It doesn't look like we need that argument for introducing the novelty of this paper. Hence, that paragraph can go to Section 2 (Background and Motivation). Also, I would emphasize much more the fact that merging static analysis with speculation results to more than the sum of the parts. Then, I would describe the intuition behind this claim and, finally, the results of this fact (e.g., no prior work is able to parallelize all benchamrks we do parallelize in this paper).
 
 % SIMONE: version 0 of Section 1: overall feedback = I like the flow, but I think it would be nice to (i) anticipate the novelty of this paper and (ii) highlight much more it. For example, early in the introduction we can say that today's approaches are either speculative without the use of static analysis or conservative without the use of speculative techniqeus. Both approaches have advantages and disadvantages. We are the first ones to put them together to leverage their advantages and avoid their weaknesses.
@@ -144,9 +144,11 @@ and easy-to-validate assumptions; hence they fail to avoid excessive use of
 memory flow speculation for most general-purpose C/C++ programs.
 %
 Note that even with minimal checks for data flows, prior proposals often also
-need to monitor large write sets to determine the last written values and
-produce a correct live-out memory state at the end of the parallel region.
-%merge correctly speculative states privatization
+need to monitor large write sets to support privatization; at the end of the
+parallel region, workers' memory states need to be merged correctly.
+%determine the last written values and produce a correct live-out memory state
+%at the end of the parallel region.  merge correctly speculative states
+%privatization
 
 %
 %the problem is bookeeping and communication for validation and handling
@@ -158,24 +160,34 @@ produce a correct live-out memory state at the end of the parallel region.
 %structures in languages with pointers,type  casts,  and  dynamic  allocation
 %
 
-To attain the parallelization coverage of speculative techniques, while
-minimizing the usage of memory flow speculation and the cost of privatization,
+%To attain the parallelization coverage of speculative techniques, while
+%minimizing the usage of memory flow speculation and the cost of privatization,
 %we propose reasoning using a collaboration of static analysis with
 %cheap-to-validate speculative assumptions.
-we propose that static analysis works synergistically with cheap-to-validate
-speculative assumptions to infer program properties that would not be
-discoverable in isolation.
 %
-Of these properties, prior work would have required memory speculation to reason
-about data flow related ones, and would have failed to reason about certain
-output dependence related ones. The latter are essential for efficient
-privatization, a key enabler of
-parallelization~\cite{7,21,22,29,32_from_privateer}.
+%we propose that static analysis works synergistically with cheap-to-validate
+%speculative assumptions to infer properties that would not be discoverable in
+%isolation.
+%%
+%Of these properties, prior work would have required memory speculation to reason
+%about data flow related ones, and would have failed to reason about certain
+%output dependence related ones. The latter are essential for efficient
+%privatization, a key enabler of
+%parallelization~\cite{7,21,22,29,32_from_privateer}.
+%%
+
+To attain the parallelization coverage of speculative techniques, while
+minimizing the usage of memory flow speculation and the cost of privatization,
+we propose a unified parallelization framework that strategically and
+meaningfully combines static and speculative techniques.
+%, and enables high-level properties inference through the collaboration of
+%static analysis with cheap-to-validate speculative assumptions.
 %
-The distinguishing factor is that prior work uses static analysis and
+The main distinguishing factor is that prior work uses static analysis and
 speculative assumptions separately, each inferring different program properties
-in isolation, while we combine the strengths of static and speculative analysis
-and allow resolution of multi-logic queries.
+in isolation, while this work combines the strengths of static and
+cheap-to-validate speculative analysis and allow resolution of multi-logic
+queries.
 %
 Individual static or speculative analysis algorithms yield a multiplicative
 improvement to the overall precision of the ensemble, rather than the additive
@@ -217,17 +229,20 @@ algorithms in CAF~\cite{johnson:17:cgo}.
 %Similarly to Privateer, we believe that reasoning about high-level properties
 %of memory patterns is cheaper than reasoning about individual mem ops.
 
-This paper presents LSD, a DOALL parallelization framework, that leverages
-enhanced program analysis through the collaboration of static and speculative
-analysis to enable more effective and scalable parallelization compared to prior
-work.
+%This paper presents LSD, a DOALL parallelization framework, that leverages
+%enhanced program analysis through the collaboration of static and speculative
+%analysis to enable more effective and scalable parallelization compared to prior
+%work.
 %
-%a planning phase for  transformation selection
-%Our proposed framework also involves a planner that carefully selects from a
-%large set of conservative and speculative enabling transformations the most
-%efficient option for each parallelization obstacle.
+%a planning phase for  transformation selection Our proposed framework also
+%involves a planner that carefully selects from a large set of conservative and
+%speculative enabling transformations the most efficient option for each
+%parallelization obstacle.
 %
-LSD includes state-of-the-art static analysis (CAF~\cite{johnson:cgo:17}),
+
+This paper presents LSD, an instantiation of this proposed framework for DOALL
+parallelization. LSD includes state-of-the-art static analysis (\`{a} la
+CAF~\cite{johnson:cgo:17}),
 %that maximizes statically disproven loop-carried dependences
 speculative analysis passes that interpret speculative assumptions produced by a
 set of profilers, a parallelizing
@@ -249,9 +264,10 @@ hardware are underwhelming.
 
 LSD achieves scalable automatic parallelization on commodity shared-memory
 machines without any programmer hints.  We evaluate LSD on a set of 12 C/C++
-programs that appear on prior DOALL parallelization systems' papers. On a
-28-core machine, LSD yields a geomean whole-program speedup of Xx over
-sequential execution and Yx compared to a state-of-the-art spec-DOALL system.
+benchmarks appearing in state-of-the-art automatic parallelization systems'
+papers~\cite{johnson:12:pldi,kim:12:cgo,campanoni:12:cgo}. On a 28-core machine,
+LSD yields a geomean whole-program speedup of Xx over sequential execution and
+Yx compared to a state-of-the-art spec-DOALL system~\cite{johnson:12:pldi}.
 %better or as good as prior work
 These speedups are thanks to effective usage of static properties of the code in
 conjunction with cheap speculative assumptions, careful selection of applied
