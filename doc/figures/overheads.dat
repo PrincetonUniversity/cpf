@@ -1,99 +1,136 @@
-=stacked;FAIL;Setup;Useful Work;Replicable Stage;Private Reads;Private Writes;Checkpoints;
-colors=red,grey3,grey5,grey2,black,grey6,grey1
-# colors=green,black,red,yellow,magenta
+=stackcluster;Setup;Useful Work;Replicable Stage;Private Reads;Private Writes;Checkpoints
+# colors=red,grey3,grey5,grey2,black,grey6,grey1
+colors=green,orange,red,yellow,magenta,blue
 # =patterns
-column=last
-max=100
+# column=last
+# max=100
 font=Helvetica
-=arithmean
+# =arithmean
+=noupperright
 =nogridy
 legendx=right
 legendy=center
-=nolegoutline
-legendfill=
+# =nolegoutline
+# legendfill=
 yformat=%g%%
 xlabel=Benchmark
 ylabel=Percentage of overhead
-2mm                      FAIL:                0%
-3mm                      FAIL:                0%
-correlation              FAIL:                0%
-gemm                     FAIL:                0%
-doitgen                  FAIL:                0%
-dijkstra                 FAIL:                0%
-swaptions                FAIL:                100%
-covariance               FAIL:                0%
-blackscholes             FAIL:                0%
-052.alvinn               FAIL:                0%
-179.art_wait             FAIL:                100%
-=multi
-2mm                     Setup:                0.017%
-3mm                     Setup:                0.03%
-correlation             Setup:                0.0003%
-gemm                    Setup:                0.0003%
-doitgen                 Setup:                0.003%
-dijkstra                Setup:                0.003%
-swaptions               Setup:                0%
-covariance              Setup:                0.0006%
-blackscholes            Setup:                0.00008%
-052.alvinn              Setup:                4.13%
-179.art_wait            Setup:                0%
-=multi
-2mm                     UW:                   99.98%
-3mm                     UW:                   99.969%
-correlation             UW:                   99.076%
-gemm                    UW:                   99.999%
-doitgen                 UW:                   99.995%
-dijkstra                UW:                   99.97%
-swaptions -- nope              UW:                   99.97%
-covariance              UW:                   99.985%
-blackscholes -- off     UW:                   95.5%
-052.alvinn              UW:                   75.6%
-179.art_wait            UW:                   0%
-=multi
-2mm                     ReplicableStage:      0.0002%
-3mm                     ReplicableStage:      0.0003%
-correlation             ReplicableStage:      0.0003%
-gemm                    ReplicableStage:      0.0002%
-doitgen                 ReplicableStage:      0.0003%
-dijkstra                ReplicableStage:      0.0017%
-swaptions               ReplicableStage:      0.0008%
-covariance              ReplicableStage:      0.0003%
-blackscholes -- off     ReplicableStage:      0.00003%
-052.alvinn              ReplicableStage:      1.41%
-179.art_wait            ReplicableStage:      0%
-=multi
-2mm                     PrivRead:             0%
-3mm                     PrivRead:             0%
-correlation             PrivRead:             0%
-gemm                    PrivRead:             0%
-doitgen                 PrivRead:             0%
-dijkstra                PrivRead:             0%
-swaptions               PrivRead:             0%
-covariance              PrivRead:             0%
-blackscholes -- off     PrivRead:             0%
-052.alvinn -- off       PrivRead:             0%
-179.art_wait            PrivRead:             0%
-=multi
-2mm                     PrivWrite:            0%
-3mm                     PrivWrite:            0%
-correlation             PrivWrite:            0.496%
-gemm                    PrivWrite:            0%
-doitgen                 PrivWrite:            0%
-dijkstra                PrivWrite:            0.0004%
-swaptions               PrivWrite:            0.003%
-covariance              PrivWrite:            0%
-blackscholes -- off     PrivWrite:            3.9%
-052.alvinn -- off       PrivWrite:            2.04%
-179.art_wait            PrivWrite:            0%
-=multi
-2mm                     Checkpoints:          0.0002%
-3mm                     Checkpoints:          0.0007%
-correlation             Checkpoints:          0.428%
-gemm                    Checkpoints:          0.0008%
-doitgen                 Checkpoints:          0.0001%
-dijkstra                Checkpoints:          0.02%
-swaptions               Checkpoints:          0.0203%
-covariance              Checkpoints:          0.013%
-blackscholes -- off     Checkpoints:          0.6%
-052.alvinn -- off       Checkpoints:          16.8%
-179.art_wait            Checkpoints:          0%
+
+#             Fork/Join    OnIter     OffIter      PrivRead     PrivWrite    Ckpt
+=table
+multimulti=2mm
+Privateer     0.00646%     97.542%    0.00025%     0.0%         0.014%       2.437%
+LSD           0.0219%      99.998%    0.00023%     0.0%         0.0%         0.0007%
+multimulti=3mm
+Privateer     0.000621%    95.517%    0.0002%      0.0%         0.015%       4.462%
+LSD           0.028%       99.97%     0.0002%      0.0%         0.0%         0.00067%
+multimulti=correlation
+Privateer     0.0089%      95.08%     0.0011%      0.0%         0.436%       4.416%
+LSD           0.0004%      99.975%    0.0003%      0.0%         0.0%         0.0005%
+multimulti=gemm
+Privateer     0.00673%     99.389%    0.00025%     0.0%         0.013%       0.591%
+LSD           0.0003%      99.999%    0.0002%      0.0%         0.0%         0.0007%
+multimulti=doitgen
+Privateer     0.0097%      84.274%    0.00005%     0.0%         0.618%       15.098%
+LSD           0.0004%      99.999%    0.00007%     0.0%         0.0%         0.0002%
+multimulti=dijkstra
+Privateer     0.00565%     62.135%    0.00019%     17.335%      20.523%      0.00091%
+LSD           0.004%       99.97%     0.0017%      0.0%         0.0003%      0.018%
+multimulti=052.alvinn
+Privateer     0.325%       66.587%    0.8076%      12.625%      16.329%      3.327%
+LSD           4.34%        80.57%     1.559%       0.0%         0.03%        13.5%
+multimulti=179.art
+Privateer     1.084%       59.696%    1.261%       0.0%         39.22%       0.00058%
+LSD           0.0005%      99.368%    0.00005%     0.0%         0.631%       0.001%
+multimulti=blackscholes
+Privateer     0.0018%      95.512%    0.00005%     0.0%         3.806%       0.6803%
+LSD           0.00009%     99.998%    0.00001%     0.0%         0.0%         0.002%
+multimulti=swaptions
+Privateer     0.0078%      99.97%     0.00137%     0.0%         0.00287%     0.0184%
+LSD           0.0002%      99.978%    0.0009%      0.0%         0.00294%     0.0183%
+multimulti=enc-md5
+Privateer     0.014%       67.915%    0.00027%     0.00007%     32.069%      0.0013%
+LSD           0.003%       99.97%     0.0017%      0.0%         0.0004%      0.02%
+# 2mm                      FAIL:                0%
+# 3mm                      FAIL:                0%
+# correlation              FAIL:                0%
+# gemm                     FAIL:                0%
+# doitgen                  FAIL:                0%
+# dijkstra                 FAIL:                0%
+# swaptions                FAIL:                100%
+# covariance               FAIL:                0%
+# blackscholes             FAIL:                0%
+# 052.alvinn               FAIL:                0%
+# 179.art_wait             FAIL:                100%
+# =multi
+# 2mm                     Setup:                0.017%
+# 3mm                     Setup:                0.03%
+# correlation             Setup:                0.0003%
+# gemm                    Setup:                0.0003%
+# doitgen                 Setup:                0.003%
+# dijkstra                Setup:                0.003%
+# swaptions               Setup:                0%
+# covariance              Setup:                0.0006%
+# blackscholes            Setup:                0.00008%
+# 052.alvinn              Setup:                4.13%
+# 179.art_wait            Setup:                0%
+# =multi
+# 2mm                     UW:                   99.98%
+# 3mm                     UW:                   99.969%
+# correlation             UW:                   99.076%
+# gemm                    UW:                   99.999%
+# doitgen                 UW:                   99.995%
+# dijkstra                UW:                   99.97%
+# swaptions -- nope              UW:                   99.97%
+# covariance              UW:                   99.985%
+# blackscholes -- off     UW:                   95.5%
+# 052.alvinn              UW:                   75.6%
+# 179.art_wait            UW:                   0%
+# =multi
+# 2mm                     ReplicableStage:      0.0002%
+# 3mm                     ReplicableStage:      0.0003%
+# correlation             ReplicableStage:      0.0003%
+# gemm                    ReplicableStage:      0.0002%
+# doitgen                 ReplicableStage:      0.0003%
+# dijkstra                ReplicableStage:      0.0017%
+# swaptions               ReplicableStage:      0.0008%
+# covariance              ReplicableStage:      0.0003%
+# blackscholes -- off     ReplicableStage:      0.00003%
+# 052.alvinn              ReplicableStage:      1.41%
+# 179.art_wait            ReplicableStage:      0%
+# =multi
+# 2mm                     PrivRead:             0%
+# 3mm                     PrivRead:             0%
+# correlation             PrivRead:             0%
+# gemm                    PrivRead:             0%
+# doitgen                 PrivRead:             0%
+# dijkstra                PrivRead:             0%
+# swaptions               PrivRead:             0%
+# covariance              PrivRead:             0%
+# blackscholes -- off     PrivRead:             0%
+# 052.alvinn -- off       PrivRead:             0%
+# 179.art_wait            PrivRead:             0%
+# =multi
+# 2mm                     PrivWrite:            0%
+# 3mm                     PrivWrite:            0%
+# correlation             PrivWrite:            0.496%
+# gemm                    PrivWrite:            0%
+# doitgen                 PrivWrite:            0%
+# dijkstra                PrivWrite:            0.0004%
+# swaptions               PrivWrite:            0.003%
+# covariance              PrivWrite:            0%
+# blackscholes -- off     PrivWrite:            3.9%
+# 052.alvinn -- off       PrivWrite:            2.04%
+# 179.art_wait            PrivWrite:            0%
+# =multi
+# 2mm                     Checkpoints:          0.0002%
+# 3mm                     Checkpoints:          0.0007%
+# correlation             Checkpoints:          0.428%
+# gemm                    Checkpoints:          0.0008%
+# doitgen                 Checkpoints:          0.0001%
+# dijkstra                Checkpoints:          0.02%
+# swaptions               Checkpoints:          0.0203%
+# covariance              Checkpoints:          0.013%
+# blackscholes -- off     Checkpoints:          0.6%
+# 052.alvinn -- off       Checkpoints:          16.8%
+# 179.art_wait            Checkpoints:          0%
