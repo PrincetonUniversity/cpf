@@ -8,14 +8,14 @@ In DOALL parallelization, loop iterations need to run independently of each
 other.
 %
 There cannot be any loop-carried (cross-iteration) memory flows (RAW
-dependences), unless a reduction is identified. Loop-carried output and anti (WAW
-and WAR) memory dependences need to be handled by privatization or reduction.
-At the end of parallel invocation, workers need to merge their memory states to
-a single live-out memory state.  Merging reduction objects is inexpensive and
-does not require bookkeeping during the parallel invocation.  Merging private
-objects though can be very expensive. For every memory location of private
-objects the last written value needs to be determined. If it cannot be
-determined statically, then it needs to be tracked dynamically, resulting in
+dependences), unless a reduction is identified. Loop-carried output and anti
+(WAW and WAR) memory dependences need to be handled by privatization or
+reduction. At the end of parallel invocation, workers need to merge their memory
+states to a single live-out memory state.  Merging reduction objects is
+inexpensive and does not require bookkeeping during the parallel invocation.
+Merging private objects though can be very expensive. For every memory location
+of private objects the last written value needs to be determined. If it cannot
+be determined statically, then it needs to be tracked dynamically, resulting in
 significant bookkeeping for all the involved stores.
 
 \subsection{Automatic DOALL Software-only Systems}
@@ -41,11 +41,12 @@ significant bookkeeping for all the involved stores.
 
 \subsubsection{Analysis-based Approaches}
 
-With analysis, we can prove a dependence is not there or is can be handled by
+With analysis, we can prove a dependence is not there or can be handled by
 privatization or reduction, two major enablers for parallelism. Early works
-including SUIF~\cite{blume:96:icpp} and Polaris~\cite{suif:94:stanford} only
-used static analysis to remove dependences. Using static analysis means all the
-information should be available at compile time. However, there are a lot of
+%including SUIF~\cite{blume:96:icpp} and Polaris~\cite{suif:94:stanford}
+% TODO: cite one static analysis only work here
+used only static analysis to remove dependences. Using static analysis means all
+the information should be available at compile time. However, there are a lot of
 programs with input-sensitive dependences which are removable for certain
 inputs. A line of work based on Polaris, namely LD~\cite{rauchwerger:94:ics},
 LRPD~\cite{rauchwerger:99:pds}, and R-LRPD~\cite{dang:02:ipdps}, leverages
@@ -79,11 +80,10 @@ speculation). The validation part of this approach requires logging or
 communication for most of the memory accesses within each transaction and
 becomes prohibitively expensive as the size of transaction grows.
 % resulting in scalability and profitability problems.
-Recent
-works~\cite{ctian:2008:micro,johnson:12:pldi,mehrara:09:stmlite,kim:12:cgo}
-attempt to avoid the excessive memory speculation of generic transactional
-systems by using privatization, reduction, and/or speculation of higher-level
-properties whose validation does not require logging or communication.
+Recent works~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} attempt to avoid
+the excessive memory speculation of generic transactional systems by speculating
+higher-level properties like local objects whose validation does not require
+logging or communication.
 
 % A prominent work of this class is Privateer~\cite{johnson:12:pldi:short}, a
 % state-of-the-art Spec-DOALL parallelization system, that exhibits more scalable
@@ -109,6 +109,9 @@ speculations and using static analysis to generate the PDG before parallelizing
 it are also implicitly shown in~\cite{johnson:12:pldi,ctian:2008:micro}.
 However, there is no work focusing on a meaningful integration between static
 analysis and speculation.
+
+In Table. \ref{tab:related-work}, we present the summary of the comparison
+between this work and prior work.
 
 % All prior speculative techniques require monitoring of extensive read and write
 % sets.

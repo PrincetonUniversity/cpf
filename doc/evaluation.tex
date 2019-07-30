@@ -1,16 +1,18 @@
 % !TEX root = paper.tex
 \section{Evaluation}
 
-LSD is evaluated against 12 C and C++ benchmarks in the LLVM Compiler
-Infrastructure (version 5.0.2). The benchmarks are selected from previous
-automatic DOALL parallelization papers~\cite{johnson:12:pldi,kim:12:cgo}. We
-exclude benchmarks for lack of a FORTRAN front-end, duplicate behavior, or no
-significant Spec-DOALL coverage exhibiting.
+LSD is evaluated against 12 C and C++ benchmarks, covering all the DOALLable
+(showing at least speedup instead of slowdown) benchmarks from two
+state-of-the-art automatic DOALL parallelization
+papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more benchmark
+(179.art) from HELIX
 
-The machine is using a 28-core (56 threads with hyperthreading) Intel(R) Xeon(R)
+
+The machine is using two 14-core Intel(R) Xeon(R)
 CPU E5-2697 v3 CPU running at 2.60GHz (turbo-boost disabled) with 756GB of
 memory. The operating system is Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0
-20171010).
+20171010) and LLVM Compiler
+Infrastructure (version 5.0.2).
 
 
 \subsection{Parallelization Performance}
@@ -24,7 +26,7 @@ Runtime breakdown (how to minimize the overhead?)
 
 \begin{figure*}[htp]
   \includegraphics[width=\textwidth]{figures/3mm-scale-crop}
-  \caption{3mm Speedup over Different Numbers of Workers}
+  \caption{3mm Speedup over Different Numbers of Cores}
   \label{fig:3mm-scale}
 \end{figure*}
 
