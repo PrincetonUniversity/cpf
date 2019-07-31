@@ -298,105 +298,65 @@ Privateer as shown in section ~\ref{eval}.
 
 %\subsection{Motivational examples}
 
-%%
-%In this section, we present a code example taken from MiBench~\cite{} benchmark
-%dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
-%analysis along with cheap-to-validate speculative assumptions can infer
-%high-level program properties and enable scalable parallelization.
-%%
-%We focus on two memory objects that would cause inefficiencies on prior
-%parallelization systems.
-%%
-%For each of these objects, we examine how we can tackle DOALL parallelization
-%inhibitors; in particular loop-carried memory dependences, and exhibit the
-%multiplicative effect of collaboration in terms of analysis accuracy.
+%% In this section, we present a code example taken from MiBench~\cite{}
+%benchmark dijkstra (used in the evaluation of Privateer~\cite{}) to showcase
+%how static analysis along with cheap-to-validate speculative assumptions can
+%infer high-level program properties and enable scalable parallelization.  % We
+%focus on two memory objects that would cause inefficiencies on prior
+%parallelization systems.  % For each of these objects, we examine how we can
+%tackle DOALL parallelization inhibitors; in particular loop-carried memory
+%dependences, and exhibit the multiplicative effect of collaboration in terms of
+%analysis accuracy.
 %
 %First, a quick description of the used static and speculative analyses in our
-%example:
-%%
-%\begin{itemize}
-%%
-%\item \textit{Static Analysis} (see ~\cite{johnson:17:cgo} for more information)
-%%
-%  \begin{itemize}
-%%
-%  \item \textit{Alias Analysis}: an ensemble of analysis algorithms that
-%determine whether the footprint of an operation alias the footprint of another
-%operation.
-%%
-%  \item \textit{Kill-Flow}: searches for killing operations along all feasible
+%example: % \begin{itemize} % \item \textit{Static Analysis} (see
+%~\cite{johnson:17:cgo} for more information) % \begin{itemize} % \item
+%\textit{Alias Analysis}: an ensemble of analysis algorithms that determine
+%whether the footprint of an operation alias the footprint of another operation.
+%% \item \textit{Kill-Flow}: searches for killing operations along all feasible
 %paths between two operations. It searches blocks which post-dominate the source
-%of the queried dependence and dominate the destination.
-%%
-%  \item \textit{No-Capture Source}: identifies global variables or allocators
-%whose address is never captured. Such objects can only be referenced through
+%of the queried dependence and dominate the destination.  % \item
+%\textit{No-Capture Source}: identifies global variables or allocators whose
+%address is never captured. Such objects can only be referenced through
 %addresses computed from the object's name. The algorithm, thus, can enumerate,
-%transitively, all uses of that object.
-%%
-%\end{itemize}
-%%
-%\item \textit{Speculative Analysis}
-%%
-%\begin{itemize}
-%%
-%  %\item \textit{Loop-Invariant Loaded Value Prediction}:
-%  \item \textit{Value Prediction Speculation~\cite{}}: identifies, using
-%value-prediction, profiling the predictable outcome of certain instructions.
-%%cite F.  Gabbay  and  A.  Mendelson.    Can  program  profiling  supportvalue
-%%prediction?
-%%
-%  \item \textit{Control Speculation~\cite{}}: identifies, using edge profiling,
-%speculatively dead code and asserts absence of memory dependences to or from
-%speculatively dead operations.
-%%cite W. Y. Chen, S. A. Mahlke, and W. W. Hwu.  Tolerating first levelmemory
-%%access latency in high-performance systems
-%%
-%\end{itemize}
-%%
-%\end{itemize}
-%%
+%transitively, all uses of that object.  % \end{itemize} % \item
+%\textit{Speculative Analysis} % \begin{itemize} % %\item \textit{Loop-Invariant
+%Loaded Value Prediction}: \item \textit{Value Prediction Speculation~\cite{}}:
+%identifies, using value-prediction, profiling the predictable outcome of
+%certain instructions.  %cite F.  Gabbay  and  A.  Mendelson.    Can  program
+%profiling  supportvalue %prediction?  % \item \textit{Control
+%Speculation~\cite{}}: identifies, using edge profiling, speculatively dead code
+%and asserts absence of memory dependences to or from speculatively dead
+%operations.  %cite W. Y. Chen, S. A. Mahlke, and W. W. Hwu.  Tolerating first
+%levelmemory %access latency in high-performance systems % \end{itemize} %
+%\end{itemize} %
 %
-\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
-  stepnumber=1, numbersep=5pt}
-\begin{figure*}[t]
-  \centering
-  \scriptsize
-  \subfloat[Sequential code (version 0)]
-  {
-    \label{fig:example_nospec}
-    \begin{minipage}{4.5cm}
-      \input{figures/example_nospec}
-    \end{minipage}
-  }
-  \subfloat[Modified version 1]
-  {
-    \label{fig:example_simplespec}
-    \begin{minipage}{4.5cm}
-      \input{figures/example_simplespec}
-    \end{minipage}
-  }
-  \subfloat[Modified version 2]
-  {
-    \label{fig:example_additive}
-    \begin{minipage}{4.5cm}
-      \input{figures/example_additive}
-    \end{minipage}
-  }
-  %\subfloat[Modified version 3]
-  %{
-  %  \label{fig:example_mult}
-  %  \begin{minipage}{4.5cm}
-  %    \input{figures/example_mult}
-  %  \end{minipage}
-  %}
-  \caption{Sequential code examples. Assume that the outer loop is parallelized and array \textit{b} is liveout.}
-\end{figure*}
+\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny, stepnumber=1,
+numbersep=5pt} \begin{figure*}[t] \centering \scriptsize \subfloat[Sequential
+code (version 0)] { \label{fig:example_nospec} \begin{minipage}{4.5cm}
+\input{figures/example_nospec} \end{minipage} } \subfloat[Modified version 1] {
+\label{fig:example_simplespec} \begin{minipage}{4.5cm}
+\input{figures/example_simplespec} \end{minipage} } \subfloat[Modified version
+2] { \label{fig:example_additive} \begin{minipage}{4.5cm}
+\input{figures/example_additive} \end{minipage} }
+  %\subfloat[Modified version 3] { \label{fig:example_mult}
+  %\begin{minipage}{4.5cm} \input{figures/example_mult} \end{minipage} }
+  \caption{Sequential code examples. Assume that the outer loop is parallelized
+and arrays \textit{b}, \textit{c} are liveout.} \end{figure*}
 
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
 \begin{figure*}[t]
   \centering
   \scriptsize
+  \subfloat[Parallelized code (version 0)]
+  {
+    \label{fig:example_ver0_spec}
+    \begin{minipage}{4cm}
+      \input{figures/example_ver0_spec}
+    \end{minipage}
+  }
+  \hspace{0.2cm}
   \subfloat[Modified version 1 - ctrl spec]
   {
     \label{fig:example_ver1_spec}
@@ -428,15 +388,17 @@ Privateer as shown in section ~\ref{eval}.
 %      \input{figures/example_ver3_spec}
 %    \end{minipage}
 %  }
-  \caption{Sequential code with speculation checks and logging, before
-parallelization. Changes are in grey. Assume that the outer loop is parallelized and array \textit{b} is liveout.}
+  \caption{Parallelized code with speculation checks and logging. Parallelized
+loop is in light-grey and checks, logging are in grey. Assume that the outer loop is parallelized
+and arrays \textit{b}, \textit{c} are liveout.}
 \end{figure*}
 
 \begin{table*}
   \include{figures/related-work-tab2}
   \caption{
     Comparison of LSD with Automatic DOALL software-only systems on code
-examples. NO: No overhead, CC: Cheap checks, EM: Expensive Memory Checks, WL:
+examples. NO: No Overhead, LC: Local inexpensive Checks (no mem Checks or
+bookkeeping), MC: Memory Checks, WL:
 Write Logging
   }
   \label{tab:related-work2}

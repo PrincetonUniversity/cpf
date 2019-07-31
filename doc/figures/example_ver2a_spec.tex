@@ -1,24 +1,41 @@
-\begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt, name=ver2a]
-// dynamically allocated 
-// arrays of size N,
-// may overlap
-int *a, *b;
+\begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt, firstnumber=1, name=ver2a]
+// dynamically allocated
+// arrays, may overlap
+int *a, *b, *c;
+\end{lstlisting}
 
-for (int k=0;k<M;k++) {
-  int *p = a, *q = b;
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{very-light-gray},
+firstnumber=auto, name=ver2a]
+
+// each worker 
+int start = wid*(M/nWorkers);
+int end = start+(M/nWorkers);
+for (int k=start;k<end;k++) {
   for (int i=0;i<N;i++) {
 \end{lstlisting}
 
 \begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
 firstnumber=auto, name=ver2a]
-    spec_read(p);
-    spec_write(q);
+    spec_read_check(&a[k][i]);
+    spec_write_check(&b[i]);
+    spec_write_log(&b[i]);
 \end{lstlisting}
 
-\begin{lstlisting}[aboveskip=0pt,belowskip=0pt, firstnumber=auto, name=ver2a]
-    *q = work(*p);
-    p++;
-    q++;
+
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{very-light-gray},
+firstnumber=auto, name=ver2a]
+    b[i] = work(a[k][i]);
+\end{lstlisting}
+
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+firstnumber=auto, name=ver2a]
+    spec_write_log(&c[k][i]);
+\end{lstlisting}
+
+
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{very-light-gray},
+firstnumber=auto, name=ver2a]
+    c[k][i] = b[i];
   }
 }
 \end{lstlisting}

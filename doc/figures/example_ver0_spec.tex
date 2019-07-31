@@ -1,0 +1,19 @@
+\begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt, firstnumber=1,
+name=ver0]
+// non-overalapping arrays
+int a[M][N], b[N], c[M][N];
+\end{lstlisting} 
+
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{very-light-gray},
+firstnumber=auto, name=ver0]
+
+// each worker 
+int start = wid*(M/nWorkers);
+int end = start+(M/nWorkers);
+for (int k=start;k<end;k++) {
+  for (int i=0;i<N;i++) {
+    b[i] = work(a[k][i]);
+    c[k][i] = b[i];
+  }
+}
+\end{lstlisting}
