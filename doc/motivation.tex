@@ -362,19 +362,41 @@ Privateer as shown in section ~\ref{eval}.
 %\end{itemize}
 %%
 %
-%\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
-%  stepnumber=1, numbersep=5pt}
-%\begin{figure*}[t]
-%  \centering
-%  \scriptsize
-%  \subfloat[dijkstra]
-%  {
-%    \label{fig:dijkstra}
-%    \begin{minipage}{7.5cm}
-%      \input{figures/dijkstra_all}
-%    \end{minipage}
-%  }
-%\end{figure*}
+\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+  stepnumber=1, numbersep=5pt}
+\begin{figure*}[t]
+  \centering
+  \scriptsize
+  \subfloat[example\_nospec]
+  {
+    \label{fig:example_nospec}
+    \begin{minipage}{4.5cm}
+      \input{figures/example_nospec}
+    \end{minipage}
+  }
+  \subfloat[example\_simplespec]
+  {
+    \label{fig:example_simplespec}
+    \begin{minipage}{4.5cm}
+      \input{figures/example_simplespec}
+    \end{minipage}
+  }
+  \subfloat[example\_additive]
+  {
+    \label{fig:example_additive}
+    \begin{minipage}{4.5cm}
+      \input{figures/example_additive}
+    \end{minipage}
+  }
+  \subfloat[example\_mult]
+  {
+    \label{fig:example_mult}
+    \begin{minipage}{4.5cm}
+      \input{figures/example_mult}
+    \end{minipage}
+  }
+  \caption{Assume that the outer loop is parallelized and \textit{a} and \textit{b} are liveouts.}
+\end{figure*}
 %
 %%showcases how fine-grained collaboration between static analysis and speculative
 %%assumptions can infer high-level program properties without the need for

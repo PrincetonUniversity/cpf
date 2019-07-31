@@ -1,0 +1,12 @@
+\begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt]
+int a[N];
+int b[N];
+
+for (int t=0;t<tries;t++) {
+  for (int i=0;i<N;i++) {
+    b[i] = foo(a[i]);
+    if (b[i] == rare_value)
+      exit(0);
+  }
+}
+\end{lstlisting}
