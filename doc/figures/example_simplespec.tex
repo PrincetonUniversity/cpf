@@ -1,10 +1,10 @@
 \begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt]
-int a[N];
-int b[N];
+// non-overalapping arrays
+int a[N], b[N];
 
-for (int t=0;t<tries;t++) {
+for (int k=0;k<M;k++) {
   for (int i=0;i<N;i++) {
-    b[i] = foo(a[i]);
+    b[i] = work(a[i]);
     if (b[i] == rare_value)
       exit(0);
   }

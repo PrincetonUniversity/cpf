@@ -1,0 +1,19 @@
+\begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt, name=ver1]
+// non-overalapping arrays
+int a[N], b[N];
+
+for (int k=0;k<M;k++) {
+  for (int i=0;i<N;i++) {
+\end{lstlisting}
+
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray}, firstnumber=auto, name=ver1]
+    spec_write(&b[i]);
+\end{lstlisting}
+
+\begin{lstlisting}[aboveskip=0pt,belowskip=0pt, firstnumber=auto, name=ver1]
+    b[i] = work(a[i]);
+    if (b[i] == rare_value)
+      exit(0);
+  }
+}
+\end{lstlisting}

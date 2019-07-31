@@ -29,12 +29,6 @@ significant bookkeeping for all the involved stores.
     \vspace{-5pt}
 \end{table*}
 
-\begin{figure}[ht]
-  \includegraphics[width=\columnwidth]{figures/profit-appli-compare}
-  \caption{Comparison of applicability and profitability.}
-  \label{fig:profit-appli-compare}
-\end{figure}
-
 %To make a DOALL automatic on software-only systems, the most important job is to
 %remove all loop-carried memory dependences. There are two ways to do it - the
 %analysis-based or the speculation-based approach.
@@ -367,36 +361,90 @@ Privateer as shown in section ~\ref{eval}.
 \begin{figure*}[t]
   \centering
   \scriptsize
-  \subfloat[example\_nospec]
+  \subfloat[Sequential code (version 0)]
   {
     \label{fig:example_nospec}
     \begin{minipage}{4.5cm}
       \input{figures/example_nospec}
     \end{minipage}
   }
-  \subfloat[example\_simplespec]
+  \subfloat[Modified version 1]
   {
     \label{fig:example_simplespec}
     \begin{minipage}{4.5cm}
       \input{figures/example_simplespec}
     \end{minipage}
   }
-  \subfloat[example\_additive]
+  \subfloat[Modified version 2]
   {
     \label{fig:example_additive}
     \begin{minipage}{4.5cm}
       \input{figures/example_additive}
     \end{minipage}
   }
-  \subfloat[example\_mult]
+  %\subfloat[Modified version 3]
+  %{
+  %  \label{fig:example_mult}
+  %  \begin{minipage}{4.5cm}
+  %    \input{figures/example_mult}
+  %  \end{minipage}
+  %}
+  \caption{Sequential code examples. Assume that the outer loop is parallelized and array \textit{b} is liveout.}
+\end{figure*}
+
+\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+  stepnumber=1, numbersep=5pt}
+\begin{figure*}[t]
+  \centering
+  \scriptsize
+  \subfloat[Modified version 1 - ctrl spec]
   {
-    \label{fig:example_mult}
-    \begin{minipage}{4.5cm}
-      \input{figures/example_mult}
+    \label{fig:example_ver1_spec}
+    \begin{minipage}{4cm}
+      \input{figures/example_ver1_spec}
     \end{minipage}
   }
-  \caption{Assume that the outer loop is parallelized and \textit{a} and \textit{b} are liveouts.}
+  \hspace{0.2cm}
+  \subfloat[Modified version 2a - mem spec]
+  {
+    \label{fig:example_ver2a_spec}
+    \begin{minipage}{4cm}
+      \input{figures/example_ver2a_spec}
+    \end{minipage}
+  }
+  \hspace{0.2cm}
+  \subfloat[Modified version 2b - sep spec]
+  {
+    \label{fig:example_ver2b_spec}
+    \begin{minipage}{4cm}
+      \input{figures/example_ver2b_spec}
+    \end{minipage}
+  }
+%  \hspace{0.2cm}
+%  \subfloat[Modified version 3 - mem spec]
+%  {
+%    \label{fig:example_ver3_spec}
+%    \begin{minipage}{4cm}
+%      \input{figures/example_ver3_spec}
+%    \end{minipage}
+%  }
+  \caption{Sequential code with speculation checks and logging, before
+parallelization. Changes are in grey. Assume that the outer loop is parallelized and array \textit{b} is liveout.}
 \end{figure*}
+
+\begin{table*}
+  \include{figures/related-work-tab2}
+  \caption{
+    Comparison of LSD with Automatic DOALL software-only systems on code
+examples. NO: No overhead, CC: Cheap checks, EM: Expensive Memory Checks, WL:
+Write Logging
+  }
+  \label{tab:related-work2}
+    \vspace{-5pt}
+\end{table*}
+
+
+
 %
 %%showcases how fine-grained collaboration between static analysis and speculative
 %%assumptions can infer high-level program properties without the need for

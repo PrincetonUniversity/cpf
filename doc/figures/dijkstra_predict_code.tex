@@ -2,7 +2,7 @@
 // predicted to be 0 at start of every iteration
 int g_qCount = 0;
 
-for ( int i = 0; int j = N/2; i < N; i++, j++ ) {
+for (int i = 0; i < N; i++) { // hot loop
   ...
   enqueue( i, 0, NONE );
   g_qCount++;

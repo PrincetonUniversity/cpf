@@ -1,15 +1,14 @@
 \begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt]
-int *a;
-int *b;
-allocate(&a, &b, N);
+// dyn allocated arrays
+// of size N, may overlap
+int *a, *b;
 
-for (int t=0;t<tries;t++) {
+for (int k=0;k<M;k++) {
   int *p = a, *q = b;
   for (int i=0;i<N;i++) {
     if (rare)
-      printf("Rare condition!");
-    else
-      *q = foo(*p);
+      continue;
+    *q = work(*p);
     p++;
     q++;
   }
