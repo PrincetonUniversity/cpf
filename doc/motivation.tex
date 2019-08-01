@@ -291,11 +291,6 @@ Privateer as shown in section ~\ref{eval}.
 %Table ~\ref{related_work} summarizes comparison with prior work.
 
 
-
-
-
-
-
 %\subsection{Motivational examples}
 
 %% In this section, we present a code example taken from MiBench~\cite{}
@@ -330,80 +325,107 @@ Privateer as shown in section ~\ref{eval}.
 %operations.  %cite W. Y. Chen, S. A. Mahlke, and W. W. Hwu.  Tolerating first
 %levelmemory %access latency in high-performance systems % \end{itemize} %
 %\end{itemize} %
+
+
+%\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny, stepnumber=1,
+%numbersep=5pt} \begin{figure*}[t] \centering \scriptsize \subfloat[Sequential
+%code (version 0)] { \label{fig:example_nospec} \begin{minipage}{4.5cm}
+%\input{figures/example_nospec} \end{minipage} } \subfloat[Modified version 1] {
+%\label{fig:example_simplespec} \begin{minipage}{4.5cm}
+%\input{figures/example_simplespec} \end{minipage} } \subfloat[Modified version
+%2] { \label{fig:example_additive} \begin{minipage}{4.5cm}
+%\input{figures/example_additive} \end{minipage} }
+%  %\subfloat[Modified version 3] { \label{fig:example_mult}
+%  %\begin{minipage}{4.5cm} \input{figures/example_mult} \end{minipage} }
+%  \caption{Sequential code examples. The output loop is the parallelization
+%target. Assume that arrays \textit{b}, \textit{c} are liveout.} \end{figure*}
 %
-\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny, stepnumber=1,
-numbersep=5pt} \begin{figure*}[t] \centering \scriptsize \subfloat[Sequential
-code (version 0)] { \label{fig:example_nospec} \begin{minipage}{4.5cm}
-\input{figures/example_nospec} \end{minipage} } \subfloat[Modified version 1] {
-\label{fig:example_simplespec} \begin{minipage}{4.5cm}
-\input{figures/example_simplespec} \end{minipage} } \subfloat[Modified version
-2] { \label{fig:example_additive} \begin{minipage}{4.5cm}
-\input{figures/example_additive} \end{minipage} }
-  %\subfloat[Modified version 3] { \label{fig:example_mult}
-  %\begin{minipage}{4.5cm} \input{figures/example_mult} \end{minipage} }
-  \caption{Sequential code examples. Assume that the outer loop is parallelized
-and arrays \textit{b}, \textit{c} are liveout.} \end{figure*}
+%\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+%  stepnumber=1, numbersep=5pt}
+%\begin{figure*}[t]
+%  \centering
+%  \scriptsize
+%  \subfloat[Parallelized code (version 0)]
+%  {
+%    \label{fig:example_ver0_spec}
+%    \begin{minipage}{4cm}
+%      \input{figures/example_ver0_spec}
+%    \end{minipage}
+%  }
+%  \hspace{0.2cm}
+%  \subfloat[Modified version 1 - ctrl spec]
+%  {
+%    \label{fig:example_ver1_spec}
+%    \begin{minipage}{4cm}
+%      \input{figures/example_ver1_spec}
+%    \end{minipage}
+%  }
+%  \hspace{0.2cm}
+%  \subfloat[Modified version 2a - mem spec]
+%  {
+%    \label{fig:example_ver2a_spec}
+%    \begin{minipage}{4cm}
+%      \input{figures/example_ver2a_spec}
+%    \end{minipage}
+%  }
+%  \hspace{0.2cm}
+%  \subfloat[Modified version 2b - sep spec]
+%  {
+%    \label{fig:example_ver2b_spec}
+%    \begin{minipage}{4cm}
+%      \input{figures/example_ver2b_spec}
+%    \end{minipage}
+%  }
+%%  \hspace{0.2cm}
+%%  \subfloat[Modified version 3 - mem spec]
+%%  {
+%%    \label{fig:example_ver3_spec}
+%%    \begin{minipage}{4cm}
+%%      \input{figures/example_ver3_spec}
+%%    \end{minipage}
+%%  }
+%  \caption{Parallelized code with speculation checks and logging. Parallelized
+%loop is in light-grey. Checks and logging are in grey. Assume arrays \textit{b}, \textit{c} are liveout.}
+%\end{figure*}
+%
+%\begin{table*}
+%  \include{figures/related-work-tab2}
+%  \caption{
+%    Comparison of LSD with Automatic DOALL software-only systems on code
+%examples. NO: No Overhead, LC: Local inexpensive Checks (no mem Checks or
+%bookkeeping), MC: Memory Checks, WL:
+%Write Logging
+%  }
+%  \label{tab:related-work2}
+%    \vspace{-5pt}
+%\end{table*}
+
 
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
 \begin{figure*}[t]
   \centering
   \scriptsize
-  \subfloat[Parallelized code (version 0)]
+  \subfloat[Sequential dijkstra example]
   {
-    \label{fig:example_ver0_spec}
-    \begin{minipage}{4cm}
-      \input{figures/example_ver0_spec}
+    \label{fig:dijkstra_motivation}
+    \begin{minipage}{6cm}
+      \input{figures/dijkstra_motivation}
     \end{minipage}
   }
-  \hspace{0.2cm}
-  \subfloat[Modified version 1 - ctrl spec]
+  \hspace{0.4cm}
+  \subfloat[Speculatively privatized code, before parallelization]
   {
-    \label{fig:example_ver1_spec}
-    \begin{minipage}{4cm}
-      \input{figures/example_ver1_spec}
+    \label{fig:dijkstra_motivation_checks}
+    \begin{minipage}{6cm}
+      \input{figures/dijkstra_motivation_checks}
     \end{minipage}
   }
-  \hspace{0.2cm}
-  \subfloat[Modified version 2a - mem spec]
-  {
-    \label{fig:example_ver2a_spec}
-    \begin{minipage}{4cm}
-      \input{figures/example_ver2a_spec}
-    \end{minipage}
-  }
-  \hspace{0.2cm}
-  \subfloat[Modified version 2b - sep spec]
-  {
-    \label{fig:example_ver2b_spec}
-    \begin{minipage}{4cm}
-      \input{figures/example_ver2b_spec}
-    \end{minipage}
-  }
-%  \hspace{0.2cm}
-%  \subfloat[Modified version 3 - mem spec]
-%  {
-%    \label{fig:example_ver3_spec}
-%    \begin{minipage}{4cm}
-%      \input{figures/example_ver3_spec}
-%    \end{minipage}
-%  }
-  \caption{Parallelized code with speculation checks and logging. Parallelized
-loop is in light-grey and checks, logging are in grey. Assume that the outer loop is parallelized
-and arrays \textit{b}, \textit{c} are liveout.}
+
+ % \caption{Parallelized code with speculation checks and logging. Parallelized
+%loop is in light-grey. Checks and logging are in grey. Assume arrays \textit{b}, \textit{c} are liveout.}
 \end{figure*}
 
-\begin{table*}
-  \include{figures/related-work-tab2}
-  \caption{
-    Comparison of LSD with Automatic DOALL software-only systems on code
-examples. NO: No Overhead, LC: Local inexpensive Checks (no mem Checks or
-bookkeeping), MC: Memory Checks, WL:
-Write Logging
-  }
-  \label{tab:related-work2}
-    \vspace{-5pt}
-\end{table*}
 
 
 
