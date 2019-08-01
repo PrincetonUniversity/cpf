@@ -1,15 +1,12 @@
 \begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt]
 // dynamically allocated
-// arrays of size N,
-// may overlap
-int *a, *b;
+// arrays, may overlap
+int *a, *b, *c;
 
 for (int k=0;k<M;k++) {
-  int *p = a, *q = b;
   for (int i=0;i<N;i++) {
-    *q = work(*p);
-    p++;
-    q++;
+    b[i] = work(a[k][i]);
+    c[k][i] = b[i];
   }
 }
 \end{lstlisting}

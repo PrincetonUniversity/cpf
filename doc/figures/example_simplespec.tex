@@ -1,10 +1,11 @@
 \begin{lstlisting}[morekeywords={g_qCount},belowskip=0pt]
 // non-overalapping arrays
-int a[N], b[N];
+int a[M][N], b[N], c[M][N];
 
 for (int k=0;k<M;k++) {
   for (int i=0;i<N;i++) {
-    b[i] = work(a[i]);
+    b[i] = work(a[k][i]);
+    c[k][i] = b[i];
     if (b[i] == rare_value)
       exit(0);
   }
