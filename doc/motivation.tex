@@ -409,21 +409,33 @@ Privateer as shown in section ~\ref{eval}.
   \subfloat[Sequential dijkstra example]
   {
     \label{fig:dijkstra_motivation}
-    \begin{minipage}{6cm}
+    \begin{minipage}{4.4cm}
       \input{figures/dijkstra_motivation}
     \end{minipage}
   }
-  \hspace{0.4cm}
-  \subfloat[Speculatively privatized code, before parallelization]
+  \hspace{0.3cm}
+  \subfloat[Parallelized code with state-of-the-art spec-DOALL system (Privateer)]
   {
     \label{fig:dijkstra_motivation_checks}
-    \begin{minipage}{6cm}
+    \begin{minipage}{6.6cm}
       \input{figures/dijkstra_motivation_checks}
     \end{minipage}
   }
+  \hspace{0.3cm}
+  \subfloat[Parallelized code with minimal overhead (this work)]
+  {
+    \label{fig:dijkstra_motivation_checks}
+    \begin{minipage}{5.4cm}
+      \input{figures/dijkstra_motivation_checks_our}
+    \end{minipage}
+  }
 
- % \caption{Parallelized code with speculation checks and logging. Parallelized
-%loop is in light-grey. Checks and logging are in grey. Assume arrays \textit{b}, \textit{c} are liveout.}
+  \caption{Sequential \textit{dijkstra} code and parallelized versions. Function
+worker\_loop is executed by each worker after spawning. Function's inputs
+specify which iterations each worker should run. Checks, logging and copy-out
+operations are in grey. Assume that array \textit{pathcost} cannot be proved as
+non-liveout.}
+
 \end{figure*}
 
 

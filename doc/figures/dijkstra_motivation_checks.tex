@@ -4,48 +4,79 @@ int *pathcost; // dyn alloc 1-D N
 int *adj; // dyn alloc 2-D NxN
 int dist, v, src, i;
 
-for (src=0; src<N; src++) {
+void worker_loop(int start, int N, int step) {
 \end{lstlisting}
 
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
-firstnumber=auto, name=dij_checks]
-  // Privacy Check
-  private_write(pathcost, N*sizeof(int));
-\end{lstlisting}
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+  void *md = alloc(); // allocate metadata
+  // Separation Local Check
+  check_heap(pathcost, PRIVATE);
+  \end{lstlisting}
 
-\begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
-  for (i=0; i<N; i++)
-    pathcost[i] = inf;
+  \begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+  for (src=start; src<N; src+=step) {
+  \end{lstlisting}
 
-  enqueue(src, 0);
-  while (!emptyQ()) {
-    dequeue(&v, &dist);
-    for (i=0; i<N; i++) {
-      nDist = adj[v][i] + dist;
-\end{lstlisting}
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+    // Privacy Local Check & Logging
+    private_write(pathcost, N*sizeof(int), md);
+  \end{lstlisting}
 
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
-firstnumber=auto, name=dij_checks]
-      // Privacy Check
-      private_read(pathcost, sizeof(int));
-\end{lstlisting}
+  \begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+    for (i=0; i<N; i++)
+      pathcost[i] = inf;
+
+    enqueue(src, 0);
+    while (!emptyQ()) {
+      dequeue(&v, &dist);
+      for (i=0; i<N; i++) {
+        nDist = adj[v][i] + dist;
+  \end{lstlisting}
+
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+        // Privacy Local Check & Logging
+        private_read(pathcost, sizeof(int), md);
+  \end{lstlisting}
 
 
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
-      if (pathcost[i] > nDist) {
-\end{lstlisting}
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+        if (pathcost[i] > nDist) {
+  \end{lstlisting}
 
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
-firstnumber=auto, name=dij_checks]
-        // Privacy Check
-        private_write(pathcost, sizeof(int));
-\end{lstlisting}
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+          // Privacy Local Check & Logging
+          private_write(pathcost, sizeof(int), md);
+  \end{lstlisting}
 
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
-        pathcost[i] = nDist;
-        enqueue(i, nDist);
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+          pathcost[i] = nDist;
+          enqueue(i, nDist);
+        }
       }
     }
+    \end{lstlisting}
+
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+    if (checkpointDue()) {
+      // check conflicts with other workers
+      checkPrivAcccessesConflicts(md);
+    }
+  \end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
   }
+    \end{lstlisting}
+
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+  communicateLiveOutMemState(md);
+  \end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
 }
 \end{lstlisting}

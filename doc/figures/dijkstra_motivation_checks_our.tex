@@ -1,0 +1,44 @@
+\begin{lstlisting}[morekeywords={pathcost}, belowskip=0pt, firstnumber=1,
+name=dij_checks]
+int *pathcost; // dyn alloc 1-D N
+int *adj; // dyn alloc 2-D NxN
+int dist, v, src, i;
+
+void worker_loop(int start, int N, int step) {
+\end{lstlisting}
+
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  firstnumber=auto, name=dij_checks]
+  // Separation Local Check
+  check_heap(pathcost, LAST_ITER_PRIVATE);
+  \end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+  for (src=start; src<N; src+=step) {
+    for (i=0; i<N; i++)
+      pathcost[i] = inf;
+
+    enqueue(src, 0);
+    while (!emptyQ()) {
+      dequeue(&v, &dist);
+      for (i=0; i<N; i++) {
+        nDist = adj[v][i] + dist;
+        if (pathcost[i] > nDist) {
+          pathcost[i] = nDist;
+          enqueue(i, nDist);
+        }
+      }
+    }
+  }
+    \end{lstlisting}
+
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray}, firstnumber=auto, name=dij_checks]
+  // only last iter's mem state
+  // needs to be communicated
+  if (src == N-1+step)
+    communicateLiveOutMemState();
+\end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+}
+\end{lstlisting}

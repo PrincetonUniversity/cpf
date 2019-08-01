@@ -3,18 +3,20 @@ int *pathcost; // dyn alloc 1-D N
 int *adj; // dyn alloc 2-D NxN
 int dist, v, src, i;
 
-for (src=0; src<N; src++) {
-  for (i=0; i<N; i++)
-    pathcost[i] = inf;
+void hot_loop(int N) {
+  for (src=0; src<N; src++) {
+    for (i=0; i<N; i++)
+      pathcost[i] = inf;
 
-  enqueue(src, 0);
-  while (!emptyQ()) {
-    dequeue(&v, &dist);
-    for (i=0; i<N; i++) {
-      nDist = adj[v][i] + dist;
-      if (pathcost[i] > nDist) {
-        pathcost[i] = nDist;
-        enqueue(i, nDist);
+    enqueue(src, 0);
+    while (!emptyQ()) {
+      dequeue(&v, &dist);
+      for (i=0; i<N; i++) {
+        nDist = adj[v][i] + dist;
+        if (pathcost[i] > nDist) {
+          pathcost[i] = nDist;
+          enqueue(i, nDist);
+        }
       }
     }
   }
