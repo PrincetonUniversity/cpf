@@ -423,18 +423,18 @@ Privateer as shown in section ~\ref{eval}.
 
   \\
   \hline
-  \rotatebox[origin=c]{90}{Source Code Level}
+  \rotatebox[origin=c]{90}{Source Code}
   &
-  %\scriptsize
-  \tiny
+  \scriptsize
+  %\tiny
   \subfloat {
   \begin{minipage}{6.6cm}
   \input{figures/dijkstra_motivation_checks}
   \end{minipage}
   }
   &
-  %\scriptsize
-  \tiny
+  \scriptsize
+  %\tiny
   \subfloat {
   \begin{minipage}{6cm}
   \input{figures/dijkstra_motivation_checks_our}
@@ -443,18 +443,30 @@ Privateer as shown in section ~\ref{eval}.
 
   \\
   \hline
-  \raisebox{1cm}[0pt][0pt]{\rotatebox{90}{Data Level}}
+  \raisebox{1cm}[0pt][0pt]{\rotatebox{90}{Data Flow}}
   %\raisebox{1cm}[0pt][0pt]{\rotatebox{90}{\parbox{4cm}{Data Level \\ (Logging &
 %Copy-out Cost)}}}
   &
-  %\begin{minipage}{7cm}
-    \includegraphics[width=6cm]{figures/data_view_privateer}
-  %\end{minipage}
+  \includegraphics[width=6.5cm]{figures/data_view_privateer}
   &
-    \includegraphics[width=6cm]{figures/data_view_lsd}
+  \includegraphics[width=6cm]{figures/data_view_lsd}
 
+  \\
+  \hline
+  \raisebox{2.8cm}[0pt][0pt]{\rotatebox{90}{Compilation Workflow}}
+  %\raisebox{1cm}[0pt][0pt]{\rotatebox{90}{\parbox{4cm}{Data Level \\ (Logging &
+%Copy-out Cost)}}}
+  &
+  %\includegraphics[width=6cm]{figures/compilation_flow_privateer}
+  \includegraphics[scale=0.5]{figures/compilation_flow_privateer}
+  &
+  %\includegraphics[width=6cm]{figures/compilation_flow_lsd}
+  \includegraphics[scale=0.5]{figures/compilation_flow_lsd}
 
 \end{tabular}
+
+\caption{Parallelized versions of \textit{dijkstra} benchmark}
+\label{fig:dijkstra_parallelized}
 \end{figure*}
 
 %\begin{figure*}[t]
