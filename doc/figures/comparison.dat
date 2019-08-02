@@ -1,0 +1,14 @@
+# Benchmark order in table is as follows:
+# 2mm     3mm       gemm      doitgen   dijkstra  052.alvinn  blackscholes  enc-md5   swaptions
+
+# LSD   Privateer
+24.9    1         #2mm
+24.6    1         #3mm
+24.8    1         #gemm
+25.4    1         #doitgen
+39.2    1         #dijkstra
+1       1         #052.alvinn
+23.6    1         #179.art
+25      1         #blackscholes
+27.3    1         #enc-md5
+25.7    1         #swaptions

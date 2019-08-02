@@ -2,13 +2,12 @@
 \centering
 %\tiny
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
 \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Types of Private \\Memory Objects
 \end{tabular}} & \multirow{2}{*}{Overlap} &
 \multicolumn{3}{c|}{Privatization Criteria} &
-\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Other Spec \\ Allowed\end{tabular}}
-& \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive\\
+\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive\\
 Mem Checks \end{tabular}} &
 \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Expensive\\ Last Write
 Detection\end{tabular}}
@@ -17,13 +16,13 @@ Committed\end{tabular}}
 & \multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Memory\\
 Mapping\end{tabular}}
 \\ \cline{3-5}
- &  & Static & Cheap Spec & Mem Spec &  &  &  &  & \\ \hline
-Independent & No & $\checkmark$ & - & - & - & - & - & - & Shared \\ \hline
-Local Private & Any & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & - & CoW \\ \hline
-Kill Private & Complete & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & - & $\checkmark$ & CoW \\ \hline
-Predictable Private & Any & - & $\checkmark$ & - & $\checkmark$ & - & - & $\checkmark$ & CoW \\ \hline
+ &  & Static & Cheap Spec & Mem Spec &  &  &  & \\ \hline
+Independent & No & $\checkmark$ & - & - & - & - & $\checkmark$ & Shared \\ \hline
+Local Private & Any & $\checkmark$ & $\checkmark$ & - & - & - & - & CoW \\ \hline
+Kill Private & Complete & $\checkmark$ & $\checkmark$ & - & - & - & $\checkmark$ & CoW \\ \hline
+Predictable Private & Any & - & $\checkmark$ & - & - & - & $\checkmark$ & CoW \\ \hline
 %No Mem Check Private & No/Partial & $\checkmark$ & $\checkmark$ & - & $\checkmark$ & - & $\checkmark$ & $\checkmark$ & CoW  \\ \hline
-Just Private & Any & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & CoW \\ \hline
+Just Private & Any & - & - & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & CoW \\ \hline
 \end{tabular}
 }
 \caption{
