@@ -403,67 +403,119 @@ Privateer as shown in section ~\ref{eval}.
 
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
+
 \begin{figure*}[t]
   \centering
   \scriptsize
-  \subfloat[Sequential dijkstra example]
-  {
-    \label{fig:dijkstra_motivation}
     \begin{minipage}{4.4cm}
       \input{figures/dijkstra_motivation}
     \end{minipage}
-  }
-  \hspace{0.3cm}
-  \subfloat[Parallelized code with state-of-the-art spec-DOALL system (Privateer)]
-  {
-    \label{fig:dijkstra_motivation_checks}
-    \begin{minipage}{6.6cm}
-      \input{figures/dijkstra_motivation_checks}
-    \end{minipage}
-  }
-  \hspace{0.3cm}
-  \subfloat[Parallelized code with minimal overhead (this work)]
-  {
-    \label{fig:dijkstra_motivation_checks}
-    \begin{minipage}{5.4cm}
-      \input{figures/dijkstra_motivation_checks_our}
-    \end{minipage}
-  }
-
-  \caption{Sequential \textit{dijkstra} code and parallelized versions. Function
-worker\_loop is executed by each worker after spawning. Function's inputs
-specify which iterations each worker should run. Checks, logging and copy-out
-operations are in grey. Assume that array \textit{pathcost} cannot be proved as
-non-liveout.}
-
+    \label{fig:dijkstra_motivation}
+\caption{Sequential \textit{dijkstra} example}
 \end{figure*}
 
+\begin{figure*}
+\centering
+\begin{tabular}{c|c|c}
 
-\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
-  stepnumber=1, numbersep=5pt}
-\begin{figure*}[t]
-  \centering
-  \scriptsize
-  \subfloat[Privateer]
-  {
-    \label{fig:data_view_privateer}
-    \begin{minipage}{7cm}
-      \includegraphics[width=\textwidth]{figures/data_view_privateer}
-    \end{minipage}
-  }
-  \hspace{2cm}
-  \subfloat[This work]
-  {
-    \label{fig:data_view_lsd}
-    \begin{minipage}{7cm}
-      \includegraphics[width=\textwidth]{figures/data_view_lsd}
-    \end{minipage}
-  }
-  \caption{Data view}
+  \hspace{1cm}  &  \hspace{0.7cm}  State-of-the-art spec-DOALL system (Privateer)
+  \hspace{0.7cm} &  \hspace{3cm} This Work \hspace{3cm}
 
+  \\
+  \hline
+  \rotatebox[origin=c]{90}{Source Code Level}
+  &
+  %\scriptsize
+  \tiny
+  \subfloat {
+  \begin{minipage}{6.6cm}
+  \input{figures/dijkstra_motivation_checks}
+  \end{minipage}
+  }
+  &
+  %\scriptsize
+  \tiny
+  \subfloat {
+  \begin{minipage}{6cm}
+  \input{figures/dijkstra_motivation_checks_our}
+  \end{minipage}
+  }
+
+  \\
+  \hline
+  \raisebox{1cm}[0pt][0pt]{\rotatebox{90}{Data Level}}
+  %\raisebox{1cm}[0pt][0pt]{\rotatebox{90}{\parbox{4cm}{Data Level \\ (Logging &
+%Copy-out Cost)}}}
+  &
+  %\begin{minipage}{7cm}
+    \includegraphics[width=6cm]{figures/data_view_privateer}
+  %\end{minipage}
+  &
+    \includegraphics[width=6cm]{figures/data_view_lsd}
+
+
+\end{tabular}
 \end{figure*}
 
+%\begin{figure*}[t]
+%  \centering
+%  \scriptsize
+%  \subfloat[Sequential dijkstra example]
+%  {
+%    \label{fig:dijkstra_motivation}
+%    \begin{minipage}{4.4cm}
+%      \input{figures/dijkstra_motivation}
+%    \end{minipage}
+%  }
+%  \hspace{0.3cm}
+%  \subfloat[Parallelized code with state-of-the-art spec-DOALL system (Privateer)]
+%  {
+%    \label{fig:dijkstra_motivation_checks}
+%    \begin{minipage}{6.6cm}
+%      \input{figures/dijkstra_motivation_checks}
+%    \end{minipage}
+%  }
+%  \hspace{0.3cm}
+%  \subfloat[Parallelized code with minimal overhead (this work)]
+%  {
+%    \label{fig:dijkstra_motivation_checks}
+%    \begin{minipage}{5.4cm}
+%      \input{figures/dijkstra_motivation_checks_our}
+%    \end{minipage}
+%  }
+%
+%  \caption{Sequential \textit{dijkstra} code and parallelized versions. Function
+%worker\_loop is executed by each worker after spawning. Function's inputs
+%specify which iterations each worker should run. Checks, logging and copy-out
+%operations are in grey. Assume that array \textit{pathcost} cannot be proved as
+%non-liveout.}
+%
+%\end{figure*}
 
+
+%\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+%  stepnumber=1, numbersep=5pt}
+%\begin{figure*}[t]
+%  \centering
+%  \scriptsize
+%  \subfloat[Privateer]
+%  {
+%    \label{fig:data_view_privateer}
+%    \begin{minipage}{7cm}
+%      \includegraphics[width=\textwidth]{figures/data_view_privateer}
+%    \end{minipage}
+%  }
+%  \hspace{2cm}
+%  \subfloat[This work]
+%  {
+%    \label{fig:data_view_lsd}
+%    \begin{minipage}{7cm}
+%      \includegraphics[width=\textwidth]{figures/data_view_lsd}
+%    \end{minipage}
+%  }
+%  \caption{Data view}
+%
+%\end{figure*}
 
 
 %
