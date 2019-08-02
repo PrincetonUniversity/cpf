@@ -9,7 +9,7 @@ set style increment default
 set grid noxtics
 set noxtics
 set ytics norangelimit autofreq font ",8"
-# set xtics border in scale 0,0 nomirror rotate by -45 autojustify
+set xtics border in scale 0,0 nomirror autojustify
 # set xtics norangelimit font ",8"
 # set xtics ()
 set style data histograms
@@ -18,12 +18,10 @@ set style histogram cluster gap 1
 # set xlabel offset character 0, -2, 0 font "Helvetica,8" textcolor lt -1 norotate
 set ylabel "Speedup over sequential"
 
-set style fill solid noborder
+set style fill pattern 1 border
 # set boxwidth 0.8
 
 # set yrange [:120]
-set title "Speedup comparison with Privateer"
-# plot newhistogram "2mm" lt 1, 'comparison.dat' using 1, '' using 2, \
-#      newhistogram "3mm" lt 1, 'comparison.dat' using 3, '' using 4, \
-#      newhistogram "gemm" lt 1, 'comparison.dat' using 5, '' using 6
-plot 'comparison.dat' using 1 title 'LSD', '' using 2 title 'Privateer'
+set title "Speedup comparison with Privateer on 28 cores"
+# plot newhistogram "2mm" lt 1, 'comparison.dat' using 1
+plot 'comparison.dat' using 1:xtic(5) title 'LSD', '' using 2 title 'Privateer', '' using 3 title 'LSD-malloc', '' using 4 title 'Privateer-malloc'
