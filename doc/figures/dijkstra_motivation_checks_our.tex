@@ -1,8 +1,30 @@
-\begin{lstlisting}[morekeywords={pathcost}, belowskip=0pt, firstnumber=1,
-name=dij_checks]
-int *pathcost; // dyn alloc 1-D N
-int *adj; // dyn alloc 2-D NxN
-int dist, v, src, i;
+%\begin{lstlisting}[morekeywords={pathcost}, belowskip=0pt, firstnumber=1,
+%name=dij_checks]
+%int *pathcost; // dyn alloc 1-D N
+%int *adj; // dyn alloc 2-D NxN
+%int dist, v, src, i;
+
+
+\begin{lstlisting}[morekeywords={pathcost,dist}, belowskip=0pt, firstnumber=9, name=dij_checks]
+int dequeue() {
+  if (!emptyQ()) {
+\end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt,
+firstnumber=13, name=dij_checks]
+    dist = ...
+    ...
+  }
+\end{lstlisting}
+
+  \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray}, firstnumber=auto, name=dij_checks]
+  else
+    misspec("Control misspec in dequeue()");
+\end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt,
+firstnumber=auto, name=dij_checks]
+}
 
 void worker_loop(int start, int N, int step) {
 \end{lstlisting}
@@ -14,31 +36,38 @@ void worker_loop(int start, int N, int step) {
   \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=9,name=dij_checks]
+belowskip=0pt, firstnumber=25,name=dij_checks]
   for (src=start; src<N; src+=step) {
 \end{lstlisting}
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=12,name=dij_checks]
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,
+belowskip=0pt, firstnumber=28,name=dij_checks]
     for (i=0; i<N; i++)
       pathcost[i] = inf;
 
     enqueue(src, 0);
     while (!emptyQ()) {
-      dequeue(&v, &dist);
+      int v = dequeue();
       for (i=0; i<N; i++) {
+\end{lstlisting}
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,
+belowskip=0pt, firstnumber=37,name=dij_checks]
         nDist = adj[v][i] + dist;
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=22,name=dij_checks]
+belowskip=0pt, firstnumber=40,name=dij_checks]
         if (pathcost[i] > nDist) {
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=25,name=dij_checks]
+belowskip=0pt, firstnumber=43,name=dij_checks]
           pathcost[i] = nDist;
           enqueue(i, nDist);
         }
       }
     }
+\end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,
+belowskip=0pt, firstnumber=52,name=dij_checks]
   }
 \end{lstlisting}
 
@@ -50,6 +79,6 @@ belowskip=0pt, firstnumber=25,name=dij_checks]
 \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=36,name=dij_checks]
+belowskip=0pt, firstnumber=auto,name=dij_checks]
 }
 \end{lstlisting}

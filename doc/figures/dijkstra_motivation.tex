@@ -1,27 +1,53 @@
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=1]
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt, firstnumber=1]
 int *pathcost; // dyn alloc 1-D N
 int *adj; // dyn alloc 2-D NxN
-int dist, v, src, i;
+int dist;
+
+void allocatePathCost() {
+  pathcost = (int*)malloc(N*sizeof(int));
+}
+
+int dequeue() {
+  if (!emptyQ()) {
+\end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt,
+firstnumber=13, name=dij_checks]
+    dist = ...
+    ...
+  }
+\end{lstlisting}
+
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt,
+firstnumber=18, name=dij_checks]
+}
 
 void hot_loop(int N) {
 \end{lstlisting}
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=9]
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
+firstnumber=25]
   for (src=0; src<N; src++) {
 \end{lstlisting}
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=12]
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt,
+firstnumber=28]
     for (i=0; i<N; i++)
       pathcost[i] = inf;
 
     enqueue(src, 0);
     while (!emptyQ()) {
-      dequeue(&v, &dist);
+      int v = dequeue();
       for (i=0; i<N; i++) {
+\end{lstlisting}
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,
+belowskip=0pt, firstnumber=37,name=dij_checks]
         nDist = adj[v][i] + dist;
 \end{lstlisting}
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=22]
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
+firstnumber=40]
         if (pathcost[i] > nDist) {
 \end{lstlisting}
-\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=25]
+\begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
+firstnumber=43]
           pathcost[i] = nDist;
           enqueue(i, nDist);
         }
@@ -29,10 +55,10 @@ void hot_loop(int N) {
     }
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=34]
+belowskip=0pt, firstnumber=52]
   }
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=36]
+belowskip=0pt, firstnumber=57]
 }
 \end{lstlisting}
