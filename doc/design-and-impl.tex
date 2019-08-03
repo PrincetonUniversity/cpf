@@ -1,19 +1,29 @@
-\section{Enablers}
-\label{sec:enables}
+\section{Framework Design and Implementation}
+
+\subsection{Compiler Pipeline}
+
+\begin{figure}[htp]
+  \includegraphics[width=\columnwidth]{figures/compiler-pipeline-crop}
+  \caption{Compiler Pipeline Overview}
+  \label{fig:compiler-pipeline}
+\end{figure}
+
+\subsection{Transformations}
+\label{sec:transformations}
 
 
-\subsection{}
+
+
 % Collaborative Analysis Framework
 
 % By leveraging a state-of-the-art memory analysis framework, we are able to
 % disprove more dependences to allow less or inexpensive speculations.
 
-
-% Enabler Introduction
-
+\subsection{Transformations}
 In this work, we introduce a set of transformations to explore more
-opportunities of parallelization. We call these enabling transformations
-Enablers.
+opportunities of parallelization.
+
+%We call these enabling transformations Enablers.
 
 %  How to query Enabler?
 
@@ -42,10 +52,7 @@ The analysis passes and the transformation passes are seperated. Even though
 it has been suggested before, in this work, we have a smaller set of
 Enablers with stronger capability.
 
-% Enabler Description
-\subsection{Enabler Description}
-
-Non Speculative Enablers
+\textbf{Non-Speculative Transformations}
 
 \begin{itemize}
     \item Conservative Reduction (ReduxRemed)
@@ -73,7 +80,7 @@ Non Speculative Enablers
         % No usage of speculative remediators to achieve separation
 \end{itemize}
 
-Speculative Enablers
+\textbf{Speculative Transformations}
 
 \begin{itemize}
     \item Control Speculation (ControlSpecRemed)
