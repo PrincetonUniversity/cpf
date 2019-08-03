@@ -137,6 +137,9 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
                  << "  and  " << *B << '\n');
   }
 
+  remedResp.remedy = remedy;
+  return remedResp;
+
   bool predPtrA = isPredictablePtr(ptrA, DL);
   bool predPtrB = isPredictablePtr(ptrB, DL);
   if (predPtrA || predPtrB) {

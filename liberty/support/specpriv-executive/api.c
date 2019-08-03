@@ -847,6 +847,7 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 
   //__specpriv_advance_iter(++currentIter);
   __specpriv_advance_iter(globalCurIter, ckptUsed);
+  TIME(worker_pause_time);
 }
 
 // check whether we will checkpoint at the end of current iteration
@@ -896,6 +897,10 @@ uint32_t __specpriv_get_ckpt_check(void){
 }
 
 void __specpriv_final_iter_ckpt_check(uint64_t rem, uint64_t chunkSize) {
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
   uint64_t chunkedRem = rem / chunkSize;
   if (rem % chunkSize)
     ++chunkedRem;
@@ -906,6 +911,7 @@ void __specpriv_final_iter_ckpt_check(uint64_t rem, uint64_t chunkSize) {
     __specpriv_begin_iter();
     __specpriv_end_iter(1);
   }
+  TIME(worker_pause_time);
 }
 
 void __specpriv_set_last_redux_update_iter(uint32_t set) {
@@ -938,7 +944,11 @@ void __specpriv_uo(void *ptr, uint64_t code, const char *msg)
 void __specpriv_predict(uint64_t observed, uint64_t expected)
 {
   if( observed != expected )
+  {
+    printf("Failed -- observed = %lu, expected = %lu\n", observed, expected);
+    fflush(stdout);
     __specpriv_misspec("Value prediction failed");
+  }
 }
 
 

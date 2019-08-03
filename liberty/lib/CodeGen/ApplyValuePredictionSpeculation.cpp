@@ -205,12 +205,12 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
 
-  std::unordered_set<const Value *> *selectedLoadedValuePreds =
-      preprocess.getSelectedLoadedValuePreds(header);
-  if (!selectedLoadedValuePreds)
-    return modified;
+  /* std::unordered_set<const Value *> *selectedLoadedValuePreds = */
+  /*     preprocess.getSelectedLoadedValuePreds(header); */
+  /* if (!selectedLoadedValuePreds) */
+  /*   return modified; */
 
-  auto selectedCtrlSpecDeps = preprocess.getSelectedCtrlSpecDeps(header);
+  /* auto selectedCtrlSpecDeps = preprocess.getSelectedCtrlSpecDeps(header); */
 
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
   DominatorTree &dt = mloops.getAnalysis_DominatorTree( fcn );
@@ -250,8 +250,8 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
 
     Value *ptr = load->getPointerOperand();
 
-    if (!selectedLoadedValuePreds->count(ptr))
-      continue;
+    /* if (!selectedLoadedValuePreds->count(ptr)) */
+    /*   continue; */
 
     if( already.count(ptr) )
       continue;
@@ -314,8 +314,10 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
         continue;
       TerminatorInst *predT = dyn_cast<TerminatorInst>(pred->getTerminator());
 
-      if (ctrlspec->isSpeculativelyDead(pred, header) && selectedCtrlSpecDeps &&
-          predT && selectedCtrlSpecDeps->count(predT))
+      /* if (ctrlspec->isSpeculativelyDead(pred, header) && selectedCtrlSpecDeps && */
+      /*     predT && selectedCtrlSpecDeps->count(predT)) */
+      /*   continue; */
+      if (ctrlspec->isSpeculativelyDead(pred, header) && predT )
         continue;
 
       // look if there a BB that stores redux and other loop-carried variables

@@ -423,9 +423,9 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
       if( !isPrivate(loop,ptr) )
         continue;
 
-      if (!isSelectedPrivateSpecLoad(loop, load)) {
-        continue;
-      }
+      /* if (!isSelectedPrivateSpecLoad(loop, load)) { */
+      /*   continue; */
+      /* } */
 
       const GlobalVariable *gv = dyn_cast<GlobalVariable>(ptr);
       if (gv && gv->hasExternalLinkage()) {
@@ -1281,8 +1281,8 @@ bool ApplySeparationSpec::addUOChecks(Loop *loop)
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
 
-  if (!preprocess.isSeparationSpecUsed(loop->getHeader()))
-    return modified;
+  /* if (!preprocess.isSeparationSpecUsed(loop->getHeader())) */
+  /*   return modified; */
 
   const RoI &roi = preprocess.getRoI();
 

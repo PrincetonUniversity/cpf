@@ -609,11 +609,11 @@ void Preprocess::init(ModuleLoops &mloops)
       checkpointNeeded.insert(header);
 
     // move local-private stack objects from private to local heap
-    moveStackLocals(asgn, loop);
+    /* moveStackLocals(asgn, loop); */
   }
 
-  moveLocalPrivs(asgn);
-  moveKillPrivs(asgn);
+  /* moveLocalPrivs(asgn); */
+  /* moveKillPrivs(asgn); */
 
   // if no spec and no need for privitization (no WAW, but AU is written),
   // then make the AU shared instead of private
@@ -624,21 +624,21 @@ void Preprocess::init(ModuleLoops &mloops)
   // need for privitization. This is mapped to the private heap by Privateer but
   // it can be safely shared among main process and the workers. Avoids copying
   // from workers' memory to checkpoint object and then to main process memory.
-  if (!specUsedAll && !memVerUsedAll) {
-    HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
-    HeapAssignment::AUSet &shared = asgn.getSharedAUs();
-    HeapAssignment::AUSet nonPrivAUs;
-    for (auto au : privs) {
-      if (!normalPrivAUs.count(au) && !localPrivAUs.count(au) &&
-          !killPrivAUs.count(au))
-        nonPrivAUs.insert(au);
-    }
+  /* if (!specUsedAll && !memVerUsedAll) { */
+  /*   HeapAssignment::AUSet &privs = asgn.getPrivateAUs(); */
+  /*   HeapAssignment::AUSet &shared = asgn.getSharedAUs(); */
+  /*   HeapAssignment::AUSet nonPrivAUs; */
+  /*   for (auto au : privs) { */
+  /*     if (!normalPrivAUs.count(au) && !localPrivAUs.count(au) && */
+  /*         !killPrivAUs.count(au)) */
+  /*       nonPrivAUs.insert(au); */
+  /*   } */
 
-    for (auto au : nonPrivAUs) {
-      privs.erase(au);
-      shared.insert(au);
-    }
-  }
+  /*   for (auto au : nonPrivAUs) { */
+  /*     privs.erase(au); */
+  /*     shared.insert(au); */
+  /*   } */
+  /* } */
 }
 
 void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
