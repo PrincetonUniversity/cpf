@@ -461,6 +461,58 @@ public:
       // s1 is evaluated in an earlier iteration than s2.
     }
 
+    // check for this case (seen in 052.alvinn)
+    // for (i=0; i < N; i++)
+    //   a[i] = ...
+    // a[N] = ..
+    // alias query for &a[i], vs &a[N]
+    //
+    // TODO: generalize this scenario (need to handle cases that write [0] and
+    // then [1..N] etc)
+    auto tmpPtr1  = P1.ptr;
+    auto tmpPtr2  = P2.ptr;
+    auto nonScopedS1 = SE->getSCEV(const_cast<Value *>(P1.ptr));
+    auto nonScopedS2 = SE->getSCEV(const_cast<Value *>(P2.ptr));
+    if (isa<SCEVAddRecExpr>(nonScopedS2) && isa<SCEVAddExpr>(nonScopedS1)) {
+      std::swap(tmpPtr1,tmpPtr2);
+      std::swap(nonScopedS1,nonScopedS2);
+    }
+    if (isa<SCEVAddRecExpr>(nonScopedS1) && isa<SCEVAddExpr>(nonScopedS2)) {
+      auto addRecNonScopedS1 = dyn_cast<SCEVAddRecExpr>(nonScopedS1);
+      auto innerLoopAddRec = addRecNonScopedS1->getLoop();
+
+      if (innerLoopAddRec != L && L->contains(innerLoopAddRec) &&
+          innerLoopAddRec->getParentLoop()) {
+        // get value outside the loop and check if any uses outside the loop. If
+        // none the outside value is never used. compare it with other value. If
+        // equal then no alias
+        auto *scopedS1 = SE->getSCEVAtScope(const_cast<Value *>(tmpPtr1),
+                                            innerLoopAddRec->getParentLoop());
+        // scopedS1 should be &a[N] (in the example above).
+        // Check if this pointer is used outside the loop.
+        bool noUseOutsideLoopOfAddRec = true;
+        for (auto user1 : tmpPtr1->users()) {
+          if (auto userI1 = dyn_cast<Instruction>(user1)) {
+            if (!innerLoopAddRec->contains(userI1)) {
+              noUseOutsideLoopOfAddRec = false;
+              break;
+            }
+          }
+        }
+        if (noUseOutsideLoopOfAddRec) {
+          const SCEV *ptrDiff = SE->getMinusSCEV(nonScopedS2, scopedS1);
+          if (ptrDiff) {
+            if (auto constantPtrDiff = dyn_cast<SCEVConstant>(ptrDiff)) {
+              if (constantPtrDiff->getAPInt() == 0) {
+                ++numNoAlias;
+                return NoAlias;
+              }
+            }
+          }
+        }
+      }
+    }
+
     if( SE->getEffectiveSCEVType(s1->getType()) != SE->getEffectiveSCEVType(s2->getType()) )
       return MayAlias;
 
@@ -585,9 +637,9 @@ public:
     // for which we can't say anything.
     DEBUG(errs()
       << "Eligible fallthrough:\n"
-      << "  size " << size1 << " scev1 " << *s1 << '\n'
+      << "  size " << size1 << " scev1 " << *s1 << " , ptr1: " << *P1.ptr << ", non-scoped SCEV: " << *SE->getSCEV(const_cast<Value*>(P1.ptr)) <<  '\n'
       << "(" << Rel << ", " << fcn->getName() << " :: " << header->getName() << ")\n"
-      << "  size " << size2 << " scev2 " << *s2 << '\n'
+      << "  size " << size2 << " scev2 " << *s2 << " , ptr2: " << *P2.ptr << ", non-scoped SCEV: " << *SE->getSCEV(const_cast<Value*>(P2.ptr)) << '\n'
     );
     return MayAlias;
   }
