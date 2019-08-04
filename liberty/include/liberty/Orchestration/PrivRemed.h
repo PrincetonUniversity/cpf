@@ -13,7 +13,9 @@
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/LoopDominators.h"
+#include "liberty/Speculation/Read.h"
 
 #include "unordered_set"
 
@@ -58,9 +60,10 @@ public:
 class PrivRemediator : public Remediator {
 public:
   PrivRemediator(ModuleLoops &ml, TargetLibraryInfo *tli, LoopAA *aa,
-                 ControlSpeculation *cs, KillFlow &kill)
-      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs), killFlow(kill) {
-  }
+                 ControlSpeculation *cs, KillFlow &kill, const Read &rd,
+                 const HeapAssignment &c)
+      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs), killFlow(kill),
+        read(rd), asgn(c) {}
 
   void setLoopPDG(PDG *loopPDG, Loop *L) {
     pdg = loopPDG;
@@ -90,6 +93,8 @@ private:
   ScalarEvolution *se;
   ControlSpeculation *cs;
   KillFlow &killFlow;
+  const Read &read;
+  const HeapAssignment &asgn;
   NoControlSpeculation nocs;
   std::unique_ptr<LoopDom> specDT;
   std::unique_ptr<LoopDom> noSpecDT;
@@ -116,6 +121,8 @@ private:
                      const Instruction *before, const Loop *L);
   bool isPointerKillBefore(const Loop *L, const Value *ptr,
                            const Instruction *before, bool useCtrlSpec = true);
+  bool isSpecSeparated(const Instruction *I1, const Instruction *I2,
+                       const Loop *L);
 };
 
 } // namespace liberty
