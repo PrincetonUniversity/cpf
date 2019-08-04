@@ -295,9 +295,9 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
     InstInsertPt top = InstInsertPt::Before( header->getFirstNonPHI() );
     //  - in header, perform a store of the predicted value
     // this seems unnecessary
-    //Instruction *stpred = new StoreInst(new_prediction, new_ptr);
-    //top << stpred;
-    //preprocess.addToLPS(stpred, load);
+    Instruction *stpred = new StoreInst(new_prediction, new_ptr);
+    top << stpred;
+    preprocess.addToLPS(stpred, load);
 
     // Part 2:
     //  - at each backedge and exiting block,
