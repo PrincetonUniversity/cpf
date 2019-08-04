@@ -406,13 +406,27 @@ Privateer as shown in section ~\ref{eval}.
 
 \begin{figure*}[t]
   \centering
+  \begin{tabular}{cc}
   \scriptsize
-    \begin{minipage}{4.4cm}
+    \subfloat{
+    \begin{minipage}{5cm}
       \input{figures/dijkstra_motivation}
     \end{minipage}
-    \label{fig:dijkstra_motivation}
-\caption{Sequential \textit{dijkstra} example}
+    }
+    &
+     \hspace{0.5cm}
+
+    \begin{minipage}{5cm}
+    \includegraphics[scale=0.7]{figures/seq_motivation.pdf}
+    \end{minipage}
+
+\end{tabular}
+
+\label{fig:dijkstra_motivation}
+\caption{Sequential \textit{dijkstra} example from MiBench~\cite{}}
+%(with dynamic allocation of arrays (static privatization is not applicable anymore). assume that pathcost cannot be proven as non-liveout)
 \end{figure*}
+
 
 \begin{figure*}
 \centering
@@ -420,6 +434,20 @@ Privateer as shown in section ~\ref{eval}.
 
   \hspace{1cm}  &  \hspace{0.7cm}  State-of-the-art spec-DOALL system (Privateer)
   \hspace{0.7cm} &  \hspace{3cm} This Work \hspace{3cm}
+
+  \\
+  \hline
+  \raisebox{2.8cm}[0pt][0pt]{\rotatebox{90}{Compilation Workflow}}
+  %\raisebox{1cm}[0pt][0pt]{\rotatebox{90}{\parbox{4cm}{Data Level \\ (Logging &
+%Copy-out Cost)}}}
+  &
+  %\includegraphics[width=6cm]{figures/compilation_flow_privateer}
+  %\includegraphics[scale=0.5]{figures/compilation_flow_privateer}
+  \includegraphics[scale=0.5]{figures/compilation_flow_privateer_ver2}
+  &
+  %\includegraphics[width=6cm]{figures/compilation_flow_lsd}
+  %\includegraphics[scale=0.5]{figures/compilation_flow_lsd}
+  \includegraphics[scale=0.5]{figures/compilation_flow_lsd_ver2}
 
   \\
   \hline
@@ -451,21 +479,9 @@ Privateer as shown in section ~\ref{eval}.
   &
   \includegraphics[width=6cm]{figures/data_view_lsd}
 
-  \\
-  \hline
-  \raisebox{2.8cm}[0pt][0pt]{\rotatebox{90}{Compilation Workflow}}
-  %\raisebox{1cm}[0pt][0pt]{\rotatebox{90}{\parbox{4cm}{Data Level \\ (Logging &
-%Copy-out Cost)}}}
-  &
-  %\includegraphics[width=6cm]{figures/compilation_flow_privateer}
-  \includegraphics[scale=0.5]{figures/compilation_flow_privateer}
-  &
-  %\includegraphics[width=6cm]{figures/compilation_flow_lsd}
-  \includegraphics[scale=0.5]{figures/compilation_flow_lsd}
-
 \end{tabular}
 
-\caption{Parallelized versions of \textit{dijkstra} benchmark}
+\caption{Parallelization of hot loop of \textit{dijkstra} benchmark}
 \label{fig:dijkstra_parallelized}
 \end{figure*}
 
