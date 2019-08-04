@@ -1,6 +1,7 @@
 #ifndef LLVM_LIBERTY_PRIVREMED_H
 #define LLVM_LIBERTY_PRIVREMED_H
 
+#include "liberty/Analysis/KillFlow.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -57,8 +58,9 @@ public:
 class PrivRemediator : public Remediator {
 public:
   PrivRemediator(ModuleLoops &ml, TargetLibraryInfo *tli, LoopAA *aa,
-                 ControlSpeculation *cs)
-      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs) {}
+                 ControlSpeculation *cs, KillFlow &kill)
+      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs), killFlow(kill) {
+  }
 
   void setLoopPDG(PDG *loopPDG, Loop *L) {
     pdg = loopPDG;
@@ -68,6 +70,7 @@ public:
     se = &mloops.getAnalysis_ScalarEvolution(f);
     cs->setLoopOfInterest(L->getHeader());
     specDT = std::make_unique<LoopDom>(*cs, L);
+    noSpecDT = std::make_unique<LoopDom>(nocs, L);
   }
 
   StringRef getRemediatorName() const {
@@ -86,7 +89,10 @@ private:
   LoopInfo *li;
   ScalarEvolution *se;
   ControlSpeculation *cs;
+  KillFlow &killFlow;
+  NoControlSpeculation nocs;
   std::unique_ptr<LoopDom> specDT;
+  std::unique_ptr<LoopDom> noSpecDT;
 
   std::unordered_set<const GlobalValue *> localGVs;
   std::unordered_set<const AllocaInst *> localAllocas;
@@ -109,7 +115,7 @@ private:
   bool blockMustKill(const BasicBlock *bb, const Value *ptr,
                      const Instruction *before, const Loop *L);
   bool isPointerKillBefore(const Loop *L, const Value *ptr,
-                           const Instruction *before);
+                           const Instruction *before, bool useCtrlSpec = true);
 };
 
 } // namespace liberty

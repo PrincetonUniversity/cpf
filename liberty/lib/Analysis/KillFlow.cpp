@@ -1012,7 +1012,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         }
 
         // check whether the pointer of the earlier op (from previous iter) is
-        // killed before the load
+        // killed before the store
         else if (earlierPtr &&
                  pointerKilledBefore(L, earlierPtr, store, queryStart,
                                      AnalysisTimeout)) {

@@ -130,7 +130,8 @@ bool PrivRemediator::blockMustKill(const BasicBlock *bb, const Value *ptr,
 }
 
 bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
-                                         const Instruction *before) {
+                                         const Instruction *before,
+                                         bool useCtrlSpec) {
   if (!L)
     return false;
 
@@ -159,7 +160,8 @@ bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
     if (bb == L->getHeader())
       break;
 
-    ControlSpeculation::LoopBlock next = specDT->idom(iter);
+    ControlSpeculation::LoopBlock next =
+        (useCtrlSpec) ? specDT->idom(iter) : noSpecDT->idom(iter);
     if (next == iter)
       // self-loop. avoid infinite loop
       return false;
@@ -400,6 +402,90 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
                  << *B << '\n');
 
     if (A != B) {
+      // want to cover cases such as this one:
+      // for (..)  {
+      //   x = ...   (B)
+      //   ...
+      //   x = ...   (A)
+      // }
+      // In this case self-WAW of A is killed by B and vice-versa but there is
+      // still a LC WAW from A to B. This LC WAW can be ignored provided that B
+      // overwrites the memory footprint of A. If not then it is likely that
+      // there is no self-WAW LC dep but there is a real non-full-overwrite WAW
+      // from A to B. Covariance benchmark from Polybench exhibits this case
+      // (A: symmat[j2][j1] = ...  , B: symmat[j1][j2] = 0.0;).
+      // Correlation exhibits a similar issue.
+      //
+      // check that A is killed by B
+
+      if (!L)
+        return remedResp;
+      const Value* ptr1 = getPtr(A, dataDepTy);
+      const Value* ptr2 = getPtr(B, dataDepTy);
+      if (!ptr1 || !ptr2)
+        return remedResp;
+
+      const BasicBlock *bbA = A->getParent();
+      const BasicBlock *bbB = B->getParent();
+      // dominance info are intra-procedural
+      if (bbA->getParent() != bbB->getParent())
+        return remedResp;
+      const DominatorTree *dt = killFlow.getDT(bbA->getParent());
+
+      // collect the chain of all idom from A
+      DomTreeNode *nodeA = dt->getNode(const_cast<BasicBlock *>(bbA));
+      DomTreeNode *nodeB = dt->getNode(const_cast<BasicBlock *>(bbB));
+      if (!nodeA || !nodeB)
+        return remedResp;
+
+      std::unordered_set<DomTreeNode *> idomChainA;
+      for (DomTreeNode *n = nodeA; n; n = n->getIDom()) {
+        const BasicBlock *bb = n->getBlock();
+        if (!bb || !L->contains(bb))
+          break;
+        idomChainA.insert(n);
+      }
+
+      const BasicBlock *commonDom = nullptr;
+      DomTreeNode *commonDomNode = nullptr;
+      for (DomTreeNode *n = nodeB; n; n = n->getIDom()) {
+        const BasicBlock *bb = n->getBlock();
+        if (!bb || !L->contains(bb))
+          break;
+        if (idomChainA.count(n)) {
+          commonDom = bb;
+          commonDomNode = n;
+          break;
+        }
+      }
+      if (!commonDom)
+        return remedResp;
+
+      if (commonDom == B->getParent()) {
+        if (killFlow.instMustKill(B, ptr1, 0, 0, L)) {
+          remedy->type = PrivRemedy::FullOverlap;
+          remedResp.remedy = remedy;
+          return remedResp;
+        } else {
+          commonDomNode = commonDomNode->getIDom();
+          commonDom = commonDomNode->getBlock();
+          if (!commonDom || !L->contains(commonDom))
+            return remedResp;
+        }
+      }
+
+      if (!killFlow.blockMustKill(commonDom, ptr1, nullptr, A, 0, 0, L))
+        return remedResp;
+
+      // the following check if not enough for correlation
+      // if (!killFlow.pointerKilledBefore(L, ptr1, A) &&
+      //    !killFlow.pointerKilledBefore(L, ptr2, A))
+      //  return remedResp;
+      // the following check is too conservative and misses fullOverlap
+      // opportunities. Need to use killflow
+      // if (!isPointerKillBefore(L, ptr1, A, true))
+      //  return remedResp;
+
       // treat it as full_overlap. if it is not a fullOverlap there will be
       // self-WAW for either A or B that will not be reported as FullOverlap and
       // the underlying AUs will remain in the private family
