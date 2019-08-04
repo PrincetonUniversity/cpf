@@ -171,6 +171,43 @@ bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
   return false;
 }
 
+bool PrivRemediator::isSpecSeparated(const Instruction *I1,
+                                     const Instruction *I2, const Loop *L) {
+  const Value *ptr1 = liberty::getMemOper(I1);
+  const Value *ptr2 = liberty::getMemOper(I2);
+
+  if (!ptr1)
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I1))
+      ptr1 = mti->getRawDest();
+  if (!ptr2)
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I2))
+      ptr2 = mti->getRawSource();
+
+  if (!ptr1 || !ptr2)
+    return false;
+
+  if (!isa<PointerType>(ptr1->getType()) || !isa<PointerType>(ptr2->getType()))
+    return false;
+
+  const Ctx *ctx = read.getCtx(L);
+
+  Ptrs aus1;
+  HeapAssignment::Type t1 = HeapAssignment::Unclassified;
+  if (read.getUnderlyingAUs(ptr1, ctx, aus1))
+    t1 = asgn.classify(aus1);
+
+  Ptrs aus2;
+  HeapAssignment::Type t2 = HeapAssignment::Unclassified;
+  if (read.getUnderlyingAUs(ptr2, ctx, aus2))
+    t2 = asgn.classify(aus2);
+
+  if (t1 != t2 && t1 != HeapAssignment::Unclassified &&
+      t2 != HeapAssignment::Unclassified)
+    return true;
+
+  return false;
+}
+
 // verify that noone from later iteration reads the written value by this store.
 // conservatively ensure that the given store instruction is not part of any
 // loop-carried memory flow (RAW) dependences
@@ -185,14 +222,17 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
         edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT())) {
 
       // check if LC mem RAW can be removed with killflow + ctrl spec
+      // or using separation speculation
       LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT());
       if (!loadI)
         return false;
       Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand());
 
-      if (!isPointerKillBefore(L, loadPtr, loadI))
+      if (!isPointerKillBefore(L, loadPtr, loadI) &&
+          !isSpecSeparated(I, loadI, L))
         return false;
 
+      // TODO: change all ctrlSpecUsed to specUsed
       ctrlSpecUsed = true;
     }
   }
