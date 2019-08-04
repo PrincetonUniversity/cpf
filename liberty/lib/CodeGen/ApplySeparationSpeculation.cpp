@@ -423,9 +423,10 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
       if( !isPrivate(loop,ptr) )
         continue;
 
-      /* if (!isSelectedPrivateSpecLoad(loop, load)) { */
-      /*   continue; */
-      /* } */
+      // remove extra private reads
+      if (!isSelectedPrivateSpecLoad(loop, load)) {
+        continue;
+      }
 
       const GlobalVariable *gv = dyn_cast<GlobalVariable>(ptr);
       if (gv && gv->hasExternalLinkage()) {
