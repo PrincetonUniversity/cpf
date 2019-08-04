@@ -8,10 +8,110 @@
   \label{fig:compiler-pipeline}
 \end{figure}
 
-\subsection{Transformations}
-\label{sec:transformations}
+We have implemented LSD within the LLVM infrastracture. Fig.
+\ref{fig:compiler-pipeline} presents the compiler pipeline of our framework. As
+the first step, the sequential program is complied, inlined, and optimized into
+a target LLVM intermediate representation (IR) which is then used to generate
+profiling results. In the second phase, we focus on each hot loop, leveraging
+static and speculative analysis to generate a PDG annotated with properties of
+dependences. The analyses for transformations then examine every remaining
+loop-carried dependences and propose plans to remove them. A DOALL planner
+considers these proposals and generate a sequence of transformations if a
+profitable DOALL plan is available. Finally, we select a set of compatible loops
+with the maximum profit, apply tranformations, and generate the parallel IR
+which is linked with an efficient uniqued runtime and compiled as the
+parallel executable.
+
+\subsubsection{Preprocessing and Profiling}
+
+Preprocessing is used to generate the target intermediate representation
+of the program. We use Clang, the most widely-adopted LLVM frontend, to compile
+the sequential program into LLVM IR and use LLVM Optmizer to generate the target
+IR. As discussed in the introductoin\ref{sec:}, some information is not
+expressed in the source code but will exhibit in run time. To enable aggresive
+analyses and transformations, we use profilings to extract run-time statistics
+and use profile-based speculations. After preprocessing, the target IR is passed
+to a set of profilers, including a loop profiler to find hot loops, a trip count
+profider for control speculation, a memory profiler for memory flow speculation,
+and a points-to profiler for identifying underlying objects. The hot loops
+identified by loop profiler and all the information from other profilers are
+passed to the next phase.
 
 
+%  retains most of the information in the sequential code in order to perform
+% analyses and transformations.
+
+A major challenge of optimization and parallelization is the function calls.
+Because a function is usually called in multiple loops with different arguments
+and these arguments can be pointers that are dynamically bind to underlying
+objects, static analysis or even speculations are not able to remove some
+loop-carried dependences. Aggresive inlining can expose the context of each
+function call, but in practice, it also increases overhead of analysis by a huge
+margin. Noticing the fact that functions not called in the hot loops are
+irrelevant to parallelization, we use an approach aggresive but smart inlining
+apprach. With the help of profiling, we inline only functions that are called in
+the hot loops and not speculatively dead.
+
+To simplify the code (e.g., remove dead blocks), we apply a set of optimization
+passes using LLVM Optmizer.
+
+
+% TODO: Discuss static analysis improvement (kill flow)
+
+
+% Discuss about LLVM
+\subsection{LLVM Related Issues}
+
+To make the best use of LLVM, we have to let it generate the simplest
+intermediate representation (IR) without introducing optimizations that might
+disable any transformations and analyses in this framework. We carefully
+selected a set of LLVM optimizations and added some other modifications to
+generate a proper IR to work on.
+
+Other modifications:
+
+\begin{itemize}
+\item Front End
+
+% For example?
+LLVM optimization passes are important to simplify the IR however some of
+them are destructive to parallelization. The previous approach was using no
+optimization to generate the first IR and then applying a selected set of
+LLVM passes to optmize the code. However, we noticed that when no
+optimization is used in the frontend (\textit{clang -O0 -Xclang
+-disable-O0-optnone}), some LLVM intrinsics which can be helpful to the
+framework are lost. For example, for stack variables that are allocated in
+an inner loop, LLVM should move the \textit{alloca} to the function header
+and provide a pair of lifetime start/end intrinsics. The lifetime intrinsic
+does not come with no optimization. To get around this, we chose
+optimization level 1 for only Clang frontend optimizations and disabled LLVM
+Opt passes (\textit{-O1 -Xclang -disable-llvm-passes}). This gives us the
+intended behavior.
+
+
+\item PHI Node
+
+PHI nodes introduce more complicated data flow. LLVM will sink some
+duplicated instructions into PHI nodes and create extra hassle for our
+system to identify loop-carried data and create separation for different
+objects. We disabled several options in LLVM passes to inhibit this
+behavior.
+
+\item Inlining
+
+Inlining is a huge deal for parallelizing programs. For sequential program,
+the inlining optimization is needed when the cost of calling a function is
+big. The tradeoff is between speed and code size. Large functions that are
+called multiple times are usually not inlined. However, for parallelization,
+inlining can help us differenciate callsites and improve the accuracy of
+both static analysis and memory profiling. In this work, we adopted an
+aggresive approach of inlining with which most functions in the hot loops
+are inlined. The tradeoff here is mainly between the accuracy and the
+complexity (speed) of analysis. To reduce the complexity and improve the
+speed, we identified functions that are not called in profile runs and
+skipped inlining for them because they can be speculated away.
+
+\end{itemize}
 
 
 % Collaborative Analysis Framework
@@ -20,6 +120,8 @@
 % disprove more dependences to allow less or inexpensive speculations.
 
 \subsection{Transformations}
+\label{sec:transformations}
+
 In this work, we introduce a set of transformations to explore more
 opportunities of parallelization.
 
@@ -323,56 +425,3 @@ Second Level Enabler
 % Discussion of the table
 
 
-% Discuss about LLVM
-\subsection{LLVM Related Issues}
-
-To make best use of LLVM, we have to let it generate the simplest
-intermediate representation (IR) without introducing optimizations that
-might disable any Enabler of this framework. We carefully selected a set of
-LLVM optimizations and added some other modifications to generate a proper
-IR to work on.
-
-Other modifications:
-
-\begin{itemize}
-\item Optimization Level
-
-% For example?
-LLVM optimization passes are important to simplify the IR however some of
-them are destructive to parallelization. The previous approach was using no
-optimization to generate the first IR and then applying a selected set of
-LLVM passes to optmize the code. However, we noticed that when no
-optimization is used in the frontend (\textit{clang -O0 -Xclang
--disable-O0-optnone}), some LLVM intrinsics which can be helpful to the
-framework are lost. For example, for stack variables that are allocated in
-an inner loop, LLVM should move the \textit{alloca} to the function header
-and provide a pair of lifetime start/end intrinsics. The lifetime intrinsic
-does not come with no optimization. To get around this, we chose
-optimization level 1 for only Clang frontend optimizations and disabled LLVM
-Opt passes (\textit{-O1 -Xclang -disable-llvm-passes}). This gives us the
-intended behavior.
-
-
-\item PHI Node
-
-PHI nodes introduce more complicated data flow. LLVM will sink some
-duplicated instructions into PHI nodes and create extra hassle for our
-system to identify loop-carried data and create separation for different
-objects. We disabled several options in LLVM passes to inhibit this
-behavior.
-
-\item Inlining
-
-Inlining is a huge deal for parallelizing programs. For sequential program,
-the inlining optimization is needed when the cost of calling a function is
-big. The tradeoff is between speed and code size. Large functions that are
-called multiple times are usually not inlined. However, for parallelization,
-inlining can help us differenciate callsites and improve the accuracy of
-both static analysis and memory profiling. In this work, we adopted an
-aggresive approach of inlining with which most functions in the hot loops
-are inlined. The tradeoff here is mainly between the accuracy and the
-complexity (speed) of analysis. To reduce the complexity and improve the
-speed, we identified functions that are not called in profile runs and
-skipped inlining for them because they can be speculated away.
-
-\end{itemize}
