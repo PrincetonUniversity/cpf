@@ -15,10 +15,13 @@ int dequeue() {
     private_write(&dist, sizeof(int), md);
   \end{lstlisting}
 
-  \begin{lstlisting}[morekeywords={pathcost,dist},aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+  \begin{lstlisting}[morekeywords={pathcost,dist},aboveskip=0pt,
+  belowskip=0pt, firstnumber=auto,name=dij_checks,showlines=true]
     dist = ...
     ...
   }
+
+
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost,dist},aboveskip=0pt, belowskip=0pt,
@@ -109,6 +112,6 @@ void worker_loop(int start, int N, int step) {
   \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
-firstnumber=57,name=dij_checks]
+firstnumber=auto,name=dij_checks]
 }
 \end{lstlisting}
