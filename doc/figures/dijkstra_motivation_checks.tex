@@ -69,7 +69,7 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
         // Privacy Local Check & Logging
-        private_read(pathcost, sizeof(int), md);
+        private_read(&pathcost[i], sizeof(int), md);
   \end{lstlisting}
 
 
@@ -80,7 +80,7 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
           // Privacy Local Check & Logging
-          private_write(pathcost, sizeof(int), md);
+          private_write(&pathcost[i], sizeof(int), md);
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
