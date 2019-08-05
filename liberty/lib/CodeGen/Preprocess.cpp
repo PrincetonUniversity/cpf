@@ -606,7 +606,7 @@ void Preprocess::init(ModuleLoops &mloops)
       specUsedAll = true;
     }
     /* if (memVerUsed || privUsed || specUsedFlag) */
-    /*   checkpointNeeded.insert(header); */
+      checkpointNeeded.insert(header);
 
     // move local-private stack objects from private to local heap
     /* moveStackLocals(asgn, loop); */
