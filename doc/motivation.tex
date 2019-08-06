@@ -104,6 +104,8 @@ it are also implicitly shown in~\cite{johnson:12:pldi,ctian:2008:micro}.
 However, there is no work focusing on a meaningful integration between static
 analysis and speculation.
 
+maybe we should compare here high vs low level properties!!
+
 In Table. \ref{tab:related-work}, we present the summary of the comparison
 between this work and prior work.
 
@@ -111,6 +113,10 @@ between this work and prior work.
 % sets.
 
 % (even if no checks for reads are needed, still need to monitor write sets.)
+
+Underline importance of privatization (major enabler for parallelization ...).
+Privateer enables more privatization and reduction than prior systems.
+Privateer increased the applicability of spec systems.
 
 In this paper, we focus on Privateer since it is a state-of-the-art DOALL
 parallelization system with increased applicability compared to the other
@@ -408,21 +414,50 @@ Privateer as shown in section ~\ref{eval}.
 
 \begin{figure*}[t]
   \centering
-  \begin{tabular}{cc}
+  %\begin{tabular}{cc}
   \scriptsize
     \subfloat{
     \begin{minipage}{5cm}
       \input{figures/dijkstra_motivation}
     \end{minipage}
     }
-    &
-     \hspace{0.5cm}
+%    &
+     \hspace{1cm}
+\subfloat
+{
+    \begin{minipage}{7cm}
+  %  \includegraphics[scale=0.7]{figures/seq_motivation.pdf}
 
-    \begin{minipage}{5cm}
-    \includegraphics[scale=0.7]{figures/seq_motivation.pdf}
+\begin{itemize}
+\item
+Reuse of the \textbf{pathcost} array and global variable \textbf{dist} across
+iterations creates cross-iteration false dependences that inhibit
+parallelization.
+
+\item
+Privatization enables parallelization of this loop by creating private copies
+of \textbf{pathcost} and \textbf{dist} memory objects for every worker.
+
+\item From prior work, Privateer~\cite{Johnson:12:plid} is the only automatic
+system to support privatization of dynamically allocated objects, like
+\textbf{pathcost}, even in the presence of unrestricted pointers.
+
+\item
+Privatization of these memory objects requires:
+\begin{enumerate}
+\item
+identification of all accesses of these objects
+    within the loop
+\item
+absence of cross-iteration flow
+     dependences on each of these accesses
+\end{enumerate}
+
+\end{itemize}
+
     \end{minipage}
-
-\end{tabular}
+}
+%\end{tabular}
 
 \label{fig:dijkstra_motivation}
 \caption{Sequential \textit{dijkstra} example from MiBench~\cite{}}
@@ -444,12 +479,12 @@ Privateer as shown in section ~\ref{eval}.
 %Copy-out Cost)}}}
   &
   %\includegraphics[width=6cm]{figures/compilation_flow_privateer}
-  %\includegraphics[scale=0.5]{figures/compilation_flow_privateer}
-  \includegraphics[scale=0.5]{figures/compilation_flow_privateer_ver2}
+  %\includegraphics[scale=0.5]{figures/compilation_flow_privateer_ver2}
+  \includegraphics[scale=0.3]{figures/privateer-example-crop}
   &
   %\includegraphics[width=6cm]{figures/compilation_flow_lsd}
   %\includegraphics[scale=0.5]{figures/compilation_flow_lsd}
-  \includegraphics[scale=0.5]{figures/compilation_flow_lsd_ver2}
+  \includegraphics[scale=0.3]{figures/lsd-example-crop}
 
   \\
   \hline
