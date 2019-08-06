@@ -1,22 +1,26 @@
 \begin{abstract}
 
-% why auto par important?
-Automatic parallelization of general-purpose applications frees programmers from
-the error-prone and time-consuming process of making efficient use of multicore
-systems.
-% What's the problem?
-However, despite decades of compiler research, automatic parallelization
-%results for general purpose programs are far from convincing.
-is still limited to scientific and data-intensive applications.
+%% why auto par important?
+%Automatic parallelization of general-purpose applications frees programmers from
+%the error-prone and time-consuming process of making efficient use of multicore
+%systems.
+%% What's the problem?
+%However, despite decades of compiler research, automatic parallelization
+%%results for general purpose programs are far from convincing.
+%is still limited to scientific and data-intensive applications.
 %
+
+%big problem
+The promise of automatic parallelization for general purpose programs remains
+unrealized.
 % prior work?
 Static analysis-based schemes exhibit high profitability but limited
 applicability due to the inaccuracy of static analysis.
 %
 %Although speculation has been identified as a major enabler for automatic
 %parallelization,
-Speculation overcomes static analysis' limitations and offers high
-applicability, but prior software-only speculative systems often suffer from
+Speculation overcomes static analysis' limitations and offers increased
+applicability, but software-only speculative systems often suffer from
 %prior work on speculative parallelization fails to yield scalable speedups on
 %real hardware beyond a small set of benchmarks, due to limited applicability,
 %or
