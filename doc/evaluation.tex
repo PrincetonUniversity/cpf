@@ -64,6 +64,10 @@ Present in a table for all the benchmarks which enablers were used
 \begin{figure*}[htp]
   \includegraphics[width=0.9\textwidth]{figures/comparison}
 \end{figure*}
+Huge speedup for dijkstra is largely due to the cheaper "malloc" that
+we use in our heaps. Using a similar malloc in the sequential version
+yields ~16x speedup in dijkstra and insignificant difference in the
+other benchmarks.
 
 \subsection{Power Consumption}
 
