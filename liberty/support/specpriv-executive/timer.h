@@ -131,6 +131,9 @@ extern uint64_t worker_total_invocation_time;
   extern uint64_t worker_committed_killpriv_to_partial_time;
   extern uint64_t worker_acquire_lock_time;
 
+  extern uint64_t priv_read_times_array[1000000];
+  extern uint64_t priv_write_times_array[1000000];
+
 extern uint64_t get_queue_time;
 extern uint64_t produce_time;
 extern uint64_t consume_time;

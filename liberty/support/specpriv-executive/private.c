@@ -472,8 +472,7 @@ void __specpriv_private_write_4b(void *ptr)
     uint32_t *shadow = (uint32_t*) ( SHADOW_ADDR | (uint64_t)ptr );
     // TODO: optimize
     if( memchr(shadow, READ_LIVE_IN, sizeof(uint32_t) ) )
-      /* __specpriv_misspec("misspec during private write 4b"); */
-      ;
+      __specpriv_misspec("misspec during private write 4b");
     *shadow = code32;
 
     update_shadow_range((uint8_t*)shadow,4);
@@ -483,6 +482,7 @@ void __specpriv_private_write_4b(void *ptr)
     TOUT(worker_private_bytes_written += 4);
   }
 
+  TADD(priv_write_times_array[(uint64_t) ptr - PRIV_ADDR], start);
   TADD(worker_private_write_time,start);
   TIME(worker_pause_time);
 }
@@ -510,6 +510,7 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
 
     if( meta == code32 )
     {
+      TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
       TADD(worker_private_read_time,start);
       TIME(worker_pause_time);
       return;
@@ -518,6 +519,7 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
     else if( meta == V32( LIVE_IN ) )
     {
       *shadow = V32( READ_LIVE_IN );
+      TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
       TADD(worker_private_read_time,start);
       TIME(worker_pause_time);
       return;
@@ -525,6 +527,7 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
 
     else if( meta == V32( READ_LIVE_IN ) )
     {
+      TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
       TADD(worker_private_read_time,start);
       TIME(worker_pause_time);
       return;
@@ -540,31 +543,28 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
     if( m0 == LIVE_IN )
       bs[0] = READ_LIVE_IN;
     else if( m0 != code8 && m0 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m1 = (meta >> 8) & 0xff;
     if( m1 == LIVE_IN )
       bs[1] = READ_LIVE_IN;
     else if( m1 != code8 && m1 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m2 = (meta >> 16) & 0xff;
     if( m2 == LIVE_IN )
       bs[2] = READ_LIVE_IN;
     else if( m2 != code8 && m2 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m3 = (meta >> 24) & 0xff;
     if( m3 == LIVE_IN )
       bs[3] = READ_LIVE_IN;
     else if( m3 != code8 && m3 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
   }
 
+  TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
   TADD(worker_private_read_time,start);
   TIME(worker_pause_time);
 }
@@ -586,8 +586,7 @@ void __specpriv_private_write_8b(void *ptr)
     uint64_t *shadow = (uint64_t*) ( SHADOW_ADDR | (uint64_t)ptr );
     // TODO: optimize
     if( memchr(shadow, READ_LIVE_IN, sizeof(uint64_t) ) )
-      /* __specpriv_misspec("misspec in private write 8b"); */
-      ;
+      __specpriv_misspec("misspec in private write 8b");
     *shadow = code64;
 
     update_shadow_range( (uint8_t*)shadow, 8);
@@ -598,6 +597,7 @@ void __specpriv_private_write_8b(void *ptr)
   }
 
   TADD(worker_private_write_time,start);
+  TADD(priv_write_times_array[(uint64_t) ptr - PRIV_ADDR], start);
   TIME(worker_pause_time);
 }
 
@@ -645,58 +645,50 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
     if( m0 == LIVE_IN )
       bs[0] = READ_LIVE_IN;
     else if( m0 != code8 && m0 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m1 = (meta >> 8) & 0xff;
     if( m1 == LIVE_IN )
       bs[1] = READ_LIVE_IN;
     else if( m1 != code8 && m1 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m2 = (meta >> 16) & 0xff;
     if( m2 == LIVE_IN )
       bs[2] = READ_LIVE_IN;
     else if( m2 != code8 && m2 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m3 = (meta >> 24) & 0xff;
     if( m3 == LIVE_IN )
       bs[3] = READ_LIVE_IN;
     else if( m3 != code8 && m3 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
 
     const uint8_t m4 = (meta >> 32) & 0xff;
     if( m4 == LIVE_IN )
       bs[4] = READ_LIVE_IN;
     else if( m4 != code8 && m4 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m5 = (meta >> 40) & 0xff;
     if( m5 == LIVE_IN )
       bs[5] = READ_LIVE_IN;
     else if( m5 != code8 && m5 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m6 = (meta >> 48) & 0xff;
     if( m6 == LIVE_IN )
       bs[6] = READ_LIVE_IN;
     else if( m6 != code8 && m6 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
 
     const uint8_t m7 = (meta >> 56) & 0xff;
     if( m7 == LIVE_IN )
       bs[7] = READ_LIVE_IN;
     else if( m7 != code8 && m7 != READ_LIVE_IN )
-      ;
-      /* __specpriv_misspec(name); */
+      __specpriv_misspec(name);
   }
 
   TADD(worker_private_read_time,start);
