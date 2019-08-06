@@ -130,6 +130,10 @@ uint64_t worker_total_invocation_time = 0;
   uint64_t worker_committed_killpriv_to_partial_time = 0;
   uint64_t worker_acquire_lock_time = 0;
 
+  uint64_t priv_read_times_array[1000000];
+  uint64_t priv_write_times_array[1000000];
+
+
 uint64_t total_produces, total_consumes;
 
 CheckpointRecord checkpoints[ MAX_CHECKPOINTS ];
@@ -175,6 +179,12 @@ void __specpriv_reset_timers(void)
     worker_committed_private_to_partial_time = 0;
     worker_killpriv_to_partial_time = 0;
     worker_committed_killpriv_to_partial_time = 0;
+
+    for ( int i = 0; i < 1000000; i++ )
+    {
+      priv_read_times_array[i] = 0;
+      priv_write_times_array[i] = 0;
+    }
 }
 
 void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin )
@@ -270,7 +280,13 @@ void __specpriv_print_percentages( void )
   printf("Number of checkpoints:                    %15u\n",  numCheckpoints);
   printf("Number of private bytes written:          %15lu\n", worker_private_bytes_written);
   printf("Number of private bytes read:             %15lu\n", worker_private_bytes_read);
-  /* printf("Number of timers hit:                     %15lu\n", timers_hit); */
+  for ( int i = 0; i < 1000000; i++ )
+  {
+    if ( priv_read_times_array[i] != 0 )
+      printf("Private_read_time[%lu]: %lu\n",  i, priv_read_times_array[i]);
+    if ( priv_write_times_array[i] != 0 )
+      printf("Private_write_time[%lu]: %lu\n", i, priv_write_times_array[i]);
+  }
   printf("*** END WORKER %ld @invocation %d times ***\n",   myWorkerId, InvocationNumber);
   fflush(stdout);
 #endif
