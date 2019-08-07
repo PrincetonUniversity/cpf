@@ -116,11 +116,16 @@ parallelizing transformations~\cite{zhong:08:hpca, johnson:12:pldi:short}.
 %Speculative parallelization exploits simplifying assumptions about the input
 %code to deliver increased parallel performance.
 %
-
+%
 %speculation problems
 Yet, software speculative systems face real challenges that prevent their
 widespread adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 % TODO: Add more citations here
+Major bottlenecks include high communication and bookkeeping costs for memory
+flow speculation validation
+%and memory live-out handling.
+and privatization.
+
 Even if we assume that misspeculation never occurs, validating speculative
 assumptions adds to the parallel region's latency in the common case, not only
 during recovery, and may heavily degrade performance.
@@ -143,12 +148,33 @@ Still, current software speculative systems do not sufficiently leverage static
 and easy-to-validate assumptions; hence they fail to avoid excessive use of
 memory flow speculation for most general-purpose C/C++ programs.
 %
-Note that even with minimal checks for data flows, prior proposals often also
-need to monitor large write sets to support privatization; at the end of the
-parallel region, workers' memory states need to be merged correctly.
-%determine the last written values and produce a correct live-out memory state
-%at the end of the parallel region.  merge correctly speculative states
-%privatization
+
+Even if dynamic checks for data flows are minimized, handling live-out memory
+state after parallel invocation may then become a bottleneck.
+%
+This problem is aggravated in the presence of cross-iteration false dependences
+caused by data structures reuse.
+%
+To address this, speculative systems for automatic parallelization often need to
+monitor large write sets, significantly degrading their
+profitability~\cite{johnson:12:pldi}.
+%~\cite{kim:12:cgo,johnson:12:pldi} .  to ensure correct live-out state after
+%parallel invocation.
+%
+%problem often hidden with mem spec
+%
+%Certain state-of-the-art speculative systems~\cite{kim:12:cgo,johnson:12:pldi}
+%completely ignore this problem and employ naive approaches that require
+%unncessary monitoring and communication for
+%
+%Process-based vs thread-based thread-based need to pay for copy-in and copy-out
+%process-based only for copy-out.
+%
+%prior proposals often also need to monitor large write sets to support
+%privatization; at the end of the parallel region, workers' memory states need
+%to be merged correctly.  determine the last written values and produce a
+%correct live-out memory state at the end of the parallel region.  merge
+%correctly speculative states privatization
 
 %
 %the problem is bookeeping and communication for validation and handling
@@ -178,32 +204,56 @@ parallel region, workers' memory states need to be merged correctly.
 
 To attain the parallelization coverage of speculative techniques, while
 minimizing the usage of memory flow speculation and the cost of privatization,
-we propose a unified parallelization framework that strategically and
-meaningfully combines static and speculative techniques.
+we propose a unified parallelization framework that employs fine-grained
+combination of static analysis and cheap-to-validate speculative assumptions.
 %, and enables high-level properties inference through the collaboration of
 %static analysis with cheap-to-validate speculative assumptions.
 %
 The main distinguishing factor is that prior work uses static analysis and
 speculative assumptions separately, each inferring different program properties
 in isolation, while this work combines the strengths of static and
-cheap-to-validate speculative analysis and allow resolution of multi-logic
+cheap-to-validate speculative analysis and enables resolution of multi-logic
 queries.
 %
-Individual static or speculative analysis algorithms yield a multiplicative
-improvement to the overall precision of the ensemble, rather than the additive
-improvements of the sum-of-parts approach of prior work.
+%Individual static or speculative analysis algorithms yield a multiplicative
+%improvement to the overall precision of the ensemble, rather than the additive
+%improvements of the sum-of-parts approach of prior work.
+%
 %each reason for a different thing/logic.  infer properties that would require
 %expensive runtime monitoring and checks.
+%
+
+Collaboration of static and cheap-to-validate speculative analysis enables, in
+some cases, removal of memory dependences that would require, in prior work,
+expensive memory flow speculation.
 %
 For example, control speculation asserts the absence of memory dependences to or
 from speculatively dead operations, while kill-flow analysis disproves memory
 dependences by finding killing operations along all feasible paths between two
 operations. If kill-flow queries control speculation for speculative control
-flow information, then they can disprove together memory dependences that would
-otherwise require memory flow speculation.
+flow information, then they can collaboretively remove memory dependences which
+neither one can remove in isolation.
 %
 This idea is inspired by the benefits of collaboration among static analysis
 algorithms in CAF~\cite{johnson:17:cgo}.
+
+Combining static with cheap-to-validate speculative analysis also enables
+property inference for efficient privatization.
+%
+Prior parallelization systems
+%~\cite{smtlite:09:pldi, kim:12:cgo, johnson:17:cgo}
+use static analysis or speculation mainly to remove memory dependences.
+Sometimes though some dependences are real and cannot be removed via analysis.
+For example, reuse of data structures create cross-iteration false (output and
+anti) memory dependences.
+%
+In this scenario, analysis passes and speculative information can still express
+some useful properties for these dependences or the dependent instructions.
+This partial information can be combined to infer a higher level property that
+enables more efficient parallelization.
+% isn't that what transformation do anyway? query analysis for properties?  but
+% we present a structured way to express that?  how do analysis know what's
+% useful.
 
 % text from CAF
 %Using  an  understanding  of  eachalgorithm’spartiality
@@ -241,16 +291,13 @@ algorithms in CAF~\cite{johnson:17:cgo}.
 %
 
 This paper presents LSD, an instantiation of this proposed framework for DOALL
-parallelization. LSD includes state-of-the-art static analysis (\`{a} la
-CAF~\cite{johnson:cgo:17}),
-%that maximizes statically disproven loop-carried dependences
-speculative analysis passes that interpret speculative assumptions produced by a
-set of profilers, a parallelizing
-%LLVM-based
-compiler that selects minimal-cost solutions to parallelization inhibitors from
-a wide range of enabling transformations, and a lightweight, unified (for both
-speculative and non-speculative) runtime system for efficient parallel execution
-and low-cost speculation validation.
+parallelization. LSD includes a parallelizing LLVM-based compiler that selects
+minimal-cost solutions to parallelization inhibitors using state-of-the-art
+static analysis (\`{a} la CAF~\cite{johnson:cgo:17}) and speculative analysis
+passes that interpret profiling-based speculative assumptions, and a lightweight
+%, unified (for both speculative and non-speculative)
+runtime system for efficient parallel execution and low-cost speculation
+validation.
 %
 
 We focus on DOALL, because it is the ideal parallelization technique when
@@ -264,14 +311,17 @@ hardware are underwhelming.
 
 LSD achieves scalable automatic parallelization on commodity shared-memory
 machines without any programmer hints.  We evaluate LSD on a set of 12 C/C++
-benchmarks appearing in state-of-the-art automatic parallelization systems'
+benchmarks that have appeared in state-of-the-art automatic parallelization systems'
 papers~\cite{johnson:12:pldi,kim:12:cgo,campanoni:12:cgo}. On a 28-core machine,
-LSD yields a geomean whole-program speedup of Xx over sequential execution and
-Yx compared to a state-of-the-art spec-DOALL system~\cite{johnson:12:pldi}.
+LSD yields a geomean whole-program speedup of 23.8$\times$ over sequential execution and
+2$\times$ compared to a state-of-the-art spec-DOALL system~\cite{johnson:12:pldi}.
 %better or as good as prior work
 These speedups are thanks to effective usage of static properties of the code in
-conjunction with cheap speculative assumptions, careful selection of applied
-transformations and a lightweight process-based runtime system.  No prior work
+conjunction with cheap speculative assumptions,
+%to avoid memory flow speculation and minimize privatization costs,
+%
+%careful selection of applied transformations
+and a lightweight process-based runtime system.  No prior work
 is able to parallelize all these benchmarks with such sparse usage of memory
 speculation and so efficient and effective privatization; thus no prior work
 could achieve comparable results.
