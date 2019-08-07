@@ -469,6 +469,7 @@ public:
     //
     // TODO: generalize this scenario (need to handle cases that write [0] and
     // then [1..N] etc)
+    // TODO: revisit this check and ensure that there are no false positives
     auto tmpPtr1  = P1.ptr;
     auto tmpPtr2  = P2.ptr;
     auto nonScopedS1 = SE->getSCEV(const_cast<Value *>(P1.ptr));
@@ -483,12 +484,10 @@ public:
 
       if (innerLoopAddRec != L && L->contains(innerLoopAddRec) &&
           innerLoopAddRec->getParentLoop()) {
-        // get value outside the loop and check if any uses outside the loop. If
-        // none the outside value is never used. compare it with other value. If
-        // equal then no alias
-        auto *scopedS1 = SE->getSCEVAtScope(const_cast<Value *>(tmpPtr1),
-                                            innerLoopAddRec->getParentLoop());
-        // scopedS1 should be &a[N] (in the example above).
+        // check if tmpPtr1 is used outside the loop. If not, then just
+        // compare its SCEV value outside its loop and compare it with the
+        // scev of tmpPtr2.
+        //
         // Check if this pointer is used outside the loop.
         bool noUseOutsideLoopOfAddRec = true;
         for (auto user1 : tmpPtr1->users()) {
@@ -499,8 +498,11 @@ public:
             }
           }
         }
-        if (noUseOutsideLoopOfAddRec) {
-          const SCEV *ptrDiff = SE->getMinusSCEV(nonScopedS2, scopedS1);
+        // s1 should be &a[N] (in the example above), though this value is
+        // never used in any load/store(TODO: add extra check to verify that).
+        // it is just the last value before loop exit.
+        if (noUseOutsideLoopOfAddRec && HasDominanceRelation(DT, s1, s2)) {
+          const SCEV *ptrDiff = SE->getMinusSCEV(s1, s2);
           if (ptrDiff) {
             if (auto constantPtrDiff = dyn_cast<SCEVConstant>(ptrDiff)) {
               if (constantPtrDiff->getAPInt() == 0) {
