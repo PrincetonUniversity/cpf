@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <xmmintrin.h>
-
+#include <setjmp.h>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -84,6 +84,8 @@ static int (*pipefds)[2];
 
 // loop ID for current invocation
 static int globalLoopID;
+
+static jmp_buf jmpbuf;
 
 #if JOIN == SPIN
 struct sigaction old_sigchld;
@@ -225,6 +227,10 @@ static void __specpriv_worker_setup(Wid wid)
     // DEBUG(printf("Read sizeof_local as %u\n", workerArgs.sizeof_local););
 
     __specpriv_worker_starts(workerArgs.firstIter, myWorkerId);
+
+    int r = sigsetjmp( jmpbuf, 1 );
+    if ( r )
+      continue;
 
     DEBUG(printf(
         "calling callback with workerId %u, numCores: %ld, chunkSize: %ld \n",
@@ -415,8 +421,10 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
     fprintf(stderr,"Reason: %s\n", reason);
 #endif
 
+  siglongjmp( jmpbuf, 42 );
+
   // gc14 -- misspec test
-  _exit(0);
+  /* _exit(0); */
 }
 
 // Called by __specpriv_spawn_workers on each worker
@@ -837,8 +845,8 @@ void __specpriv_end_iter(uint32_t ckptUsed)
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   // gc14 -- commented out for misspec test
-  if( pcb->misspeculation_happened )
-    _exit(0);
+  /* if( pcb->misspeculation_happened ) */
+  /*   _exit(0); */
 
   ++currentIter;
   Iteration globalCurIter = currentIter;
