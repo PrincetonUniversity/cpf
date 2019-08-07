@@ -122,7 +122,7 @@ Yet, software speculative systems face real challenges that prevent their
 widespread adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 % TODO: Add more citations here
 Major bottlenecks include high communication and bookkeeping costs for memory
-flow speculation validation
+flow speculation validation,
 %and memory live-out handling.
 and privatization.
 
@@ -137,27 +137,30 @@ increases, the validation cost becomes prohibitively expensive and outweighs any
 parallelization benefit.
 %read/write sets grow
 %
-Many speculative parallelizing compilers avoid checks on data flows that can be
-disproven by static analysis~\cite{stmlite, LRPD,..}, and some suggest
-cheaper-to-validate speculative assumptions to remove a few additional
-checks~\cite{privateer, ..}.
-%speculating higher-level properties whose validation does not require logging
-%or communication.
-%
-Still, current software speculative systems do not sufficiently leverage static
-and easy-to-validate assumptions; hence they fail to avoid excessive use of
-memory flow speculation for most general-purpose C/C++ programs.
-%
+%Many speculative parallelizing compilers avoid checks on data flows that can be
+%disproven by static analysis~\cite{stmlite, LRPD,..}, and some suggest
+%cheaper-to-validate speculative assumptions to remove a few additional
+%checks~\cite{privateer, ..}.
+%%speculating higher-level properties whose validation does not require logging
+%%or communication.
+%%
+%Still, current software speculative systems do not sufficiently leverage static
+%and easy-to-validate assumptions; hence they fail to avoid excessive use of
+%memory flow speculation for most general-purpose C/C++ programs.
+%%
 
-Even if dynamic checks for data flows are minimized, handling live-out memory
-state after parallel invocation may then become a bottleneck.
+Even if dynamic checks for data flows are minimized, overheads related to
+%correctly
+merging parallel workers' memory state
+%handling live-out memory state after parallel invocation
+may then become a bottleneck,
 %
-This problem is aggravated in the presence of cross-iteration false dependences
-caused by data structures reuse.
+especially in the presence of cross-iteration false dependences.
+%caused by data structures reuse.
 %
 To address this, speculative systems for automatic parallelization often need to
-monitor large write sets, significantly degrading their
-profitability~\cite{johnson:12:pldi}.
+monitor large write sets during parallel execution, significantly degrading
+their profitability~\cite{johnson:12:pldi}.
 %~\cite{kim:12:cgo,johnson:12:pldi} .  to ensure correct live-out state after
 %parallel invocation.
 %
@@ -212,7 +215,7 @@ combination of static analysis and cheap-to-validate speculative assumptions.
 The main distinguishing factor is that prior work uses static analysis and
 speculative assumptions separately, each inferring different program properties
 in isolation, while this work combines the strengths of static and
-cheap-to-validate speculative analysis and enables resolution of multi-logic
+cheap-to-validate speculative analysis to enable resolution of multi-logic
 queries.
 %
 %Individual static or speculative analysis algorithms yield a multiplicative
@@ -244,7 +247,7 @@ Prior parallelization systems
 %~\cite{smtlite:09:pldi, kim:12:cgo, johnson:17:cgo}
 use static analysis or speculation mainly to remove memory dependences.
 Sometimes though some dependences are real and cannot be removed via analysis.
-For example, reuse of data structures create cross-iteration false (output and
+For example, reuse of data structures creates cross-iteration false (output and
 anti) memory dependences.
 %
 In this scenario, analysis passes and speculative information can still express
@@ -291,12 +294,13 @@ enables more efficient parallelization.
 %
 
 This paper presents LSD, an instantiation of this proposed framework for DOALL
-parallelization. LSD includes a parallelizing LLVM-based compiler that selects
-minimal-cost solutions to parallelization inhibitors using state-of-the-art
-static analysis (\`{a} la CAF~\cite{johnson:cgo:17}) and speculative analysis
-passes that interpret profiling-based speculative assumptions, and a lightweight
-%, unified (for both speculative and non-speculative)
-runtime system for efficient parallel execution and low-cost speculation
+parallelization. LSD consists of a parallelizing LLVM-based compiler and a
+lightweight
+%, unified (for both speculative and non-speculative execution)
+runtime system. The compiler selects minimal-cost solutions to parallelization
+inhibitors using state-of-the-art static analysis (\`{a} la
+CAF~\cite{johnson:cgo:17}) and profiling-based speculative assumptions, while
+the runtime offers efficient parallel execution and low-cost speculation
 validation.
 %
 
