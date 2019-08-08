@@ -1,57 +1,21 @@
 \begin{abstract}
 
-%% why auto par important?
-%Automatic parallelization of general-purpose applications frees programmers from
-%the error-prone and time-consuming process of making efficient use of multicore
-%systems.
-%% What's the problem?
-%However, despite decades of compiler research, automatic parallelization
-%%results for general purpose programs are far from convincing.
-%is still limited to scientific and data-intensive applications.
-%
-
-%big problem
-The promise of automatic parallelization for general purpose programs remains
-unrealized.
-% prior work?
-Static analysis-based schemes exhibit high profitability but limited
-applicability due to the inaccuracy of static analysis.
-%
-%Although speculation has been identified as a major enabler for automatic
-%parallelization,
-Speculation overcomes static analysis' limitations and offers increased
-applicability, but software-only speculative systems often suffer from
-%prior work on speculative parallelization fails to yield scalable speedups on
-%real hardware beyond a small set of benchmarks, due to limited applicability,
-%or
-high communication and bookkeeping costs for memory flow speculation validation
-%and memory live-out handling.
-and privatization.
-%
-%We propose ...
-To enable more efficient speculative parallelization, this paper presents LSD, a
-unified DOALL parallelization framework that employs fine-grained combination of
-static analysis with cheap-to-validate speculative assumptions.
-%
-This combination reduces the need for expensive-to-validate memory flow
-speculation, and allows inference of high-level properties that enable efficient
-privatization.
-%
-%their combined strengths handle dependences that would otherwise require mem
-%spec
-%
-% efficient privatization -> eliminate bookkeeping for live-outs
-%
-%
-%LSD's lightweight, unified (for both speculative and non-speculative) runtime
-%system performs low-cost speculation validation and enables efficient parallel
-%execution.  unified for both speculative and non-speculative parallel
-%execution.
-%
-% Result, impact?
-Across 12 general-purpose C/C++ benchmarks, LSD achieves, on a commodity 28-core
-machine, a geomean whole-program speedup of 23.8$\times$ over sequential
-execution and 2$\times$
-over a state-of-the-art spec-DOALL parallelization system.
+The promise of automatic parallelization, freeing programmers from the
+error-prone and time-consuming process of making efficient use of
+parallel processing resources, remains unrealized.  For decades,
+memory analysis limited the applicability of automatic parallization
+techniques.  The introduction of speculative compiler optimizations
+overcame these applicability limitations, but, even in the case of no
+mispeculation, these compiler techniques exhibited high communication
+and bookkeeping costs which limited performance.  This paper presents
+XXX, a speculative-DOALL parallelization framework that exhibits the
+applicability of speculative techniques while approaching the
+efficiency of non-speculative techniques.  XXX reduces the need for
+expensive-to-validate memory flow speculation by cheap-to-validate
+speculative assumptions infering of high-level properties that enable
+efficient privatization.  On 12 general-purpose C/C++ programs on a
+28-core Xeon(or whatever), XXX exhibits a geomean whole-program
+speedup of 23.8$\times$ over sequential execution, 2$\times$ over
+Privateer, the prior best speculative-DOALL parallelization system.
 
 \end{abstract}
