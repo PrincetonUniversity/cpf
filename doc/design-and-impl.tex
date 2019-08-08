@@ -1,28 +1,6 @@
 \section{Framework Design and Implementation}
 
-\subsection{Compiler Pipeline}
-
-\begin{figure}[htp]
-  \includegraphics[width=\columnwidth]{figures/compiler-pipeline-crop}
-  \caption{Compiler Pipeline Overview}
-  \label{fig:compiler-pipeline}
-\end{figure}
-
-We have implemented LSD within the LLVM infrastracture. Fig.
-\ref{fig:compiler-pipeline} presents the compiler pipeline of our framework. As
-the first step, the sequential program is complied, inlined, and optimized into
-a target LLVM intermediate representation (IR) which is then used to generate
-profiling results. In the second phase, we focus on each hot loop, leveraging
-static and speculative analysis to generate a PDG annotated with properties of
-dependences. The analyses for transformations then examine every remaining
-loop-carried dependences and propose plans to remove them. A DOALL planner
-considers these proposals and generate a sequence of transformations if a
-profitable DOALL plan is available. Finally, we select a set of compatible loops
-with the maximum profit, apply tranformations, and generate the parallel IR
-which is linked with an efficient uniqued runtime and compiled as the
-parallel executable.
-
-\subsubsection{Preprocessing and Profiling}
+\subsection{Preprocessing and Profiling}
 
 Preprocessing is used to generate the target intermediate representation
 of the program. We use Clang, the most widely-adopted LLVM frontend, to compile
@@ -56,11 +34,8 @@ To simplify the code (e.g., remove dead blocks), we apply a set of optimization
 passes using LLVM Optmizer.
 
 
-% TODO: Discuss static analysis improvement (kill flow)
-
-
 % Discuss about LLVM
-\subsection{LLVM Related Issues}
+\subsubsection{LLVM Related Issues}
 
 To make the best use of LLVM, we have to let it generate the simplest
 intermediate representation (IR) without introducing optimizations that might
@@ -113,152 +88,232 @@ skipped inlining for them because they can be speculated away.
 
 \end{itemize}
 
+\subsection {Analyses}
+
+\subsubsection{Static Analysis}
+
+A state-of-the-art memory analysis framework (~CAF\cite{}) is used to disprove
+as many dependences as possible.
 
 % Collaborative Analysis Framework
 
 % By leveraging a state-of-the-art memory analysis framework, we are able to
 % disprove more dependences to allow less or inexpensive speculations.
 
+\paragraph{Improvements}
+Killflow goes beyond string dominance. Refer back to dijkstra example
+
+\subsubsection{Speculative Analysis}
+
+In conjuction with this static analysis, we use a set of speculative analysis
+passes to infer more program properties.
+
+These include ...
+
+
+\subsubsection{Collaboration of Static and Speculative Analysis}
+
+
 \subsection{Transformations}
 \label{sec:transformations}
 
-In this work, we introduce a set of transformations to explore more
-opportunities of parallelization.
+Transformation that modify the code to remove parallelization inhibitors.
+There are memory, register and control dependences related ones.
 
-%We call these enabling transformations Enablers.
+Split to analysis and application of transformation parts.
 
-%  How to query Enabler?
+\subsubsection{Memory Dependences}
 
-One thing that hinders these Enablers from working coordinately is
-the phase-ordering problem, which means one transformation could be disabled
-by a previous transformation. Another problem is the increasing
-implementation and maintainance difficulty when more and more Enablers are
-put in the framework. To avoid these problems, we carefully organize the
-framework in a way that all Enablers are modular and independent. As a first
-step, all loop-carried dependences are identified by the frontend and passed
-to each Enabler, who tries to address each dependence by its best effort and
-returns a remedy along with the cost if a way to remove the dependence is
-available. If all dependences are removable by at least one Enablers, the
-parallel code generation part will choose the remedy with the lowest cost
-for each dependence and generate the parallel binary. This scheme seperates
-the desicion part from the actual transformation and allows us to evaluate
-the cost of each dependence separetely and choose the most profitable plan
-instead of applying all transformations in a fixed order. For simplicity, we
-assigned to each Enabler a predefined cost in this work. Yet in Table.
-\ref{table:enabler-stats}, we provided the statistics of the applicable and
-chosen Enabler to show how this framework makes the tradeoff when more than
-one Enablers are available. This study is not available for a traditional
-approach of transformations.
+Memory dependences Transfor
 
-The analysis passes and the transformation passes are seperated. Even though
-it has been suggested before, in this work, we have a smaller set of
-Enablers with stronger capability.
+\paragraph{Classifier}
+A classifier interprets analysis information, infers properties and classifies memory objects to
+families.
+%
+Classifier is the analysis part of memory-related transformations.
 
-\textbf{Non-Speculative Transformations}
+show algorithm that classifies similar to Privateer
 
-\begin{itemize}
-    \item Conservative Reduction (ReduxRemed)
-        % Both scalar and memory reduction
+Each family and each used assumptions (validation) requires some transformations:
+Privatization, reduction, control spec, separation speculation etc
 
-    \item Conservative Privatization (PrivRemed)
-        % Removes loop-carried false memory dependences on conservatively provable privitizable objects
 
-    \item Memory Versioning (MemVerRemed)
-        % Assumes privatized memory for each thread
-        % Removes loop-carried false memory dependences
-        % Stronger but more expensive than PrivRemed
-        % Process-based parallelization enforces this remediator
+mention stack allocation stuff.
+After inlining, allocation happens outside the loop etc.
 
-    % \item Counted Loop Detection (CountedIVRemed)
-        % Removes loop-carried register and control dependences related to induction variables on counted loops
+Mention peehole for private-checks
 
-    \item TXIO (TXIORemed)
-        % I/O deferral
-        % Delays execution of instructions with side-effects, such as I/O operations
+\subsubsection{Register Dependences}
 
-    % \item Conservative Loop Fission (LoopFissionRemed) ???
-        % Separate non-DOALL SCCs to an initial sequential stage (loop in this case)
-        % Only small sequential stages considered
-        % No usage of speculative remediators to achieve separation
-\end{itemize}
+Register dependences transformations:
+Reduction,
+Replicable
 
-\textbf{Speculative Transformations}
+\subsubsection{Control Dependences}
 
-\begin{itemize}
-    \item Control Speculation (ControlSpecRemed)
-        % Based on edge profile info, removes control flow edges and considers all basic blocks dominated by these edges as speculatively dead
-        % Inexpensive runtime validation
+control spec info incorporated into pdg. no classical transformation analysis
+part here. Could remove this control deps section
 
-    \item Value Prediction (LoadedValuePred)
-        % Some load instructions always read a single, predictable value from memory
-        % Loop-Invariant Loaded-Value
-        % Inexpensive runtime validation
 
-    \item Header-phi prediction (HeaderPhiPredRemed)
-        % Some phi instructions have a predictable value.
-        % Allows removal of loop-carried register dependeces
-        % Inexpensive runtime validation
+\subsection{Runtime}
 
-    \item Separation Speculation (LocalityRemed)
+handling of live-ins, LC, live-outs
 
-        % Johnson et al. PLDI '12
+lightweight,
+unified for both spec and non-spec
 
-        % Separation speculation partitions a program's allocations into a few disjoint "families" of objects and speculatively assumes that every pointer in the program refers exclusively to objects in one family. Under this assumption, if two pointers reference distinct families, they cannot alias.
 
-        % Relatively inexpensive runtime validation due to small number of families, allocation of objects in family-specific memory regions, runtime optimizations and thread-local checks (no communication among concurrent threads needed).
+%The runtime system provides efficient mechanisms for replication of objects to
+%support privatizationand for recovery from misspeculation
+%
+%By maintain-ing the same virtual address space with different mappings to
+%phys-ical memory, the workers are able to operate on their privatemem-ory
+%without  much  performance  penalty,  with  physical  pages  be-ing
+%privatizedon-demandusing the Copy-On-Write mechanism
 
-        % Secondary speculation built on top of separation speculation:
 
-        %     Read-only speculation
-        %         Read-only family
-        %         Some memory objects are never modified but static dependence analysis is sometimes unable to prove this property
-        %         Objects in the read-only family are only accessed by read-only memory operations. Thus, speculatively read-only memory operations never experience flow, anti or output dependences
-        %         Apart from separation speculation validation, no other validation is required
 
-        %     Speculative accumulator expansion
-        %         Compiler identifies accumulators as values which are repeatedly updated with an associative and commutative operator (a reduction) but whose intermediate values are otherwise unused within the loop. Static dependence sometimes fails to prove that every access to a given storage location is a reduction or that intermediate values are never used.
-        %         The pointer-family assumption establishes that objects in the reduction family are only accessed by load-reduce-store sequences and consequently that intermediate values cannot be otherwise observed or modified.
-        %         Apart from separation speculation validation, no other validation is required
+\subsubsection{Recovery}
 
-        %     Speculative privatization
-        %         Reuse of data structures with no flow dependences from one iteration to the other prevents parallelization due to anti or output dependences.
-        %         Addressed by having a private copy of the data structure for each iteration
-        %         Assumption: loads from certain private objects never read values stored during earlier iterations of the loop.
-        %         Privatization criteria validated in two phases, one thread-local and one more expensive that requires communication among threads.
 
-        %     Object-lifetime speculation
-        %         Short-lived objects
-        %         Some objects allocated within a loop iteration are always deallocated before the end of that same iteration. Static dependence analysis often fails to identify this case.
-        %         Loads from or stores to such objects cannot depend on memory accesses in other iterations.
-        %         Extra validation on top of separation speculation validation: object lifetime speculation must validate that short-lived objects never outlive their iteration. Thread-local checks.
 
-    \item Memory Flow Speculation (SmtxSlampRemed \& SmtxLampRemed)
-        % Assumes the absence of flow dependences between memory operations when not manifested during profiling.
-        % Provides as much or more an enabling effect than many other types of speculation.
-        % Expensive validation. Requires communication among concurrent threads.
+%In this work, we introduce a set of transformations to explore more
+%opportunities of parallelization.
+%
+%%We call these enabling transformations Enablers.
+%
+%%  How to query Enabler?
+%
+%One thing that hinders these Enablers from working coordinately is
+%the phase-ordering problem, which means one transformation could be disabled
+%by a previous transformation. Another problem is the increasing
+%implementation and maintainance difficulty when more and more Enablers are
+%put in the framework. To avoid these problems, we carefully organize the
+%framework in a way that all Enablers are modular and independent. As a first
+%step, all loop-carried dependences are identified by the frontend and passed
+%to each Enabler, who tries to address each dependence by its best effort and
+%returns a remedy along with the cost if a way to remove the dependence is
+%available. If all dependences are removable by at least one Enablers, the
+%parallel code generation part will choose the remedy with the lowest cost
+%for each dependence and generate the parallel binary. This scheme seperates
+%the desicion part from the actual transformation and allows us to evaluate
+%the cost of each dependence separetely and choose the most profitable plan
+%instead of applying all transformations in a fixed order. For simplicity, we
+%assigned to each Enabler a predefined cost in this work. Yet in Table.
+%\ref{table:enabler-stats}, we provided the statistics of the applicable and
+%chosen Enabler to show how this framework makes the tradeoff when more than
+%one Enablers are available. This study is not available for a traditional
+%approach of transformations.
+%
+%The analysis passes and the transformation passes are seperated. Even though
+%it has been suggested before, in this work, we have a smaller set of
+%Enablers with stronger capability.
 
-    \item Speculative AA stack (MemSpecAARemed)
-        % Allows collaboration among memory flow speculation, control speculation, value prediction, speculative points-to analysis and static analysis.
-        % Demonstrates the power of collaboration among remediators, and between speculation techniques and static analysis.
-        % Provides at least as much coverage as all the remediators addressing mem deps combined (only excludes SLAMP mem spec and localityaa).
-
-    % \item Speculative Loop Fission (LoopFissionRemed) ???
-        % Same as Conservative Loop Fission apart from the fact that it requires usage of speculative remediators to achieve separation
-
-    \item Pointer-Residue Speculation (PtrResidueRemed)
-        % Never part of a paper. Never evaluated. Idea published in Nick Johnson's thesis
-        % Separation speculation disambiguates references to different objects, but does not disambiguate references within the same object. Pointer-residue speculation works at the sub-object level.
-        % It disambiguates different fields within an object and in some cases recognizes different regular strides across an array.
-        % It characterizes each pointer expression in the program according to the possible values of its four least-significant bits (residue).
-        % Examines whether residue sets are disjoint with respect to the size of the memory accesses of two given operations.
-\end{itemize}
-
-Second Level Enabler
-\begin{itemize}
-    \item Replicable Stage (RepStageRemedy)
-\end{itemize}
-
-\subsection{Enabler Statistics}
+%\textbf{Non-Speculative Transformations}
+%
+%\begin{itemize}
+%    \item Conservative Reduction (ReduxRemed)
+%        % Both scalar and memory reduction
+%
+%    \item Conservative Privatization (PrivRemed)
+%        % Removes loop-carried false memory dependences on conservatively provable privitizable objects
+%
+%    \item Memory Versioning (MemVerRemed)
+%        % Assumes privatized memory for each thread
+%        % Removes loop-carried false memory dependences
+%        % Stronger but more expensive than PrivRemed
+%        % Process-based parallelization enforces this remediator
+%
+%    % \item Counted Loop Detection (CountedIVRemed)
+%        % Removes loop-carried register and control dependences related to induction variables on counted loops
+%
+%    \item TXIO (TXIORemed)
+%        % I/O deferral
+%        % Delays execution of instructions with side-effects, such as I/O operations
+%
+%    % \item Conservative Loop Fission (LoopFissionRemed) ???
+%        % Separate non-DOALL SCCs to an initial sequential stage (loop in this case)
+%        % Only small sequential stages considered
+%        % No usage of speculative remediators to achieve separation
+%\end{itemize}
+%
+%\textbf{Speculative Transformations}
+%
+%\begin{itemize}
+%    \item Control Speculation (ControlSpecRemed)
+%        % Based on edge profile info, removes control flow edges and considers all basic blocks dominated by these edges as speculatively dead
+%        % Inexpensive runtime validation
+%
+%    \item Value Prediction (LoadedValuePred)
+%        % Some load instructions always read a single, predictable value from memory
+%        % Loop-Invariant Loaded-Value
+%        % Inexpensive runtime validation
+%
+%    \item Header-phi prediction (HeaderPhiPredRemed)
+%        % Some phi instructions have a predictable value.
+%        % Allows removal of loop-carried register dependeces
+%        % Inexpensive runtime validation
+%
+%    \item Separation Speculation (LocalityRemed)
+%
+%        % Johnson et al. PLDI '12
+%
+%        % Separation speculation partitions a program's allocations into a few disjoint "families" of objects and speculatively assumes that every pointer in the program refers exclusively to objects in one family. Under this assumption, if two pointers reference distinct families, they cannot alias.
+%
+%        % Relatively inexpensive runtime validation due to small number of families, allocation of objects in family-specific memory regions, runtime optimizations and thread-local checks (no communication among concurrent threads needed).
+%
+%        % Secondary speculation built on top of separation speculation:
+%
+%        %     Read-only speculation
+%        %         Read-only family
+%        %         Some memory objects are never modified but static dependence analysis is sometimes unable to prove this property
+%        %         Objects in the read-only family are only accessed by read-only memory operations. Thus, speculatively read-only memory operations never experience flow, anti or output dependences
+%        %         Apart from separation speculation validation, no other validation is required
+%
+%        %     Speculative accumulator expansion
+%        %         Compiler identifies accumulators as values which are repeatedly updated with an associative and commutative operator (a reduction) but whose intermediate values are otherwise unused within the loop. Static dependence sometimes fails to prove that every access to a given storage location is a reduction or that intermediate values are never used.
+%        %         The pointer-family assumption establishes that objects in the reduction family are only accessed by load-reduce-store sequences and consequently that intermediate values cannot be otherwise observed or modified.
+%        %         Apart from separation speculation validation, no other validation is required
+%
+%        %     Speculative privatization
+%        %         Reuse of data structures with no flow dependences from one iteration to the other prevents parallelization due to anti or output dependences.
+%        %         Addressed by having a private copy of the data structure for each iteration
+%        %         Assumption: loads from certain private objects never read values stored during earlier iterations of the loop.
+%        %         Privatization criteria validated in two phases, one thread-local and one more expensive that requires communication among threads.
+%
+%        %     Object-lifetime speculation
+%        %         Short-lived objects
+%        %         Some objects allocated within a loop iteration are always deallocated before the end of that same iteration. Static dependence analysis often fails to identify this case.
+%        %         Loads from or stores to such objects cannot depend on memory accesses in other iterations.
+%        %         Extra validation on top of separation speculation validation: object lifetime speculation must validate that short-lived objects never outlive their iteration. Thread-local checks.
+%
+%    \item Memory Flow Speculation (SmtxSlampRemed \& SmtxLampRemed)
+%        % Assumes the absence of flow dependences between memory operations when not manifested during profiling.
+%        % Provides as much or more an enabling effect than many other types of speculation.
+%        % Expensive validation. Requires communication among concurrent threads.
+%
+%    \item Speculative AA stack (MemSpecAARemed)
+%        % Allows collaboration among memory flow speculation, control speculation, value prediction, speculative points-to analysis and static analysis.
+%        % Demonstrates the power of collaboration among remediators, and between speculation techniques and static analysis.
+%        % Provides at least as much coverage as all the remediators addressing mem deps combined (only excludes SLAMP mem spec and localityaa).
+%
+%    % \item Speculative Loop Fission (LoopFissionRemed) ???
+%        % Same as Conservative Loop Fission apart from the fact that it requires usage of speculative remediators to achieve separation
+%
+%    \item Pointer-Residue Speculation (PtrResidueRemed)
+%        % Never part of a paper. Never evaluated. Idea published in Nick Johnson's thesis
+%        % Separation speculation disambiguates references to different objects, but does not disambiguate references within the same object. Pointer-residue speculation works at the sub-object level.
+%        % It disambiguates different fields within an object and in some cases recognizes different regular strides across an array.
+%        % It characterizes each pointer expression in the program according to the possible values of its four least-significant bits (residue).
+%        % Examines whether residue sets are disjoint with respect to the size of the memory accesses of two given operations.
+%\end{itemize}
+%
+%Second Level Enabler
+%\begin{itemize}
+%    \item Replicable Stage (RepStageRemedy)
+%\end{itemize}
+%
+%\subsection{Enabler Statistics}
 % Insert the table here
 
 % \includegraphics[width=\textwidth]{figures/table.png}
