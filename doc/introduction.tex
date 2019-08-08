@@ -158,9 +158,9 @@ may then become a bottleneck,
 especially in the presence of cross-iteration false dependences.
 %caused by data structures reuse.
 %
-To address this, speculative systems for automatic parallelization often need to
-monitor large write sets during parallel execution, significantly degrading
-their profitability~\cite{johnson:12:pldi}.
+To produce correct live-out memory state, speculative systems for automatic
+parallelization often need to monitor large write sets during parallel
+execution, significantly degrading their profitability~\cite{johnson:12:pldi}.
 %~\cite{kim:12:cgo,johnson:12:pldi} .  to ensure correct live-out state after
 %parallel invocation.
 %
