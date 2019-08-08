@@ -1,21 +1,29 @@
 \begin{abstract}
 
 The promise of automatic parallelization, freeing programmers from the
-error-prone and time-consuming process of making efficient use of
-parallel processing resources, remains unrealized.  For decades,
-memory analysis limited the applicability of automatic parallization
-techniques.  The introduction of speculative compiler optimizations
-overcame these applicability limitations, but, even in the case of no
-mispeculation, these compiler techniques exhibited high communication
-and bookkeeping costs which limited performance.  This paper presents
-XXX, a speculative-DOALL parallelization framework that exhibits the
-applicability of speculative techniques while approaching the
-efficiency of non-speculative techniques.  XXX reduces the need for
-expensive-to-validate memory flow speculation by cheap-to-validate
-speculative assumptions infering of high-level properties that enable
-efficient privatization.  On 12 general-purpose C/C++ programs on a
-28-core Xeon(or whatever), XXX exhibits a geomean whole-program
-speedup of 23.8$\times$ over sequential execution, 2$\times$ over
-Privateer, the prior best speculative-DOALL parallelization system.
-
-\end{abstract}
+error-prone and time-consuming process of making efficient use of parallel
+processing resources, remains unrealized.  For decades, memory analysis
+limited the applicability of automatic parallization techniques.  The
+introduction of speculative compiler optimizations overcame these
+applicability limitations, but, even in the case of no mispeculation, these
+compiler techniques exhibited high communication and bookkeeping costs for
+validation and commit which limited performance. This paper presents
+\namensp, a speculative-DOALL parallelization framework that exhibits the
+applicability of speculative techniques while approaching the efficiency of
+non-speculative techniques.
+%
+Instead of using speculative transformations in isolation, as a patch to
+unresolved by static analysis problems, this work decouples speculative
+assumptions from speculative transformations and allows speculative
+assumptions to be used in conjunction with static analysis.
+%and other speculative information.
+%use speculative assumptions holistically
+This combination magnifies the effect of speculative assumptions beyond
+their local scope, while the modularity of the design allows careful
+selection of minimal cost assumptions for inference of, essential to
+parallelization, memory objects properties.
+%
+On 12 general-purpose C/C++ programs on a 28-core Xeon(or whatever), \name
+exhibits a geomean whole-program speedup of 23.8$\times$ over sequential
+execution, 2$\times$ over Privateer, the prior best speculative-DOALL
+parallelization system.  (what best means? ) \end{abstract}
