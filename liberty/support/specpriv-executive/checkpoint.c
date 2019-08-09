@@ -13,6 +13,8 @@
 #include "timer.h"
 #include "fiveheaps.h"
 
+static Checkpoint *worker_last_committed = 0;
+
 static uint64_t __specpriv_count_memory_used_by_main_checkpoint(void)
 {
   uint64_t size_private = __specpriv_sizeof_private();
@@ -35,6 +37,11 @@ static uint64_t __specpriv_count_memory_used_by_checkpoint(Checkpoint *chkpt)
   uint64_t size_redux = chkpt->redux_used;
 
   return size_private + size_shadow + size_redux;
+}
+
+Checkpoint *__specpriv_worker_last_committed( void )
+{
+  return worker_last_committed;
 }
 
 static void acquire_lock(unsigned *lock)
@@ -425,8 +432,9 @@ Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr)
 {
   DEBUG(printf("Worker %u begins committing checkpoints...\n", __specpriv_my_worker_id() ));
 
-  for(;;)
-  {
+  // if we do this only once will it have any effect
+  /* for(;;) */
+  /* { */
     // Do a quick test before locking to avoid
     // contention.  We will check again after
     // we have the lock...
@@ -444,6 +452,15 @@ Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr)
     acquire_lock( &alpha->lock );
     acquire_lock( &beta->lock );
 
+    DEBUG(
+        if ( alpha->type != CL_Complete )
+          printf("alpha not complete\n");
+        if ( beta->type != CL_Complete )
+          printf("beta not complete\n");
+        if ( alpha->next != beta )
+          printf("alpha->next != beta\n");
+      );
+
     // ensure that my locking discipline isn't bullshit
     if( alpha->type != CL_Complete
     ||  alpha->next != beta
@@ -451,6 +468,7 @@ Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr)
     {
       release_lock( &beta->lock );
       release_lock( &alpha->lock );
+      DEBUG(printf("Locking discipline is indeed bullshit\n"););
       return 0;
     }
 
@@ -489,7 +507,7 @@ Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr)
     release_lock( &alpha->lock );
 
     // try to combine even more...
-  }
+  /* } */
 
   return 0;
 }
@@ -584,13 +602,15 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   if( pcb->misspeculation_happened && pcb->misspeculated_iteration <= currentIter )
-    _exit(0);
+    __specpriv_misspec("Something before checkpointing!");
+    /* _exit(0); */
 
   Checkpoint *chkpt = __specpriv_get_checkpoint_for_iter(&pcb->checkpoints, effectiveIter);
   if( !chkpt )
   {
     assert( pcb->misspeculation_happened && pcb->misspeculated_iteration <= currentIter );
-    _exit(0);
+    __specpriv_misspec("Something before checkpointing!");
+    /* _exit(0); */
   }
 
   uint64_t lock_start;
@@ -630,6 +650,8 @@ void __specpriv_worker_perform_checkpoint(int isFinalCheckpoint)
 
     ++numCheckpoints;
   );
+
+  worker_last_committed = chkpt;
 }
 
 void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
@@ -637,6 +659,7 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
   assert( __specpriv_i_am_main_process() );
 
   __specpriv_commit_zero_or_more_checkpoints(mgr);
+  ParallelControlBlock *pcb = __specpriv_get_pcb();
 
   // Adopt changes from Complete checkpoints
   while( !list_empty( &mgr->used ) )
@@ -661,7 +684,9 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
 
     __specpriv_commit_io( &chkpt->io_events, &commit_redux );
     __specpriv_distill_committed_private_into_main( chkpt, &commit_priv, &commit_shadow );
-    __specpriv_distill_committed_killprivate_into_main( chkpt, &commit_killpriv );
+    // gc14 - don't know why this is needed but it works
+    if ( !pcb->misspeculation_happened )
+      __specpriv_distill_committed_killprivate_into_main( chkpt, &commit_killpriv );
     __specpriv_distill_committed_redux_into_main(&commit_redux,
                                                  chkpt->lastUpdateIteration);
     mgr->main_checkpoint->iteration = chkpt->iteration;

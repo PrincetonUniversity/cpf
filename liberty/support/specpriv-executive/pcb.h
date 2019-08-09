@@ -21,6 +21,9 @@ struct s_parallel_control_block
   Iteration           misspeculated_iteration;
   const char *        misspeculation_reason;
 
+  // in case of misspeculataion, what was the last checkpoint committed
+  Checkpoint *        last_committed;
+
   char padding1[128];
 
   // The checkpoints...

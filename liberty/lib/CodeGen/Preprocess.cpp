@@ -520,6 +520,7 @@ void Preprocess::init(ModuleLoops &mloops)
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
         ControlSpecRemedy *ctrlSpecRemed = (ControlSpecRemedy *)&*remed;
+        specUsedFlag = true; // checkpoint even if not for control-dep
         if (!ctrlSpecRemed->brI)
           continue;
         if (const TerminatorInst *term =
