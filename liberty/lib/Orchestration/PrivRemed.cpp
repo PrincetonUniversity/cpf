@@ -419,15 +419,36 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
 
   // look for conservative privitization
   bool WAW = dataDepTy == DataDepType::WAW;
+  bool RAW = dataDepTy == DataDepType::RAW;
 
   // need to be loop-carried WAW where the privitizable store is either A or B
   bool privateA = isPrivate(A, L, remedy->ctrlSpecUsed);
   bool privateB = false;
   if (!privateA)
     privateB = isPrivate(B, L, remedy->ctrlSpecUsed);
+
+  // handle RAW for non-locals
+  if (LoopCarried && RAW &&
+      ((isa<StoreInst>(A) && privateA) || (isa<StoreInst>(B) && privateB))) {
+    ++numPrivNoMemDep;
+    remedResp.depRes = DepResult::NoDep;
+    if (isa<StoreInst>(A) && privateA)
+      remedy->storeI = dyn_cast<StoreInst>(A);
+    else
+      remedy->storeI = dyn_cast<StoreInst>(B);
+
+    remedy->type = PrivRemedy::Normal;
+    remedResp.remedy = remedy;
+
+    DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
+                 << *B << '\n');
+
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
   if (LoopCarried && WAW &&
-      ((isa<StoreInst>(A) && privateA) ||
-       (isa<StoreInst>(B) && privateB))) {
+      ((isa<StoreInst>(A) && privateA) || (isa<StoreInst>(B) && privateB))) {
     ++numPrivNoMemDep;
     remedResp.depRes = DepResult::NoDep;
     if (isa<StoreInst>(A) && privateA)
