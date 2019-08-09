@@ -6,14 +6,14 @@ parallel processing resources, remains unrealized.  For decades,
 memory analysis limited the applicability of automatic parallization
 techniques.  The introduction of speculative compiler optimizations
 overcame these applicability limitations, but, even in the case of no
-mispeculation, these compiler techniques exhibited limited performance
-due to high communication and bookkeeping costs for prediction
+mispeculation, these speculative techniques exhibited limited performance
+due to high communication and bookkeeping costs for
 validation and commit.  This paper presents XXX, a speculative-DOALL
 parallelization framework that exhibits the applicability of
 speculative techniques while approaching the efficiency of
 non-speculative techniques.  Unlike current approaches which address
 specific weaknesses in memory analysis using predictions in subsequent
-and independent speculative transformation pass, XXX works by
+and independent speculative transformation passes, XXX works by
 performing both memory analysis and optimization using a single set of
 predictions selected for their overall effectiveness and low
 validation costs.  On 12 general-purpose C/C++ programs on a 28-core
