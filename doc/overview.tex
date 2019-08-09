@@ -1,22 +1,42 @@
 \section{Approach Overview}
 \label{sec:overview}
 
-The goal is to infer for all memory objects of the parallelized loop high-level
-properties that require minimal bookkeeping and access checks.
+The goal is to infer for all memory objects of each target loop high-level
+properties that enable parallelization with minimal bookkeeping and access
+checks.
+% maybe the under which option is needed here?
+%
+These properties are used to group memory objects into families of objects.
+%Memory objects with the same properties are grouped into the same family of
+%objects.
+The runtime system leverages each family's properties to maximize performance.
+%
+Even though, categorization of memory objects has been explored in prior
+work~\cite{johnson:12:pldi, kim:12:cgo, corD},
+%
+the selection of properties and the assumptions under which these properties are
+inferred drastically changes the parallelization profitability.  This section
+explains how this work addresses these two problems more effectively than prior
+work.
+%to reduce speculative parallelization overheads compared to prior work.
+
 
 %\subsection{Memory Object Properties}
 \subsection{What Memory Object Properties?}
 
-DOALL parallelization is applicable when the loop's memory objects belong to one
-of these categories: (i) private~\cite{privateer,LRPD,ARRAY_privatization} (does
-not partake in any loop-carried memory flow); (ii) read-only; (iii)
-local~\cite{corD,privateer,clusterDoall} (allocated and de-allocated within the
-same iteration); and (iv) reduction~\cite{privateer,LRPD} (participates in a
+DOALL parallelization is \textit{applicable} when the loop's memory objects
+belong to one of these categories: (i) private~\cite{privateer,LRPD} (does not
+partake in any loop-carried memory flow); (ii) read-only~\cite{tian:10:pldi,
+johnson:12:pldi}; (iii) local~\cite{tian:10:pldi, johnson:12:pldi,clusterDoall}
+(allocated and de-allocated within the same iteration); and (iv)
+reduction~\cite{privateer,LRPD_the_one_withreductionPriv} (participate in a
 reduction operation only).
 %
 
-To enable more efficient parallelization, we express more properties for private
-memory objects. Private objects could additionally (a) be
+Ensuring correct live-out memory state often requires extensive bookkeeping,
+during parallel execution, for the write footprint of private objects. To make
+parallelization more \textit{profitable}, this work expresses more properties
+for private memory objects. Private objects could additionally (a) be
 independent~\cite{ARRAY_privatization} (no loop-carried false dependences); (b)
 have loop-invariant condition for last update within the
 loop~\cite{ARRAY_privatization}; (c) have predictable live-out content (not
@@ -37,83 +57,121 @@ thus always require costly checks or monitoring.
 \input{private_types}
 
 
-%\paragraph{Example:}
-%Consider the code in figure~\ref{dijkstra_all} (taken from MiBench~\cite{} benchmark
-%dijkstra, used in the evaluation of Privateer~\cite{}).
-%TODO: describe the properties of all the loop memory objects in the example.
+%\subsection{How to Classify?}
+%\subsection{How to Infer Memory Object Properties \\ Without Expensive Runtime
+%Costs?}
+\subsection{How to Infer Memory Object Properties}
 
+%Classifying memory objects
+Characterizing the behavior of memory objects requires
+%(i) identification of accesses to this object within the loop and
+(i) mapping memory accesses to objects and (ii) analysis of the dependences that
+these accesses introduce.
+% characterize accesses
+This work attempts to satisfy these two requirements by using a combination of
+cheap-to-validate speculative assumptions and static analysis. For almost all
+the memory objects of the evaluated benchmarks, this combination was sufficient
+and no use of memory speculation or expensive bookkeeping was required.
 
-\subsection{How to Infer Memory Object Properties \\ Without Expensive Runtime
-Costs?}
-%\subsection{Efficient Inference of Memory Object Properties}
-
-Characterizing the behavior of a memory object requires (i) identification of
-accesses to this object within the loop and (ii) analysis of the dependences
-that these accesses introduce.  This work attempts to satisfy these two
-requirements by using a combination of cheap-to-validate speculative assumptions
-and static analysis. For almost all the memory objects of the evaluated
-benchmarks, this combination was sufficient and no use of memory speculation was
-required.
-
-\paragraph{Determine accesses of memory objects:} This task is very challenging
-for general-purpose programs with pointers, dynamic allocation,and type casts.
+%\paragraph{Determine accesses of memory objects:}
+\paragraph{Map accesses to underlying memory objects:}
 %
-%Briefly, this task entails ...
-Challenges include points-to mapping from pointers to memory objects, different
-objects created by the same static instruction, and presence of ``disguised''
-pointers~\cite{citation3_from_privateer}.
-%(not all pointer values are necessarily visible in the IR).
+Static analysis can handle this problem for several cases of statically
+allocated objects.
 %
-Johnson et al. ~\cite{johnson:pldi:12} recognized these challenges and proposed
-an inexpensive speculative technique called separation speculation to bypass
-them.
+However, this task often becomes too challenging for static analysis for
+general-purpose programs with unrestricted pointers, dynamic allocation, and
+type casts.
 %
-Using a points-to profiler, all the memory accesses are mapped to memory
-objects.
+%Briefly, this task entails ...  Challenges include points-to mapping from
+%pointers to memory objects, different objects created by the same static
+%instruction, unrestricted pointers presence of ``disguised''
+%pointers~\cite{citation3_from_privateer}.  (not all pointer values are
+%necessarily visible in the IR).
 %
-To enable cheap validation, instead of checking at runtime that each individual
-memory access points to the correct set of objects, it groups memory objects,
-based on their access pattern, to a few heaps and just ensures separation of
-these heaps at runtime.
+%These challenges often necessitate use of speculation.
+Thus, in some cases use of speculation is necessary.
 %
-
-TODO: explain more why this check is sufficient (if all objects share the same
-properties then points-to family validation is enough. The example will make
-this clear but maybe it needs to be clarified here)
-
+A points-to profiler can identify this mapping of memory accesses to underlying
+memory objects.
 %
-%Similarly, to Privateer~\cite{johnson:pldi:12}, this work groups memory objects
-%to families with objects that share the same set of properties.  Inexpensive
-%checks with neither bookkeeping nor inter-worker communication ensure that all
-%accesses point to the correct heap. Namely, it validates that that the profiled
-%points-to information are accurate on a points-to family level.
+Validating this points-to profiling information at the memory object granularity
+would be expensive.
+%instead of checking at runtime that each individual memory access points to the
+%correct set of underlying objects,
 %
-Note that in Privateer's monolithic design separation speculation is entangled
-with memory speculation resulting in high runtime overheads (see
-section~\ref{eval}).
+%To enable cheap validation, it groups together memory objects with the same
+%access pattern to a few heaps and only validates at runtime the correctness of
+%points-to heap mapping.
 %
-This work instead employs a modular design where separation speculation is
-decoupled from other speculative techniques and can be used in conjunction with
-other speculation or analysis to infer memory object properties.
-
-%In contrast with Privateer, we decouple separation speculation from the
-%classification of objects to families. Privateer's monolithic design forces
-%usage of separation speculation along with memory speculation resulting in
-%increased runtime overhead (see section~\ref{eval}).
-%%
-%This work instead uses a modular design where separation speculation in
-%conjuction with other inexpensive speculation and static analysis infer and
-%validate memory object properties.
+% To reduce sensitivity to memory layout, Privateer speculativelyseparates
+% memory objects
+%
+Same as in Privateer~\cite{johnson:pldi:12}, since all memory objects of the
+same family share the same properties, inexpensive points-to family validation
+is sufficient.
+%
+%TODO: maybe add one extra sentence here to explain why it is called separation
+%spec or explain it more
+%Inexpensive checks with neither bookkeeping nor inter-worker communication
+%ensure that all accesses point to the correct heap.
+%
+%For example, the read-only family contains objects that speculatively map to
+%read-only memory operations.  namely all the memory access have the read-only
+%property.
+%
+This speculative scheme is called separation speculation.
+%
+%In contrast with Privateer~\cite{johnson:pldi:12}, we decouple separation
+%speculation from characterizing memory accesses.
+Note that Privateer's monolithic design of classification entangles separation
+speculation with memory speculation and other profiling-based information
+resulting in high runtime overhead (see section~\ref{eval}).
+%
+In contrast with Privateer, this work employs a modular design where separation
+speculation is decoupled and can be used in conjunction with any other
+cheap-to-validate speculation or static analysis to infer memory object
+properties. This modularity leads to better planning and selection of minimum
+cost solutions.
 
 
 \paragraph{Dependence Analysis:}
+%
+Traditionally, dependence analysis only attempts to completely remove
+dependences. If a dependence cannot be removed, because it is a real dependence
+that manifest at runtime, analysis in prior work would fail to provide any
+useful information related to it.
+
+%
+For dependence removal, prior work only used static analysis and speculative
+techniques in isolation.
+%
+This work suggests that collaboratively static analysis and cheap-to-validate
+speculative assumptions can disprove properties that would otherwise require
+memory speculation.
+
+%Prior work only attempted to use static analysis and speculative assumptions
+%separately to remove different dependences. If static analysis or speculative
+%assumptions are unable to remove a dependence on their own, then there no
+%collaboration between static analysis nor partial info to be used by
+%transformations.
+
+Prior work just used static analysis to remove some dependences between program
+operations and speculation to refine the PDG and remove even more.
+
+first is collab between analyses
+the second gives info to transforamtion.
+maybe in conjuction with other info from other analysis can enable a
+transformation efficiently
+
+We propose first collab to remove some dependences and
+also if even a analysis cannot completely remove a dependence it can still
+provide some information that could enable a transformation enable more
+efficient parallelization
 
 TODO: describe speculative techniques and analysis used to analyze the
 dependences of memory access.  One dependence characterization might require
 collaboration of different passes.
-
-analysis of the dependences
-that these accesses introduce.
 
 %In the past, privateer monolithically combined separation logic with
 %mem spec to infer properties.
@@ -180,6 +238,18 @@ that these accesses introduce.
 Consider the code in figure~\ref{dijkstra_all} (taken from MiBench~\cite{} benchmark
 dijkstra, used in the evaluation of Privateer~\cite{}).
 TODO: describe the properties of all the loop memory objects in the example.
+
+We compare our approach where we combine static analysis with cheap-to-validate
+with privateer's monolithic approach that over-speculates and is limited by high
+runtime overheads.
+
+We initially present the compilation flow for both approaches, then the
+resulting parallelized code and finally the flow of live-in and live-out memory
+data.
+
+Remove text from figure 1. Just add some here, the rest has been explained
+earlier.
+Maybe show the dependences in the graph.
 
 %dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
 %analysis along with cheap-to-validate speculative assumptions can infer
