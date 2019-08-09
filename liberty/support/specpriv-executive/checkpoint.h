@@ -108,5 +108,8 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr);
 
 Bool __specpriv_commit_zero_or_more_checkpoints(CheckpointManager *mgr);
 
+// hopefully the checkpoint doesn't get repurposed/destroyed before this is called
+Checkpoint *__specpriv_worker_last_committed( void );
+
 #endif
 
