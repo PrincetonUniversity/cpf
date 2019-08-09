@@ -15,15 +15,10 @@ non-speculative ones.  Unlike current approaches where memory analysis
 and speculative assumptions are unaware of each other and are used
 independently, Per{\em{spec}}tive includes a novel speculation-aware
 memory analysis whose results can be used to infer properties
-essential for efficient parallelization.  On 12 general-purpose C/C++
-programs, compared to Privateer, a state-of-the-art speculative-DOALL
-parallelization system, Per{\em{spec}}tive demonstrates higher overall
-program speedup (23.8$\times$ over sequential execution on a 28-core
-shared memory machine vs. 11.9$\times$ by Privateer) by reducing
-speculative parallelization overheads in ways not seen before.
-
-%23.8$\times$ over sequential execution, 2$\times$ over Privateer, a
-%state-of-the-art speculative-DOALL parallelization
-%system.
-
-\end{abstract}
+essential for efficient parallelization.  Per{\em{spec}}tive
+demonstrates higher overall program speedup (23.0$\times$ for 12
+general-purpose C/C++ programs running on a 28-core shared-memory
+machine) than Privateer (11.5$\times$), the best prior
+speculative-DOALL parallelization system, by reducing speculative
+parallelization overheads in ways not possible with prior
+parallelization systems.  \end{abstract}
