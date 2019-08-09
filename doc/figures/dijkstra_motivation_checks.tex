@@ -11,7 +11,7 @@ int dequeue() {
 
   \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-    // Privacy Local Check & Logging -- < 1% added OH
+    // Privacy Local Check & Logging -- < 1% added overhead
     private_write(&dist, sizeof(int), md);
   \end{lstlisting}
 
@@ -34,7 +34,7 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
   void *md = alloc(); // allocate metadata
-  // Separation Local Check -- < 0.001% added OH
+  // Separation Local Check -- < 0.001% added overhead
   check_heap(pathcost, PRIVATE);
   check_heap(&dist, PRIVATE);
   \end{lstlisting}
@@ -45,7 +45,7 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-    // Privacy Local Check & Logging -- < 1% added OH
+    // Privacy Local Check & Logging -- < 1% added overhead
     private_write(pathcost, N*sizeof(int), md);
   \end{lstlisting}
 
@@ -61,7 +61,7 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-        // Privacy Local Check & Logging -- 11.4% added OH
+        // Privacy Local Check & Logging -- 11.4% added overhead
         private_read(&dist, sizeof(int), md);
   \end{lstlisting}
 
@@ -71,7 +71,7 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-        // Privacy Local Check & Logging -- 11.6% added OH
+        // Privacy Local Check & Logging -- 11.6% added overhead
         private_read(&pathcost[i], sizeof(int), md);
   \end{lstlisting}
 
@@ -82,7 +82,7 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-          // Privacy Local Check & Logging -- < 1% added OH
+          // Privacy Local Check & Logging -- < 1% added overhead
           private_write(&pathcost[i], sizeof(int), md);
   \end{lstlisting}
 
@@ -97,7 +97,7 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
     if (checkpointDue()) {
-      // check conflicts with other workers -- < 1% added OH
+      // check conflicts with other workers -- < 1% added overhead
       checkPrivAcccessesConflicts(md);
     }
   \end{lstlisting}
@@ -108,7 +108,7 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-  communicateLiveOutMemState(md); // < 1% added OH
+  communicateLiveOutMemState(md); // < 1% added overhead
   \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
