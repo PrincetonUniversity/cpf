@@ -2,9 +2,79 @@
 
 \textbf{XXX} Fill this in \textbf{XXX}
 
+
+% For non-spec DOALL-only compilers: with only static analysis, the struggle is
+% the applicability (maybe plus the cost of logging and merging live-outs
+% (copy-outs)); with runtime checks (predicates), the focus is the applicability
+% and extraction of efficient runtime checks.
+
+% For compilers using different techniques than DOALL: communication of real
+% dependences is needed. The overheads can be broken down to communication cost,
+% lost cycles due to imbalance.
+
+% For Spec DOALL-only compilers: with memory speculation, the applicability is
+% perfect, meaning all “real” DOALL loops can be handled by just ignoring
+% dependences that can not be disproved but will never or seldom manifest in
+% runtime. The overheads include speculation validation cost, misspeculation
+% recovery cost, and the cost of logging & merging (maintaining) live-outs.
+
+% For systems with special hardware support: for example, with transactional
+% memory systems, the memory versioning of main memory is there implicitly.
+% Assuming you have a transactional memory system with zero time overhead, what
+% you need to do is just spawning the iterations, false dependences including
+% anti- and output- dependences are avoided, when one iteration has a real
+% dependences (flow) to its previous iteration but executes earlier, the memory
+% system can stall it when it tries to load the pending value. However, the
+% assumption of 0-overhead TM systems is not possible.
+
+This work focuses on the profitability of DOALL parallelism. The performance
+improvement comes from the extensive use of static analysis in conjunction with
+cheap-to-check speculations. Here we briefly survey some literature in
+automatic parallelism and discuss about their efforts to reduce overheads.
+
+\paragraph{Non-Spec Parallelizing Compilers:}
+% Polaris
+% SUIF
+% HELIX
+% DSWP (non spec version)
+% Hybrid Analysis
+% Sensitivity Analysis
+
+For non-speculative parallelizing compilers, all dependences are removed by
+static analysis. Most prior work, such as Polaris, SUIF, works well with regular
+scientific programs and exhibit good speedup when applicable. When a DOALL plan
+is not available, compiles like HELIX, DSWP, and PS-DSWP allow some
+communications among workers and enable DOACROSS and DOPIPE techniques. Hybrid
+analysis and sensitivity analysis tried to combine dynamic information with
+static analysis by using runtime analysis. Sensitivity also uses a cascade
+design of static analysis, cheap-to-check predicates, expensive-to-check
+predicates to reduce the overhead of run-time check.
+
+
 % HELIX
 The HELIX parallelizing compiler extracts TLP by distributing loop iterations between cores within the same chip.
 HELIX is a generalization of DOACROSS and DOALL techniques for modern multicore architectures and, therefore, HELIX-parallelized loops include DOALL ones.
 HELIX does not rely on speculation to avoid the related overhead, which limits the approach to target only medium and small loops (where the accuracy of code analyses is higher) for most benchmarks.
 Targeting such loops increases the communication demand, which makes HELIX particularly appealing when coupled with an architecture support designed to accelerate core-to-core communication.
 On the other hand, LSD decreases the speculation overhead enough to make DOALL parallelization practical on existing commodity multicores.
+
+
+\paragraph{Speculative Compilers:}
+
+\paragraph{Hardware transactional memory system:}
+
+Some work assumes the existence of some special hardware to support the runtime,
+for example, in (HPCA’08, Mahlke paper), all memory dependences are removed
+using memory speculation and transactional memory systems.This work makes no
+assumption of special hardware support, no hardware transactional memory systems
+needed, fully utilizes static analysis to reduce the cost.
+
+\paragraph{Software transactional memory system:}
+
+Other work on software transactional memory tried to reduce the overhead by
+using some extent of static analysis or/and privatization (STMlite, CorD).
+
+\paragraph{Polyhedral and Vectorization Compilers:}
+
+The use of speculative assumptions in conjunction with static analysis appears
+in other parallelization techniques including polyhedral transformations and ...
