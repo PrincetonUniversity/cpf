@@ -5,26 +5,26 @@ error-prone and time-consuming process of making efficient use of
 parallel processing resources, remains unrealized.  For decades,
 memory analysis limited the applicability of non-speculative automatic
 parallization techniques (NS-APTs).  The introduction of speculative
-automatic parallelization transformations (S-APTs) overcame these
+automatic parallelization techniques (S-APTs) overcame these
 applicability limitations using predictions in {\em independent}
 speculative transformation passes.  This approach limits memory
-analysis's understanding of code with speculation, and leads to an
-innefficient selection of S-APTs, techniques that, even in the case of
-no mispeculation, have high communication and bookkeeping costs for
-validation and commit.  This paper presents XXX, a speculative-DOALL
+analysis's understanding of code with speculation, leads to an
+inefficient selection of S-APTs, and exhibits, even in the case of no
+mispeculation, high communication and bookkeeping costs for validation
+and commit.  This paper presents XXX, a speculative-DOALL
 parallelization framework that exhibits the applicability of S-APTs
 while approaching the efficiency of NS-APTs (when applicable).  XXX
 works by exploring the impact of predictions in a pass integrating a
-new speculative-aware memory analysis with APT cost-benefit estimation
+new speculation-aware memory analysis with APT cost-benefit estimation
 to select an effective APT plan.  On 12 general-purpose C/C++
-programs, compared to other speculative-DOALL parallelization systems,
-XXX demonstrates higher overall program speedup (23.8$\times$ over
-sequential exeuction on a 28-core Xeon YYY vs. ##.#$\times$) by
-selecting NS-APTS with lower validation costs in ways not seen before.
-
+programs, compared to Privateer, a state-of-the-art speculative-DOALL
+parallelization system, XXX demonstrates higher overall program
+speedup (23.8$\times$ over sequential execution on a 28-core shared
+memory machine vs.  11.9$\times$ by Privateer) by selecting APTs with
+lower validation costs in ways not seen before.
 
 %23.8$\times$ over sequential execution, 2$\times$ over Privateer, a
 %state-of-the-art speculative-DOALL parallelization
-%system.  
+%system.
 
 \end{abstract}
