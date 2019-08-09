@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <xmmintrin.h>
+#include <setjmp.h>
 
 
 #ifndef _GNU_SOURCE
@@ -85,12 +86,14 @@ static int (*pipefds)[2];
 // loop ID for current invocation
 static int globalLoopID;
 
+static jmp_buf jmpbuf;
+
 #if JOIN == SPIN
 struct sigaction old_sigchld;
 #endif
 
 #if SIMULATE_MISSPEC != 0
-static Iteration simulateMisspeculationAtIter;
+static Iteration simulateMisspeculationEveryIter;
 #endif
 
 struct WorkerArgs {
@@ -188,6 +191,18 @@ static void __specpriv_worker_setup(Wid wid)
 
   TADD(worker_setup_time, start);
   ssize_t workerArgsSize = sizeof(struct WorkerArgs);
+
+  int r = sigsetjmp( jmpbuf, 1 );
+#if DEBUG_MISSPEC || DEBUGGING
+  if ( r == 0)
+    printf("Worker %d: First time setjmp was called\n", myWorkerId);
+  else if ( r == 42 )
+    printf("Worker %d: Misspeculated somewhere\n", myWorkerId);
+  else if ( r == 43 )
+    printf("Worker %d: Misspeculated by other worker?!?!\n", myWorkerId);
+  else
+    printf("Worker %d: Misspeculated for some other reason\n", myWorkerId);
+#endif
 
   // wait and read from pipe until killed
   while (1) {
@@ -288,14 +303,17 @@ void __specpriv_begin(void)
   myWorkerId = MAIN_PROCESS;
 
 #if SIMULATE_MISSPEC != 0
-  simulateMisspeculationAtIter = ~0U;
-  const char *smai = getenv("SIMULATE_MISSPEC_ITER");
+  simulateMisspeculationEveryIter = INT32_MAX;
+  const char *smai = getenv("SIMULATE_MISSPEC_EVERY");
   if( smai )
   {
     int n = atoi(smai);
     assert( 0 <= n );
-    simulateMisspeculationAtIter = (Iteration)n;
+    simulateMisspeculationEveryIter = (Iteration)n;
   }
+#if DEBUG_MISSPEC
+    printf("Misspec every %u iterations\n", simulateMisspeculationEveryIter);
+#endif
 #endif
 
   __specpriv_initialize_main_heaps();
@@ -396,18 +414,6 @@ void __specpriv_misspec(const char *reason)
 
 void __specpriv_misspec_at(Iteration iter, const char *reason)
 {
-  ParallelControlBlock *pcb = __specpriv_get_pcb();
-
-  pcb->misspeculated_worker = myWorkerId;
-  pcb->misspeculated_iteration = iter;
-  pcb->misspeculation_reason = reason;
-  pcb->misspeculation_happened = 1;
-
-#if JOIN == SPIN
-  pcb->workerDoneFlags[ myWorkerId ] = 1;
-#endif
-
-  __specpriv_destroy_worker_heaps();
 
 #if DEBUG_MISSPEC || DEBUGGING
   fprintf(stderr,"Misspeculation detected at iteration %d by worker %d\n", iter, myWorkerId);
@@ -415,8 +421,39 @@ void __specpriv_misspec_at(Iteration iter, const char *reason)
     fprintf(stderr,"Reason: %s\n", reason);
 #endif
 
-  // gc14 -- misspec test
-  _exit(0);
+  // wait for all workers to get to last committed checkpoint
+  // timeout for 1s -- if waiting for this long, assume that another worker misspeculated
+  // before this checkpoint
+  ParallelControlBlock *pcb = __specpriv_get_pcb();
+  Checkpoint *last = pcb->last_committed;
+  if ( !last )
+    DEBUG(printf("No previously committed checkpoint when misspec occurred\n"); fflush(stdout););
+  else
+  {
+    uint32_t num_waits = 0;
+    struct timespec wt;
+    wt.tv_sec = 0;
+    wt.tv_nsec = 1000; // 1 us
+    while ( last->num_workers != __specpriv_num_workers() && num_waits < 1000000 )
+    {
+      nanosleep(&wt,0);
+      num_waits++;
+    }
+  }
+
+  pcb->misspeculated_worker = myWorkerId;
+  pcb->misspeculated_iteration = iter;
+  pcb->misspeculation_reason = reason;
+  pcb->misspeculation_happened = 1;
+
+  __specpriv_destroy_worker_heaps();
+
+#if JOIN == SPIN
+  pcb->workerDoneFlags[ myWorkerId ] = 1;
+#endif
+
+  DEBUG(printf("Done with misspec -- returning to read()\n"); fflush(stdout););
+  siglongjmp( jmpbuf, 42 );
 }
 
 // Called by __specpriv_spawn_workers on each worker
@@ -544,8 +581,11 @@ void __specpriv_recovery_finished(Exit e)
     pcb->exit_taken = e;
 
   currentIter = mi + 1;
-
-  DEBUG(printf("Recovery finished.  should resume from %u\n", currentIter));
+  /* hopefully fixes the finnicky error in enc-md5 */
+  fflush(stdout);
+#if DEBUG_MISSPEC || DEBUGGING
+  printf("Recovery finished.  should resume from %u\n", currentIter);
+#endif
 }
 
 
@@ -722,8 +762,8 @@ Exit __specpriv_join_children(void)
   {
     Bool allDone = 1;
 
-    if( pcb->misspeculation_happened )
-      break;
+    /* if( pcb->misspeculation_happened ) */
+    /*   break; */
 
     for(Wid wid=0; wid<numWorkers; ++wid)
       if( !pcb->workerDoneFlags[wid] )
@@ -757,10 +797,7 @@ Exit __specpriv_join_children(void)
   TIME(distill_into_liveout_end);
 
   if( pcb->misspeculation_happened )
-  {
-    DEBUG(printf("Misspec happened after distilling ¯\\_(ツ)_/¯\n"););
     return 0;
-  }
   else
     return pcb->exit_taken;
 }
@@ -783,7 +820,7 @@ Exit __specpriv_end_invocation(void)
 // even during those it does not execute.
 void __specpriv_begin_iter(void)
 {
-  DEBUG(printf("iter %u %u\n", myWorkerId, currentIter));
+  /* DEBUG(printf("iter %u %u\n", myWorkerId, currentIter)); */
   // XXX gc14 -- will need to change this for multiple stages
 
    __specpriv_reset_local();
@@ -796,6 +833,8 @@ void __specpriv_begin_iter(void)
       );
   TIME(worker_begin_iter_time);
   TIME(worker_pause_time);
+
+  DEBUG(printf("Worker %u starting iteration %d\n", myWorkerId, currentIter);); // XXX remove this later!
 }
 
 void __specpriv_set_loopID( int n )
@@ -817,6 +856,7 @@ int __specpriv_get_loopID( void )
 //       Use loopID and queues to send instead of pipes
 void __specpriv_end_iter(uint32_t ckptUsed)
 {
+  DEBUG(printf("Worker %u ending iteration %d\n", myWorkerId, currentIter);); // XXX remove this later!
 
   // XXX gc14 -- will need to change this for multiple stages
   TOUT(
@@ -831,14 +871,15 @@ void __specpriv_end_iter(uint32_t ckptUsed)
     __specpriv_misspec("Object lifetime misspeculation");
 
 #if SIMULATE_MISSPEC != 0
-  if( currentIter == simulateMisspeculationAtIter )
+  if( currentIter != 0 && currentIter % simulateMisspeculationEveryIter == 0 )
     __specpriv_misspec("Simulated misspeculation");
 #endif
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
-  // gc14 -- commented out for misspec test
-  if( pcb->misspeculation_happened )
-    _exit(0);
+  if( pcb->misspeculation_happened && currentIter > pcb->misspeculated_iteration )
+  {
+    siglongjmp( jmpbuf, 43 );
+  }
 
   ++currentIter;
   Iteration globalCurIter = currentIter;
