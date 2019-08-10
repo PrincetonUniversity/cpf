@@ -92,8 +92,10 @@ ASPLOS Submission \#\asplossubmissionnumber -- Confidential Draft -- Do Not Dist
   {0pt}{}{}
 \titleformat{\subsection}[hang]{\normalfont\bfseries}{\thesubsection. }%
   {0pt}{}{}
-\titleformat{\subsubsection}[runin]{\normalfont\bfseries}{\thesubsubsection. }%
+\titleformat{\subsubsection}[hang]{\normalfont\bfseries}{\thesubsubsection. }%
   {0pt}{}{}
+% \titleformat{\subsubsection}[runin]{\normalfont\bfseries}{\thesubsubsection. }%
+%  {0pt}{}{}
 \newlength{\sectionspace}
 \setlength{\sectionspace}{1.5ex plus 0.25ex}
 \titlespacing*{\section}{0pt}{\sectionspace}{\sectionspace}
