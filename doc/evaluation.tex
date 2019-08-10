@@ -69,6 +69,28 @@ we use in our heaps. Using a similar malloc in the sequential version
 yields ~16x speedup in dijkstra and insignificant difference in the
 other benchmarks.
 
+\subsection{Misspeculation Analysis}
+\begin{figure*}[htp]
+  \includegraphics[width=0.9\textwidth]{figures/misspec}
+  \caption{Misspeculation performance across speculative benchmarks}
+  \label{fig:misspec}
+\end{figure*}
+Figure \ref{fig:misspec} shows how misspeculation affects the
+performance of the six speculative benchmarks with misspeculation rates of
+0.1\% and 0.2\%. Since none of the benchmarks exhibit misspeculation on the
+given input sets, we artificially inject misspeculation at the end of
+every 1000 and 500 iterations, respectively, to observe the performance
+degradation. The inputs for \texttt{179.art} were not large enough to have
+enough iterations for misspeculation at these rates, so we perform a
+weighted average of non-misspeculating and misspeculating runs to achieve
+an average corresponding to the respective rates. These results demonstrate
+that Perspective performs well with only high confidence speculation.
+% As the iteration within a checkpoint that misspeculation
+% occurs can affect the recovery cost, we inject these misspeculations in the
+% middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more
+% realistic simulation, assuming that programs can misspeculate at any iteration with a
+% uniform distribution.
+
 \subsection{Power Consumption}
 
 Power and energy stats here
