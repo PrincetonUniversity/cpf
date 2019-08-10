@@ -2,10 +2,9 @@
 \section{Evaluation}
 
 LSD is evaluated against 12 C and C++ benchmarks, covering all the DOALLable
-(showing at least speedup instead of slowdown) benchmarks from two
-state-of-the-art automatic DOALL parallelization
-papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more benchmark
-(179.art) from HELIX.
+(showing speedup instead of slowdown) benchmarks from two state-of-the-art
+automatic DOALL parallelization papers~\cite{johnson:12:pldi,kim:12:cgo}. We
+also include one more benchmark (179.art) from HELIX.
 
 \begin{table*}
   \include{figures/benchmark-tab}
@@ -16,11 +15,10 @@ papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more benchmark
     \vspace{-5pt}
 \end{table*}
 
-The machine is using two 14-core Intel(R) Xeon(R)
-CPU E5-2697 v3 CPUs running at 2.60GHz (turbo-boost disabled) with 756GB of
-memory. The operating system is Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0
-20171010) and LLVM Compiler
-Infrastructure (version 5.0.2).
+The machine is using two 14-core Intel Xeon CPU E5-2697 v3 processors (28 cores
+total) running at 2.60GHz (turbo-boost disabled) with 756GB of memory. The
+operating system is 64-bit Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0
+20171010) and LLVM Compiler Infrastructure (version 5.0.2).
 
 
 \subsection{Parallelization Performance}

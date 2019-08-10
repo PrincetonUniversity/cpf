@@ -59,13 +59,15 @@ void worker_loop(int start, int N, int step) {
       for (i=0; i<N; i++) {
   \end{lstlisting}
 
-  \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
+  \begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
         // Privacy Local Check & Logging -- 11.4% added overhead
         private_read(&dist, sizeof(int), md);
+        // Privacy Local Check & Logging -- 13.3% added overhead
+        private_write(&nDist, sizeof(int), md);
   \end{lstlisting}
 
-  \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+  \begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
         nDist = adj[v][i] + dist;
   \end{lstlisting}
 
