@@ -230,10 +230,52 @@ our current implementation).
 
 \subsection{Runtime}
 
-handling of live-ins, LC, live-outs
+The runtime system of Perspective provides several benefits that allows for
+low overheads for both speculative and non-speculative parallelization.
 
-lightweight,
-unified for both spec and non-spec
+Something about how killpriv only needs to copy out last checkpoint's
+values to main and no merging of checkpoints needed
+% using shm and remapping to allow for spawning once
+\paragraph{Process spawning}
+We use a process-based parallelism scheme as opposed to a thread-based one
+for several purposes. The runtime system \texttt{fork()}s all the processes
+only once at program startup to avoid the overhead of spawning at every loop
+invocation, especially important for programs whose inner loops are
+parallelized, such as \textit{052.alvinn}. Each worker process waits for the main
+process to send only the function to run, the starting iteration, and the
+size of each heap.
+
+\paragraph{Shared memory}
+At program startup, the main process creates and maps several regions of named shared
+memory in \texttt{\textbf{/dev/shm}} with shared permissions corresponding
+to each of the five heap assignments.
+When a worker starts an invocation, it remaps these regions of memory to
+disjoint segments of its own virtual memory space with either
+copy-on-write, shared, or read-only semantics depending on the heap
+assignment. This in effect communicates all the live-in values from the
+main process in an efficient manner. Each worker also allocates its own
+region of shadow memory to log any accesses to the private heap at a
+byte-level granuarity.
+
+\paragraph{Checkpoints}
+Each worker performs a privacy check on every private read or write to an
+address with any of its accesses to the same address in a previous
+iteration. It will also log in the shadow memory either the iteration of the
+access in the case of a private write or a fixed value indicating a
+private read occurred. Any violation of the privacy property will trigger a
+misspeculation and a jump to recovery code. As Perspecrive enforces this
+property at the byte-level, we perform a checkpoint every 252 iterations
+before the shadow memory's iteration counter can overflow (255 possible
+values per byte minus some values with fixed meaning \{XXX is this
+clear?\}). The checkpoint that reconciles all the worker's logs and checks for
+misspeculation between iterations of different workers \{reword this???\} and
+saves the current program state in the case of misspeculation during the
+next checkpoint chunk.
+
+% handling of live-ins, LC, live-outs
+
+% lightweight,
+% unified for both spec and non-spec
 
 
 %The runtime system provides efficient mechanisms for replication of objects to
