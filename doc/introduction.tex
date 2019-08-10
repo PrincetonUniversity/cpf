@@ -1,10 +1,5 @@
 % !TEX root = paper.tex
 \section{Introduction}
-% SIMONE: title = I would change it to emphasize the main novelty of this work, which is merging static analysis and speculation to reach more than the sum of the parts
-
-% SIMONE: version 1 of Section 1: overall feedback = I think it improved since version 0. However, I think it is too long, but there are opportunities to shrink it considerably. This will bring the description of the novelty of the paper much sooner. For example, consider the paragraph about privateer. It doesn't look like we need that argument for introducing the novelty of this paper. Hence, that paragraph can go to Section 2 (Background and Motivation). Also, I would emphasize much more the fact that merging static analysis with speculation results to more than the sum of the parts. Then, I would describe the intuition behind this claim and, finally, the results of this fact (e.g., no prior work is able to parallelize all benchamrks we do parallelize in this paper).
-
-% SIMONE: version 0 of Section 1: overall feedback = I like the flow, but I think it would be nice to (i) anticipate the novelty of this paper and (ii) highlight much more it. For example, early in the introduction we can say that today's approaches are either speculative without the use of static analysis or conservative without the use of speculative techniqeus. Both approaches have advantages and disadvantages. We are the first ones to put them together to leverage their advantages and avoid their weaknesses.
 
 % AutoPar is important.
 %Coincident with the introduction of multicore, the processor industry has
@@ -205,63 +200,75 @@ execution, significantly degrading their profitability~\cite{johnson:12:pldi}.
 %parallelization~\cite{7,21,22,29,32_from_privateer}.
 %%
 
-To attain the parallelization coverage of speculative techniques, while
-minimizing the usage of memory flow speculation and the cost of privatization,
-we propose a unified parallelization framework that employs fine-grained
-combination of static analysis and cheap-to-validate speculative assumptions.
-%, and enables high-level properties inference through the collaboration of
-%static analysis with cheap-to-validate speculative assumptions.
+To attain the parallelization coverage of speculative techniques,
+while minimizing the usage of memory flow speculation and the cost of
+privatization, this work proposes an automatic parallelization
+framework which explores, during a planning phase, the effect of
+speculative assumptions and the results of a novel speculation-aware
+memory analysis to select a set of parallelization-enabling
+transformations with minimal estimated cost.
+%we propose a unified parallelization framework that employs
+%fine-grained combination of static analysis and cheap-to-validate
+%speculative assumptions.  , and enables high-level properties
+%inference through the collaboration of static analysis with
+%cheap-to-validate speculative assumptions.
 %
-The main distinguishing factor is that prior work uses static analysis and
-speculative assumptions separately, each inferring different program properties
-in isolation, while this work combines the strengths of static and
-cheap-to-validate speculative analysis to enable more efficient speculative
-parallelization.
+%
+An important distinguishing factor is that prior work uses static
+analysis and speculative assumptions separately, each inferring
+different program properties in isolation, while this work combines
+the strengths of static analysis and cheap-to-validate speculative
+assumptions to enable more efficient speculative parallelization.
 %resolution of multi-logic queries.
 %
-%Individual static or speculative analysis algorithms yield a multiplicative
-%improvement to the overall precision of the ensemble, rather than the additive
-%improvements of the sum-of-parts approach of prior work.
+%Individual static or speculative analysis algorithms yield a
+%multiplicative improvement to the overall precision of the ensemble,
+%rather than the additive improvements of the sum-of-parts approach of
+%prior work.
 %
-%each reason for a different thing/logic.  infer properties that would require
-%expensive runtime monitoring and checks.
+%each reason for a different thing/logic.  infer properties that would
+%require expensive runtime monitoring and checks.
 %
 
 %Collaboration of static and cheap-to-validate speculative analysis
-Exposing cheap-to-validate speculative assumptions to static analysis
-occasionally enables removal of memory dependences that would require, in
-prior work, expensive memory flow speculation.
+%Exposing cheap-to-validate speculative assumptions to static analysis
+Making memory analysis aware of cheap-to-validate speculative
+assumptions occasionally enables removal of memory dependences that
+would require, in prior work, expensive memory flow speculation.
 %
 For example,
-%control speculation asserts the absence of memory dependences to or from
-%speculatively dead operations,
+%control speculation asserts the absence of memory dependences to or
+%from speculatively dead operations,
 edge profiling detects never taken branches, while kill-flow analysis
 disproves memory dependences by finding killing operations along all
 feasible paths between two operations. If kill-flow is able to use
 speculative control flow information, then it can assert absence of,
-non-disprovable statically, memory dependences under a cheap-to-validate
-speculative assumption.
+non-disprovable statically, memory dependences under a
+cheap-to-validate speculative assumption.
 %
 This idea is inspired by the benefits of collaboration among static
 analysis algorithms in CAF~\cite{johnson:17:cgo}.
 
-Combining static with cheap-to-validate speculative analysis also enables
-property inference for efficient privatization.
+Combining static with cheap-to-validate speculative analysis also
+enables property inference for efficient privatization.
 %
 Prior parallelization systems
 %~\cite{smtlite:09:pldi, kim:12:cgo, johnson:17:cgo}
-use static analysis or speculation mainly to remove memory dependences.
-Sometimes though some dependences are real and cannot be removed via any
-kind of analysis.  For example, reuse of data structures creates
-cross-iteration false (output and anti) memory dependences.
+use static analysis or speculation mainly to remove memory
+dependences.  Sometimes though some dependences are real and cannot be
+removed via any kind of analysis.
+%For example,
+In particular, reuse of data structures creates cross-iteration false
+(output and anti) memory dependences.
 %
-In this scenario, analysis passes and speculative information can still
-express some useful properties for these dependences or the dependent
-instructions.  This partial information can be combined to infer a higher
-level property that enables more efficient parallelization.
-% isn't that what transformation do anyway? query analysis for properties?
-% but we present a structured way to express that?  how do analysis know
-% what's useful.
+In this scenario, analysis passes and speculative information can
+still express some useful properties for these dependences or the
+dependent instructions.  This partial information can be combined to
+infer a higher level property that enables more efficient
+parallelization.
+% isn't that what transformation do anyway? query analysis for
+% properties?  but we present a structured way to express that?  how
+% do analysis know what's useful.
 
 % text from CAF
 %Using  an  understanding  of  eachalgorithm’spartiality
@@ -287,7 +294,7 @@ level property that enables more efficient parallelization.
 %Similarly to Privateer, we believe that reasoning about high-level properties
 %of memory patterns is cheaper than reasoning about individual mem ops.
 
-%This paper presents LSD, a DOALL parallelization framework, that leverages
+%This paper presents \name, a DOALL parallelization framework, that leverages
 %enhanced program analysis through the collaboration of static and speculative
 %analysis to enable more effective and scalable parallelization compared to prior
 %work.
@@ -298,8 +305,8 @@ level property that enables more efficient parallelization.
 %parallelization obstacle.
 %
 
-This paper presents LSD, an instantiation of this proposed framework for DOALL
-parallelization. LSD consists of a parallelizing LLVM-based compiler and a
+This paper presents \name, an instantiation of this proposed framework for DOALL
+parallelization. \name consists of a parallelizing LLVM-based compiler and a
 lightweight
 %, unified (for both speculative and non-speculative execution)
 runtime system. The compiler selects minimal-cost solutions to parallelization
@@ -318,19 +325,43 @@ Further, its potential coverage is extensive when paired with
 speculation~\cite{zhong:08:hpca}, but still results of prior work on real
 hardware are underwhelming.
 
-LSD achieves scalable automatic parallelization on commodity shared-memory
-machines without any programmer hints.  We evaluate LSD on a set of 12 C/C++
-benchmarks that have appeared in state-of-the-art automatic parallelization systems'
-papers~\cite{johnson:12:pldi,kim:12:cgo,campanoni:12:cgo}. On a 28-core machine,
-LSD yields a geomean whole-program speedup of 23.8$\times$ over sequential execution and
-2$\times$ compared to a state-of-the-art spec-DOALL system~\cite{johnson:12:pldi}.
+The primary contributions of this paper are:
+\begin{itemize}
+
+\item A \textbf{fully automatic} speculative DOALL parallelization
+framework, called \namensp, that  exhibits scalable speedups by
+minimizing speculative parallelization overheads of prior work;
+
+\item A novel \textbf{speculation-aware} memory analysis;
+
+\item A novel \textbf{planning} phase that combines non-speculative
+and speculative techniques to select the most profitable set of
+parallelization-enabling transformations;
+
+\item New memory object \textbf{properties} for highly efficient speculative
+privatization; and,
+
+\item An in-depth evaluation of \name on 12 C/C++ benchmarks on
+\textbf{real hardware} and detailed comparison with state-of-the-art
+speculative DOALL parallelization system.
+
+\end{itemize}
+
+\name achieves scalable automatic parallelization on commodity
+shared-memory machines without any programmer hints.  We evaluate \name
+on a set of 12 C/C++ benchmarks that have appeared in state-of-the-art
+automatic parallelization systems'
+papers~\cite{johnson:12:pldi,kim:12:cgo,campanoni:12:cgo}. On a
+28-core machine, \name yields a geomean whole-program speedup of
+23.0$\times$ over sequential execution and 2$\times$ compared to a
+state-of-the-art spec-DOALL system~\cite{johnson:12:pldi}.
 %better or as good as prior work
-These speedups are thanks to effective usage of static properties of the code in
-conjunction with cheap speculative assumptions,
+These speedups are thanks to effective usage of static properties of
+the code in conjunction with cheap speculative assumptions,
 %to avoid memory flow speculation and minimize privatization costs,
 %
-%careful selection of applied transformations
-and a lightweight process-based runtime system.  No prior work
-is able to parallelize all these benchmarks with such sparse usage of memory
-speculation and so efficient and effective privatization; thus no prior work
-could achieve comparable results.
+careful selection of applied transformations and a lightweight
+process-based runtime system.  No prior work is able to parallelize
+all these benchmarks with such sparse usage of memory speculation and
+so efficient and effective privatization; thus no prior work could
+achieve comparable results.
