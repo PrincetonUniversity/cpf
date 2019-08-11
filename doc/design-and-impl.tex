@@ -1,180 +1,154 @@
 \section{Framework Design and Implementation}
 
-\subsection{Preprocessing and Profiling}
+\subsection{Preprocessing}
 
-Preprocessing is used to generate the target intermediate representation
-of the program. We use Clang, the most widely-adopted LLVM frontend, to compile
-the sequential program into LLVM IR and use LLVM Optmizer to generate the target
-IR. As discussed in the introductoin\ref{sec:}, some information is not
-expressed in the source code but will exhibit in run time. To enable aggresive
-analyses and transformations, we use profilings to extract run-time statistics
-and use profile-based speculations. After preprocessing, the target IR is passed
-to a set of profilers, including a loop profiler to find hot loops, a trip count
-profider for control speculation, a memory profiler for memory flow speculation,
-and a points-to profiler for identifying underlying objects. The hot loops
-identified by loop profiler and all the information from other profilers are
-passed to the next phase.
+The compilation process begins with a preprocessing step that
+generates the targeted for parallelization intermediate representation
+(IR) of the program. We use Clang~\cite{} to generate LLVM~\cite{} IR
+from the sequential C/C++ programs followed by LLVM IR optimizations.
+Then we perform a pass of profile-guided aggressive, yet selective
+inlining and finally another round of LLVM IR optimizations to produce
+the target LLVM IR that is used as the starting point for the rest of
+the compilation process.
+
+\subsubsection{Clang and LLVM optimizations}
+
+Transformations in this preprocessing step are crucial for the
+applicability and profitability of parallelization.
+%
+Parallelizing compilers usually just compile the source code with -O3
+flag to get an initial IR version and then perform a few additional
+passes.
+%
+However, traditional compiler transformations are meant for optimized
+sequential execution.
+%
+Some of these optimizations could unnecessarily complicate the code
+and block parallelization efforts.
+%
+Any performance improvements from these optimizations are negligible
+compared to the benefits of successful parallelization.
+%
+For example, LLVM tries to sink common instructions from two different
+execution paths. This reduces the code size but when applied to memory
+operations, it complicates the inference of the underlying objects.
+%
+To avoid such problems, \namensp 's preprocessing step only applies a
+small set of LLVM IR enabling transformations that simplify and
+canonicalize the IR.
+
+Contrary to LLVM IR optimizations, frontend optimizations by Clang can
+be applied more freely.
+%
+If Clang optimizations are not applied then some information extracted
+from the source code could be omitted from the generated LLVM IR.  In
+fact, we noticed that when no optimization is used in the frontend
+(\textit{clang -O0 -Xclang -disable-O0-optnone}), some very helpful
+LLVM intrinsics (e.g., lifetime start/end intrinsics for stack
+allocations) are lost.  To avoid this, we compile with -O1 flag for
+frontend optimizations but disable LLVM optimizations (\textit{-O1
+-Xclang -disable-llvm-passes}).
 
 
-%  retains most of the information in the sequential code in order to perform
-% analyses and transformations.
+\subsubsection{Profile-Guided Selective Inlining}
 
-A major challenge of optimization and parallelization is the function calls.
-Because a function is usually called in multiple loops with different arguments
-and these arguments can be pointers that are dynamically bind to underlying
-objects, static analysis or even speculations are not able to remove some
-loop-carried dependences. Aggresive inlining can expose the context of each
-function call, but in practice, it also increases overhead of analysis by a huge
-margin. Noticing the fact that functions not called in the hot loops are
-irrelevant to parallelization, we use an approach aggresive but smart inlining
-apprach. With the help of profiling, we inline only functions that are called in
-the hot loops and not speculatively dead.
+Interprocedural analysis is complicated and expensive, restricting the
+precision or scalability of static analysis.
+%
+Dependences related to callsites often prevent parallelization or lead
+to extensive usage of expensive-to-validate memory flow speculation.
+%
+Inlining can mitigate this problem, but the heuristics used in
+industrial compilers are tailored for sequential execution
+optimization and are mostly irrelevant to effective parallelization.
+%
+% code size expansion
+%When parallelization is applicable, these
+%
+More aggressive inlining is needed for parallelization. Naive
+aggressive inlining, though, would lead to code size explosion and
+exponential increase in compilation time. Avoiding inlining in some
+cases
+%Filtering of some callsites
+is still essential.
+%
 
-To simplify the code (e.g., remove dead blocks), we apply a set of optimization
-passes using LLVM Optmizer.
+\name uses profile information to detect hot loops and speculatively
+dead callsites.  Only callsites that are within these hot loops and
+that cannot be speculated away with control speculation are inlined.
+%
+Of these callsites, \name also avoids inlining the ones that do not
+sink or source cross-iteration dependences that inhibit DOALL
+parallelization.
+%
+%just get a summary.  hard to handle them separetely end up
+%overspeculating because it is hard to find the problem.
 
+Inlining is sometimes also useful outside the hot loops.
+%
+Static analysis can easily infer alias and underlying object queries
+for global variables whose address is never
+captured~\cite{johnson:17:cgo}.
+However, if the address of a global variable is passed as an argument
+to a function, then the analysis in most cases conservatively assumes
+that the address is stored in memory (i.e. captured)  within
+the function. Inlining diminishes this problem.
 
-% Discuss about LLVM
-\subsubsection{LLVM Related Issues}
+Overall, our profile-guided selective inliner enables more effective
+analysis by the paralellizing compiler without an exponential increase
+in code size or compilation time.
+%consequently more efficient parallelization.
 
-To make the best use of LLVM, we have to let it generate the simplest
-intermediate representation (IR) without introducing optimizations that might
-disable any transformations and analyses in this framework. We carefully
-selected a set of LLVM optimizations and added some other modifications to
-generate a proper IR to work on.
+\subsection{Profiling}
+%\subsection{Speculative Assumptions}
 
-Other modifications:
-
+A set of profilers generate speculative assumptions:
+%
 \begin{itemize}
-\item Front End
-
-% For example?
-LLVM optimization passes are important to simplify the IR however some of
-them are destructive to parallelization. The previous approach was using no
-optimization to generate the first IR and then applying a selected set of
-LLVM passes to optmize the code. However, we noticed that when no
-optimization is used in the frontend (\textit{clang -O0 -Xclang
--disable-O0-optnone}), some LLVM intrinsics which can be helpful to the
-framework are lost. For example, for stack variables that are allocated in
-an inner loop, LLVM should move the \textit{alloca} to the function header
-and provide a pair of lifetime start/end intrinsics. The lifetime intrinsic
-does not come with no optimization. To get around this, we chose
-optimization level 1 for only Clang frontend optimizations and disabled LLVM
-Opt passes (\textit{-O1 -Xclang -disable-llvm-passes}). This gives us the
-intended behavior.
-
-
-\item PHI Node
-
-PHI nodes introduce more complicated data flow. LLVM will sink some
-duplicated instructions into PHI nodes and create extra hassle for our
-system to identify loop-carried data and create separation for different
-objects. We disabled several options in LLVM passes to inhibit this
-behavior.
-
-\item Inlining
-
-Inlining is a huge deal for parallelizing programs. For sequential program,
-the inlining optimization is needed when the cost of calling a function is
-big. The tradeoff is between speed and code size. Large functions that are
-called multiple times are usually not inlined. However, for parallelization,
-inlining can help us differenciate callsites and improve the accuracy of
-both static analysis and memory profiling. In this work, we adopted an
-aggresive approach of inlining with which most functions in the hot loops
-are inlined. The tradeoff here is mainly between the accuracy and the
-complexity (speed) of analysis. To reduce the complexity and improve the
-speed, we identified functions that are not called in profile runs and
-skipped inlining for them because they can be speculated away.
-
+%
+\item an edge profiler~\ref{llvm_edge_profiling} identifies biased
+branches and produces a speculative control flow that can be used to
+directly disprove dependences on speculatively dead basic blocks, or
+it can be used by analysis passes;
+%
+\item a memory flow dependence  profiler (\`{a} la
+~\cite{privateer4citation}) asserts absence of non-observed data
+flows;
+%
+\item a value-prediction profiler (\`{a} la
+~\cite{privateer11citation}) detects predictable loads;
+%
+\item a pointer-to-object profiler (\`{a} la ~\cite{johnson:12:pldi})
+produces a points-to map that allows detection of underlying objects
+for every memory access; and,
+%
+\item an object lifetime profiler (\`{a} la ~\cite{johnson:12:pldi})
+detects short-lived memory objects. These object exist only within a
+single loop iteration.
+%
 \end{itemize}
 
-\subsection {Analyses}
-
-\subsubsection{Static Analysis}
-
-A state-of-the-art memory analysis framework (~CAF\cite{}) is used to disprove
-as many dependences as possible.
-
-% Collaborative Analysis Framework
-
-% By leveraging a state-of-the-art memory analysis framework, we are able to
-% disprove more dependences to allow less or inexpensive speculations.
-
-\paragraph{Improvements}
-Killflow goes beyond string dominance. Refer back to dijkstra example
-
-\subsubsection{Speculative Analysis}
-
-In conjuction with this static analysis, we use a set of speculative analysis
-passes to infer more program properties.
-
-These include ...
-
-
-\subsubsection{Collaboration of Static and Speculative Analysis}
-
+\subsection {Analysis}
+\input{analysis}
 
 \subsection{Transformations}
-\label{sec:transformations}
+\input{transformations}
 
-Transformation that modify the code to remove parallelization inhibitors.
-There are memory, register and control dependences related ones.
-
-Split to analysis and application of transformation parts.
-
-\subsubsection{Memory Dependences}
-
-Memory dependences Transfor
-
-\paragraph{Classifier}
-A classifier interprets analysis information, infers properties and classifies memory objects to
-families.
-%
-Classifier is the analysis part of memory-related transformations.
-
-show algorithm that classifies similar to Privateer
-
-Each family and each used assumptions (validation) requires some transformations:
-Privatization, reduction, control spec, separation speculation etc
-
-
-mention stack allocation stuff.
-After inlining, allocation happens outside the loop etc.
-
-Mention peehole for private-checks
-
-\subsubsection{Register Dependences}
-
-Register dependences transformations:
-Reduction,
-Replicable
-
-\subsubsection{Control Dependences}
-
-control spec info incorporated into pdg. no classical transformation analysis
-part here. Could remove this control deps section
-
+\subsection{DOALL planner}
+\input{planner}
 
 \subsection{Runtime}
+\input{runtime}
 
-handling of live-ins, LC, live-outs
-
-lightweight,
-unified for both spec and non-spec
-
-
-%The runtime system provides efficient mechanisms for replication of objects to
-%support privatizationand for recovery from misspeculation
-%
-%By maintain-ing the same virtual address space with different mappings to
-%phys-ical memory, the workers are able to operate on their privatemem-ory
-%without  much  performance  penalty,  with  physical  pages  be-ing
-%privatizedon-demandusing the Copy-On-Write mechanism
-
-
-
-\subsubsection{Recovery}
-
+\subsection{Recovery}
+When misspeculation is detected by a worker, either at the end of an
+iteration or at checkpoint time, other workers continue until the last
+valid checkpoint, then waits for recovery to be finished. Once all the
+workers reach this checkpoint, the main process will execute the loop
+sequentially up to and including the misspeculated iteration, using the
+committed checkpoint as the valid starting state \{XXX Reword\}. Restarting
+the workers at this point is no different from beginning the invocation,
+aside from the starting iteration sent to the workers.
 
 
 %In this work, we introduce a set of transformations to explore more

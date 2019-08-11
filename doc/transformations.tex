@@ -1,0 +1,53 @@
+Transformation that modify the code to remove parallelization inhibitors.
+There are memory, register and control dependences related ones.
+
+Split to analysis and application of transformation parts.
+
+\subsubsection{Memory Dependences}
+
+Memory dependences Transfor
+
+\paragraph{Classifier}
+A classifier interprets analysis information, infers properties and classifies memory objects to
+families.
+%
+Classifier is the analysis part of memory-related transformations.
+
+show algorithm that classifies similar to Privateer
+
+Each family and each used assumptions (validation) requires some transformations:
+Privatization, reduction, control spec, separation speculation etc
+
+
+mention stack allocation stuff.
+After inlining, allocation happens outside the loop etc.
+
+Mention peehole for private-checks
+
+\subsubsection{Register Dependences}
+
+Register dependences transformations:
+Reduction,
+Replicable
+
+\subsubsection{Control Dependences}
+
+control spec info incorporated into pdg. no classical transformation analysis
+part here. Could remove this control deps section
+
+\subsection{Loop Selection} An execution time profiler, similar to
+gprof~\cite{Privateer26}, finds hot loops (at least 10\% of total
+program execution).
+%
+For each hot loop, the compiler finds a DOALL parallelization plan and
+estimates its profitability.
+%
+Out of the profitably parallelizable loops, certain loops are not
+selected for parallelization. The excluded loops are either
+simultaneously active with another more profitable loop (we do not
+support nested parallelism) or their memory object assignments
+conflict with the assignments of a more profitable loop (every memory
+object can be allocated to only one family throughout the program in
+our current implementation).
+
+
