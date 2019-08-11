@@ -1,10 +1,17 @@
 % !TEX root = paper.tex
 \section{Evaluation}
 
-LSD is evaluated against 12 C and C++ benchmarks, covering all the DOALLable
-(showing speedup instead of slowdown) benchmarks from two state-of-the-art
-automatic DOALL parallelization papers~\cite{johnson:12:pldi,kim:12:cgo}. We
-also include one more benchmark (179.art) from HELIX.
+\name is evaluated on a commodity shared-memroy machine with two 14-core
+Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
+(turbo-boost disabled) with 756GB of memory. The operating system is 64-bit
+Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010) and LLVM Compiler
+Infrastructure (version 5.0.2).
+
+\name is evaluated against 12 C and C++ benchmarks, covering all the
+DOALLable (showing speedup instead of slowdown) benchmarks from two
+state-of-the-art automatic DOALL parallelization
+papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more
+benchmark (179.art) from HELIX.
 
 \begin{table*}
   \include{figures/benchmark-tab}
@@ -15,25 +22,47 @@ also include one more benchmark (179.art) from HELIX.
     \vspace{-5pt}
 \end{table*}
 
-The machine is using two 14-core Intel Xeon CPU E5-2697 v3 processors (28 cores
-total) running at 2.60GHz (turbo-boost disabled) with 756GB of memory. The
-operating system is 64-bit Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0
-20171010) and LLVM Compiler Infrastructure (version 5.0.2).
-
+Each benchmark is profiled using a profiling input and all the following
+experiments are conducted using a different testing input.
 
 \subsection{Parallelization Performance}
-Figures Needed:
-\begin{itemize}
-\item General Speed Plot: With different cores (1-28), all benchmarks
-\item Speedup Comparison: 24 cores performance compared with Privateer
-Runtime breakdown (how to minimize the overhead?)
 
-\end{itemize}
+Figure \ref{fig:multi-core-scale} presents who application speedups for all benchmarks
+running with different numbers of cores. These speedups are relatvie to the
+best sequential performance of the original code, compiled with
+\texttt{clang++ -O3}.
 
-\begin{figure*}[htp]
-  \includegraphics[width=\textwidth]{figures/3mm-scale-crop}
-  \caption{3mm Speedup over Different Numbers of Cores}
-  \label{fig:3mm-scale}
+% alvinn
+For \texttt{052.alvinn}, the parallelized loop covers 97.5\% of the whole
+application with the testing input, which results in 16.7$\times$
+theoretical maximum speedup based on Almdahl's Law.
+
+% dijkstra and swaptions
+
+The \texttt{dijkstra} from MiBench and \texttt{swaptions} from PARSEC have
+memory options like \texttt{malloc} and \texttt{mmap} inside the inner
+loops, introducing significant variances in the runtime.
+
+
+% Correlation and covariance
+% Some reasoning here
+
+% \begin{itemize}
+% \item General Speed Plot: With different cores (1-28), all benchmarks
+% \item Speedup Comparison: 28 cores performance compared with Privateer
+% Runtime breakdown (how to minimize the overhead?)
+% \end{itemize}
+
+\begin{figure*}[ht]
+  \includegraphics[width=\textwidth]{figures/multi-core-crop}
+  \caption{Whole Application Speedup over Different Numbers of Cores}
+  \label{fig:multi-core-scale}
+\end{figure*}
+
+\begin{figure*}[ht]
+  \includegraphics[width=\textwidth]{figures/compare-privateer}
+  \caption{Whole Application Speedup Comparison}
+  \label{fig:speedup-compare}
 \end{figure*}
 
 \subsubsection{Effect of parallelization on vectorization}
@@ -44,15 +73,18 @@ instrumentation kills vectorization
 \subsection{Static Analysis and Enablers}
 Figures Needed:
 \begin{itemize}
-\item CAF: with and without; no topping; with only BasicLoopAA and ScevAA
-\item Coverage: Spec-DOALL percentage of coverage of each benchmark
+% (no need, just discuss the use of CAF in previous sections) \item CAF:
+% with and without; no topping; with only BasicLoopAA and ScevAA
+
+% (no need, show in the benchmark table) \item Coverage: Spec-DOALL
+% percentage of coverage of each benchmark
 \item Enablers: Enablers used for each benchmark
 \item Optimization level: Performance with different optimization levels
 \end{itemize}
 
 Discussion Needed:
 
-Present in a table for all the benchmarks which enablers were used
+Present in a table, which enablers were used for all benchmarks
 
 \subsection{Overhead Breakdown}
 
