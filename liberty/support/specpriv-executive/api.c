@@ -304,10 +304,11 @@ void __specpriv_begin(void)
 
 #if SIMULATE_MISSPEC != 0
   simulateMisspeculationEveryIter = INT32_MAX;
-  const char *smai = getenv("SIMULATE_MISSPEC_EVERY");
+  char *smai = getenv("SIMULATE_MISSPEC_EVERY");
   if( smai )
   {
-    int n = atoi(smai);
+    char *tok = strtok( smai, " " );
+    int n = atoi(tok);
     assert( 0 <= n );
     simulateMisspeculationEveryIter = (Iteration)n;
   }
@@ -871,8 +872,17 @@ void __specpriv_end_iter(uint32_t ckptUsed)
     __specpriv_misspec("Object lifetime misspeculation");
 
 #if SIMULATE_MISSPEC != 0
-  if( currentIter != 0 && currentIter % simulateMisspeculationEveryIter == 0 )
+  if( currentIter == simulateMisspeculationEveryIter )
+  /* if( currentIter % simulateMisspeculationEveryIter == 0 && currentIter != 0 ) */
+  {
+    char *tok = strtok( NULL, " " );
+    if ( tok )
+    {
+      int n = atoi(tok);
+      simulateMisspeculationEveryIter = (Iteration) n;
+    }
     __specpriv_misspec("Simulated misspeculation");
+  }
 #endif
 
   ParallelControlBlock *pcb = __specpriv_get_pcb();
