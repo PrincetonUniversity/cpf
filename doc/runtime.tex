@@ -3,7 +3,6 @@ low overheads for both speculative and non-speculative parallelization.
 
 % Something about how killpriv only needs to copy out last checkpoint's
 % values to main and no merging of checkpoints needed
-% using shm and remapping to allow for spawning once
 \paragraph{Process spawning}
 We use a process-based parallelism scheme as opposed to a thread-based one
 for several purposes. The runtime system \texttt{fork()}s all the processes
@@ -21,7 +20,10 @@ When a worker starts an invocation, it remaps these regions of memory to
 disjoint segments of its own virtual memory space with either
 copy-on-write, shared, or read-only semantics depending on the heap
 assignment. This in effect communicates all the live-in values from the
-main process in an efficient manner. Each worker also allocates its own
+main process in an efficient manner. The separation of memory regions
+allows for a very cheap heap check, only needing to perform a bitwise OR
+with the most significant bits of the virtual address.
+Each worker also allocates its own
 region of shadow memory to log any accesses to the private heap at a
 byte-level granuarity.
 
@@ -42,6 +44,13 @@ case of misspeculation during the next checkpoint chunk. The overhead for
 checkpointing is mainly dependent on the size of the reduction and private heaps,
 as merging them requires performing the reduction or validation of privacy,
 respectively.
+
+As static analysis is used in conjunction with memory speculation, we can
+infer that some benchmarks that were tested do not require any speculation.
+We reallocate statically private objects (is this a thing?) to a new heap,
+\texttt{KILL\_PRIVATE}, that does not require checks or logs on accesses or
+merging during checkpoints. This allows us to reduce the overhead
+drastically for non-speculative programs to achieve linear speedup.
 
 % handling of live-ins, LC, live-outs
 
