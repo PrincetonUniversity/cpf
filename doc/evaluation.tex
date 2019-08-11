@@ -67,22 +67,31 @@ we use in our heaps. Using a similar malloc in the sequential version
 yields ~16x speedup in dijkstra and insignificant difference in the
 other benchmarks.
 
-%\subsection{Misspeculation Analysis}
-%\begin{figure*}[htp]
-%  \includegraphics[width=0.9\textwidth]{figures/misspec}
-%  \caption{Misspeculation performance across speculative benchmarks}
-%  \label{fig:misspec}
-%\end{figure*}
+\subsection{Misspeculation Analysis}
+\begin{figure*}[htp]
+  \includegraphics[width=0.9\textwidth]{figures/misspec}
+  \caption{Misspeculation performance across speculative benchmarks}
+  \label{fig:misspec}
+\end{figure*}
 Figure \ref{fig:misspec} shows how misspeculation affects the
 performance of the six speculative benchmarks with misspeculation rates of
 0.1\% and 0.2\%. Since none of the benchmarks exhibit misspeculation on the
 given input sets, we artificially inject misspeculation at the end of
 every 1000 and 500 iterations, respectively, to observe the performance
-degradation. The inputs for \texttt{179.art} were not large enough to have
+degradation. Note that misspeculation with \name is extremely unlikely, as
+static analysis can disprove many speculative assumptions and for many of
+the benchmarks, misspeculation can only occur during a heap check.
+The inputs for \texttt{179.art} were not large enough to have
 enough iterations for misspeculation at these rates, so we perform a
 weighted average of non-misspeculating and misspeculating runs to achieve
 an average corresponding to the respective rates. These results demonstrate
-that Perspective performs well with only high confidence speculation.
+that \name performs well with only high confidence speculation.
+\{\textbf{XXX} Is this why we can't parallelize the outer loop of
+052.alvinn?\} \textbf{Something about how some benchmarks cannot misspec
+with any input, only that analysis cannot prove that} A system that has
+larger overheads has a larger chance of speculation (since they use more
+speculative assumptions), but we minimize the amount of speculation.
+Emphasize that misspeculation doesn't really happen in practice
 % As the iteration within a checkpoint that misspeculation
 % occurs can affect the recovery cost, we inject these misspeculations in the
 % middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more
