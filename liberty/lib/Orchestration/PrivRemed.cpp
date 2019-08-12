@@ -183,15 +183,15 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
         edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT())) {
 
       // check if LC mem RAW can be removed with killflow + ctrl spec
-      LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT());
-      if (!loadI)
-        return false;
-      Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand());
+      /* LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT()); */
+      /* if (!loadI) */
+      /*   return false; */
+      /* Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand()); */
 
-      if (!isPointerKillBefore(L, loadPtr, loadI))
-        return false;
+      /* if (!isPointerKillBefore(L, loadPtr, loadI)) */
+      /*   return false; */
 
-      ctrlSpecUsed = true;
+      /* ctrlSpecUsed = true; */
     }
   }
   return true;
