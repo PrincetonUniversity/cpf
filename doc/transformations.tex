@@ -1,28 +1,145 @@
-Transformation that modify the code to remove parallelization inhibitors.
-There are memory, register and control dependences related ones.
-
-Split to analysis and application of transformation parts.
-
-\subsubsection{Memory Dependences}
-
-Memory dependences Transfor
-
-\paragraph{Classifier}
-A classifier interprets analysis information, infers properties and classifies memory objects to
-families.
+Transformations modify the code to remove parallelization inhibitors.
 %
-Classifier is the analysis part of memory-related transformations.
+All transformations are split into two parts. The applicability guard
+that participates in the planning phase and the actual transformation
+that is applied if selected in the transformation phase.
+%
+The applicability guard of a transformation determines where the
+transformation is applicable and under which assumptions.
+%
+This information is collected in a transformation proposal and sent to
+the DOALL planner.
+%
+%This scheme seperates the desicion part from the actual transformation
+%and allows us to evaluate the cost of each dependence separetely and
+This separation of decision making and application of transformations
+allows \name to choose the most profitable plan instead of applying
+all enabling transformations in a fixed order.
+%
 
-show algorithm that classifies similar to Privateer
+Transformations address memory, register or/and control
+cross-iteration dependences.
 
-Each family and each used assumptions (validation) requires some transformations:
-Privatization, reduction, control spec, separation speculation etc
+\paragraph{Memory:} Each applicability guard, based on the information
+on the annotated PDG, determines for each memory object whether the
+transformation can address all its cross-iteration dependences and
+which speculative assumptions need to be validated for the
+transformation to be correct.
+%Object-centric transformation.  All memory objects need to be handled
+%by a transformation.
+%
+%In particular, each applicability determines
+In practice, each applicability guard determines which memory objects
+have certain properties required by the corresponding transformation.
+%
+%each access of the memory object should preserve the property
+
+Each transformation separates the memory objects it is selected to
+handle in a isolated heap (via re-allocation) and ensures that all
+accesses of the memory objects is selected to be responsible for are
+contained within this heap; same in separation
+speculation~\cite{johnson:17:cgo}.
+%
+Each transformation's heap has different sharing
+%memory mapping
+primitives and access permissions. Each transformation has its own
+runtime calls that handle their objects at runtime. Finally, each
+transformation includes in its proposal the set of speculative
+assumptions validation necessary for each memory object for the
+transformation applicability to be correct.
 
 
-mention stack allocation stuff.
-After inlining, allocation happens outside the loop etc.
+%This scheme is similar to separation speculation, but careful allows
+%more effective application.
 
-Mention peehole for private-checks
+%Every transformation creates a family with memory objects with the
+%same properties.
+%It collects the set of objects that it can handle.
+
+Memory-related transformations include:
+%
+\begin{itemize}
+%
+\item Privatization: the simple version of this transformation just
+ensures the basic privatization property that there are no
+cross-iteration data flows for a memory object.
+
+Behavior: Monitor all write accesses of the object and merge write
+sets at commit.
+
+Other variants of this transformation express additional properties for
+reduced privatization overhead.
+%
+\begin{itemize}
+%
+\item Independent.
+
+Additional applicability guard: object has no
+loop-carried false dependences
+
+Behavior : No write set monitoring performed. Memory object is shared among parallel workers.
+%
+%
+\item Known Last Iteration Update.
+
+Additional applicability guard:
+object has loop-invariant condition for last update within the loop.
+
+Behavior: No write set monitoring performed. The live-out state for
+object with this property is the memory state of the last iteration
+executed before commit.
+%
+%
+\item Predictable Live-out Content.
+
+Additional applicability guard:
+The live-out content of an object can be predicted.
+%
+%
+\item Local Private.
+
+Additional applicability guard: object is
+allocated outside the loop, but all its accesses are contained within
+the loop execution
+%
+\end{itemize}
+
+\item Reduction
+
+\item Short-lived
+
+\item Read-only
+
+Additional applicability guard: Memory objects that are not written to
+
+Behavior: Separation is enough.
+
+\end{itemize}
+
+%Private:
+%Transformation : Separate to different heap, handle live-out state and
+%validation cost for any speculation assumption used for the private
+%property.
+
+%Short-lived
+
+%Read-only
+%Applicability Guard: Memory objects that are not written to
+%Transformation: Separate all read-only objects in a separate heap and
+%check that their accesses are within this heap.
+
+
+%\paragraph{Classifier}
+%A classifier interprets analysis information, infers properties and classifies memory objects to
+%families.
+%
+%Classifier is the analysis part of memory-related transformations.
+%
+%show algorithm that classifies similar to Privateer
+%
+%Each family and each used assumptions (validation) requires some transformations:
+%Privatization, reduction, control spec, separation speculation etc
+
 
 \subsubsection{Register Dependences}
 
@@ -34,20 +151,5 @@ Replicable
 
 control spec info incorporated into pdg. no classical transformation analysis
 part here. Could remove this control deps section
-
-\subsection{Loop Selection} An execution time profiler, similar to
-gprof~\cite{Privateer26}, finds hot loops (at least 10\% of total
-program execution).
-%
-For each hot loop, the compiler finds a DOALL parallelization plan and
-estimates its profitability.
-%
-Out of the profitably parallelizable loops, certain loops are not
-selected for parallelization. The excluded loops are either
-simultaneously active with another more profitable loop (we do not
-support nested parallelism) or their memory object assignments
-conflict with the assignments of a more profitable loop (every memory
-object can be allocated to only one family throughout the program in
-our current implementation).
 
 

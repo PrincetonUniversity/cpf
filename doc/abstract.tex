@@ -12,15 +12,17 @@ costs for validation and commit.  This paper presents
 Per{\em{spec}}tive, a speculative-DOALL parallelization framework that
 maintains the applicability of speculative techniques while
 approaching the efficiency of non-speculative ones.  Unlike current
-approaches which independently apply speculative techniques to overcome
-the imprecision of memory analysis, Per{\em{spec}}tive combines a
-speculation-aware memory analyzer and a parallelization planner into a
-exploration phase designed to find the best performing set of
-parallelization techniques.  Per{\em{spec}}tive demonstrates higher
-overall program speedup (23.0$\times$ for 12 general-purpose C/C++
-programs running on a 28-core shared-memory machine) than Privateer
-(11.5$\times$), the best prior speculative-DOALL parallelization
-system, by reducing speculative parallelization overheads in ways not
-possible with prior parallelization systems.
+approaches which independently apply speculative techniques to
+overcome the imprecision of memory analysis, Per{\em{spec}}tive
+combines a speculation-aware memory analyzer, enabling transformations
+including efficient speculative privatization, and a parallelization
+planner into an exploration phase designed to find the best performing
+set of parallelization techniques.  Per{\em{spec}}tive demonstrates
+higher overall program speedup (23.0$\times$ for 12 general-purpose
+C/C++ programs running on a 28-core shared-memory machine) than
+Privateer (11.5$\times$), the most applicable prior automatic
+speculative-DOALL parallelization system, by reducing speculative
+parallelization overheads in ways not possible with prior
+parallelization systems.
 
 \end{abstract}

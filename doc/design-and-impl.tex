@@ -137,6 +137,21 @@ single loop iteration.
 \subsection{DOALL planner}
 \input{planner}
 
+\subsection{Loop Selection} An execution time profiler, similar to
+gprof~\cite{Privateer26}, finds hot loops (at least 10\% of total
+program execution).
+%
+For each hot loop, the compiler finds a DOALL parallelization plan and
+estimates its profitability.
+%
+Out of the profitably parallelizable loops, certain loops are not
+selected for parallelization. The excluded loops are either
+simultaneously active with another more profitable loop (we do not
+support nested parallelism) or their memory object assignments
+conflict with the assignments of a more profitable loop (every memory
+object can be allocated to only one family throughout the program in
+our current implementation).
+
 \subsection{Runtime}
 \input{runtime}
 
