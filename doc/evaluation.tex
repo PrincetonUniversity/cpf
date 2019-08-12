@@ -30,7 +30,7 @@ experiments are conducted using a different testing input.
 
 \begin{figure*}[ht]
   \includegraphics[width=\textwidth]{figures/multi-core-crop}
-  \caption{Whole Program Speedup over Different Numbers of Cores}
+  \caption{Fully Automatic Whole Program Speedup over Different Numbers of Cores}
   \label{fig:multi-core-scale}
 \end{figure*}
 
@@ -61,8 +61,8 @@ theoretical maximum speedup based on Almdahl's Law.
 \texttt{179.art} whose theoretical maximum speedup is 22.5$\times$, due to
 the same effect, shows a smaller scaling factor close to the bound. Note
 that HELIX\cite{simone:12:cgo} reports 4.2$\times$ speedup on 6 cores while
-\name exhibits 6.5$\times$, showing that a speculative approach with can even
-overcome a static approach in terms of speedup.
+\name exhibits 6.5$\times$, showing that an efficient speculative approach
+can even overcome a static approach in terms of speedup.
 
 % correlation and covariance
 \texttt{correlation} and \texttt{covariance} have complicated triangle WAW
