@@ -24,5 +24,5 @@ set style fill pattern 1 border
 
 set yrange [0:40]
 set title "Speedup comparison with Privateer on 28 cores"
-plot 'misspec.dat' using 1:xtic(4) title 'No Misspec', '' using 2 title '\~0\.1% Misspec', \
-                '' using 3 title '\~0\.2% Misspec'
+plot 'misspec.dat' using 1:xtic(4) title 'No Misspec', '' using 2 title '\~0\.1% Misspec'
+#                 '' using 3 title '\~0\.2% Misspec'
