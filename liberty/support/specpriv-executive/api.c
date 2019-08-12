@@ -835,7 +835,7 @@ void __specpriv_begin_iter(void)
   TIME(worker_begin_iter_time);
   TIME(worker_pause_time);
 
-  DEBUG(printf("Worker %u starting iteration %d\n", myWorkerId, currentIter);); // XXX remove this later!
+  /* DEBUG(printf("Worker %u starting iteration %d\n", myWorkerId, currentIter);); // XXX remove this later! */
 }
 
 void __specpriv_set_loopID( int n )
@@ -857,7 +857,7 @@ int __specpriv_get_loopID( void )
 //       Use loopID and queues to send instead of pipes
 void __specpriv_end_iter(uint32_t ckptUsed)
 {
-  DEBUG(printf("Worker %u ending iteration %d\n", myWorkerId, currentIter);); // XXX remove this later!
+  /* DEBUG(printf("Worker %u ending iteration %d\n", myWorkerId, currentIter);); // XXX remove this later! */
 
   // XXX gc14 -- will need to change this for multiple stages
   TOUT(
