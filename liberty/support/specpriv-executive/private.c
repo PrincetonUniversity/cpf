@@ -168,6 +168,7 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
   }
 
   TADD(worker_private_write_time,start);
+  TOUT(num_private_writes++);
   TIME(worker_pause_time);
 }
 
@@ -310,8 +311,9 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
     TOUT(worker_private_bytes_read += len);
   }
 
-  TIME(worker_pause_time);
   TADD(worker_private_read_time,start);
+  TOUT(num_private_reads++);
+  TIME(worker_pause_time);
 }
 
 // The remainder of the file contains
@@ -342,8 +344,9 @@ void __specpriv_private_write_1b(void *ptr)
     TOUT(worker_private_bytes_written += 1);
   }
 
-  TIME(worker_pause_time);
   TADD(worker_private_write_time,start);
+  TOUT(num_private_writes++);
+  TIME(worker_pause_time);
 }
 
 void __specpriv_private_read_1b(void *ptr, const char *name)
@@ -356,6 +359,7 @@ void __specpriv_private_read_1b(void *ptr, const char *name)
         worker_pause_time);
       );
   __specpriv_private_read_range(ptr,1, name);
+  TOUT(num_private_reads++);
   TIME(worker_pause_time);
 }
 
@@ -387,8 +391,9 @@ void __specpriv_private_write_2b(void *ptr)
     TOUT(worker_private_bytes_written += 2);
   }
 
-  TIME(worker_pause_time);
   TADD(worker_private_write_time,start);
+  TOUT(num_private_writes++);
+  TIME(worker_pause_time);
 }
 
 void __specpriv_private_read_2b(void *ptr, const char *name)
@@ -411,23 +416,26 @@ void __specpriv_private_read_2b(void *ptr, const char *name)
 
     if( meta == code16 )
     {
-      TIME(worker_pause_time);
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
+      TIME(worker_pause_time);
       return;
     }
 
     else if( meta == V16( LIVE_IN ) )
     {
       *shadow = V16( READ_LIVE_IN );
-      TIME(worker_pause_time);
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
+      TIME(worker_pause_time);
       return;
     }
 
     else if( meta == V16( READ_LIVE_IN ) )
     {
-      TIME(worker_pause_time);
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
+      TIME(worker_pause_time);
       return;
     }
 
@@ -451,6 +459,7 @@ void __specpriv_private_read_2b(void *ptr, const char *name)
   }
 
   TADD(worker_private_read_time,start);
+  TOUT(num_private_reads++);
   TIME(worker_pause_time);
 
 }
@@ -482,8 +491,9 @@ void __specpriv_private_write_4b(void *ptr)
     TOUT(worker_private_bytes_written += 4);
   }
 
-  TADD(priv_write_times_array[(uint64_t) ptr - PRIV_ADDR], start);
+  /* TADD(priv_write_times_array[(uint64_t) ptr - PRIV_ADDR], start); */
   TADD(worker_private_write_time,start);
+  TOUT(num_private_writes++);
   TIME(worker_pause_time);
 }
 
@@ -510,8 +520,9 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
 
     if( meta == code32 )
     {
-      TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
+      /* TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start); */
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
       TIME(worker_pause_time);
       return;
     }
@@ -519,16 +530,18 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
     else if( meta == V32( LIVE_IN ) )
     {
       *shadow = V32( READ_LIVE_IN );
-      TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
+      /* TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start); */
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
       TIME(worker_pause_time);
       return;
     }
 
     else if( meta == V32( READ_LIVE_IN ) )
     {
-      TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
+      /* TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start); */
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
       TIME(worker_pause_time);
       return;
     }
@@ -564,8 +577,9 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
       __specpriv_misspec(name);
   }
 
-  TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start);
+  /* TADD(priv_read_times_array[(uint64_t) ptr - PRIV_ADDR], start); */
   TADD(worker_private_read_time,start);
+  TOUT(num_private_reads++);
   TIME(worker_pause_time);
 }
 
@@ -597,7 +611,8 @@ void __specpriv_private_write_8b(void *ptr)
   }
 
   TADD(worker_private_write_time,start);
-  TADD(priv_write_times_array[(uint64_t) ptr - PRIV_ADDR], start);
+  /* TADD(priv_write_times_array[(uint64_t) ptr - PRIV_ADDR], start); */
+  TOUT(num_private_writes++);
   TIME(worker_pause_time);
 }
 
@@ -625,12 +640,14 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
     {
       *shadow = V64( READ_LIVE_IN );
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
       TIME(worker_pause_time);
       return;
     }
     else if( meta == code64 || meta == V64( READ_LIVE_IN ) )
     {
       TADD(worker_private_read_time,start);
+      TOUT(num_private_reads++);
       TIME(worker_pause_time);
       return;
     }
@@ -692,6 +709,7 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
   }
 
   TADD(worker_private_read_time,start);
+  TOUT(num_private_reads++);
   TIME(worker_pause_time);
 }
 
@@ -809,6 +827,7 @@ void __specpriv_private_write_range_stride(void *base, uint64_t nStrides, uint64
     }
   }
   TADD(worker_private_write_time,start);
+  TOUT(num_private_writes++);
   TIME(worker_pause_time);
 }
 
@@ -889,6 +908,7 @@ void __specpriv_private_read_range_stride(void *base, uint64_t nStrides, uint64_
   }
 
   TADD(worker_private_read_time,start);
+  TOUT(num_private_reads++);
   TIME(worker_pause_time);
 }
 

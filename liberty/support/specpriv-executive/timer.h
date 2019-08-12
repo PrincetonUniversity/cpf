@@ -76,6 +76,8 @@ extern uint64_t worker_total_invocation_time;
    */
   extern uint64_t worker_private_write_time;
   extern uint64_t worker_private_read_time;
+  extern uint64_t num_private_reads;
+  extern uint64_t num_private_writes;
 
   /******************************************************************************
    * Worker time in redux

@@ -65,6 +65,8 @@ uint64_t worker_total_invocation_time = 0;
    */
   uint64_t worker_private_write_time = 0;
   uint64_t worker_private_read_time = 0;
+  uint64_t num_private_reads = 0;
+  uint64_t num_private_writes = 0;
 
   /******************************************************************************
    * Worker time in redux
@@ -180,14 +182,17 @@ void __specpriv_reset_timers(void)
     worker_killpriv_to_partial_time = 0;
     worker_committed_killpriv_to_partial_time = 0;
 
-    for ( int i = 0; i < 1000000; i++ )
-    {
-      priv_read_times_array[i] = 0;
-      priv_write_times_array[i] = 0;
-    }
+    num_private_reads = 0;
+    num_private_writes = 0;
+
+    /* for ( int i = 0; i < 1000000; i++ ) */
+    /* { */
+    /*   priv_read_times_array[i] = 0; */
+    /*   priv_write_times_array[i] = 0; */
+    /* } */
 }
 
-void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin )
+inline void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin )
 {
   if ( begin == 0 )
     return;
@@ -280,13 +285,15 @@ void __specpriv_print_percentages( void )
   printf("Number of checkpoints:                    %15u\n",  numCheckpoints);
   printf("Number of private bytes written:          %15lu\n", worker_private_bytes_written);
   printf("Number of private bytes read:             %15lu\n", worker_private_bytes_read);
-  for ( int i = 0; i < 1000000; i++ )
-  {
-    if ( priv_read_times_array[i] != 0 )
-      printf("Private_read_time[%lu]: %lu\n",  i, priv_read_times_array[i]);
-    if ( priv_write_times_array[i] != 0 )
-      printf("Private_write_time[%lu]: %lu\n", i, priv_write_times_array[i]);
-  }
+  printf("Number of private reads:                  %15lu\n", num_private_reads);
+  printf("Number of private writes:                 %15lu\n", num_private_writes);
+  /* for ( int i = 0; i < 1000000; i++ ) */
+  /* { */
+  /*   if ( priv_read_times_array[i] != 0 ) */
+  /*     printf("Private_read_time[%lu]: %lu\n",  i, priv_read_times_array[i]); */
+  /*   if ( priv_write_times_array[i] != 0 ) */
+  /*     printf("Private_write_time[%lu]: %lu\n", i, priv_write_times_array[i]); */
+  /* } */
   printf("*** END WORKER %ld @invocation %d times ***\n",   myWorkerId, InvocationNumber);
   fflush(stdout);
 #endif
