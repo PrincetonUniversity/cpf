@@ -6,12 +6,20 @@ Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
 (turbo-boost disabled) with 756GB of memory. The operating system is 64-bit
 Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010) and LLVM Compiler
 Infrastructure (version 5.0.2).
-%
+
+
 \name is evaluated against 12 C and C++ benchmarks, covering all the
 DOALLable (showing speedup instead of slowdown) benchmarks from two
 state-of-the-art automatic DOALL parallelization
 papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more
-benchmark (179.art) from HELIX.
+benchmark (179.art) from HELIX. These benchmarks are from five benchmark
+suites (Trimaran\cite{trimaran:web}, SPEC\cite{},
+PARSEC\cite{bienia:08:parsec}, MiBench\cite{guthaus:2001:iiwsc}). All
+PolyBench benchmarks and \texttt{dijkstra} from MiBench are modified to
+accept command line arguments and allocate arrays dynamically in the same
+way as \cite{kim:12:cgo}. This modification is used to create bigger
+inputs, which is necessary for separating profiling and evaluation input
+sets.
 
 %
 Each benchmark is profiled using a profiling input and all the following
@@ -30,7 +38,7 @@ experiments are conducted using a different, larger testing input.
 
 \begin{figure*}[ht]
   \includegraphics[width=\textwidth]{figures/multi-core-crop}
-  \caption{Fully Automatic Whole Program Speedup over Different Numbers of Cores}
+  \caption{Fully Automatic Whole Program Speedup over Best Sequential}
   \label{fig:multi-core-scale}
 \end{figure*}
 
@@ -48,9 +56,8 @@ objects being privatized with little or no overheads.
 
 % dijkstra
 The \texttt{dijkstra}, having a lot of memory operations like
-\texttt{malloc} and \texttt{mmap} \{\textbf{XXX} no mmaps inside dijkstra \}
-inside the inner loops, manifests a
-significant variance in the runtime.
+\texttt{malloc} inside the inner loops, manifests a significant variance in
+the runtime.
 
 % 052.alvinn
 \texttt{052.alvinn} exhibits a lower speedup (11$\times$ on 28
@@ -74,21 +81,27 @@ resulting in lower speedups.
 
 \begin{figure*}[ht]
   \includegraphics[width=\textwidth]{figures/compare-privateer}
-  \caption{Whole Program Speedup Comparison}
+  \caption{Whole Program Speedup Comparison among Variants of \name and Privateer with 28 Cores}
   \label{fig:speedup-compare}
 \end{figure*}
 
-Figure \ref{fig:speedup-compare} compares \namensp's results with two
+Figure \ref{fig:speedup-compare} compares \namensp's resultsw
+ with two
 variants of Privateer and one variant of \namensp. The first bar shows the
-performance of Privateer implemented with the best practice assumption(?). The
-speedup and runtime breakdown results match the description in the paper.
-Although being the state-of-the-art framework in terms of applicability,
-Privateer missed some opportunities to remove some read checks as mentioned
-in STMLite\cite{mehrara:09:stmlite} and ClusterDOALL\cite{kim:12:cgo}. To
-improve as much as possible on top of Privateer, we utilize static
-analysis including a stronger KillFlow analysis pass to remove read checks.
+performance of Privateer implemented with the best practice assumption(?).
+Some peephole optimizations are used to reduce the use of memory
+speculation and to hoist memory check out of the inner loops. The speedup
+and runtime breakdown results match the description in the paper. Although
+being the state-of-the-art framework in terms of applicability, Privateer
+missed some opportunities to remove some read checks as mentioned in
+STMLite\cite{mehrara:09:stmlite} and ClusterDOALL\cite{kim:12:cgo}. To
+improve as much as possible on top of Privateer, we utilize static analysis
+including a stronger KillFlow analysis pass to remove read checks.
 \texttt{2mm}, \texttt{3mm}, \texttt{doitgen}, \texttt{enc-md5}, and
 \texttt{179.art} benefit from this improvement as shown in the second bar.
+Note that \textbf{ref XXX} if all dependences are removed statically, no
+checkpoint is needed in the runtime.
+
 The third bar presents the results of a variant of \name without the cheap
 privatization transformations proposed in \ref{}. Parallelization through
 \name, which incorporates speculation-aware-memory-analysis and cheap
