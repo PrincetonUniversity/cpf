@@ -158,9 +158,9 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
     }
     remedResp.depRes = DepResult::NoDep;
 
-    if ( dataDepTy == DataDepType::WAW && !predictableI)
+    if ( loopCarried && dataDepTy == DataDepType::WAW && !predictableI)
       WAWcollabDepsHandled++;
-    if ( dataDepTy == DataDepType::RAW && !predictableI)
+    if ( loopCarried && dataDepTy == DataDepType::RAW && !predictableI)
       RAWcollabDepsHandled++;
 
     DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A

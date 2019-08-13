@@ -424,7 +424,6 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
 
-
       if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
         WAWcollabDepsHandled++;
       if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
