@@ -43,7 +43,6 @@ const Value *LoadedValuePredRemediator::getPtr(const Instruction *I,
 
 Remedies LoadedValuePredRemediator::satisfy(const PDG &pdg, Loop *loop,
                                             const Criticisms &criticisms) {
-
   for (auto nodeI : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
     Value *pdgValueI = nodeI->getT();
     LoadInst *load = dyn_cast<LoadInst>(pdgValueI);
@@ -57,6 +56,10 @@ Remedies LoadedValuePredRemediator::satisfy(const PDG &pdg, Loop *loop,
   }
 
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
+
+  // print number
+  DEBUG(errs() << "Number of RAW collab deps handled by LoadedValuePredRemed: " << RAWcollabDepsHandled << '\n');
+  DEBUG(errs() << "Number of WAW collab deps handled by LoadedValuePredRemed: " << WAWcollabDepsHandled << '\n');
 
   return remedies;
 }
@@ -151,6 +154,11 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
         remedy->write = true;
     }
     remedResp.depRes = DepResult::NoDep;
+
+    if ( dataDepTy == DataDepType::WAW )
+      WAWcollabDepsHandled++;
+    if ( dataDepTy == DataDepType::RAW )
+      RAWcollabDepsHandled++;
 
     DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
