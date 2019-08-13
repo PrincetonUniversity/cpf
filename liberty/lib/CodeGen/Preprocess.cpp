@@ -412,13 +412,16 @@ void Preprocess::moveStackLocals(HeapAssignment &asgn, const Loop *L) {
     if (!au->value)
       continue;
     if (isLocalPrivateAU(au->value, L))
+    {
       localPrivAUs.insert(au);
+    }
   }
 
   for (auto au : localPrivAUs) {
     privs.erase(au);
     //locals.insert(au);
     kills.insert(au);
+    localCount++;
   }
 }
 
@@ -439,34 +442,53 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
     privs.erase(au);
     //locals.insert(au);
     kills.insert(au);
+    localCount++;
   }
 }
 
 void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
   HeapAssignment::AUSet &kills = asgn.getKillPrivAUs();
-  HeapAssignment::AUSet exclusivelyKillAUs;
+  HeapAssignment::AUSet exclusivelyKillAUs1;
+  HeapAssignment::AUSet exclusivelyKillAUs2;
   for (auto au : privs) {
-    if ((killPrivAUs.count(au) || predPrivAUs.count(au)) &&
+    if ((killPrivAUs.count(au) && !predPrivAUs.count(au)) &&
          !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
          !localPrivAUs.count(au))
-       exclusivelyKillAUs.insert(au);
+       exclusivelyKillAUs1.insert(au);
+
+    if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
+         !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
+         !localPrivAUs.count(au))
+       exclusivelyKillAUs2.insert(au);
   }
 
-  for (auto au : exclusivelyKillAUs) {
+  for (auto au : exclusivelyKillAUs1) {
     privs.erase(au);
     kills.insert(au);
+    killCount++;
+  }
+  for (auto au : exclusivelyKillAUs2) {
+    privs.erase(au);
+    kills.insert(au);
+    predCount++;
   }
 }
 
-void Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
+uint64_t Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
                                     Ctx *loop_ctx,
                                     HeapAssignment::AUSet &relAUs) {
   Ptrs aus;
+  uint64_t counter = 0;
   assert(spresults.getUnderlyingAUs(ptr, loop_ctx, aus) &&
          "Failed to create AU objects?!");
   for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
+  {
     relAUs.insert(i->au);
+    counter++;
+  }
+
+  return counter;
 }
 
 void Preprocess::init(ModuleLoops &mloops)
@@ -638,8 +660,16 @@ void Preprocess::init(ModuleLoops &mloops)
     for (auto au : nonPrivAUs) {
       privs.erase(au);
       shared.insert(au);
+      sharedCount++;
     }
   }
+
+  DEBUG(errs() << "normalPrivAUs: " << normalCount << '\n');
+  DEBUG(errs() << "localPrivAUs: " << localCount << '\n');
+  DEBUG(errs() << "killPrivAUs: " << killCount << '\n');
+  DEBUG(errs() << "predPrivAUs: " << predCount << '\n');
+  /* DEBUG(errs() << "privateerPrivAUs: " << privateerCount << '\n'); */
+  DEBUG(errs() << "sharedPrivAUs: " << sharedCount << '\n');
 }
 
 void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,

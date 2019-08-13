@@ -26,7 +26,7 @@ public:
 class LoadedValuePredRemediator : public Remediator {
 public:
   LoadedValuePredRemediator(PredictionSpeculation *ps, LoopAA *aa)
-      : Remediator(), predspec(ps), loopAA(aa) {}
+      : Remediator(), predspec(ps), loopAA(aa), collabDepsHandled(0) {}
 
   StringRef getRemediatorName() const {
     return "invariant-value-pred-remediator";
@@ -49,6 +49,8 @@ public:
 private:
   PredictionSpeculation *predspec;
   LoopAA *loopAA;
+
+  uint64_t collabDepsHandled;
 
   std::unordered_set<const Value *> predictableMemLocs;
   std::unordered_set<const Value *> nonPredictableMemLocs;
