@@ -4,18 +4,19 @@
 transformations including efficient speculative privatization, and a
 parallelization planner into an exploration phase designed to find the
 best performing set of parallelization techniques.  This section
-discusses the main contributions of this paper, and presents a code
-example to underline improvements over
-Privateer~\cite{johnson:12:pldi}, a state-of-the-art speculative DOALL
-parallelization system.
+discusses the main contributions of this paper
+(sections~\ref{analyzer},\ref{enablers},\ref{planner}), and
+presents a code example (section~\ref{motiv_example}) to underline
+improvements over Privateer~\cite{johnson:12:pldi}, a state-of-the-art
+speculative DOALL parallelization system.
 
 \subsection{Speculation-Aware Memory Analyzer}
-
+\label{analyzer}
 
 %
 Prior techniques, independently apply speculative techniques to
-overcome the imprecision of memory analysis, often resorting to
-expensive memory speculation.
+overcome the imprecision of memory analysis, often exhibiting
+excessive use of expensive memory speculation.
 %
 %This work suggests that exposing cheap-to-validate speculative
 %assumptions to static analysis can enable removal of memory
@@ -29,10 +30,10 @@ expensive memory speculation.
 %
 Instead, this work proposes a speculation-aware memory analyzer that
 combines the strengths of static analysis and cheap-to-validate
-speculative assumptions.  If memory analysis fails on its own to
-resolve an analysis query, then it interprets cheap-to-validate
-speculative assumptions as facts ignoring the possibility of
-misspeculation.
+speculative assumptions to reduce the need for expensive speculation.
+If memory analysis fails on its own to resolve an analysis query, then
+it interprets cheap-to-validate speculative assumptions as facts
+ignoring the possibility of misspeculation.
 %
 The use of speculation changes the semantics of traditional memory
 analysis' answers. It is now required to specify for each answer the
@@ -77,8 +78,7 @@ speculative control flow can be used by memory analysis passes to
 handle more queries.
 %
 Two examples of analysis passes that can benefit from this speculative
-information is kill-flow and unique access paths (UAP) analysis
-algorithms.  
+information is kill-flow and unique access paths (UAP) algorithms.  
 
 Kill-flow analysis disproves memory dependences by finding killing
 operations along all feasible paths between two operations. If
@@ -99,13 +99,13 @@ simplifying alias queries for this pointer.
 %speculative parallelization systems would be forced to use expensive
 %memory speculation instead.
 
-If memory analysis passes assume that loaded value predictions are
-correct, then they can re-interpret a predicted load as a store of the
-predicted value. One analysis algorithm that can benefit from that is
-again kill-flow. Kill-flow treats the predictable load as a kill
-operation (i.e., a store) and can remove certain dependences regarding
-memory operations that must-alias with the predicted load's memory
-location.
+Regarding value prediction, if memory analysis passes assume that
+loaded value predictions are correct, then they can re-interpret a
+predicted load as a store of the predicted value. One analysis
+algorithm that can benefit from that is again kill-flow. Kill-flow
+treats the predictable load as a kill operation (i.e., a store) and
+can remove certain dependences regarding memory operations that
+must-alias with the predicted load's memory location.
 
 
 Apart from removal of dependences, the speculation-aware memory
@@ -128,10 +128,12 @@ as the efficient variants of speculative privatization described in
 section ~\ref{novel_transf}.
 
 The speculation-aware memory analyzer is queried to populate an
-annotated PDG with information utilized by the rest of the planning
-phase.
+annotated program dependence graph (PDG) with information utilized by
+the rest of the planning phase, namely by enabling transformations and
+the planner.
 
 \subsection{Enabling Transformations}
+\label{enablers}
 
 Transformations modify the code to remove parallelization inhibitors.
 %
@@ -143,43 +145,67 @@ transformation phase.
 %transformation and allows us to evaluate the cost of each dependence
 %separetely and
 This separation of decision making and application of transformations
-allows \name to choose the most profitable plan instead of applying
-all the enabling transformations in a sequence.
+allows \name to carefully select the most profitable plan instead of
+applying all the enabling transformations in a sequence.
+
+Enabling transformations address memory, register or/and control
+cross-iteration dependences. 
+%
+This section focuses on memory related enabling transformations.
+Register and control dependence handling is discussed in
+section~\ref{design_transf}.
+
+
+%\subsubsection{Memory} 
+%
+\subsubsection{Applicability:}
 
 %
 The applicability guard of a transformation determines, using the
-results of the speculation-aware memory analyzer, where the
-transformation is applicable and under which assumptions. Assumptions
-are speculative information that require validation for the
-transformation to be correct. 
+results of the speculation-aware memory analyzer,  which memory
+objects have certain properties required by the corresponding
+transformation and under which assumptions. 
+%
+Assumptions are speculative information that require validation for
+the transformation to be correct, while applicability for a memory
+object means that the transformations can address all the
+cross-iteration dependences related to this memory object. 
 %
 The output of each applicability guard is collected in a
 transformation proposal and is sent to the DOALL
-planner~\ref{planner}.
+planner (section~\ref{planner}).
 %
 The proposal includes for each memory object an estimated handling
 cost based on the transformation itself and the validation cost of the
 used speculative assumptions.
 %
-TODO: explain cost here.
+%The cost of each transformation is determined by the cost of the
+%transformation itself and the cost of the speculative assumptions
+%required for the transformation to be applicable. 
 %
+For simplicity, in this work each transformation and speculation
+validation operation is assigned a fixed 
+%predefined
+cost that just ensures a basic ordering among the options. For
+example, regarding speculative assumptions, memory speculation has a
+extremely high cost, loaded value prediction has a much smaller cost
+but not smaller than control speculation. Control speculation has the
+lowest cost since its validation does not introduce overhead.
+%The estimated cost computation is very basic and just ensures basic
+%ordering among the options.
+%
+%Every transformation is assigned an arbitrary cost that ensures some
+%ordering among transformation. Speculative assumptions is similarly
+%computed.
+%
+For the set of transformations and speculative assumptions in our
+framework and in the context of DOALL parallelization simple ordering
+proved sufficient.
+%
+A more complex cost model, that would allow more elaborate decision
+making, is left for future work.
 
-Enabling transformations address memory, register or/and control
-cross-iteration dependences. 
 %
-%This section focuses on memory related enabling transformations.
-%Register and control dependence handling is discussed in 
-%~\ref{design_transf}.
-
-
-\subsubsection{Memory} 
-%
-\paragraph{Applicability:}
-The applicability guard determines which memory objects have certain
-properties required by the corresponding transformation.
-%
-Applicability means that the transformations can address all the
-cross-iteration dependences related to this memory object. 
 %
 %which speculative assumptions need to be validated for the
 %transformation to be correct.
@@ -194,12 +220,12 @@ cross-iteration dependences related to this memory object.
 %necessary for each memory object for the transformation applicability
 %to be correct.
 
-
 \paragraph{Transformation Application:} If, during the planning phase,
 a transformation is selected for a set of memory objects, then during
-the code transformation phase it separates them in an isolated heap
-via re-allocation, and adds runtime checks, if needed, to ensure that
-all their accesses are contained within this heap.  
+the code transformation phase the selected transformation separates
+these objects in an isolated heap via re-allocation, and adds runtime
+checks, if needed, to ensure that all their accesses are contained
+within this heap.  
 %Each transformation separates the memory objects it is selected to
 %handle in an isolated heap via
 Separation checks are required for memory accesses whose underlying
@@ -214,12 +240,12 @@ specialized by each transformation.
 Each heap can have different memory mapping semantics and is handled
 differently at commit and at the end of parallel invocation. 
 %
-Further, some transformations insert additional transformation-specific
-checks and other modifications.
+Further, some transformations insert additional
+transformation-specific checks and other modifications.
 
 The idea of separating memory objects has been explored previously by
 Johnson et al. (Privateer~\cite{johnson:12:pldi}).  However, Privateer
-employs a monolithic design that entagles classification of memory
+employs a monolithic design that entangles classification of memory
 objects with memory speculation and other 
 %monolithic design of memory object classification entangles
 %separation speculation with memory speculation and other
@@ -232,8 +258,9 @@ facilitates planning and selection of minimal cost solutions.
 %where enabling transformations offer to handle memory objects along
 %with estimated costs -offers with costs and the selection happens.
 %
-Only the selected transformations and their corresponding assumption
-validation is applied.  Nothing more.
+Only the selected transformations and validation of their
+corresponding speculative assumptions are applied, nothing more than
+that.
 
 
 TODO: add algorithm. All accesses need to respect this property. Every
@@ -241,14 +268,31 @@ transformation creates a family with memory objects with the same
 properties.  It collects the set of objects that it can handle.
 
 
-
-We describe in the next section efficient variants of the speculative
-privatization transformation, which constitute contribution of this
+We describe in the next section efficient transformation variants of
+speculative privatization, which constitute a contribution of this
 paper.  Other enabling transformations that are used in our framework
 but have been proposed in prior work are discussed in
 section~\ref{design_transf}.
 
 \subsubsection{Novel Transformations}
+\label{novel_transf}
+
+%Ensuring correct live-out memory state often requires extensive bookkeeping,
+%during parallel execution, for the write footprint of private objects. To make
+%parallelization more \textit{profitable}, this work expresses more properties
+%for private memory objects. Private objects could additionally (a) be
+%independent~\cite{ARRAY_privatization} (no loop-carried false dependences); (b)
+%have loop-invariant condition for last update within the
+%loop~\cite{ARRAY_privatization}; (c) have predictable live-out content;
+%%(not found in prior work);
+%or (d) have only local accesses (allocated outside the loop, but all
+%accesses are contained within the loop execution).
+%%
+%%Private properties (a), (b) have been explored before in the context of static
+%%parallelization~\cite{ARRAY_privatization}, but never before in speculative
+%%parallelization systems (maybe in LRPD). No prior work leveraged property (c).
+%%
+%
 
 Privatization: the simple version of this transformation just
 ensures the basic privatization property that there are no
@@ -293,6 +337,17 @@ allocated outside the loop, but all its accesses are contained within
 the loop execution
 %
 \end{itemize}
+
+Table~\ref{tab:priv_types} summarizes how these properties can facilitate more
+efficient parallelization compared to just inferring that a memory object is
+private. In short, inference of any of these four private properties allows
+complete elimination of bookkeeping and access checks. Prior software
+speculative systems with extended support of privatization (Privateer~\cite{},
+ClusterDoall~\cite{}) are only able to infer the simple private property and
+thus always require costly checks or monitoring.
+
+\input{private_types}
+
 
 
 \subsection{DOALL planner}
