@@ -30,7 +30,8 @@ using namespace llvm;
 
 struct Preprocess : public ModulePass {
   static char ID;
-  Preprocess() : ModulePass(ID) {}
+  Preprocess() : ModulePass(ID), normalCount(0), localCount(0), killCount(0),
+                 predCount(0), privateerCount(0), sharedCount(0) {}
 
   void getAnalysisUsage(AnalysisUsage &au) const;
   bool runOnModule(Module &module);
@@ -126,6 +127,13 @@ private:
   HeapAssignment::AUSet predPrivAUs;
   HeapAssignment::AUSet privateerPrivAUs;
 
+  uint64_t normalCount;
+  uint64_t localCount;
+  uint64_t killCount;
+  uint64_t predCount;
+  uint64_t privateerCount;
+  uint64_t sharedCount;
+
   void init(ModuleLoops &mloops);
 
   bool fixStaticContexts();
@@ -135,7 +143,7 @@ private:
   void moveStackLocals(HeapAssignment &asgn, const Loop *L);
   void moveLocalPrivs(HeapAssignment &asgn);
   void moveKillPrivs(HeapAssignment &asgn);
-  void collectRelevantAUs(const Value *ptr, const Read &spresults,
+  uint64_t collectRelevantAUs(const Value *ptr, const Read &spresults,
                           Ctx *loop_ctx, HeapAssignment::AUSet &relAUs);
 
   bool addInitializationFunction();

@@ -63,7 +63,9 @@ public:
                  ControlSpeculation *cs, KillFlow &kill, const Read &rd,
                  const HeapAssignment &c)
       : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs), killFlow(kill),
-        read(rd), asgn(c) {}
+        read(rd), asgn(c), WAWcollabDepsHandled(0), RAWcollabDepsHandled(0) {}
+
+  Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
   void setLoopPDG(PDG *loopPDG, Loop *L) {
     pdg = loopPDG;
@@ -98,6 +100,9 @@ private:
   NoControlSpeculation nocs;
   std::unique_ptr<LoopDom> specDT;
   std::unique_ptr<LoopDom> noSpecDT;
+
+  uint64_t WAWcollabDepsHandled;
+  uint64_t RAWcollabDepsHandled;
 
   std::unordered_set<const GlobalValue *> localGVs;
   std::unordered_set<const AllocaInst *> localAllocas;

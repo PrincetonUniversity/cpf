@@ -6,21 +6,29 @@ Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
 (turbo-boost disabled) with 756GB of memory. The operating system is 64-bit
 Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010) and LLVM Compiler
 Infrastructure (version 5.0.2).
-%
+
+
 \name is evaluated against 12 C and C++ benchmarks, covering all the
 DOALLable (showing speedup instead of slowdown) benchmarks from two
 state-of-the-art automatic DOALL parallelization
 papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more
-benchmark (179.art) from HELIX.
+benchmark (179.art) from HELIX. These benchmarks are from five benchmark
+suites (Trimaran\cite{trimaran:web}, SPEC\cite{},
+PARSEC\cite{bienia:08:parsec}, MiBench\cite{guthaus:2001:iiwsc}). All
+PolyBench benchmarks and \texttt{dijkstra} from MiBench are modified to
+accept command line arguments and allocate arrays dynamically in the same
+way as \cite{kim:12:cgo}. This modification is used to create bigger
+inputs, which is necessary for separating profiling and evaluation input
+sets.
 
 %
 Each benchmark is profiled using a profiling input and all the following
-experiments are conducted using a different testing input.
+experiments are conducted using a different, larger testing input.
 
-\begin{table*}
+\begin{table*}[h]
   \include{figures/benchmark-tab}
   \caption{
-    DOALL Coverage and Experiment Setting of Benchmarks
+    Benchmark Details:
   }
   \label{tab:benchmark-list}
     \vspace{-5pt}
@@ -30,7 +38,7 @@ experiments are conducted using a different testing input.
 
 \begin{figure*}[ht]
   \includegraphics[width=\textwidth]{figures/multi-core-crop}
-  \caption{Whole Program Speedup over Different Numbers of Cores}
+  \caption{Fully Automatic Whole Program Speedup over Best Sequential}
   \label{fig:multi-core-scale}
 \end{figure*}
 
@@ -48,8 +56,8 @@ objects being privatized with little or no overheads.
 
 % dijkstra
 The \texttt{dijkstra}, having a lot of memory operations like
-\texttt{malloc} and \texttt{mmap} inside the inner loops, manifests a
-significant variance in the runtime.
+\texttt{malloc} inside the inner loops, manifests a significant variance in
+the runtime.
 
 % 052.alvinn
 \texttt{052.alvinn} exhibits a lower speedup (11$\times$ on 28
@@ -61,11 +69,11 @@ theoretical maximum speedup based on Almdahl's Law.
 \texttt{179.art} whose theoretical maximum speedup is 22.5$\times$, due to
 the same effect, shows a smaller scaling factor close to the bound. Note
 that HELIX\cite{simone:12:cgo} reports 4.2$\times$ speedup on 6 cores while
-\name exhibits 6.5$\times$, showing that a speculative approach with can even
-overcome a static approach in terms of speedup.
+\name exhibits 6.5$\times$, showing that an efficient speculative approach
+can even overcome a static approach in terms of speedup.
 
 % correlation and covariance
-\texttt{correlation} and \texttt{covariance} have complicated triangle WAW
+\texttt{correlation} and \texttt{covariance} have complicated triangle(?) WAW
 dependence patterns which cannot be resolved by static analysis or cheap
 privatization variants. As a result, the corresponding memory objects are
 classified as private and need logging and merging for write sets,
@@ -73,21 +81,27 @@ resulting in lower speedups.
 
 \begin{figure*}[ht]
   \includegraphics[width=\textwidth]{figures/compare-privateer}
-  \caption{Whole Program Speedup Comparison}
+  \caption{Whole Program Speedup Comparison among Variants of \name and Privateer with 28 Cores}
   \label{fig:speedup-compare}
 \end{figure*}
 
-Figure \ref{fig:speedup-compare} compares \namensp's results with two
+Figure \ref{fig:speedup-compare} compares \namensp's resultsw
+ with two
 variants of Privateer and one variant of \namensp. The first bar shows the
-performance of Privateer implemented with the best practice assumption. The
-speedup and runtime breakdown results match the description in the paper.
-Although being the state-of-the-art framework in terms of applicability,
-Privateer missed some opportunities to remove some read checks as mentioned
-in STMLite\cite{mehrara:09:stmlite} and ClusterDOALL\cite{kim:12:cgo}. To
-improve as much as possible top of Privateer, we utilized the static
-analysis including a stronger KillFlow analysis pass to remove read checks.
+performance of Privateer implemented with the best practice assumption(?).
+Some peephole optimizations are used to reduce the use of memory
+speculation and to hoist memory check out of the inner loops. The speedup
+and runtime breakdown results match the description in the paper. Although
+being the state-of-the-art framework in terms of applicability, Privateer
+missed some opportunities to remove some read checks as mentioned in
+STMLite\cite{mehrara:09:stmlite} and ClusterDOALL\cite{kim:12:cgo}. To
+improve as much as possible on top of Privateer, we utilize static analysis
+including a stronger KillFlow analysis pass to remove read checks.
 \texttt{2mm}, \texttt{3mm}, \texttt{doitgen}, \texttt{enc-md5}, and
 \texttt{179.art} benefit from this improvement as shown in the second bar.
+Note that \textbf{ref XXX} if all dependences are removed statically, no
+checkpoint is needed in the runtime.
+
 The third bar presents the results of a variant of \name without the cheap
 privatization transformations proposed in \ref{}. Parallelization through
 \name, which incorporates speculation-aware-memory-analysis and cheap
@@ -120,14 +134,23 @@ Present in a table, which enablers were used for all benchmarks
 
 \begin{figure*}[htp]
   \includegraphics[width=0.9\textwidth]{figures/overheads}
+  \label{fig:overheads}
+  \caption{Overhead comparison with various enablers disabled}
 \end{figure*}
 \begin{figure*}[htp]
   \includegraphics[width=0.9\textwidth]{figures/comparison}
 \end{figure*}
-Huge speedup for dijkstra is largely due to the cheaper "malloc" that
-we use in our heaps. Using a similar malloc in the sequential version
-yields ~16x speedup in dijkstra and insignificant difference in the
-other benchmarks.
+% Huge speedup for dijkstra is largely due to the cheaper "malloc" that
+% we use in our heaps. Using a similar malloc in the sequential version
+% yields ~16x speedup in dijkstra and insignificant difference in the
+% other benchmarks.
+Shown in Figure \ref{fig:overheads} is the overhead breakdown of each
+benchmark comparing \name with various enablers disabled. The useful work
+of \name is normalized to 100\%, with the others being scaled accordingly.
+These result demonstrate the correlation between the sum of the overheads
+to the speedup that can be achieved. \{\textbf{XXX} Something about
+how we remove dependences with redundant private read elimination,
+the new kill\_private heap, and collaboration \}
 
 \subsection{Misspeculation Analysis}
 \begin{figure*}[htp]
@@ -140,27 +163,32 @@ performance of the six speculative benchmarks with misspeculation rates of
 0.1\% and 0.2\%. Since none of the benchmarks exhibit misspeculation on the
 given input sets, we artificially inject misspeculation at the end of
 every 1000 and 500 iterations, respectively, to observe the performance
-degradation. Note that misspeculation with \name is extremely unlikely, as
-static analysis can disprove many speculative assumptions and for many of
-the benchmarks, misspeculation is only possible during a heap check.
+degradation.
+Note that for many benchmarks, speculation is only used
+because analysis cannot disprove a dependence, even though manually
+examining the source code reveals that the dependence will never manifest.
+Thus, the only place misspeculation can possibly occur is during a heap
+check.
+% Note that misspeculation with \name is extremely unlikely, as
+% static analysis can disprove many speculative assumptions and for many of
+% the benchmarks, misspeculation is only possible during a heap check.
 The inputs for \texttt{179.art} were not large enough to have
 enough iterations for misspeculation at these rates, so we perform a
 weighted average of non-misspeculating and misspeculating runs to achieve
-an average corresponding to the respective rates. These results demonstrate
+an average corresponding to the respective rates.
+These results demonstrate
 that \name performs well with only high confidence speculation.
-\{\textbf{XXX} Is this why we can't parallelize the outer loop of
-052.alvinn?\} \textbf{Something about how some benchmarks cannot misspec
+\textbf{Something about how some benchmarks cannot misspec
 with any input, only that analysis cannot prove that} A system that has
 larger overheads has a larger chance of speculation (since they use more
 speculative assumptions), but we minimize the amount of speculation.
-Emphasize that misspeculation doesn't really happen in practice
 % As the iteration within a checkpoint that misspeculation
 % occurs can affect the recovery cost, we inject these misspeculations in the
 % middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more
 % realistic simulation, assuming that programs can misspeculate at any iteration with a
 % uniform distribution.
 
-\subsection{Power Consumption}
+% \subsection{Power Consumption}
 
-Power and energy stats here
+% Power and energy stats here
 

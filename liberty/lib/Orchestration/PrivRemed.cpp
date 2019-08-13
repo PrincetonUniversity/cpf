@@ -38,6 +38,19 @@ bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   return this->storeI < privRhs->storeI;
 }
 
+Remedies PrivRemediator::satisfy(const PDG &pdg, Loop *loop,
+                                 const Criticisms &criticisms)
+{
+
+  Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
+
+  // print number
+  DEBUG(errs() << "Number of RAW collab deps handled by PrivRemed: " << RAWcollabDepsHandled << '\n');
+  DEBUG(errs() << "Number of WAW collab deps handled by PrivRemed: " << WAWcollabDepsHandled << '\n');
+
+  return remedies;
+}
+
 bool PrivRemediator::mustAlias(const Value *ptr1, const Value *ptr2) {
   // Very easy case
   if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
@@ -228,12 +241,17 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
         return false;
       Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand());
 
+
+      if (isPointerKillBefore(L, loadPtr, loadI))
+        ctrlSpecUsed = true;
+
       if (!isPointerKillBefore(L, loadPtr, loadI) &&
           !isSpecSeparated(I, loadI, L))
         return false;
 
       // TODO: change all ctrlSpecUsed to specUsed
-      ctrlSpecUsed = true;
+      // add something for spec sep
+     // ctrlSpecUsed = true;
     }
   }
   return true;
@@ -405,6 +423,13 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
+
+
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+        WAWcollabDepsHandled++;
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+        RAWcollabDepsHandled++;
+
       return remedResp;
     } else if (isLocalPrivate(B, ptr2, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
@@ -413,6 +438,12 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
+
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+        WAWcollabDepsHandled++;
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+        RAWcollabDepsHandled++;
+
       return remedResp;
     }
   }
@@ -440,6 +471,11 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     remedy->type = PrivRemedy::Normal;
     remedResp.remedy = remedy;
 
+    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+      WAWcollabDepsHandled++;
+    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+      RAWcollabDepsHandled++;
+
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
 
@@ -458,6 +494,12 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
 
     remedy->type = PrivRemedy::Normal;
     remedResp.remedy = remedy;
+
+
+    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+      WAWcollabDepsHandled++;
+    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+      RAWcollabDepsHandled++;
 
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
