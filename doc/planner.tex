@@ -1,7 +1,7 @@
 The planner chooses the best performing set of transformations that
 enables DOALL parallelization.
 %
-In DOALL parallelization each iteration need to run independently.
+In DOALL parallelization each iteration needs to run independently.
 Thus, all the cross-iteration dependences need to be handled.
 %
 The input of the planner is the annotated loop PDG and the
@@ -25,18 +25,28 @@ object.
 %
 For cross-iteration register and control dependences, the planner
 examines individual dependences one by one and greedily selects the
-cheapest cheapest option for each one.
+cheapest option for each one.  
+%
+If there a memory object, or a cross-iteration register or control
+dependences that cannot be addressed by any transformation then the
+planner concludes that DOALL is not applicable.
+
 
 The cost of each transformation is determined by the cost of the
 transformation itself and the cost of the speculative assumptions
 required for the transformation to be applicable. 
 %
-The estimated cost computation is very basic and just ensures basic
-ordering among the options.
+For simplicity, in this work each transformation and speculation
+validation is assigned a fixed 
+%predefined
+cost that just ensures a basic ordering
+among the options.
+%The estimated cost computation is very basic and just ensures basic
+%ordering among the options.
 %
-Every transformation is assigned an arbitrary cost that ensures some
-ordering among transformation. Speculative assumptions is similarly
-computed.
+%Every transformation is assigned an arbitrary cost that ensures some
+%ordering among transformation. Speculative assumptions is similarly
+%computed.
 %
 For the set of transformations and speculative assumptions in our
 framework and in the context of DOALL parallelization simple ordering
@@ -45,6 +55,11 @@ proved sufficient.
 %The selected set of transformations in the plan includes the selected
 %transformations and validation code generator for their accompanying
 %speculative assumptions.
+
+The final plan is a set of enabling transformations and a set of
+speculative assumption validation transformations.
+contains which mem objects each transformation should handle and where
+exactly speculation is needed.
 
 Note that the planner produces non-speculative plans, if no speculative
 assumptions are required for the DOALL parallelization.

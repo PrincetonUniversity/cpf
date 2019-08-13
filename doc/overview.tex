@@ -39,8 +39,10 @@ parallelization more \textit{profitable}, this work expresses more properties
 for private memory objects. Private objects could additionally (a) be
 independent~\cite{ARRAY_privatization} (no loop-carried false dependences); (b)
 have loop-invariant condition for last update within the
-loop~\cite{ARRAY_privatization}; (c) have predictable live-out content (not
-found in prior work); or (d) not be live-out (no accesses after loop execution).
+loop~\cite{ARRAY_privatization}; (c) have predictable live-out content;
+%(not found in prior work);
+or (d) have only local accesses (allocated outside the loop, but all
+accesses are contained within the loop execution).
 %
 %Private properties (a), (b) have been explored before in the context of static
 %parallelization~\cite{ARRAY_privatization}, but never before in speculative
@@ -60,7 +62,7 @@ thus always require costly checks or monitoring.
 %\subsection{How to Classify?}
 %\subsection{How to Infer Memory Object Properties \\ Without Expensive Runtime
 %Costs?}
-\subsection{How to Infer Memory Object Properties}
+\subsection{How to Infer Memory Object Properties?}
 
 %Classifying memory objects
 Characterizing the behavior of memory objects requires
@@ -134,21 +136,96 @@ cheap-to-validate speculation or static analysis to infer memory object
 properties. This modularity leads to better planning and selection of minimum
 cost solutions.
 
-
 \paragraph{Dependence Analysis:}
-%
-Traditionally, dependence analysis only attempts to completely remove
-dependences. If a dependence cannot be removed, because it is a real dependence
-that manifest at runtime, analysis in prior work would fail to provide any
-useful information related to it.
 
 %
-For dependence removal, prior work only used static analysis and speculative
-techniques in isolation.
+Traditionally, dependence analysis (static, dynamic or speculative) in
+speculative parallelization only attempts to completely remove dependences.
 %
-This work suggests that collaboratively static analysis and cheap-to-validate
-speculative assumptions can disprove properties that would otherwise require
-memory speculation.
+If a dependence cannot be removed even with usage of speculation, because
+it is a real dependence that frequently manifests at runtime, no useful
+information is provided related to this dependence.
+%
+Static analysis though, even if it failed to disprove a dependence, could
+still infer some useful property for this dependence or the dependent
+instructions.
+TODO: briefly mention cases of annotations or nothing
+Mention static analysis and speculative techniques used to annotate edges
+or vertices
+
+%Combining static with cheap-to-validate speculative analysis also
+%enables property inference for efficient privatization.
+%%
+%Prior parallelization systems
+%%~\cite{smtlite:09:pldi, kim:12:cgo, johnson:17:cgo}
+%use static analysis or speculation mainly to remove memory
+%dependences.  Sometimes though some dependences are real and cannot be
+%removed via any kind of analysis.
+%%For example,
+%In particular, reuse of data structures creates cross-iteration false
+%(output and anti) memory dependences.
+%%
+%In this scenario, analysis passes and speculative information can
+%still express some useful properties for these dependences or the
+%dependent instructions.  This partial information can be combined to
+%infer a higher level property that enables more efficient
+%parallelization.
+%
+%% isn't that what transformation do anyway? query analysis for
+%% properties?  but we present a structured way to express that?  how
+%% do analysis know what's useful.
+
+
+%gives info to transforamtion.
+%maybe in conjuction with other info from other analysis can enable a
+%transformation efficiently
+%some information that could enable a transformation enable more
+%efficient parallelization
+
+Explain inference of properties. Move that to next section.
+
+One such property
+that is explored in this paper is related to output dependences.  We refer
+to this property as \textit{overwrite} and it expresses that the
+destination operation of the dependence overwrites, in every iteration of
+the target loop, the write footprint of the source operation.
+%
+%This information in conjunction with other static or speculative
+%information infers that a private object has the property of
+%loop-invariant condition for last update.
+If all dependences related to a private object have the \textit{overwrite}
+property then the private object has loop-invariant condition for last
+update. In this case the last executed iteration has the correct live-out
+memory state for this object and thus there is no need to monitor writes
+for this memory object.
+
+Maybe some of this info should be mention in the next section.
+HERE briefly mention all the options.
+Mention overwrite in the example subsection maybe
+
+
+Value prediction can detect memory locations with loop-invariant values.
+Not just remove dependences, add the annotation and remove cost of
+monitoring wrties.
+Loaded value re-interpreted as a store and kills all other RAW.
+
+Independent can be infered by just disproving all output dependences. This
+proves that there is no overlapping of writes.
+
+
+Regarding dependence removal, prior work only used static analysis and
+speculative assumptions in a sequence, operating independently of each
+other.
+%
+This work suggests that exposing cheap-to-validate speculative assumptions
+to static analysis can enable removal of memory dependences that would
+otherwise require memory speculation.
+TODO: add examples here
+Figure out when to mention details about forms of collab. Probably in the
+next section. Here just mention the techniques involved
+
+For more details refer to section~\ref{collab}.
+
 
 %Prior work only attempted to use static analysis and speculative assumptions
 %separately to remove different dependences. If static analysis or speculative
@@ -156,22 +233,6 @@ memory speculation.
 %collaboration between static analysis nor partial info to be used by
 %transformations.
 
-Prior work just used static analysis to remove some dependences between program
-operations and speculation to refine the PDG and remove even more.
-
-first is collab between analyses
-the second gives info to transforamtion.
-maybe in conjuction with other info from other analysis can enable a
-transformation efficiently
-
-We propose first collab to remove some dependences and
-also if even a analysis cannot completely remove a dependence it can still
-provide some information that could enable a transformation enable more
-efficient parallelization
-
-TODO: describe speculative techniques and analysis used to analyze the
-dependences of memory access.  One dependence characterization might require
-collaboration of different passes.
 
 %In the past, privateer monolithically combined separation logic with
 %mem spec to infer properties.
@@ -234,10 +295,162 @@ collaboration of different passes.
 %and remove RAW and allow cheap privitization
 
 
+\lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
+  stepnumber=1, numbersep=5pt}
+
+\begin{figure}[t]
+  \centering
+  %\begin{tabular}{cc}
+  \scriptsize
+    \subfloat{
+    \begin{minipage}{5cm}
+      \input{figures/dijkstra_motivation}
+    \end{minipage}
+    }
+%    &
+     \hspace{1cm}
+%\subfloat
+%{
+%    \begin{minipage}{7cm}
+%  %  \includegraphics[scale=0.7]{figures/seq_motivation.pdf}
+%
+%\begin{itemize}
+%\item
+%Reuse across iterations of the \textbf{pathcost} array and global variable
+%\textbf{dist} creates cross-iteration false dependences that inhibit
+%parallelization.
+%
+%\item
+%Privatization enables parallelization of this loop by creating private copies
+%of \textbf{pathcost} and \textbf{dist} memory objects for every worker.
+%
+%\item From prior work, Privateer~\cite{Johnson:12:plid} is the only automatic
+%system to support privatization of dynamically allocated objects, like
+%\textbf{pathcost}, even in the presence of unrestricted pointers.
+%
+%\item
+%Privatization of these memory objects requires:
+%\begin{enumerate}
+%\item
+%identification of all accesses of these objects
+%    within the loop
+%\item
+%absence of cross-iteration flow
+%     dependences on each of these accesses
+%\end{enumerate}
+%
+%\end{itemize}
+%
+%    \end{minipage}
+%}
+%\end{tabular}
+
+\caption{Sequential \textit{dijkstra} example from MiBench~\cite{}}
+%(with dynamic allocation of arrays (static privatization is not applicable anymore). assume that pathcost cannot be proven as non-liveout)
+\label{fig:dijkstra_motivation}
+\end{figure}
+
+\begin{figure*}
+\centering
+\subfloat[Privateer~\cite{johnson:12:pdli}]{
+  \centering
+  \includegraphics[width=0.46\textwidth]{figures/privateer-example-crop}
+}
+\qquad
+\subfloat[This work]{
+  \centering
+  \includegraphics[width=0.46\textwidth]{figures/perspective-example-crop}
+}
+\caption{Property inference comparison of Privateer with LSD for memory
+objects \textit{pathcost} and \textit{dist} of the hot loop of \textit{dijkstra}}
+\label{fig:dijkstra_motivation_comparison}
+\end{figure*}
+
+\begin{figure*}
+\centering
+\scriptsize
+\subfloat[Privateer~\cite{johnson:12:pdli}]{
+  \centering
+  \begin{minipage}{8.55cm}
+  \input{figures/dijkstra_motivation_checks}
+  \end{minipage}
+}
+\qquad
+\qquad
+\subfloat[This work]{
+  \centering
+  \begin{minipage}{7.2cm}
+  \input{figures/dijkstra_motivation_checks_our}
+  \end{minipage}
+}
+\caption{Source code comparison of Privateer with LSD for parallelized hot loop
+of \textit{dijkstra}. Checkpointing occurs every several (long running) loop iterations, thus its
+overhead is negligeable for \textit{dijkstra}. Logging and checks
+during loop execution dominate the overheads.}
+\label{fig:dijkstra_motivation_comparison_source_code}
+\end{figure*}
+
+
+
 \paragraph{Example:}
-Consider the code in figure~\ref{dijkstra_all} (taken from MiBench~\cite{} benchmark
+This example underlines inefficiencies and limitations of prior work and
+showcases how the combination of static analysis with cheap-to-validate
+speculative assumptions can infer program properties that enable scalable
+parallelization.
+%
+Consider the code in
+Figure~\ref{fig:dijkstra_motivation} (taken from MiBench~\cite{} benchmark
 dijkstra, used in the evaluation of Privateer~\cite{}).
-TODO: describe the properties of all the loop memory objects in the example.
+%
+Reuse across iterations of the \textbf{pathcost} array and global variable
+\textbf{dist} creates cross-iteration false dependences that inhibit
+parallelization.
+%
+Privatization enables parallelization of this loop by creating private
+copies of \textbf{pathcost} and \textbf{dist} memory objects for every
+worker.
+%
+From prior work, Privateer~\cite{johnson:12:pldi} is the only automatic
+system to support privatization of dynamically allocated objects, like
+\textbf{pathcost}, even in the presence of unrestricted pointers.
+%
+Figure~\ref{fig:dijkstra_motivation_comparison} compares the property
+inference property of Privateer compared to this work.
+The difference is that
+
+Figure~\ref{fig:dijkstra_motivation_comparison_source_code} compares the
+resulting parallelized versions (in a simplified form) for Privateer and
+this work. The code includes all the added checks, logging and handling
+live-out overheads. The code changes are marked with the average added
+overhead over the useful work of each worker.
+It is clear that Privateer introduces a lot of added overhead considerably
+limiting its profitability. XXX on the other side ..
+
+
+Privateer would choose to just do simple privatization with mem spec.
+The spec-aware analyzer allows removal of mem spec and efficient
+privatization in this case.
+
+\begin{itemize}
+\item
+Privatization of these memory objects requires:
+\begin{enumerate}
+\item
+identification of all accesses of these objects
+    within the loop
+\item
+absence of cross-iteration flow
+     dependences on each of these accesses
+\end{enumerate}
+
+\end{itemize}
+
+
+Remove text from figure 1. Just add some here, the rest has been explained
+earlier.
+Real dependnecs prevent
+DOALL can become applicable if these two objects are proven to have the
+private property.
 
 We compare our approach where we combine static analysis with cheap-to-validate
 with privateer's monolithic approach that over-speculates and is limited by high
@@ -247,9 +460,18 @@ We initially present the compilation flow for both approaches, then the
 resulting parallelized code and finally the flow of live-in and live-out memory
 data.
 
-Remove text from figure 1. Just add some here, the rest has been explained
-earlier.
-Maybe show the dependences in the graph.
+Whilst the private property is enough for DOALL
+Notice that we infer an additional property that improves the profitability
+of parallelization.
+
+%Note that anti-dependences are ignored since both systems use
+%process-based runtime systems.
+
+For inferring the property that a memory object has the locally-accessed
+property, it suffices to identify all accesses of the memory object. If all
+these accesses are within the loop then the memory object has the
+locally-accessed property.
+
 
 %dijkstra (used in the evaluation of Privateer~\cite{}) to showcase how static
 %analysis along with cheap-to-validate speculative assumptions can infer

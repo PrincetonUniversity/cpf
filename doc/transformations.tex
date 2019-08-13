@@ -1,60 +1,45 @@
-Transformations modify the code to remove parallelization inhibitors.
-%
-All transformations are split into two parts. The applicability guard
-that participates in the planning phase and the actual transformation
-that is applied if selected in the transformation phase.
-%
-The applicability guard of a transformation determines where the
-transformation is applicable and under which assumptions.
-%
-This information is collected in a transformation proposal and sent to
-the DOALL planner.
-%
-%This scheme seperates the desicion part from the actual transformation
-%and allows us to evaluate the cost of each dependence separetely and
-This separation of decision making and application of transformations
-allows \name to choose the most profitable plan instead of applying
-all enabling transformations in a fixed order.
-%
-
 Transformations address memory, register or/and control
 cross-iteration dependences.
 
-\paragraph{Memory:} Each applicability guard, based on the information
-on the annotated PDG, determines for each memory object whether the
-transformation can address all its cross-iteration dependences and
-which speculative assumptions need to be validated for the
-transformation to be correct.
-%Object-centric transformation.  All memory objects need to be handled
-%by a transformation.
+% Just present a list here
+
+\paragraph{Memory:}
+
+%Each applicability guard, based on the information
+%on the annotated PDG, determines for each memory object whether the
+%transformation can address all its cross-iteration dependences and
+%which speculative assumptions need to be validated for the
+%transformation to be correct.
+%%Object-centric transformation.  All memory objects need to be handled
+%%by a transformation.
+%%
+%%In particular, each applicability determines
+%In practice, each applicability guard determines which memory objects
+%have certain properties required by the corresponding transformation.
+%%
+%%each access of the memory object should preserve the property
 %
-%In particular, each applicability determines
-In practice, each applicability guard determines which memory objects
-have certain properties required by the corresponding transformation.
+%Each transformation separates the memory objects it is selected to
+%handle in a isolated heap (via re-allocation) and ensures that all
+%accesses of the memory objects is selected to be responsible for are
+%contained within this heap; same in separation
+%speculation~\cite{johnson:17:cgo}.
+%%
+%Each transformation's heap has different sharing
+%%memory mapping
+%primitives and access permissions. Each transformation has its own
+%runtime calls that handle their objects at runtime. Finally, each
+%transformation includes in its proposal the set of speculative
+%assumptions validation necessary for each memory object for the
+%transformation applicability to be correct.
 %
-%each access of the memory object should preserve the property
-
-Each transformation separates the memory objects it is selected to
-handle in a isolated heap (via re-allocation) and ensures that all
-accesses of the memory objects is selected to be responsible for are
-contained within this heap; same in separation
-speculation~\cite{johnson:17:cgo}.
 %
-Each transformation's heap has different sharing
-%memory mapping
-primitives and access permissions. Each transformation has its own
-runtime calls that handle their objects at runtime. Finally, each
-transformation includes in its proposal the set of speculative
-assumptions validation necessary for each memory object for the
-transformation applicability to be correct.
-
-
-%This scheme is similar to separation speculation, but careful allows
-%more effective application.
-
-%Every transformation creates a family with memory objects with the
-%same properties.
-%It collects the set of objects that it can handle.
+%%This scheme is similar to separation speculation, but careful allows
+%%more effective application.
+%
+%%Every transformation creates a family with memory objects with the
+%%same properties.
+%%It collects the set of objects that it can handle.
 
 Memory-related transformations include:
 %
@@ -148,6 +133,8 @@ Reduction,
 Replicable
 
 \subsubsection{Control Dependences}
+
+maybe combine control with register deps
 
 control spec info incorporated into pdg. no classical transformation analysis
 part here. Could remove this control deps section
