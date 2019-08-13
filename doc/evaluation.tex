@@ -1,10 +1,21 @@
 % !TEX root = paper.tex
 \section{Evaluation}
 
-LSD is evaluated against 12 C and C++ benchmarks, covering all the DOALLable
-(showing speedup instead of slowdown) benchmarks from two state-of-the-art
-automatic DOALL parallelization papers~\cite{johnson:12:pldi,kim:12:cgo}. We
-also include one more benchmark (179.art) from HELIX.
+\name is evaluated on a commodity shared-memroy machine with two 14-core
+Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
+(turbo-boost disabled) with 756GB of memory. The operating system is 64-bit
+Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010) and LLVM Compiler
+Infrastructure (version 5.0.2).
+%
+\name is evaluated against 12 C and C++ benchmarks, covering all the
+DOALLable (showing speedup instead of slowdown) benchmarks from two
+state-of-the-art automatic DOALL parallelization
+papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more
+benchmark (179.art) from HELIX.
+
+%
+Each benchmark is profiled using a profiling input and all the following
+experiments are conducted using a different, larger testing input.
 
 \begin{table*}
   \include{figures/benchmark-tab}
@@ -15,26 +26,75 @@ also include one more benchmark (179.art) from HELIX.
     \vspace{-5pt}
 \end{table*}
 
-The machine is using two 14-core Intel Xeon CPU E5-2697 v3 processors (28 cores
-total) running at 2.60GHz (turbo-boost disabled) with 756GB of memory. The
-operating system is 64-bit Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0
-20171010) and LLVM Compiler Infrastructure (version 5.0.2).
-
-
 \subsection{Parallelization Performance}
-Figures Needed:
-\begin{itemize}
-\item General Speed Plot: With different cores (1-28), all benchmarks
-\item Speedup Comparison: 24 cores performance compared with Privateer
-Runtime breakdown (how to minimize the overhead?)
 
-\end{itemize}
-
-\begin{figure*}[htp]
-  \includegraphics[width=\textwidth]{figures/3mm-scale-crop}
-  \caption{3mm Speedup over Different Numbers of Cores}
-  \label{fig:3mm-scale}
+\begin{figure*}[ht]
+  \includegraphics[width=\textwidth]{figures/multi-core-crop}
+  \caption{Fully Automatic Whole Program Speedup over Different Numbers of Cores}
+  \label{fig:multi-core-scale}
 \end{figure*}
+
+Figure \ref{fig:multi-core-scale} presents whole program speedups for
+all benchmarks running with different numbers of cores. These speedups are
+relatvie to the best sequential performance of the original code, compiled
+with \texttt{clang++ -O3}. \name achieves scalable performance on all the
+benchmarks.
+
+% enc-md5, swaptions, gemm, 3mm, 2mm, blackscholes, doitgen
+\texttt{enc-md5}, \texttt{swaptions}, \texttt{gemm}, \texttt{2mm},
+\texttt{3mm}, \texttt{blackscholes}, and \texttt{doitgen} show a
+scalability close to linear. This performance comes from most memory
+objects being privatized with little or no overheads.
+
+% dijkstra
+The \texttt{dijkstra}, having a lot of memory operations like
+\texttt{malloc} and \texttt{mmap} \{\textbf{XXX} no mmaps inside dijkstra \}
+inside the inner loops, manifests a
+significant variance in the runtime.
+
+% 052.alvinn
+\texttt{052.alvinn} exhibits a lower speedup (11$\times$ on 28
+cores) than other benchmarks. This results from the parallelizable loop
+being a nested inner loop with 97.5\% execution time coverage of the whole
+program with the testing input, which results in 16.7$\times$
+theoretical maximum speedup based on Almdahl's Law.
+% 179.art
+\texttt{179.art} whose theoretical maximum speedup is 22.5$\times$, due to
+the same effect, shows a smaller scaling factor close to the bound. Note
+that HELIX\cite{simone:12:cgo} reports 4.2$\times$ speedup on 6 cores while
+\name exhibits 6.5$\times$, showing that an efficient speculative approach
+can even overcome a static approach in terms of speedup.
+
+% correlation and covariance
+\texttt{correlation} and \texttt{covariance} have complicated triangle(?) WAW
+dependence patterns which cannot be resolved by static analysis or cheap
+privatization variants. As a result, the corresponding memory objects are
+classified as private and need logging and merging for write sets,
+resulting in lower speedups.
+
+\begin{figure*}[ht]
+  \includegraphics[width=\textwidth]{figures/compare-privateer}
+  \caption{Whole Program Speedup Comparison}
+  \label{fig:speedup-compare}
+\end{figure*}
+
+Figure \ref{fig:speedup-compare} compares \namensp's results with two
+variants of Privateer and one variant of \namensp. The first bar shows the
+performance of Privateer implemented with the best practice assumption(?). The
+speedup and runtime breakdown results match the description in the paper.
+Although being the state-of-the-art framework in terms of applicability,
+Privateer missed some opportunities to remove some read checks as mentioned
+in STMLite\cite{mehrara:09:stmlite} and ClusterDOALL\cite{kim:12:cgo}. To
+improve as much as possible on top of Privateer, we utilize static
+analysis including a stronger KillFlow analysis pass to remove read checks.
+\texttt{2mm}, \texttt{3mm}, \texttt{doitgen}, \texttt{enc-md5}, and
+\texttt{179.art} benefit from this improvement as shown in the second bar.
+The third bar presents the results of a variant of \name without the cheap
+privatization transformations proposed in \ref{}. Parallelization through
+\name, which incorporates speculation-aware-memory-analysis and cheap
+privatization transformations, is presented in the fourth bar, achieving
+23.0$\times$ speedup compared to 11.5$\times$ by the original Privateer.
+
 
 \subsubsection{Effect of parallelization on vectorization}
 
@@ -44,28 +104,40 @@ instrumentation kills vectorization
 \subsection{Static Analysis and Enablers}
 Figures Needed:
 \begin{itemize}
-\item CAF: with and without; no topping; with only BasicLoopAA and ScevAA
-\item Coverage: Spec-DOALL percentage of coverage of each benchmark
+% (no need, just discuss the use of CAF in previous sections) \item CAF:
+% with and without; no topping; with only BasicLoopAA and ScevAA
+
+% (no need, show in the benchmark table) \item Coverage: Spec-DOALL
+% percentage of coverage of each benchmark
 \item Enablers: Enablers used for each benchmark
 \item Optimization level: Performance with different optimization levels
 \end{itemize}
 
 Discussion Needed:
 
-Present in a table for all the benchmarks which enablers were used
+Present in a table, which enablers were used for all benchmarks
 
 \subsection{Overhead Breakdown}
 
 \begin{figure*}[htp]
   \includegraphics[width=0.9\textwidth]{figures/overheads}
+  \label{fig:overheads}
+  \caption{Overhead comparison with various enablers disabled}
 \end{figure*}
 \begin{figure*}[htp]
   \includegraphics[width=0.9\textwidth]{figures/comparison}
 \end{figure*}
-Huge speedup for dijkstra is largely due to the cheaper "malloc" that
-we use in our heaps. Using a similar malloc in the sequential version
-yields ~16x speedup in dijkstra and insignificant difference in the
-other benchmarks.
+% Huge speedup for dijkstra is largely due to the cheaper "malloc" that
+% we use in our heaps. Using a similar malloc in the sequential version
+% yields ~16x speedup in dijkstra and insignificant difference in the
+% other benchmarks.
+Shown in Figure \ref{fig:overheads} is the overhead breakdown of each
+benchmark comparing \name with various enablers disabled. The useful work
+of \name is normalized to 100\%, with the others being scaled accordingly.
+These result demonstrate the correlation between the sum of the overheads
+to the speedup that can be achieved. \{\textbf{XXX} Something about
+how we remove dependences with redundant private read elimination,
+the new kill\_private heap, and collaboration \}
 
 \subsection{Misspeculation Analysis}
 \begin{figure*}[htp]
@@ -78,27 +150,32 @@ performance of the six speculative benchmarks with misspeculation rates of
 0.1\% and 0.2\%. Since none of the benchmarks exhibit misspeculation on the
 given input sets, we artificially inject misspeculation at the end of
 every 1000 and 500 iterations, respectively, to observe the performance
-degradation. Note that misspeculation with \name is extremely unlikely, as
-static analysis can disprove many speculative assumptions and for many of
-the benchmarks, misspeculation can only occur during a heap check.
+degradation.
+Note that for many benchmarks, speculation is only used
+because analysis cannot disprove a dependence, even though manually
+examining the source code reveals that the dependence will never manifest.
+Thus, the only place misspeculation can possibly occur is during a heap
+check.
+% Note that misspeculation with \name is extremely unlikely, as
+% static analysis can disprove many speculative assumptions and for many of
+% the benchmarks, misspeculation is only possible during a heap check.
 The inputs for \texttt{179.art} were not large enough to have
 enough iterations for misspeculation at these rates, so we perform a
 weighted average of non-misspeculating and misspeculating runs to achieve
-an average corresponding to the respective rates. These results demonstrate
+an average corresponding to the respective rates.
+These results demonstrate
 that \name performs well with only high confidence speculation.
-\{\textbf{XXX} Is this why we can't parallelize the outer loop of
-052.alvinn?\} \textbf{Something about how some benchmarks cannot misspec
+\textbf{Something about how some benchmarks cannot misspec
 with any input, only that analysis cannot prove that} A system that has
 larger overheads has a larger chance of speculation (since they use more
 speculative assumptions), but we minimize the amount of speculation.
-Emphasize that misspeculation doesn't really happen in practice
 % As the iteration within a checkpoint that misspeculation
 % occurs can affect the recovery cost, we inject these misspeculations in the
 % middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more
 % realistic simulation, assuming that programs can misspeculate at any iteration with a
 % uniform distribution.
 
-\subsection{Power Consumption}
+% \subsection{Power Consumption}
 
-Power and energy stats here
+% Power and energy stats here
 
