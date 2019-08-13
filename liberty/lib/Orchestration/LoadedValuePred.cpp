@@ -131,10 +131,13 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
   const Value *ptrB = getPtr(B, dataDepTy);
   bool predA = predspec->isPredictable(A, L);
   bool predB = predspec->isPredictable(B, L);
+  bool predictableI = false;
   if (predA || predB) {
     ++numNoMemDep;
     remedy->ptr = (predA) ? ptrA : ptrB;
     remedResp.depRes = DepResult::NoDep;
+
+    predictableI = true;
 
     DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
@@ -155,9 +158,9 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
     }
     remedResp.depRes = DepResult::NoDep;
 
-    if ( dataDepTy == DataDepType::WAW )
+    if ( dataDepTy == DataDepType::WAW && !predictableI)
       WAWcollabDepsHandled++;
-    if ( dataDepTy == DataDepType::RAW )
+    if ( dataDepTy == DataDepType::RAW && !predictableI)
       RAWcollabDepsHandled++;
 
     DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
