@@ -471,9 +471,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     remedy->type = PrivRemedy::Normal;
     remedResp.remedy = remedy;
 
-    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
-      WAWcollabDepsHandled++;
-    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+    if (remedy->ctrlSpecUsed)
       RAWcollabDepsHandled++;
 
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
@@ -496,10 +494,8 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     remedResp.remedy = remedy;
 
 
-    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+    if (remedy->ctrlSpecUsed)
       WAWcollabDepsHandled++;
-    if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
-      RAWcollabDepsHandled++;
 
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
