@@ -1,0 +1,35 @@
+\begin{algorithm}
+\scriptsize
+\KwLet ApplicableSset = $\emptyset$; \\
+\KwLet NonApplicableSet = $\emptyset$; \\
+\ForEach{instruction I in S}{
+\If{I is of the form ``r := load p''}{
+\KwLet O = Profile.mapPointerToObjects(p)\;
+\uIf{(exists instruction of the form ``store v, p'') \KwAnd \\
+\ \ \ (exists instruction of the form ``v := op r, x'' where \\
+\ \ \ op is associative and commutative)}{
+ReduxFootprint = ReduxFootprint $\cup$ O;
+}
+\Else {
+ReadFootprint = ReadFootprint $\cup$ O;
+}
+}
+\If{I is of the form ``store v, p''}{
+\KwLet O = Profile.mapPointerToObjects(p)\;
+\uIf{(exists instruction of the form ``r := load p'') \KwAnd \\
+\ \ \ (exists instruction of the form ``v := op r, x'' where \\
+\ \ \ op is associative and commutative)}{
+ReduxFootprint = ReduxFootprint $\cup$ O;
+}
+\Else {
+WriteFootprint = WriteFootprint $\cup$ O;
+}
+}
+\If{I is of the form ``r := call f(...)''}{
+ recur on f;
+}
+}
+\KwReturn (ReadFootprint, WriteFootprint, ReduxFootprint)
+\caption{\label{alg:enablers}\textit{getApplicableObject(enabler, pdg)}}
+\end{algorithm}
+

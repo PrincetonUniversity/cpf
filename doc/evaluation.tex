@@ -12,14 +12,20 @@ Infrastructure (version 5.0.2).
 DOALLable (showing speedup instead of slowdown) benchmarks from two
 state-of-the-art automatic DOALL parallelization
 papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more
-benchmark (179.art) from HELIX. These benchmarks are from five benchmark
-suites (Trimaran\cite{trimaran:web}, SPEC\cite{},
-PARSEC\cite{bienia:08:parsec}, MiBench\cite{guthaus:2001:iiwsc}). All
-PolyBench benchmarks and \texttt{dijkstra} from MiBench are modified to
-accept command line arguments and allocate arrays dynamically in the same
-way as \cite{kim:12:cgo}. This modification is used to create bigger
-inputs, which is necessary for separating profiling and evaluation input
-sets.
+benchmark (179.art) from HELIX~\cite{simone:12:cgo}.
+
+This work is focusing on boosting the efficiency of automatic
+parallelization rather than increasing the applicability of it. This is
+why we choose benchmarks that have been parallelized in prior work to
+make a fair comparison.
+
+These benchmarks are from five benchmark suites
+(Trimaran\cite{trimaran:web}, SPEC\cite{}, PARSEC\cite{bienia:08:parsec},
+MiBench\cite{guthaus:2001:iiwsc}). All PolyBench benchmarks and
+\texttt{dijkstra} from MiBench are modified to accept command line
+arguments and allocate arrays dynamically in the same way as
+\cite{kim:12:cgo}. This modification is used to create bigger inputs, which
+is necessary for separating profiling and evaluation input sets.
 
 %
 Each benchmark is profiled using a profiling input and all the following
@@ -28,8 +34,12 @@ experiments are conducted using a different, larger testing input.
 \begin{table*}[h]
   \include{figures/benchmark-tab}
   \caption{
-    Benchmark Details:
-  }
+    Benchmark Details: Execution time coverage is the percentage of
+  execution time of paralleized loops. Based on it, the theoretical max
+  speedup is calculated using Amdahl's Law with the assumptions of  no
+  overheads and 28 workers. The Speculation-Aware Memory Analysis coverage
+  is the numbers of dependences covered by it and the percentage of
+  unresolved dependences by static analysis alone.}
   \label{tab:benchmark-list}
     \vspace{-5pt}
 \end{table*}
