@@ -298,58 +298,6 @@ For more details refer to section~\ref{collab}.
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
 
-\begin{figure}[t]
-  \centering
-  %\begin{tabular}{cc}
-  \scriptsize
-    \subfloat{
-    \begin{minipage}{5cm}
-      \input{figures/dijkstra_motivation}
-    \end{minipage}
-    }
-%    &
-     \hspace{1cm}
-%\subfloat
-%{
-%    \begin{minipage}{7cm}
-%  %  \includegraphics[scale=0.7]{figures/seq_motivation.pdf}
-%
-%\begin{itemize}
-%\item
-%Reuse across iterations of the \textbf{pathcost} array and global variable
-%\textbf{dist} creates cross-iteration false dependences that inhibit
-%parallelization.
-%
-%\item
-%Privatization enables parallelization of this loop by creating private copies
-%of \textbf{pathcost} and \textbf{dist} memory objects for every worker.
-%
-%\item From prior work, Privateer~\cite{Johnson:12:plid} is the only automatic
-%system to support privatization of dynamically allocated objects, like
-%\textbf{pathcost}, even in the presence of unrestricted pointers.
-%
-%\item
-%Privatization of these memory objects requires:
-%\begin{enumerate}
-%\item
-%identification of all accesses of these objects
-%    within the loop
-%\item
-%absence of cross-iteration flow
-%     dependences on each of these accesses
-%\end{enumerate}
-%
-%\end{itemize}
-%
-%    \end{minipage}
-%}
-%\end{tabular}
-
-\caption{Sequential \textit{dijkstra} example from MiBench~\cite{}}
-%(with dynamic allocation of arrays (static privatization is not applicable anymore). assume that pathcost cannot be proven as non-liveout)
-\label{fig:dijkstra_motivation}
-\end{figure}
-
 \begin{figure*}
 \centering
 \subfloat[Privateer~\cite{johnson:12:pdli}]{
