@@ -11,56 +11,90 @@
 %multicore grossly underutilized.
 
 %Parallelization is necessary
-Multicore architectures are ubiquitous in systems ranging from mobile to
-``warehouse scale'' systems. Thus, parallelism is more important than ever to
-harvest more performance from current hardware.  This burden of extracting
-sufficient parallelism has fallen on programmers and compilers. Yet, despite
-many new tools, languages, and libraries designed for multicore, multicore
-remains a grossly underutilized technology.
+%Multicore architectures are ubiquitous in systems.
+%ranging from mobile to ``warehouse scale'' systems.
+%Thus, parallelism is more important than ever to harvest more
+%performance from current hardware.
 
-
-%Programmers?
-
-%There are many ways programmers can manually realize parallelism.  Common
-%approaches, such as PThreads~\cite{pthread:web},
-%Map-Reduce~\cite{dean:08:cacm}, and OpenMP~\cite{openmp:web}, generally help
-%programmers extract coarse grained parallelism (CGP) from hot loops in
-%applications.
-Manually expressing parallelism is tedious and error-prone. The programmers that
-do attempt parallelism typically rely on popular approaches (e.g.,
-PThreads~\cite{pthread:web}, OpenMP~\cite{openmp:web}) that focus on extracting
-coarse grained parallelism from a few hot loops with simple control and data
-flow. Even if manual parallelization is successfully applied,
-%a program is manually parallelized,
-it is still an unappealing option due to the high maintenance cost of parallel
-code compared to sequential (five times more expensive according to
-Google~\cite{google_cite_simone}).
+Multicore architectures are ubiquitous in systems.  Thus, extracting
+parallelism is more important than ever to harvest more performance
+from current hardware.
+%
+%This burden of extracting sufficient parallelism has fallen on
+%programmers and compilers.
+Yet, despite many new tools, languages, and libraries designed for
+multicore, multicore remains a grossly underutilized technology.
 %
 
+%Programmers?
+%
+%There are many ways programmers can manually realize parallelism.
+%Common approaches, such as PThreads~\cite{pthread:web},
+%Map-Reduce~\cite{dean:08:cacm}, and OpenMP~\cite{openmp:web},
+%generally help programmers extract coarse grained parallelism (CGP)
+%from hot loops in applications.
+Manually expressing parallelism is tedious and error-prone. The
+programmers that do attempt parallelism typically rely on popular
+approaches (e.g., PThreads~\cite{pthread:web},
+OpenMP~\cite{openmp:web}, Map-Reduce~\cite{dean:08:cacm}) that focus
+on extracting coarse grained parallelism from programs with simple
+control and data flow. This is beneficial for various workloads in
+cluster and warehouse-scale systems but is insufficient for general
+purpose programs on multicore, where finer-grained parallelization is
+needed.
+%Asking programmers to address the multicore under-utilization for
+%general purpose programs with finer-grained parallelism extraction
+%would result in enormous increase in programmers' effort.
+
+%Even if manual parallelization is successfully applied, %a program is
+%manually parallelized, it is still an unappealing option due to the
+%high maintenance cost of parallel code compared to sequential (five
+%times more expensive according to Google~\cite{google_cite_simone}).
+%
+%
 %autopar is very useful
-Automatic parallelization is an attractive approach to make efficient use of
-multicore systems.
-%, yielding performance improvement even for already parallelized applications
-%(e.g, reduced maximum latency on each parallel task of a CGP-parallelized
-%application).
-Unfortunately, even after 15 years of multicore, automatic parallelization is
-still mostly limited to scientific and data-intensive applications.
-%the routine extraction of TLP remains elusive.
+Automatic parallelization is a more attractive approach to make
+efficient use of multicore systems.
+%, yielding performance improvement even for already parallelized
+%applications (e.g, reduced maximum latency on each parallel task of a
+%CGP-parallelized application).  Unfortunately, even after 15 years of
+%multicore, automatic parallelization is still mostly limited to
+%scientific and data-intensive applications.  the routine extraction
+%of TLP remains elusive.
+%
+Automatic parallelization techniques utilize analysis and enabling
+transformations attempt to distribute, without data races, work across
+processes or threads.
+%
+Analysis infers program properties, while enabling transformations
+modify the program to eliminate parallelization inhibitors identified
+by the analysis.
+%
+Such a parallelization inhibitor is reuse of data structures.
+Privatization, a key enabling transformation for
+parallelization~\cite{citations_from_privateer}, can remove contention
+caused by this reuse by creating a private copy for each parallel
+worker.
+%A key enabling transformation for parallelization is
+%privatization~\cite{citations_from_privateer}. Privatization creates
+%private memory objects for each worker to address contention in the
+%case of data structures reuse.
+
+
+%The most common and well-studied parallelization paradigm is DOALL. In
+%DOALL parallelization, loop iterations run independently of each
+%other.
+%
+%Analysis tries to prove that there is no data flow across iterations
+%and thus DOALL parallelization is applicable.
 
 %analyis limitations
 %
-%Automatic parallelization utilizes analysis and enabling
-%transformations to distribute, without data races, work across
-%processes or threads.  A key enabling transformation is
-%privatization, where private copy are created for each worker to
-%address contention in the case of data structures reuse.
-%
-
-Early works had limited applicability - restrained to regular code
-patterns (e.g., scientific applications) - due to their reliance on
-static dependence analysis (including alias analysis and control flow
-analysis), which is undecidable and difficult in practice, especially
-for general-purpose C/C++ programs.
+Early works on automatic parallelization had limited applicability -
+restrained to regular code patterns (e.g., scientific applications) -
+due to their reliance on static dependence analysis (including alias
+analysis and control flow analysis), which is undecidable and
+difficult in practice, especially for general-purpose C/C++ programs.
 %
 
 %Major impediments to automatic parallelization are the limitations of static
@@ -96,38 +130,54 @@ for general-purpose C/C++ programs.
 %applications.
 
 %speculation necessary
-Speculation allows the compiler to overcome static analysis' constraints,
-optimize for an expected
+Speculation allows the compiler to overcome static analysis'
+constraints, optimize for an expected
 %/common
 case, and ignore rare or impossible dependences.
 %
-Research into speculation has
-shown incredible potential for the applicability and aggressiveness of
-parallelizing transformations~\cite{zhong:08:hpca, johnson:12:pldi}.
-%Speculative parallelization exploits simplifying assumptions about the input
-%code to deliver increased parallel performance.
+%Memory flow speculation is the powerful and commonly used form of
+%speculation.
+%
+Apart from removing rare dependences, speculation also led to the
+design of speculative versions of enabling transformations that
+exhibit higher applicability than their conservative counterparts.
+One such example is a highly applicable speculative privatization
+proposed in a system called Privateer~\cite{johnson:12:pldi}.
+%
+%In general, research into speculation has shown incredible potential
+%for the applicability and aggressiveness of parallelizing
+%transformations~\cite{zhong:08:hpca, johnson:12:pldi}.
+%
+%Speculative parallelization exploits simplifying assumptions about
+%the input code to deliver increased parallel performance.
 %
 %
 %speculation problems
-Yet, software speculative systems face real challenges that prevent their
-widespread adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
+Yet, despite their potential, software speculative systems face real
+challenges that prevent their widespread
+adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 % TODO: Add more citations here
-
-%Major bottlenecks include high communication and bookkeeping costs for memory
-%flow speculation validation,
-%and memory live-out handling.
-%and privatization.
-
-One major bottleneck is the high communication and bookkeeping costs
-for memory flow speculation validation.  Even if we assume that
-misspeculation never occurs, validating speculative assumptions adds
-to the parallel region's latency in the common case, not only during
-recovery, and may heavily degrade performance.
 %
-In particular, validation of memory flow speculation requires
-instrumenting memory operations within the parallel region to log or
-communicate speculative accesses to a validation system. As the size
-of the speculative region increases, the validation cost becomes
+%Major bottlenecks include high communication and bookkeeping costs
+%for memory flow speculation validation, and memory live-out handling.
+%and privatization.  The observed pattern is the more applicable
+%speculation made, the less efficient it became.
+
+The relaxed program dependence structure offered by memory flow
+speculation comes with a high cost.
+%Memory flow speculation offers a relaxed program dependence structure
+%but entails high communication and bookkeeping costs for its
+%validation.
+Even if we assume that misspeculation never occurs,
+%validating speculative assumptions adds to the parallel region's
+%latency in the common case, not only during recovery, and may heavily
+%degrade performance.
+%
+%In particular,
+validation of memory flow speculation requires instrumenting memory
+operations within the parallel region to log or communicate
+speculative accesses to a validation system. As the size of the
+speculative region increases, the validation cost becomes
 prohibitively expensive and outweighs any parallelization benefit.
 %read/write sets grow
 %
@@ -145,36 +195,47 @@ prohibitively expensive and outweighs any parallelization benefit.
 %transformations~\cite{citations_from_privateer}, most promintently
 %privatization.
 
-Even when dynamic checks for data flows are minimized, overheads
-related to
-%correctly
-speculative privatization
+
+%Speculative versions of enabling transformations also
+%
+%One
+%such example is speculative privatization proposed in a system called
+%Privateer~\cite{johnson:12:pldi}.
+%
+%Other process-based speculative systems suffer from the same problem.
+
+Similarly,
+%Even when dynamic checks for data flows are minimized, overheads
+%related to correctly
+speculative enabling transformations, and
+%most prominently
+in particular speculative privatization
 %merging parallel workers' memory state handling live-out memory state
-%after parallel invocation
-may then become a bottleneck.
+%after parallel invocation may then become a bottleneck.
+may also entail high overheads.
 %
-Privatization is a key enabling transformation for
-parallelization~\cite{citations_from_privateer}.
+%Privatization is a key enabling transformation for
+%parallelization~\cite{citations_from_privateer}.
 %
-It handles reuse of data structures by producing a private copy for
-each parallel worker,
+%It handles reuse of data structures by producing a private copy for
+%each parallel worker,
 %
 %especially in the presence of cross-iteration false dependences.
 %caused by data structures reuse.
 %
-and in process-based speculative parallelization
-systems~\cite{kim:12:cgo,johnson:12:pldi,smtx,dstx} it is commonly
-used for the whole memory of each worker (copy-on-write semantics).
+%and in process-based speculative parallelization
+%systems~\cite{kim:12:cgo,johnson:12:pldi,smtx,dstx} it is commonly
+%used for the whole memory of each worker (copy-on-write semantics).
 %
 %Process-based speculative paralellization
 %systems~\cite{kim:12:cgo,johnson:12:pldi,smtx,dstx} commonly apply
 %privatization to the whole memory state of each worker with usage of
 %copy-on-write semantics.
 %
-Unfortunately, merging the private memory state of workers to the
-committed memory state often forces speculative systems to monitor
-large write sets during parallel execution, significantly degrading
-their profitability~\cite{kim:12:cgo,johnson:12:pldi}.
+Merging the private memory state of workers to the committed memory
+state often forces speculative systems to monitor large write sets
+during parallel execution, significantly degrading their
+profitability~\cite{kim:12:cgo,johnson:12:pldi}.
 %to ensure correct live-out state after parallel invocation.
 %
 %The state-of-the-art scheme for speculative
@@ -231,11 +292,11 @@ while minimizing the usage of memory flow speculation and the cost of
 privatization,
 %
 this work proposes an automatic parallelization framework which
-combines a speculation-aware memory analyzer, enabling transformations
-including efficient speculative privatization, and a parallelization
-planner. These components during an exploration phase discover the
-best performing set of parallelization techniques. This way, certain
-unnecessary parallelization overheads of prior work are avoided.
+combines a speculation-aware memory analyzer, efficient variants of
+speculative privatization, and a parallelization planner. These
+components during an exploration phase discover the best performing
+set of parallelization techniques. This way, certain unnecessary
+parallelization overheads of prior work are avoided.
 %
 %which explores, during a planning phase, the effect of speculative
 %assumptions and the results of a novel speculation-aware memory
@@ -279,7 +340,7 @@ edge profiling detects never taken branches, while kill-flow analysis
 disproves memory dependences by finding killing operations along all
 feasible paths between two operations. If kill-flow is able to use
 speculative control flow information, then it can assert absence of,
-non-disprovable statically, memory dependences under a
+non statically disprovable, memory dependences under a
 cheap-to-validate speculative assumption.
 %
 %This idea is inspired by the benefits of collaboration among static
@@ -289,8 +350,9 @@ memory analysis on the transformed code would not have the same
 effect.  Memory analysis needs to treat this speculative information
 as a fact and ignore the possibility of misspeculation.
 
-Combining static with cheap-to-validate speculative assumptions also
-enables efficient variants of speculative privatization.
+Combining static analysis with cheap-to-validate speculative
+assumptions also enables efficient variants of speculative
+privatization.
 %
 These variants avoid the extensive bookkeeping, during parallel
 execution, that is observed in the state-of-the-art scheme for
@@ -369,15 +431,16 @@ the privatization overheads.
 %parallelization obstacle.
 %
 
-This paper presents \name, an instantiation of this proposed framework for DOALL
-parallelization. \name consists of a parallelizing LLVM-based compiler and a
-lightweight
+This paper presents \name, an instantiation of this proposed framework
+for DOALL\footnote{loop iterations run independently of each other}
+parallelization. \name consists of a parallelizing LLVM-based compiler
+and a lightweight
 %, unified (for both speculative and non-speculative execution)
-runtime system. The compiler selects minimal-cost solutions to parallelization
-inhibitors using state-of-the-art static analysis (\`{a} la
-CAF~\cite{johnson:cgo:17}) and profiling-based speculative assumptions, while
-the runtime offers efficient parallel execution and low-cost speculation
-validation.
+runtime system. The compiler selects minimal-cost solutions to
+parallelization inhibitors using state-of-the-art static analysis
+(\`{a} la CAF~\cite{johnson:cgo:17}) and profiling-based speculative
+assumptions, while the runtime offers efficient parallel execution and
+low-cost speculation validation.
 %
 
 We focus on DOALL, because it is the ideal parallelization technique when
@@ -392,12 +455,12 @@ hardware are underwhelming.
 The primary contributions of this paper are:
 \begin{itemize}
 
-\item A novel \textbf{speculation-aware} memory analyzer that takes
+\item The first \textbf{speculation-aware} memory analyzer that takes
 full advantage of speculation by allowing memory analysis to interpret
 cheap-to-validate speculative assumptions as facts;
 %combined strenghts
 
-\item New efficient \textbf{speculative privatization transformations}
+\item A novel efficient \textbf{speculative privatization transformations}
 that avoid the overheads of prior speculative privatization
 techniques;
 
