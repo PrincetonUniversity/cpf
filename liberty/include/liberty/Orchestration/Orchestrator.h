@@ -1,26 +1,27 @@
 #ifndef LLVM_LIBERTY_ORCHESTRATOR_H
 #define LLVM_LIBERTY_ORCHESTRATOR_H
 
-#include "liberty/Strategy/PipelineStrategy.h"
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
-#include "liberty/Utilities/PrintDebugInfo.h"
-#include "liberty/Orchestration/Remediator.h"
-#include "liberty/Orchestration/Critic.h"
-#include "liberty/Orchestration/PSDSWPCritic.h"
-#include "liberty/Orchestration/TXIORemed.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
-#include "liberty/Orchestration/ReduxRemed.h"
-#include "liberty/Orchestration/PrivRemed.h"
-#include "liberty/Orchestration/SmtxSlampRemed.h"
-#include "liberty/Orchestration/SmtxLampRemed.h"
+#include "liberty/Orchestration/CountedIVRemed.h"
+#include "liberty/Orchestration/Critic.h"
 #include "liberty/Orchestration/HeaderPhiPredRemed.h"
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
-#include "liberty/Orchestration/CountedIVRemed.h"
-#include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/LocalityAA.h"
-#include "liberty/Orchestration/PtrResidueRemed.h"
-#include "liberty/Orchestration/MemVerRemed.h"
+#include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/MemSpecAARemed.h"
+#include "liberty/Orchestration/MemVerRemed.h"
+#include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Orchestration/PrivRemed.h"
+#include "liberty/Orchestration/PtrResidueRemed.h"
+#include "liberty/Orchestration/ReduxRemed.h"
+#include "liberty/Orchestration/Remediator.h"
+#include "liberty/Orchestration/SmtxLampRemed.h"
+#include "liberty/Orchestration/SmtxSlampRemed.h"
+#include "liberty/Orchestration/TXIORemed.h"
+#include "liberty/Strategy/PipelineStrategy.h"
+#include "liberty/Utilities/PrintDebugInfo.h"
 //#include "liberty/Orchestration/MemAllocRemed.h"
 #include "liberty/Orchestration/LoopFissionRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
@@ -62,7 +63,7 @@ public:
       SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-      LoopProfLoad &lpl,
+      KillFlow &kill, LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -74,14 +75,16 @@ public:
 private:
   std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
 
-  std::vector<Remediator_ptr> getRemediators(
-      Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-      PredictionSpeculation *loadedValuePred,
-      PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-      TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
-      SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
-      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA);
+  std::vector<Remediator_ptr>
+  getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+                 PredictionSpeculation *loadedValuePred,
+                 PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+                 TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+                 SmtxSlampSpeculationManager &smtxMan,
+                 SmtxSpeculationManager &smtxLampMan,
+                 PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+                 const Read &rd, const HeapAssignment &asgn, Pass &proxy,
+                 LoopAA *loopAA, KillFlow &kill);
 
   std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                      unsigned threadBudget, LoopProfLoad *lpl);

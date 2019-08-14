@@ -14,19 +14,20 @@
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/DOTGraphTraits.h"
 
-#include "liberty/LoopProf/Targets.h"
+#include "PDG.hpp"
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
+#include "liberty/LoopProf/Targets.h"
+#include "liberty/PDGBuilder/PDGBuilder.hpp"
 #include "liberty/Speculation/ControlSpeculator.h"
-#include "liberty/Speculation/Selector.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Speculation/Selector.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
-#include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
-#include "PDG.hpp"
-#include "liberty/PDGBuilder/PDGBuilder.hpp"
+#include "llvm/Analysis/BranchProbabilityInfo.h"
 
 #include "liberty/GraphAlgorithms/Ebk.h"
 //#include "PtrResidueAA.h"
@@ -89,6 +90,7 @@ void Selector::analysisUsage(AnalysisUsage &au)
   au.addRequired< ModuleLoops >();
   au.addRequired< LoopProfLoad >();
   au.addRequired< LAMPLoadProfile >();
+  au.addRequired< KillFlow >();
   au.addRequired< Targets >();
   au.addRequired< ProfilePerformanceEstimator >();
   au.setPreservesAll();
@@ -164,6 +166,7 @@ unsigned Selector::computeWeights(
   PtrResidueSpeculationManager &ptrResMan =
       proxy.getAnalysis<PtrResidueSpeculationManager>();
   LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
+  KillFlow &kill = proxy.getAnalysis< KillFlow >();
   const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
   Classify &classify = proxy.getAnalysis<Classify>();
   LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
@@ -228,7 +231,7 @@ unsigned Selector::computeWeights(
       bool applicable = orch->findBestStrategy(
           A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred,
           mloops, tli, smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
-          loopAA, lpl, ps, sr, sc, NumThreads,
+          loopAA, kill, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),

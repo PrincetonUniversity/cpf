@@ -38,6 +38,19 @@ bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   return this->storeI < privRhs->storeI;
 }
 
+Remedies PrivRemediator::satisfy(const PDG &pdg, Loop *loop,
+                                 const Criticisms &criticisms)
+{
+
+  Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
+
+  // print number
+  DEBUG(errs() << "Number of RAW collab deps handled by PrivRemed: " << RAWcollabDepsHandled << '\n');
+  DEBUG(errs() << "Number of WAW collab deps handled by PrivRemed: " << WAWcollabDepsHandled << '\n');
+
+  return remedies;
+}
+
 bool PrivRemediator::mustAlias(const Value *ptr1, const Value *ptr2) {
   // Very easy case
   if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
@@ -130,7 +143,8 @@ bool PrivRemediator::blockMustKill(const BasicBlock *bb, const Value *ptr,
 }
 
 bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
-                                         const Instruction *before) {
+                                         const Instruction *before,
+                                         bool useCtrlSpec) {
   if (!L)
     return false;
 
@@ -159,13 +173,51 @@ bool PrivRemediator::isPointerKillBefore(const Loop *L, const Value *ptr,
     if (bb == L->getHeader())
       break;
 
-    ControlSpeculation::LoopBlock next = specDT->idom(iter);
+    ControlSpeculation::LoopBlock next =
+        (useCtrlSpec) ? specDT->idom(iter) : noSpecDT->idom(iter);
     if (next == iter)
       // self-loop. avoid infinite loop
       return false;
 
     iter = next;
   }
+  return false;
+}
+
+bool PrivRemediator::isSpecSeparated(const Instruction *I1,
+                                     const Instruction *I2, const Loop *L) {
+  const Value *ptr1 = liberty::getMemOper(I1);
+  const Value *ptr2 = liberty::getMemOper(I2);
+
+  if (!ptr1)
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I1))
+      ptr1 = mti->getRawDest();
+  if (!ptr2)
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I2))
+      ptr2 = mti->getRawSource();
+
+  if (!ptr1 || !ptr2)
+    return false;
+
+  if (!isa<PointerType>(ptr1->getType()) || !isa<PointerType>(ptr2->getType()))
+    return false;
+
+  const Ctx *ctx = read.getCtx(L);
+
+  Ptrs aus1;
+  HeapAssignment::Type t1 = HeapAssignment::Unclassified;
+  if (read.getUnderlyingAUs(ptr1, ctx, aus1))
+    t1 = asgn.classify(aus1);
+
+  Ptrs aus2;
+  HeapAssignment::Type t2 = HeapAssignment::Unclassified;
+  if (read.getUnderlyingAUs(ptr2, ctx, aus2))
+    t2 = asgn.classify(aus2);
+
+  if (t1 != t2 && t1 != HeapAssignment::Unclassified &&
+      t2 != HeapAssignment::Unclassified)
+    return true;
+
   return false;
 }
 
@@ -181,18 +233,26 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
   for (auto edge : pdgNode->getOutgoingEdges()) {
     if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
         edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT())) {
+
       return false;
+     //  // check if LC mem RAW can be removed with killflow + ctrl spec
+     //  // or using separation speculation
+     //  LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT());
+     //  if (!loadI)
+     //    return false;
+     //  Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand());
 
-      // check if LC mem RAW can be removed with killflow + ctrl spec
-      /* LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT()); */
-      /* if (!loadI) */
-      /*   return false; */
-      /* Value *loadPtr = dyn_cast<Value>(loadI->getPointerOperand()); */
 
-      /* if (!isPointerKillBefore(L, loadPtr, loadI)) */
-      /*   return false; */
+     //  if (isPointerKillBefore(L, loadPtr, loadI))
+     //    ctrlSpecUsed = true;
 
-      /* ctrlSpecUsed = true; */
+     //  if (!isPointerKillBefore(L, loadPtr, loadI) &&
+     //      !isSpecSeparated(I, loadI, L))
+     //    return false;
+
+     //  // TODO: change all ctrlSpecUsed to specUsed
+     //  // add something for spec sep
+     // // ctrlSpecUsed = true;
     }
   }
   return true;
@@ -364,6 +424,12 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
+
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+        WAWcollabDepsHandled++;
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+        RAWcollabDepsHandled++;
+
       return remedResp;
     } else if (isLocalPrivate(B, ptr2, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
@@ -372,21 +438,29 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
+
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::WAW)
+        WAWcollabDepsHandled++;
+      if (remedy->ctrlSpecUsed && dataDepTy == DataDepType::RAW)
+        RAWcollabDepsHandled++;
+
       return remedResp;
     }
   }
 
   // look for conservative privitization
   bool WAW = dataDepTy == DataDepType::WAW;
+  bool RAW = dataDepTy == DataDepType::RAW;
 
   // need to be loop-carried WAW where the privitizable store is either A or B
   bool privateA = isPrivate(A, L, remedy->ctrlSpecUsed);
   bool privateB = false;
   if (!privateA)
     privateB = isPrivate(B, L, remedy->ctrlSpecUsed);
-  if (LoopCarried && WAW &&
-      ((isa<StoreInst>(A) && privateA) ||
-       (isa<StoreInst>(B) && privateB))) {
+
+  // handle RAW for non-locals
+  if (LoopCarried && RAW &&
+      ((isa<StoreInst>(A) && privateA) || (isa<StoreInst>(B) && privateB))) {
     ++numPrivNoMemDep;
     remedResp.depRes = DepResult::NoDep;
     if (isa<StoreInst>(A) && privateA)
@@ -397,10 +471,120 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     remedy->type = PrivRemedy::Normal;
     remedResp.remedy = remedy;
 
+    if (remedy->ctrlSpecUsed)
+      RAWcollabDepsHandled++;
+
+    DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
+                 << *B << '\n');
+
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
+  if (LoopCarried && WAW &&
+      ((isa<StoreInst>(A) && privateA) || (isa<StoreInst>(B) && privateB))) {
+    ++numPrivNoMemDep;
+    remedResp.depRes = DepResult::NoDep;
+    if (isa<StoreInst>(A) && privateA)
+      remedy->storeI = dyn_cast<StoreInst>(A);
+    else
+      remedy->storeI = dyn_cast<StoreInst>(B);
+
+    remedy->type = PrivRemedy::Normal;
+    remedResp.remedy = remedy;
+
+
+    if (remedy->ctrlSpecUsed)
+      WAWcollabDepsHandled++;
+
     DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
 
     if (A != B) {
+      // want to cover cases such as this one:
+      // for (..)  {
+      //   x = ...   (B)
+      //   ...
+      //   x = ...   (A)
+      // }
+      // In this case self-WAW of A is killed by B and vice-versa but there is
+      // still a LC WAW from A to B. This LC WAW can be ignored provided that B
+      // overwrites the memory footprint of A. If not then it is likely that
+      // there is no self-WAW LC dep but there is a real non-full-overwrite WAW
+      // from A to B. Covariance benchmark from Polybench exhibits this case
+      // (A: symmat[j2][j1] = ...  , B: symmat[j1][j2] = 0.0;).
+      // Correlation exhibits a similar issue.
+      //
+      // check that A is killed by B
+
+      if (!L)
+        return remedResp;
+      const Value* ptr1 = getPtr(A, dataDepTy);
+      const Value* ptr2 = getPtr(B, dataDepTy);
+      if (!ptr1 || !ptr2)
+        return remedResp;
+
+      const BasicBlock *bbA = A->getParent();
+      const BasicBlock *bbB = B->getParent();
+      // dominance info are intra-procedural
+      if (bbA->getParent() != bbB->getParent())
+        return remedResp;
+      const DominatorTree *dt = killFlow.getDT(bbA->getParent());
+
+      // collect the chain of all idom from A
+      DomTreeNode *nodeA = dt->getNode(const_cast<BasicBlock *>(bbA));
+      DomTreeNode *nodeB = dt->getNode(const_cast<BasicBlock *>(bbB));
+      if (!nodeA || !nodeB)
+        return remedResp;
+
+      std::unordered_set<DomTreeNode *> idomChainA;
+      for (DomTreeNode *n = nodeA; n; n = n->getIDom()) {
+        const BasicBlock *bb = n->getBlock();
+        if (!bb || !L->contains(bb))
+          break;
+        idomChainA.insert(n);
+      }
+
+      const BasicBlock *commonDom = nullptr;
+      DomTreeNode *commonDomNode = nullptr;
+      for (DomTreeNode *n = nodeB; n; n = n->getIDom()) {
+        const BasicBlock *bb = n->getBlock();
+        if (!bb || !L->contains(bb))
+          break;
+        if (idomChainA.count(n)) {
+          commonDom = bb;
+          commonDomNode = n;
+          break;
+        }
+      }
+      if (!commonDom)
+        return remedResp;
+
+      if (commonDom == B->getParent()) {
+        if (killFlow.instMustKill(B, ptr1, 0, 0, L)) {
+          remedy->type = PrivRemedy::FullOverlap;
+          remedResp.remedy = remedy;
+          return remedResp;
+        } else {
+          commonDomNode = commonDomNode->getIDom();
+          commonDom = commonDomNode->getBlock();
+          if (!commonDom || !L->contains(commonDom))
+            return remedResp;
+        }
+      }
+
+      if (!killFlow.blockMustKill(commonDom, ptr1, nullptr, A, 0, 0, L))
+        return remedResp;
+
+      // the following check if not enough for correlation
+      // if (!killFlow.pointerKilledBefore(L, ptr1, A) &&
+      //    !killFlow.pointerKilledBefore(L, ptr2, A))
+      //  return remedResp;
+      // the following check is too conservative and misses fullOverlap
+      // opportunities. Need to use killflow
+      // if (!isPointerKillBefore(L, ptr1, A, true))
+      //  return remedResp;
+
       // treat it as full_overlap. if it is not a fullOverlap there will be
       // self-WAW for either A or B that will not be reported as FullOverlap and
       // the underlying AUs will remain in the private family

@@ -60,7 +60,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA) {
+    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+    KillFlow &kill) {
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
@@ -94,8 +95,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA, ctrlspec);
-  privRemed->setLoopPDG(pdg, A);
+  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
+      ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
   remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
@@ -279,7 +280,7 @@ bool Orchestrator::findBestStrategy(
     SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
+    KillFlow &kill, LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -310,7 +311,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds = getRemediators(
       loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, tli, ldi,
-      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA);
+      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
@@ -326,6 +327,7 @@ bool Orchestrator::findBestStrategy(
     }
   }
 
+  /*
   // print all remedies for every loop-carried dependence
   for (Criticism *cr : allCriticisms) {
     if (cr->isLoopCarriedDependence()) {
@@ -333,6 +335,7 @@ bool Orchestrator::findBestStrategy(
       printAllRemedies(sors, *cr);
     }
  }
+ */
 
   #if 0
   // second level remediators, produce both remedies and criticisms

@@ -1,6 +1,7 @@
 #ifndef LLVM_LIBERTY_PRIVREMED_H
 #define LLVM_LIBERTY_PRIVREMED_H
 
+#include "liberty/Analysis/KillFlow.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -12,7 +13,9 @@
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/LoopDominators.h"
+#include "liberty/Speculation/Read.h"
 
 #include "unordered_set"
 
@@ -57,8 +60,12 @@ public:
 class PrivRemediator : public Remediator {
 public:
   PrivRemediator(ModuleLoops &ml, TargetLibraryInfo *tli, LoopAA *aa,
-                 ControlSpeculation *cs)
-      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs) {}
+                 ControlSpeculation *cs, KillFlow &kill, const Read &rd,
+                 const HeapAssignment &c)
+      : Remediator(), mloops(ml), tli(tli), loopAA(aa), cs(cs), killFlow(kill),
+        read(rd), asgn(c), WAWcollabDepsHandled(0), RAWcollabDepsHandled(0) {}
+
+  Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
   void setLoopPDG(PDG *loopPDG, Loop *L) {
     pdg = loopPDG;
@@ -68,6 +75,7 @@ public:
     se = &mloops.getAnalysis_ScalarEvolution(f);
     cs->setLoopOfInterest(L->getHeader());
     specDT = std::make_unique<LoopDom>(*cs, L);
+    noSpecDT = std::make_unique<LoopDom>(nocs, L);
   }
 
   StringRef getRemediatorName() const {
@@ -86,7 +94,15 @@ private:
   LoopInfo *li;
   ScalarEvolution *se;
   ControlSpeculation *cs;
+  KillFlow &killFlow;
+  const Read &read;
+  const HeapAssignment &asgn;
+  NoControlSpeculation nocs;
   std::unique_ptr<LoopDom> specDT;
+  std::unique_ptr<LoopDom> noSpecDT;
+
+  uint64_t WAWcollabDepsHandled;
+  uint64_t RAWcollabDepsHandled;
 
   std::unordered_set<const GlobalValue *> localGVs;
   std::unordered_set<const AllocaInst *> localAllocas;
@@ -109,7 +125,9 @@ private:
   bool blockMustKill(const BasicBlock *bb, const Value *ptr,
                      const Instruction *before, const Loop *L);
   bool isPointerKillBefore(const Loop *L, const Value *ptr,
-                           const Instruction *before);
+                           const Instruction *before, bool useCtrlSpec = true);
+  bool isSpecSeparated(const Instruction *I1, const Instruction *I2,
+                       const Loop *L);
 };
 
 } // namespace liberty

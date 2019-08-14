@@ -49,14 +49,6 @@ namespace liberty
     bool mustAlias(const Value *storeptr, const Value *loadptr);
     bool mustAliasFast(const Value *, const Value *, const DataLayout &DL);
 
-    /// Determine if this instruction MUST KILL the specified pointer.
-    bool instMustKill(const Instruction *inst, const Value *ptr, time_t queryStart, unsigned Timeout, const Loop *L = nullptr);
-
-    /// Determine if the block MUST KILL the specified pointer.
-    /// If <after> belongs to this block and <after> is not null, only consider operations AFTER <after>
-    /// If <after> belongs to this block and <before> is is not null, only consider operations BEFORE <before>
-    bool blockMustKill(const BasicBlock *bb, const Value *ptr, const Instruction *after, const Instruction *before, time_t queryStart, unsigned Timeout, const Loop *L = nullptr);
-
     /// Determine if this instruction MUST KILL the specified <aggregate>
     bool instMustKillAggregate(const Instruction *inst, const Value *aggregate, time_t queryStart, unsigned Timeout);
 
@@ -66,6 +58,18 @@ namespace liberty
     bool blockMustKillAggregate(const BasicBlock *bb, const Value *aggregate, const Instruction *after, const Instruction *before, time_t queryStart, unsigned Timeout);
 
     bool allLoadsAreKilledBefore(const Loop *L, CallSite &cs, time_t queryStart, unsigned Timeout);
+
+    BasicBlock *getLoopEntryBB(const Loop *loop);
+    bool aliasBasePointer(const Value *gepptr, const Value *killgepptr,
+                          const GlobalValue **gvSrc, ScalarEvolution *se,
+                          const Loop *L);
+    bool killAllIdx(const Value *killidx, const Value *basePtr,
+                    const GlobalValue *gvSrc, ScalarEvolution *se,
+                    const Loop *L, const Loop *innerL, unsigned idxID);
+    bool matchingIdx(const Value *idx, const Value *killidx,
+                     ScalarEvolution *se, const Loop *L);
+    bool greaterThan(const SCEV *killTripCount, const SCEV *tripCount,
+                     ScalarEvolution *se, const Loop *L);
 
     const DataLayout *DL;
 
@@ -184,22 +188,18 @@ namespace liberty
     /// after <after> and before <before> which kills the aggregate
     bool aggregateKilledBetween(const Loop *L, const Value *obj, const Instruction *after, const Instruction *before, time_t queryStart=0, unsigned Timeout=0);
 
+    /// Determine if the block MUST KILL the specified pointer.
+    /// If <after> belongs to this block and <after> is not null, only consider operations AFTER <after>
+    /// If <after> belongs to this block and <before> is is not null, only consider operations BEFORE <before>
+    bool blockMustKill(const BasicBlock *bb, const Value *ptr, const Instruction *after, const Instruction *before, time_t queryStart, unsigned Timeout, const Loop *L = nullptr);
+
+    /// Determine if this instruction MUST KILL the specified pointer.
+    bool instMustKill(const Instruction *inst, const Value *ptr, time_t queryStart, unsigned Timeout, const Loop *L = nullptr);
+
     const PostDominatorTree *getPDT(const Function *cf);
     const DominatorTree *getDT(const Function *cf);
     ScalarEvolution *getSE(const Function *cf);
     LoopInfo *getLI(const Function *cf);
-
-    BasicBlock *getLoopEntryBB(const Loop *loop);
-    bool aliasBasePointer(const Value *gepptr, const Value *killgepptr,
-                          const GlobalValue **gvSrc, ScalarEvolution *se,
-                          const Loop *L);
-    bool killAllIdx(const Value *killidx, const Value *basePtr,
-                    const GlobalValue *gvSrc, ScalarEvolution *se,
-                    const Loop *L, const Loop *innerL, unsigned idxID);
-    bool matchingIdx(const Value *idx, const Value *killidx,
-                     ScalarEvolution *se, const Loop *L);
-    bool greaterThan(const SCEV *killTripCount, const SCEV *tripCount,
-                     ScalarEvolution *se, const Loop *L);
   };
 
 }
