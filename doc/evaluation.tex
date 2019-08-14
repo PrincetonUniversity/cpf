@@ -38,8 +38,9 @@ experiments are conducted using a different, larger testing input.
   execution time of paralleized loops. Based on it, the theoretical max
   speedup is calculated using Amdahl's Law with the assumptions of  no
   overheads and 28 workers. The Speculation-Aware Memory Analysis coverage
-  is the numbers of dependences covered by it and the percentage of
-  unresolved dependences by static analysis alone.}
+  is the number and percent of dependences covered that were unresolved by
+  static analysis alone. The private read and write sizes are in the order
+  Privateer, Privateer\_both, \namensp\_cheap\_spec, \namensp.}
   \label{tab:benchmark-list}
     \vspace{-5pt}
 \end{table*}
@@ -91,7 +92,7 @@ resulting in lower speedups.
 
 \begin{figure*}[ht]
   \includegraphics[width=\textwidth]{figures/compare-privateer}
-  \caption{Whole Program Speedup Comparison among Variants of \name and Privateer with 28 Cores}
+  \caption{Whole Program Speedup Comparison among variants of \name and Privateer with 28 Cores}
   \label{fig:speedup-compare}
 \end{figure*}
 
@@ -142,25 +143,35 @@ Present in a table, which enablers were used for all benchmarks
 
 \subsection{Overhead Breakdown}
 
-\begin{figure*}[htp]
-  \includegraphics[width=0.9\textwidth]{figures/overheads}
-  \label{fig:overheads}
-  \caption{Overhead comparison with various enablers disabled}
-\end{figure*}
-\begin{figure*}[htp]
-  \includegraphics[width=0.9\textwidth]{figures/comparison}
-\end{figure*}
+% \begin{figure*}[htp]
+%   \includegraphics[width=0.9\textwidth]{figures/overheads}
+%   \label{fig:overheads}
+%   \caption{Overhead comparison with various enablers disabled}
+% \end{figure*}
+% \begin{figure*}[htp]
+%   \includegraphics[width=0.9\textwidth]{figures/comparison}
+% \end{figure*}
 % Huge speedup for dijkstra is largely due to the cheaper "malloc" that
 % we use in our heaps. Using a similar malloc in the sequential version
 % yields ~16x speedup in dijkstra and insignificant difference in the
 % other benchmarks.
-Shown in Figure \ref{fig:overheads} is the overhead breakdown of each
-benchmark comparing \name with various enablers disabled. The useful work
-of \name is normalized to 100\%, with the others being scaled accordingly.
-These result demonstrate the correlation between the sum of the overheads
-to the speedup that can be achieved. \{\textbf{XXX} Something about
-how we remove dependences with redundant private read elimination,
-the new kill\_private heap, and collaboration \}
+% Shown in Figure \ref{fig:overheads} is the overhead breakdown of each
+% benchmark comparing \name with various enablers disabled. The useful work
+% of \name is normalized to 100\%, with the others being scaled accordingly.
+% These result demonstrate the correlation between the sum of the overheads
+% to the speedup that can be achieved. \{\textbf{XXX} Something about
+% how we remove dependences with redundant private read elimination,
+% the new kill\_private heap, and collaboration \}
+Table \ref{tab:benchmark-list} shows the overhead of private reads and
+writes for each of the variants of Privateer and \namensp. These results
+demonstrate the correlation between the overheads and the speedup that can
+be achieved. Redundant read elimination \{\textbf{XXX is this the right
+  name?}\} removes reads that \textbf{something}... Using cheap
+  speculation, we reduce are able to move some of the private objects to
+  the cheaper heaps \{\textbf{XXX} better wording\}. Using collaboration
+  removes the remaining unnecessary logs that cannot be inferred with
+  static analysis alone.
+\{\textbf{XXX} Put in something about checkpoints\}
 
 \subsection{Misspeculation Analysis}
 \begin{figure*}[htp]
