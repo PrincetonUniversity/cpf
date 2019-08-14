@@ -170,8 +170,7 @@ section~\ref{design_transf}.
 
 %\subsubsection{Memory}
 %
-\subsubsection{Applicability:}
-
+\paragraph{Applicability:}
 %
 The applicability guard of a transformation determines, using the
 results of the speculation-aware memory analyzer,  which memory
@@ -184,8 +183,8 @@ object means that the transformations can address all the
 cross-iteration dependences related to this memory object.
 %
 The output of each applicability guard is collected in a
-transformation proposal and is sent to the DOALL
-planner (section~\ref{planner}).
+transformation proposal and is sent to the DOALL planner
+(section~\ref{planner}).
 %
 The proposal includes for each memory object an estimated handling
 cost based on the transformation itself and the validation cost of the
@@ -199,10 +198,11 @@ For simplicity, in this work each transformation and speculation
 validation operation is assigned a fixed
 %predefined
 cost that just ensures a basic ordering among the options. For
-example, regarding speculative assumptions, memory speculation has a
-extremely high cost, loaded value prediction has a much smaller cost
-but not smaller than control speculation. Control speculation has the
-lowest cost since its validation does not introduce overhead.
+example,
+%regarding speculative assumptions,
+memory speculation has an extremely high cost (expensive validation),
+loaded value prediction has a much smaller cost but not smaller than
+control speculation (no validation overhead).
 %The estimated cost computation is very basic and just ensures basic
 %ordering among the options.
 %
@@ -211,11 +211,11 @@ lowest cost since its validation does not introduce overhead.
 %computed.
 %
 For the set of transformations and speculative assumptions in our
-framework and in the context of DOALL parallelization simple ordering
-proved sufficient.
+framework and in the context of DOALL parallelization this simplified
+cost model proved sufficient for detection of minimal cost plans.
 %
-A more complex cost model, that would allow more elaborate decision
-making, is left for future work.
+%A more complex cost model, that would allow more elaborate decision
+%making, is left for future work.
 
 %
 %
@@ -280,8 +280,8 @@ transformation creates a family with memory objects with the same
 properties.  It collects the set of objects that it can handle.
 
 
-We describe in the next section efficient transformation variants of
-speculative privatization, which constitute a contribution of this
+We describe in the next section efficient variants of the speculative
+privatization transformation, which constitute a contribution of this
 paper.  Other enabling transformations that are used in our framework
 but have been proposed in prior work are discussed in
 section~\ref{design_transf}.

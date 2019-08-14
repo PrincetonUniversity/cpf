@@ -6,6 +6,8 @@ cross-iteration dependences.
 Memory-related enabling transformation collect a set of memory objects
 for which they are applicable (see ~\ref{enablers}).
 
+%TODO: maybe add discussion about their cost
+
 \begin{itemize}
 %
 \item Privatization: Discussed in ~\ref{novel_transf}
@@ -45,10 +47,10 @@ collects output operations and performs them in order at commit.
 
 Cross-iteration register dependences
 %(not related to induction variables)
-are handled either with reduction or replication. Replication
-replicates side-effect free computation across parallel workers to
-overcome cross-iteration dependences and avoid inter-thread
-communication.
+are handled with reduction, replication, control speculation or value
+prediction. Replication replicates side-effect free computation across
+parallel workers to overcome cross-iteration dependences and avoid
+inter-thread communication.
 %
 Cross-iteration control dependences are handled either with
 replication or control speculation.
@@ -56,8 +58,11 @@ replication or control speculation.
 Use of replication allows handling of uncounted loops, namely loops
 with unknown trip count when the loop is invoked.
 %
-In terms of transformation cost, reduction is preferred over
-replication and replication is preferred over control speculation.
+In terms of transformation cost, all transformations have constant
+cost except for replication.  Replication's cost depends on how many
+instructions need to be replicated. Non-speculative enablers
+(reduction and replication) are preferred, in most cases, over
+speculative ones, and reduction is preferred over replication.
 
 %Cross-iteration register and control dependences related to induction
 %variables are handled differently if detected.
