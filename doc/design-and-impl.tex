@@ -1,5 +1,36 @@
 \section{Framework Design and Implementation}
 
+\begin{figure}[htp]
+  \includegraphics[width=\columnwidth]{figures/compiler-pipeline-crop}
+  \caption{Framework Overview}
+  \label{fig:compiler-pipeline}
+\end{figure}
+
+%\name enables efficient speculative parallelization by leveraging
+%fine-grained combination of static analysis and cheap-to-validate
+%assumptions.
+%
+Figure~\ref{fig:compiler-pipeline} depicts an overview of the \name
+framework, which includes a set of profilers, a parallelizing compiler
+and a runtime system.
+
+Initially, the sequential program goes through a few preprocessing
+steps and is eventually compiled to a target LLVM intermediate
+representation (IR) which is then used to generate profiling results.
+Based on profiling results, a set of hot loops is selected.  In the
+second phase of the compilation, each hot loop is processed
+separately.  The speculation-aware memory analyzer is queried to
+annotate a PDG with properties regarding dependences and instructions.
+The applicability guards of the enabling transformations examine the
+PDG and create transformation proposals to remove
+parallelization-inhibiting cross-iteration dependences in the loop. A
+DOALL planner considers these proposals, selects the minimum cost
+options and generates a sequence of transformations if a profitable
+DOALL plan is available.  Finally, we select a set of compatible
+parallelizable loops with the maximum profit, apply the tranformations
+in their plans, and generate the parallel IR which is then linked with
+an runtime and compiled as the parallel executable.
+
 \subsection{Preprocessing}
 
 The compilation process begins with a preprocessing step that
@@ -88,50 +119,42 @@ Inlining is sometimes also useful outside the hot loops.
 %
 Static analysis can easily infer alias and underlying object queries
 for global variables whose address is never
-captured~\cite{johnson:17:cgo}.
-However, if the address of a global variable is passed as an argument
-to a function, then the analysis in most cases conservatively assumes
-that the address is stored in memory (i.e. captured)  within
-the function. Inlining diminishes this problem.
-
-Overall, our profile-guided selective inliner enables more effective
-analysis by the paralellizing compiler without an exponential increase
-in code size or compilation time.
-%consequently more efficient parallelization.
+captured~\cite{johnson:17:cgo}.  However, if the address of a global
+variable is passed as an argument to a function, then the analysis in
+most cases conservatively assumes that the address is stored in memory
+(i.e. captured)  within the function. Inlining diminishes this
+pproblem.
 
 \subsection{Profiling}
 %\subsection{Speculative Assumptions}
 
 A set of profilers generate speculative assumptions:
 %
-\begin{itemize}
+(i) an edge profiler~\ref{llvm_edge_profiling} identifies biased
+branches and produces a speculative control flow that can be used by
+analysis passes, or directly disprove dependences on speculatively
+dead basic blocks;
 %
-\item an edge profiler~\ref{llvm_edge_profiling} identifies biased
-branches and produces a speculative control flow that can be used to
-directly disprove dependences on speculatively dead basic blocks, or
-it can be used by analysis passes;
-%
-\item a memory flow dependence  profiler (\`{a} la
+(ii) a memory flow dependence  profiler (\`{a} la
 ~\cite{privateer4citation}) asserts absence of non-observed data
 flows;
 %
-\item a value-prediction profiler (\`{a} la
+(iii) a value-prediction profiler (\`{a} la
 ~\cite{privateer11citation}) detects predictable loads;
 %
-\item a pointer-to-object profiler (\`{a} la ~\cite{johnson:12:pldi})
+(iv) a pointer-to-object profiler (\`{a} la ~\cite{johnson:12:pldi})
 produces a points-to map that allows detection of underlying objects
 for every memory access; and,
 %
-\item an object lifetime profiler (\`{a} la ~\cite{johnson:12:pldi})
-detects short-lived memory objects. These object exist only within a
+(v) an object lifetime profiler (\`{a} la ~\cite{johnson:12:pldi})
+detects short-lived memory objects, namely objects that exist only within a
 single loop iteration.
 %
-\end{itemize}
 
 \subsection {Static Analysis}
 \input{analysis}
 
-\subsection{Transformations}
+\subsection{Enabling Transformations}
 \label{design_transf}
 \input{transformations}
 
@@ -147,8 +170,8 @@ selected for parallelization. The excluded loops are either
 simultaneously active with another more profitable loop (we do not
 support nested parallelism) or their memory object assignments
 conflict with the assignments of a more profitable loop (every memory
-object can be allocated to only one family throughout the program in
-our current implementation).
+object can be allocated to only one heap throughout the program in our
+current implementation).
 
 \subsection{Runtime}
 \input{runtime}
