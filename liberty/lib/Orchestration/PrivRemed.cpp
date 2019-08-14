@@ -181,6 +181,7 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
   for (auto edge : pdgNode->getOutgoingEdges()) {
     if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
         edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT())) {
+      return false;
 
       // check if LC mem RAW can be removed with killflow + ctrl spec
       /* LoadInst *loadI = dyn_cast<LoadInst>(edge->getIncomingT()); */
