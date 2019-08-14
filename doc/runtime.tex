@@ -1,11 +1,11 @@
-The runtime system of \name provides several benefits that allows for
+The runtime system of \name provides several features that allows for
 low overheads for both speculative and non-speculative parallelization.
 
 % Something about how killpriv only needs to copy out last checkpoint's
 % values to main and no merging of checkpoints needed
 \paragraph{Process spawning}
 We use a process-based parallelism scheme as opposed to a thread-based one
-for several purposes. The runtime system \texttt{fork()}s all the processes
+for several purposes. The runtime system \texttt{\textbf{fork()}}s all the processes
 only once at program startup to avoid the overhead of spawning at every loop
 invocation, especially important for programs whose inner loops are
 parallelized, such as \textit{052.alvinn}. Each worker process waits for the main
@@ -15,20 +15,24 @@ size of each heap.
 \paragraph{Shared memory}
 At program startup, the main process creates and maps several regions of named shared
 memory, with shared permissions, in \texttt{\textbf{/dev/shm}} corresponding
-to each of the heap assignments.
+to each of the heaps.
 When a worker starts an invocation, it remaps these regions of memory to
 disjoint segments of its own virtual memory space with either
-copy-on-write, shared, or read-only semantics depending on the heap
-assignment. This in effect communicates all the live-in values from the
-main process in an efficient manner. The separation of memory regions
-allows for a very cheap heap check, only needing to perform a bitwise OR
-with the most significant bits of the virtual address.
-Each worker also allocates its own
-region of shadow memory to log any accesses to the private heap at a
-byte-level granuarity.
+copy-on-write, shared, or read-only semantics depending on the heap.
+This in effect communicates all the live-in values from the
+main process to the workers in an efficient manner.
 
-\paragraph{Checkpoints}
-Each worker performs a privacy check on every private read or write to an
+\paragraph{Checks and Checkpoints}
+
+
+This separation of memory regions
+allows for a very cheap heap check for validation, only needing to perform a bitwise OR
+of an object's address with the most significant 4 bits of its heap's virtual address.
+Each worker also allocates its ownregion of shadow memory to log any accesses to
+the private heap at a byte-level granuarity.
+
+In addition to a heap check, each worker also performs a privacy check on every
+private read or write to an
 address with any of its accesses to the same address in a previous
 iteration. It will also log in the shadow memory either the iteration of the
 access in the case of a private write or a fixed value indicating a
@@ -44,6 +48,8 @@ case of misspeculation during the next checkpoint chunk. The overhead for
 checkpointing is mainly dependent on the size of the reduction and private heaps,
 as merging them requires performing the reduction or validation of privacy,
 respectively.
+
+\paragraph{Handling live-out values}
 
 As static analysis is used in conjunction with memory speculation, we can
 infer that some benchmarks that were tested do not require any speculation.
