@@ -31,7 +31,7 @@ facts from analysis to make the code amenable to a given
 parallelization pattern.  Examples of enabling transforms include loop
 skewing which re-arranges array accesses to move cross-iteration
 dependences out of inner loops, reduction which expands storage
-locations to relax ordering constraints on associative, commutative
+locations to relax ordering constraints on associative and commutative
 operations, and privatization which removes contention caused by the
 reuse of data structures.  Many parallelization patterns exist, but
 among the most desirable is DOALL, the independent execution of loop
@@ -70,7 +70,7 @@ adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 % TODO: Add more citations here
 %
 %Major bottlenecks include high communication and bookkeeping costs
-%for memory flow speculation validation, and memory live-out handling.
+%for memory flowspeculative speculation validation, and memory live-out handling.
 %and privatization.  The observed pattern is the more applicable
 %speculation made, the less efficient it became.
 %
