@@ -1,91 +1,101 @@
 \section{Related Work}
 
-\textbf{XXX} Fill this in \textbf{XXX}
+% For non-spec DOALL-only compilers: with only static analysis, the
+% struggle is the applicability (maybe plus the cost of logging and merging
+% live-outs (copy-outs)); with runtime checks (predicates), the focus is
+% the applicability and extraction of efficient runtime checks.
+
+% For compilers using different techniques than DOALL: communication of
+% real dependences is needed. The overheads can be broken down to
+% communication cost, lost cycles due to imbalance.
+
+% For Spec DOALL-only compilers: with memory speculation, the applicability
+% is perfect, meaning all “real” DOALL loops can be handled by just
+% ignoring dependences that can not be disproved but will never or seldom
+% manifest in runtime. The overheads include speculation validation cost,
+% misspeculation recovery cost, and the cost of logging & merging
+% (maintaining) live-outs.
+
+% For systems with special hardware support: for example, with
+% transactional memory systems, the memory versioning of main memory is
+% there implicitly. Assuming you have a transactional memory system with
+% zero time overhead, what you need to do is just spawning the iterations,
+% false dependences including anti- and output- dependences are avoided,
+% when one iteration has a real dependences (flow) to its previous
+% iteration but executes earlier, the memory system can stall it when it
+% tries to load the pending value. However, the assumption of 0-overhead TM
+% systems is not possible.
+
+% \paragraph{Analysis-based Parallelization System}
+% % Polaris
+% % SUIF
+% % HELIX
+% % DSWP (non spec version)
+% % Hybrid Analysis
+% % Sensitivity Analysis
+
+Early non-speculative parallelizing compilers (Polaris, SUIF) based on
+DOALL paradigm use static analysis to disprove dependences and run-time
+analysis to extract predicate for dynamic privatization. These systems work
+well with regular scientific programs and exhibit good speedup when
+applicable. However, when dealing with general purpose programs, they are
+limited by imprecise static analysis and heavyweight run-time analysis.
+They also lack in support for dynamically allocated memory objects, which
+are widely used in modern programming. Recent works on non-speculative
+parallelization (HELIX, DSWP, and PS-DSWP) focus more on alternative
+parallelization paradigms like DOACROSS and DOPIPE, which allow
+communication of flow dependences among cores. \name focuses on DOALL but
+the contributions of this work are complementary with other parallelization
+paradigms. LRPD leverages speculation to evaluate privatization criterion,
+extends the applicability of DOALL. Yet it is still limited to array-based
+objects.
+
+STMlite, CorD, and Privateer use speculation extensively to privatize
+objects for general purpose programs. As mentioned in Privateer, STMlite
+and CorD don't support speculative reduction, and limit the applicability
+to static cases. Privateer, by introducing heap separation and doin
+aggressive speculative privatization, achieves the state-of-the-art
+applicability. However, it fails to recognize a lot of optimization
+opportunities and suffers from the two major overhead mentioned in
+\ref{sec:motivation}.
+
+Recent work~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} avoids some
+memory speculations by speculating higher-level properties like local
+objects whose validation does not require logging or communication.
+Sensitivity Analysis~\cite{Rus:07:ics} uses a cascade design of run time
+tests to generate predicates for memory dependences, which reduce the
+run-time overhead. Yet, all of these optimization efforts are rudimentary
+compared to \namensp.
 
 
-% For non-spec DOALL-only compilers: with only static analysis, the struggle is
-% the applicability (maybe plus the cost of logging and merging live-outs
-% (copy-outs)); with runtime checks (predicates), the focus is the applicability
-% and extraction of efficient runtime checks.
-
-% For compilers using different techniques than DOALL: communication of real
-% dependences is needed. The overheads can be broken down to communication cost,
-% lost cycles due to imbalance.
-
-% For Spec DOALL-only compilers: with memory speculation, the applicability is
-% perfect, meaning all “real” DOALL loops can be handled by just ignoring
-% dependences that can not be disproved but will never or seldom manifest in
-% runtime. The overheads include speculation validation cost, misspeculation
-% recovery cost, and the cost of logging & merging (maintaining) live-outs.
-
-% For systems with special hardware support: for example, with transactional
-% memory systems, the memory versioning of main memory is there implicitly.
-% Assuming you have a transactional memory system with zero time overhead, what
-% you need to do is just spawning the iterations, false dependences including
-% anti- and output- dependences are avoided, when one iteration has a real
-% dependences (flow) to its previous iteration but executes earlier, the memory
-% system can stall it when it tries to load the pending value. However, the
-% assumption of 0-overhead TM systems is not possible.
-
-This work focuses on the profitability of DOALL parallelism. The performance
-improvement comes from the extensive use of static analysis in conjunction with
-cheap-to-check speculations. Here we briefly survey some literature in
-automatic parallelism and discuss about their efforts to reduce overheads.
-
-\paragraph{Non-Spec Parallelizing Compilers:}
-% Polaris
-% SUIF
 % HELIX
-% DSWP (non spec version)
-% Hybrid Analysis
-% Sensitivity Analysis
+% The HELIX parallelizing compiler extracts TLP by distributing loop
+% iterations between cores within the same chip. HELIX is a generalization of
+% DOACROSS and DOALL techniques for modern multicore architectures and,
+% therefore, HELIX-parallelized loops include DOALL ones. HELIX does not rely
+% on speculation to avoid the related overhead, which limits the approach to
+% target only medium and small loops (where the accuracy of code analyses is
+% higher) for most benchmarks. Targeting such loops increases the
+% communication demand, which makes HELIX particularly appealing when coupled
+% with an architecture support designed to accelerate core-to-core
+% communication. On the other hand, LSD decreases the speculation overhead
+% enough to make DOALL parallelization practical on existing commodity
+% multicores.
 
-For non-speculative parallelizing compilers, all dependences are removed by
-static analysis. Most prior work, such as Polaris, SUIF, works well with regular
-scientific programs and exhibit good speedup when applicable. When a DOALL plan
-is not available, compiles like HELIX, DSWP, and PS-DSWP allow some
-communications among workers and enable DOACROSS and DOPIPE techniques. Hybrid
-analysis and sensitivity analysis tried to combine dynamic information with
-static analysis by using runtime analysis. Sensitivity also uses a cascade
-design of static analysis, cheap-to-check predicates, expensive-to-check
-predicates to reduce the overhead of run-time check.
+% Parallelization with Programmers' Support
+% Paralax
 
 
-% HELIX
-The HELIX parallelizing compiler extracts TLP by distributing loop iterations between cores within the same chip.
-HELIX is a generalization of DOACROSS and DOALL techniques for modern multicore architectures and, therefore, HELIX-parallelized loops include DOALL ones.
-HELIX does not rely on speculation to avoid the related overhead, which limits the approach to target only medium and small loops (where the accuracy of code analyses is higher) for most benchmarks.
-Targeting such loops increases the communication demand, which makes HELIX particularly appealing when coupled with an architecture support designed to accelerate core-to-core communication.
-On the other hand, LSD decreases the speculation overhead enough to make DOALL parallelization practical on existing commodity multicores.
+% \paragraph{Speculative Parallelization System:}
 
-%% Previous Attempts to Reduce Runtime Overhead
 
-% There are some attempts to identify and reduce some overheads. Hybrid
-% Analysis~\cite{rus:03:hybrid} and Sensitivity Analysis~\cite{Rus:07:ics}
-% combine static analysis and run-time analysis to generate cheap predicates
-% for memory dependences, which reduce the run-time overhead. Recent
-% work~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} avoids some memory
-% speculations by speculating higher-level properties like local objects
-% whose validation does not require logging or communication.
+% \paragraph{Software transactional memory system:}
 
-\paragraph{Speculative Compilers:}
+% Other work on software transactional memory tried to reduce the overhead by
+% using some extent of static analysis or/and privatization (STMlite, CorD).
 
-\paragraph{Hardware transactional memory system:}
 
-Some work assumes the existence of some special hardware to support the runtime,
-for example, in (HPCA’08, Mahlke paper), all memory dependences are removed
-using memory speculation and transactional memory systems.This work makes no
-assumption of special hardware support, no hardware transactional memory systems
-needed, fully utilizes static analysis to reduce the cost.
+% \paragraph{Attempts to Reduce Runtime Overheads}
 
-\paragraph{Parallelization with Programmers' Support}
 
-\paragraph{Software transactional memory system:}
 
-Other work on software transactional memory tried to reduce the overhead by
-using some extent of static analysis or/and privatization (STMlite, CorD).
-
-\paragraph{Polyhedral and Vectorization Compilers:}
-
-The use of speculative assumptions in conjunction with static analysis appears
-in other parallelization techniques including polyhedral transformations and ...
