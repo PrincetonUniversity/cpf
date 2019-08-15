@@ -31,20 +31,21 @@ Each benchmark is profiled using a profiling input and all the following
 experiments are conducted using a different, larger testing input.
 
 \begin{table*}[h]
+  \centering
   \include{figures/benchmark-tab}
   \caption{
     Benchmark Details: (a) Execution time coverage is the percentage of
-  execution time of paralleized loops. Based on it, the theoretical max
-  speedup is calculated using Amdahl's Law with the assumptions of no
-  overheads and 28 workers. \\(b) SAMA's (Speculation-Aware Memory
-  Analyzer's) coverage is the number and percentage of dependences handled
+  execution time of paralleized loops. Based on it, the theoretical speedup
+  is calculated using Amdahl's Law with the assumptions of no overheads and
+  28 workers.  (b) SAMA's (Speculation-Aware Memory Analyzer's) cross-iter
+  cov is the number and percentage of cross-iteration dependences handled
   by SAMA that were unresolved by static analysis alone. Entries denotes by
-  ``N/A'' indicate all dependences are handled by static analysis. \\(c)
-  Proposed enablers’ coverage is the number and percentage of objects
+  ``N/A'' indicate all dependences are handled by static analysis.  (c)
+  Proposed enablers’ cov is the number and percentage of objects
   covered by efficient speculation privatization transformations proposed
   in this work. (d) Private read and write sizes are measured using the
-  test input for each benchmark. \namensp\textsubscript{v1} stands for
-  \name with only planner; \namensp\textsubscript{v2} stands for \name with
+  test input for each benchmark. v1 stands for
+  \name with only planner; v2 stands for \name with
   planner and propsed enablers.}
   \label{tab:benchmark-list}
     \vspace{-5pt}
@@ -53,7 +54,10 @@ experiments are conducted using a different, larger testing input.
 \subsection{Parallelization Performance}
 
 \begin{figure*}[ht]
+  \centering
+  \resizebox{0.90\textwidth}{!}{
   \includegraphics[width=\textwidth]{figures/multi-core-crop}
+  }
   \caption{Fully Automatic Whole Program Speedup over Best Sequential}
   \label{fig:multi-core-scale}
 \end{figure*}
