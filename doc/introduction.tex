@@ -12,7 +12,7 @@
 
 Multicore architectures are ubiquitous in systems.  Thus, extracting
 parallelism is more important than ever to harvest more performance
-from current hardware.
+from existing hardware.
 %
 %This burden of extracting sufficient parallelism has fallen on
 %programmers and compilers.
@@ -47,41 +47,41 @@ efficient use of multicore systems.
 %elusive.
 %
 Automatic parallelization techniques utilize analysis and enabling
-transformations attempt to distribute, without data races, work across
+transformations to distribute, without data races, work across
 processes or threads.
 %
 Analysis infers program properties, while enabling transformations
 modify the program to eliminate parallelization inhibitors identified
-by the analysis.
-%
-Such a parallelization inhibitor is reuse of data structures.
+by the analysis, the main inhibitor being reuse of data structures.
 Privatization, a key enabling transformation for
 parallelization~\cite{citations_from_privateer}, can remove contention
-caused by this reuse by creating a private copy for each parallel
+caused by this reuse by creating a private copy of the data for each parallel
 worker.
 
 %analyis limitations
-Early works on automatic parallelization had limited applicability -
-restrained to regular code patterns (e.g., scientific applications) -
+Early works in automatic parallelization had limited applicability
+(restrained to regular code patterns, e.g. scientific applications)
 due to their reliance on static dependence analysis (including alias
 analysis and control flow analysis), which is undecidable and
 difficult in practice, especially for general-purpose C/C++ programs.
 
 %speculation necessary
-Speculation allows the compiler to overcome static analysis'
-constraints, optimize for an expected case, and ignore rare or
-impossible dependences.  Apart from removing rare dependences,
-speculation also led to the design of speculative versions of enabling
+% Speculation allows the compiler to overcome static analysis'
+% constraints, optimize for an expected case, and ignore rare or
+% impossible dependences.
+The introduction of speculation allowed the compiler to optimize for an
+expected case and ignore rare or impossible dependences, overcoming static
+analysis' constraints.
+Speculation also led to the design of speculative versions of enabling
 transformations that exhibit higher applicability than their
 conservative counterparts.  One such example is a highly applicable
-speculative privatization proposed in a system called
-Privateer~\cite{johnson:12:pldi}.
+speculative privatization proposed in Privateer~\cite{johnson:12:pldi}.
 %research into speculation has shown incredible potential for the
 %applicability and aggressiveness of parallelizing
 %transformations~\cite{zhong:08:hpca, johnson:12:pldi}.
 %
 %speculation problems
-Yet, despite their potential, software speculative systems face real
+Yet, despite their potential, speculative software systems face real
 challenges that prevent their widespread
 adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 % TODO: Add more citations here
@@ -99,11 +99,11 @@ log or communicate speculative accesses to a validation system. As the
 size of the speculative region increases, the validation cost becomes
 prohibitively expensive and outweighs any parallelization benefit.
 
-Similarly, speculative enabling transformations, and
+Similarly, speculative enabling transformations,
 %most prominently
-in particular speculative privatization may also entail high
+in particular speculative privatization, may also entail high
 overheads.  Merging the private memory state of workers to the
-committed memory state often forces speculative systems to monitor
+committed memory state correctly often forces speculative systems to monitor
 large write sets during parallel execution, significantly degrading
 their profitability~\cite{kim:12:cgo,johnson:12:pldi}.
 %to ensure correct live-out state after parallel invocation.
@@ -119,9 +119,9 @@ components during an exploration phase discover the best performing
 set of parallelization techniques. This way, certain unnecessary
 parallelization overheads of prior work are avoided.
 %
-An important distinguishing factor is that prior work uses static
-analysis and speculative assumptions separately, each inferring
-different program properties in isolation, while this work combines
+An important distinguishing factor from prior work, which uses static
+analysis and speculative assumptions separately and infer
+different program properties in isolation, this work combines
 the strengths of static analysis and cheap-to-validate speculative
 assumptions to enable more efficient speculative parallelization.
 
@@ -137,22 +137,22 @@ can assert absence of, non statically disprovable, memory dependences
 under a cheap-to-validate speculative assumption.
 %This idea is inspired by the benefits of collaboration among static
 %analysis algorithms in CAF~\cite{johnson:17:cgo}.
-Note, that by just applying control speculation and then re-running
+Note that by just applying control speculation and then re-running
 memory analysis on the transformed code would not have the same
 effect.  Memory analysis needs to treat this speculative information
 as a fact and ignore the possibility of misspeculation.
+\{\textbf{XXX} express this better\}
 
 Combining static analysis with cheap-to-validate speculative
 assumptions also enables efficient variants of speculative
 privatization.
 %
-These variants avoid the extensive bookkeeping, during parallel
-execution, that is observed in the state-of-the-art scheme for
-speculative privatization~\cite{johnson:12:pldi}.
+These variants avoid the extensive bookkeeping that is observed in the
+state-of-the-art scheme for speculative privatization~\cite{johnson:12:pldi}.
 %
 The difference is that this prior work relies exclusively on profiling
 information to prove privatizability and thus needs to dynamically
-detect the last written value at each privatized byte.
+detect the last written value of each privatized byte.
 %
 The need for speculation to privatize should not exclude, though, the
 use of static analysis to infer additional properties that minimize
@@ -169,13 +169,13 @@ parallelization inhibitors using state-of-the-art static analysis
 assumptions, while the runtime offers efficient parallel execution and
 low-cost speculation validation.
 
-We focus on DOALL, because it is the ideal parallelization technique
+We focus on DOALL because it is the ideal parallelization technique
 when applicable. It is simple to orchestrate, delivers high
 thread-level parallelism with low communication overheads, and it is
-the most studied parallelization technique in literature by both pure
+the most studied parallelization technique in literature both by pure
 static analysis-based approaches~\cite{..,.,..} and speculation-based
 approaches~\cite{..,..,..,..}.  Further, its potential coverage is
-extensive when paired with speculation~\cite{zhong:08:hpca}, but still
+extensive when paired with speculation~\cite{zhong:08:hpca}, but still,
 results of prior work on real hardware are underwhelming.
 
 The primary contributions of this paper are:
@@ -186,18 +186,18 @@ full advantage of speculation by allowing memory analysis to interpret
 cheap-to-validate speculative assumptions as facts;
 %combined strenghts
 
-\item A novel efficient \textbf{speculative privatization transformations}
+\item Novel efficient \textbf{speculative privatization transformations}
 that avoid the overheads of prior speculative privatization
 techniques;
 
 \item A novel \textbf{planning} phase that combines non-speculative
 and speculative techniques to select the most profitable set of
-parallelization-enabling transformations; and,
+parallelization-enabling transformations;
 
 \item A \textbf{fully automatic} speculative DOALL parallelization
 framework for \textbf{commodity hardware}, that exhibits
 \textbf{scalable} speedups by minimizing the speculative
-parallelization overheads of prior work;
+parallelization overheads of prior work.
 
 \end{itemize}
 
@@ -213,8 +213,11 @@ These speedups are thanks to effective usage of static properties of
 the code in conjunction with cheap speculative assumptions,
 %to avoid memory flow speculation and minimize privatization costs,
 %
-careful selection of applied transformations and a lightweight
+careful selection of applied transformations, and a lightweight
 process-based runtime system.  No prior work is able to parallelize
 all these benchmarks with such sparse usage of memory speculation and
-so efficient and effective privatization; thus no prior work could
-achieve comparable results.
+efficient privatization; thus no prior work could achieve comparable results.
+%                                               ^
+%                                               |
+%                                               |
+%                                             savage
