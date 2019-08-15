@@ -13,10 +13,13 @@ and parallelizing compilers, reliably finding parallelism appropriate
 for multicore remains a challenge.  Programs with CGP are not ideally
 suited for multicore as they tend to stress multicore's shared
 resources, such as caches and memory bandwidth.  Google revealed, in a
-candid disclosure atypical of a field with many trade secrets, that
-their multicore utilization rarely exceeds
-20\%~\cite{barroso:07:computer}.  Despite progress in recent years,
-automatic parallelization for multicore remains defficient.
+candid disclosure,
+%atypical of a field with many trade secrets,
+that their multicore utilization rarely exceeds
+20\%~\cite{barroso:07:computer}. Other researchers have also
+subsequently corroborated this observation~\cite{chung:13:isca}.
+Despite progress in recent years, automatic parallelization for
+multicore remains deficient.
 
 Early works in automatic parallelization had limited applicability
 (restrained to regular code patterns, e.g. scientific applications)
@@ -24,17 +27,20 @@ due to their reliance on static dependence analysis (including alias
 analysis and control flow analysis), which is undecidable and
 difficult in practice, especially for general-purpose C/C++ programs.
 
-%speculation necessary
-% Speculation allows the compiler to overcome static analysis'
-% constraints, optimize for an expected case, and ignore rare or
-% impossible dependences.
-The introduction of speculation allowed the compiler to optimize for an
-expected case and ignore rare or impossible dependences, overcoming static
-analysis' constraints.
-Speculation also led to the design of speculative versions of enabling
-transformations that exhibit higher applicability than their
-conservative counterparts.  One such example is a highly applicable
-speculative privatization proposed in Privateer~\cite{johnson:12:pldi}.
+%speculation necessary Speculation allows the compiler to overcome
+%static analysis' constraints, optimize for an expected case, and
+%ignore rare or impossible dependences.
+The introduction of speculation allowed the compiler to optimize for
+an expected case and ignore rare or impossible dependences, overcoming
+static analysis' constraints.  Speculation also led to the design of
+speculative versions of enabling transformations that exhibit higher
+applicability than their conservative counterparts.  One such example
+is highly applicable speculative privatization~\cite{johnson:12:pldi},
+a key enabling transformation for
+parallelization~\cite{citations_from_privateer} that can remove
+contention caused by the reuse of data structures.
+%by creating a private copies for each parallel worker.
+%
 %research into speculation has shown incredible potential for the
 %applicability and aggressiveness of parallelizing
 %transformations~\cite{zhong:08:hpca, johnson:12:pldi}.
@@ -45,24 +51,24 @@ challenges that prevent their widespread
 adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
 
 
-Automatic parallelization is a more attractive approach to make
-efficient use of multicore systems.
-%Unfortunately, even after 15 years of multicore, automatic
-%parallelization is still mostly limited to scientific and
-%data-intensive applications.  the routine extraction of TLP remains
-%elusive.
-%
-Automatic parallelization techniques utilize analysis and enabling
-transformations to distribute, without data races, work across
-processes or threads.
-%
-Analysis infers program properties, while enabling transformations
-modify the program to eliminate parallelization inhibitors identified
-by the analysis, the main inhibitor being reuse of data structures.
-Privatization, a key enabling transformation for
-parallelization~\cite{citations_from_privateer}, can remove contention
-caused by this reuse by creating a private copy of the data for each parallel
-worker.
+%Automatic parallelization is a more attractive approach to make
+%efficient use of multicore systems.
+%%Unfortunately, even after 15 years of multicore, automatic
+%%parallelization is still mostly limited to scientific and
+%%data-intensive applications.  the routine extraction of TLP remains
+%%elusive.
+%%
+%Automatic parallelization techniques utilize analysis and enabling
+%transformations to distribute, without data races, work across
+%processes or threads.
+%%
+%Analysis infers program properties, while enabling transformations
+%modify the program to eliminate parallelization inhibitors identified
+%by the analysis, the main inhibitor being reuse of data structures.
+%Privatization, a key enabling transformation for
+%parallelization~\cite{citations_from_privateer}, can remove contention
+%caused by this reuse by creating a private copy of the data for each parallel
+%worker.
 
 %analyis limitations
 
@@ -87,7 +93,7 @@ in particular speculative privatization, may also entail high
 overheads.  Merging the private memory state of workers to the
 committed memory state correctly often forces speculative systems to monitor
 large write sets during parallel execution, significantly degrading
-their profitability~\cite{kim:12:cgo,johnson:12:pldi}.
+their profitability~\cite{kim:12:cgo,johnson:12:pldi,LRPD?}.
 %to ensure correct live-out state after parallel invocation.
 
 To attain the parallelization coverage of speculative techniques,
