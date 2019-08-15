@@ -3,32 +3,39 @@
 
 \name is evaluated on a commodity shared-memory machine with two 14-core
 Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
-(turbo-boost disabled) with 756GB of memory. The operating system is 64-bit
-Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010) and LLVM Compiler
-Infrastructure (version 5.0.2).
-
+(turbo-boost disabled) with 756GB of memory. The operating system is
+64-bit Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010).
+\namensp's compiler is implemented in the LLVM Compiler Infrastructure
+(version 5.0.2).
 
 \name is evaluated against 12 C and C++ benchmarks, covering all the
-DOALLable (showing speedup instead of slowdown) benchmarks from two
-state-of-the-art automatic DOALL parallelization
-papers~\cite{johnson:12:pldi,kim:12:cgo}. We also include one more
-benchmark (179.art) from HELIX~\cite{simone:12:cgo}.
-This work focuses on boosting the efficiency of automatic
-parallelization rather than increasing the applicability of it. This is
-why we choose benchmarks that have been parallelized in prior work to
-make a fair comparison.
+parallelizable (exhibiting some speedup) benchmarks from two
+state-of-the-art automatic speculative-DOALL parallelization
+papers(Privateer~\cite{johnson:12:pldi}, Cluster
+Spec-DOALL~\cite{kim:12:cgo}). We also include one more benchmark
+(179.art) from HELIX~\cite{simone:12:cgo}, a non-speculative automatic
+parallelization system.  This work focuses on boosting the efficiency
+of automatic parallelization rather than increasing its applicability.
+This is why we choose benchmarks that have been parallelized in prior
+work.
 
-These benchmarks are from five benchmark suites
-(Trimaran\cite{trimaran:web}, SPEC\cite{}, PARSEC\cite{bienia:08:parsec},
-MiBench\cite{guthaus:2001:iiwsc}, PolyBench\cite{}). All PolyBench benchmarks and
-\texttt{dijkstra} from MiBench are modified to accept command line
-arguments and allocate arrays dynamically in the same way as
-\cite{kim:12:cgo}. This modification is used to create bigger inputs, which
-is necessary for separating profiling and evaluation input sets.
-
+These benchmarks are from five benchmark suites (SPEC\cite{},
+PARSEC\cite{bienia:08:parsec}, PolyBench\cite{},
+MiBench\cite{guthaus:2001:iiwsc}, Trimaran\cite{trimaran:web}). All
+PolyBench benchmarks and \texttt{dijkstra} from MiBench are modified
+to accept command line arguments and allocate arrays dynamically in
+the same way as in~\cite{johnson:12:pldi, kim:12:cgo}.
+%This modification is used to create bigger inputs, necessary for
+%separating profiling and evaluation input sets.
 %
-Each benchmark is profiled using a profiling input and all the following
-experiments are conducted using a different, larger testing input.
+%for exhibiting speedups on 28 cores
+%
+Benchmark are profiled using small profiling inputs, while all the
+experiments presented in this section are conducted using different,
+large evaluation inputs. The evaluation inputs are chosen to be large
+enough for the sequential version to run for at least 10 minutes to
+observe scalability on 28 cores.
+
 
 \begin{table*}[h]
   \centering
