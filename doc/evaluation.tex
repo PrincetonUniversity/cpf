@@ -34,13 +34,19 @@ experiments are conducted using a different, larger testing input.
 \begin{table*}[h]
   \include{figures/benchmark-tab}
   \caption{
-    Benchmark Details: Execution time coverage is the percentage of
+    Benchmark Details: (a) Execution time coverage is the percentage of
   execution time of paralleized loops. Based on it, the theoretical max
-  speedup is calculated using Amdahl's Law with the assumptions of  no
-  overheads and 28 workers. The Speculation-Aware Memory Analysis coverage
-  is the number and percent of dependences covered that were unresolved by
-  static analysis alone. The private read and write sizes are in the order
-  Privateer, Privateer\_both, \namensp\_cheap\_spec, \namensp.}
+  speedup is calculated using Amdahl's Law with the assumptions of no
+  overheads and 28 workers. \\(b) SAMA's (Speculation-Aware Memory
+  Analyzer's) coverage is the number and percentage of dependences handled
+  by SAMA that were unresolved by static analysis alone. Entries denotes by
+  ``N/A'' indicate all dependences are handled by static analysis. \\(c)
+  Proposed enablers’ coverage is the number and percentage of objects
+  covered by efficient speculation privatization transformations proposed
+  in this work. (d) Private read and write sizes are measured using the
+  test input for each benchmark. \namensp\textsubscript{v1} stands for
+  \name with only planner; \namensp\textsubscript{v2} stands for \name with
+  planner and propsed enablers.}
   \label{tab:benchmark-list}
     \vspace{-5pt}
 \end{table*}
@@ -120,26 +126,26 @@ privatization transformations, is presented in the fourth bar, achieving
 23.0$\times$ speedup compared to 11.5$\times$ by the original Privateer.
 
 
-\subsubsection{Effect of parallelization on vectorization}
+% \subsubsection{Effect of parallelization on vectorization}
 
-instrumentation kills vectorization
+% instrumentation kills vectorization
 
 
-\subsection{Static Analysis and Enablers}
-Figures Needed:
-\begin{itemize}
-% (no need, just discuss the use of CAF in previous sections) \item CAF:
-% with and without; no topping; with only BasicLoopAA and ScevAA
+% \subsection{Static Analysis and Enablers}
+% Figures Needed:
+% \begin{itemize}
+% % (no need, just discuss the use of CAF in previous sections) \item CAF:
+% % with and without; no topping; with only BasicLoopAA and ScevAA
 
-% (no need, show in the benchmark table) \item Coverage: Spec-DOALL
-% percentage of coverage of each benchmark
-\item Enablers: Enablers used for each benchmark
-\item Optimization level: Performance with different optimization levels
-\end{itemize}
+% % (no need, show in the benchmark table) \item Coverage: Spec-DOALL
+% % percentage of coverage of each benchmark
+% \item Enablers: Enablers used for each benchmark
+% \item Optimization level: Performance with different optimization levels
+% \end{itemize}
 
-Discussion Needed:
+% Discussion Needed:
 
-Present in a table, which enablers were used for all benchmarks
+% Present in a table, which enablers were used for all benchmarks
 
 \subsection{Overhead Breakdown}
 
@@ -171,7 +177,17 @@ Using cheap speculation, we are able to move some of the private objects to
 the heaps that do not require expensive logging and checks.
 Using collaboration removes the remaining unnecessary logs that cannot
 be removed with static analysis alone.
-\{\textbf{XXX} Put in something about checkpoints\}
+
+For most of the benchmarks, checkpointing does not add any
+significant (over 1\%) overhead; the exceptions are
+\texttt{052.alvinn}, \texttt{correlation}, and \texttt{covariance}.
+The inner loop of \texttt{052.alvinn} is chosen for parallelization --
+because the useful work of the loop is small and runs for 60,000
+iterations, checkpointing constitutes a considerable portion of the run
+time, \textasciitilde20\%. For \texttt{covariance} and \texttt{correlation},
+the speculation-aware memory analyzer could not avoid using memory
+speculation and as such, the checkpoints need to merge large private sets
+with an overhead of \textasciitilde10\% for both.
 
 \subsection{Misspeculation Analysis}
 \begin{figure}[htp]
