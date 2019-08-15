@@ -13,32 +13,54 @@ and parallelizing compilers, reliably finding parallelism appropriate
 for multicore remains a challenge.  Programs with CGP are not ideally
 suited for multicore as they tend to stress multicore's shared
 resources, such as caches and memory bandwidth.  Google revealed, in a
-candid disclosure,
-%atypical of a field with many trade secrets,
-that their multicore utilization rarely exceeds
+candid disclosure, that their multicore utilization rarely exceeds
 20\%~\cite{barroso:07:computer}. Other researchers have also
 subsequently corroborated this observation~\cite{chung:13:isca}.
 Despite progress in recent years, automatic parallelization for
 multicore remains deficient.
 
-Early works in automatic parallelization had limited applicability
-(restrained to regular code patterns, e.g. scientific applications)
-due to their reliance on static dependence analysis (including alias
-analysis and control flow analysis), which is undecidable and
-difficult in practice, especially for general-purpose C/C++ programs.
+Parallelizing compilers are the integration of program analysis,
+enabling transformations, and parallelization patterns designed to
+find work that can execute concurrently.  Automatic parallelization
+naturally focuses on loops because that is where programs spend their
+time.  An essential aspect of program analysis in a parallelizing
+copmiler is memory analysis because the compiler must understand how
+loops use memory objects in order to divide their work across threads
+or processes.  Enabling transforms use control flow and data flow
+facts from analysis to make the code amenable to a given
+parallelization pattern.  Examples of enabling transforms include XXX
+which YYY, AAAA (use example from scientific codes - loop skewing for
+example) which BBBB, and privatization which ZZZ.  Many
+parallelization patterns exist, but among the most desirable is DOALL,
+the independent execution of loop iterations.
 
-%speculation necessary Speculation allows the compiler to overcome
-%static analysis' constraints, optimize for an expected case, and
-%ignore rare or impossible dependences.
-The introduction of speculation allowed the compiler to optimize for
-an expected case and ignore rare or impossible dependences, overcoming
-static analysis' constraints.  Speculation also led to the design of
-speculative versions of enabling transformations that exhibit higher
-applicability than their conservative counterparts.  One such example
-is highly applicable speculative privatization~\cite{johnson:12:pldi},
-a key enabling transformation for
-parallelization~\cite{citations_from_privateer} that can remove
-contention caused by the reuse of data structures.
+For decades, parallelizing compilers only performed enbling
+transformations that could be proven correct.  This created a heavy
+reliance on the abilty of memory analysis to precisely determine how
+memory was used.  Since memory analysis is undecidable and imprecise
+in practice, parallelizing compilers failed to parallelize many codes.
+While there was some success in regular scientific codes,
+applicability was severely limited.
+
+Following on the success of speculation for extracting ILP,
+speculation in automatic parallelization has gained traction in the
+last decade.  Speculation frees the compiler to optimize an expected
+common case.  Since it can ignore rare cases or impossible cases not
+recognized by memory analysis, speculation frees automatic
+parallelization from the memory analsis problem.  In enabling
+transforms speculation inolves...
+
+
+XXXX HERE XXXX
+
+
+dependences, overcoming static analysis' constraints.  Speculation
+also led to the design of speculative versions of enabling
+transformations that exhibit higher applicability than their
+conservative counterparts.  One such example is highly applicable
+speculative privatization~\cite{johnson:12:pldi}, a key enabling
+transformation for parallelization~\cite{citations_from_privateer}
+that can remove contention caused by the reuse of data structures.
 %by creating a private copies for each parallel worker.
 %
 %research into speculation has shown incredible potential for the
