@@ -100,7 +100,7 @@ ASPLOS Submission \#\asplossubmissionnumber -- Confidential Draft -- Do Not Dist
 \setlength{\sectionspace}{1.5ex plus 0.25ex}
 \titlespacing*{\section}{0pt}{\sectionspace}{\sectionspace}
 \titlespacing*{\subsection}{0pt}{\sectionspace}{\sectionspace}
-\titlespacing*{\subsubsection}{0pt}{\parskip}{0.25em plus 0.1em minus 0.05em}
+\titlespacing*{\subsubsection}{0pt}{0.25em}{0.25em plus 0.1em minus 0.05em}
 
 % Compress itemize and enumerate environments.
 \RequirePackage{enumerate}
