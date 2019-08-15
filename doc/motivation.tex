@@ -20,7 +20,7 @@
 % Highlight Privateer as the most competitive prior work
 
 
-For DOALL parallelization, all loop-carried dependences need to be
+For DOALL parallelization, all cross-iteration dependences need to be
 addressed. Analyses and enabling transformations are used to disprove and
 remove dependences. With more powerful analyses and transformations, a
 DOALL parallelization system will have better applicability.
@@ -45,19 +45,20 @@ support privatization. However, STMlite and ClusterDOALL don't have support
 for reduction, possibly due to the difficulty of extracting reduction for
 dynamically allocated objects.
 
-SUIF and Polaris don't use speculative transformations. They use static
-analysis at compile time and also leverage run-time analysis to determine,
-during run time, whether to use the parallel version or not.
+SUIF and Polaris don't use speculative transformations. Instead, they rely
+on static analysis at compile time to remove dependences and run-time
+analysis to determine, at run time, whether it is safe to use the parallel
+version.
 %
 The shortcomings of analysis-based systems are obvious. Static analysis
 alone is too imprecise to enable aggressive parallelization. With run-time
 analysis, the predicates can be too complicated or too expensive to
 extract.
 %
-Speculation, on the other hand, allows the compiler to overcome analysis'
-constraints by ignoring rare or impossible dependences and uses validation
-and recovery to guarantee correctness. All the recent works have support
-for at least some forms of speculation.
+On the other hand, speculation, guided by profiling, allows the compiler to
+overcome analysis' constraints by ignoring rare or impossible dependences
+and uses validation and recovery to guarantee correctness. All the recent
+works have support for at least some forms of speculation.
 
 Privateer, by using more aggressive speculation, enables more privatization
 and reduction than prior systems and becomes the most applicable
@@ -66,6 +67,18 @@ parallel performance. With all kinds of overheads, a parallelized program
 yields little speedup or even slowdown. Because of these overheads, the
 results of automatic DOALL systems on real hardware are still
 underwhelming.
+
+Looking into the results from Privateer paper, we spot two major overheads
+- excessive use of memory speculation and expensive privatization.
+%
+There have been attempts to reduce these two overheads.
+ClusterDOALL~\cite{kim:12:cgo} and CorD~\cite{ctian:2008:micro} leverage
+static analysis to remove unnecessary memory speculations and thus reduce
+the overheads. Integrated in Polaris, there is an array analysis pass
+\cite{tu:94:lcpc} to infer some properties of a memory object to avoid
+bookkeeping and merging overheads of privatization. However, we believe
+that there are ways to furthormore reduce these overhead or even completely
+get rid of them in many cases.
 
 % This paper focuses on DOALL, the most well-studied parallelization paradigm
 % in literature. When applicable, DOALL can avoid most communications
@@ -76,37 +89,21 @@ underwhelming.
 % speculation and has achieved great applicability even for general purpose
 % programs.
 
-
-
-
-%% Previous Attempts to Reduce Runtime Overhead
-
-% There are some attempts to identify and reduce some overheads. Hybrid
-% Analysis~\cite{rus:03:hybrid} and Sensitivity Analysis~\cite{Rus:07:ics}
-% combine static analysis and run-time analysis to generate cheap predicates
-% for memory dependences, which reduce the run-time overhead. Recent
-% work~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} avoids some memory
-% speculations by speculating higher-level properties like local objects
-% whose validation does not require logging or communication.
-
-
-\subsection{Two Major Overheads}
+\subsection{Investigating Two Major Overheads}
 % Refer to dijkstra code example
 % Use Privateer's hard data to explain how bad it was
-In this part, we discuss the results presented in the Privateer paper and
-explain the impact of two major overheads, namely excessive use of memory
-speculation and expensive privatization. We will also use the code in
+In this part, we use the results presented in the Privateer paper to
+demostrate the impact of two major overheads. We also use
 Figure~\ref{fig:dijkstra_motivation} as a motivating example (taken from
 \texttt{dijkstra} from MiBench~\cite{}, used in the evaluation of
-Privateer) to show the opportunities to avoid these overheads.
-% %
-% Reuse across iterations of the \textbf{pathcost} array and global variable
-% \textbf{dist} creates cross-iteration false dependences that inhibit
-% parallelization.
-% %
-% Privatization enables parallelization of this loop by creating private
-% copies of \textbf{pathcost} and \textbf{dist} memory objects for every
-% worker.
+Privateer) to discuss the possibilities to avoid these overheads. In this
+example, reuse across iterations of the \textbf{pathcost} array and the
+global variable \textbf{dist} creates cross-iteration false dependences
+that inhibit parallelization. Note that Privateer~\cite{Johnson:12:plid} is
+the only automatic system that supports privatization of dynamically
+allocated objects like \textbf{pathcost} and enables parallelization of
+this loop by creating private copies of \textbf{pathcost} and \textbf{dist}
+memory objects for every worker.
 
 \lstset{basicstyle=\ttfamily, numbers=left, numberstyle=\tiny,
   stepnumber=1, numbersep=5pt}
@@ -137,9 +134,7 @@ Privateer) to show the opportunities to avoid these overheads.
 %Privatization enables parallelization of this loop by creating private copies
 %of \textbf{pathcost} and \textbf{dist} memory objects for every worker.
 %
-%\item From prior work, Privateer~\cite{Johnson:12:plid} is the only automatic
-%system to support privatization of dynamically allocated objects, like
-%\textbf{pathcost}, even in the presence of unrestricted pointers.
+
 %
 %\item
 %Privatization of these memory objects requires:
@@ -168,30 +163,33 @@ Privateer) to show the opportunities to avoid these overheads.
 \subsubsection{Excessive Use of Memory Speculation}
 
 By carefully looking into the evaluation results of Privateer, one major
-bottleneck, the validation cost for memory speculation, is spotted.
+bottleneck, the validation cost for memory speculation, is obvious.
 %
 Privateer monitors on average (per parallelized program) 23.7 GB for reads
 and 18.4 GB for writes. This monitoring wastes up to 45\% of the time of
-parallel workers.
-%
-These overheads are particularly high for \texttt{dijkstra} whose
-speedup is limited to only 4.8x on 24 cores.
+parallel workers. These overheads are particularly high for
+\texttt{dijkstra} example, whose speedup is limited to only 4.8x on 24
+cores.
 
-There have been attempts to reduce this overhead. A type of rudimentary
-attempt is shown in ClusterDOALL~\cite{kim:12:cgo}, which uses two
-compilers, one based on static analysis and one based on speculation to
-identify both opportunities. Other attempts including using peephole
-optimizations to remove unnecessary speculations and using static analysis
-to generate the PDG before parallelizing it are also implicitly shown
-in~\cite{johnson:12:pldi,ctian:2008:micro}. However, there is no work
-focusing on a meaningful integration between static analysis and
-speculation.
+Instrumenting writes and reads does not only add overheads, it also
+prevents other optimizations. Current software-only speculative systems,
+including Privateer, often introduce runtime calls for instrumentation of
+writes and reads and prevent optimizations (e.g., vectorization) and reduce
+even further the speedup over sequential execution.
 
-Note that instrumenting writes and reads does not only add overheads, it
-also prevents other optimizations. Current speculative systems, including
-Privateer, often introduce runtime calls for instrumentation of writes and
-reads within inner loops and prevent optimizations like vectorization and
-reduce even further the speedup over sequential execution.
+From the code in Figure. \ref{fig:dijkstra_motivation}, we notice that
+object \textbf{dist} is assigned in line \textbf{13} and used in line
+\textbf{37}. To privatize this object, we need to remove the
+cross-iteration RAW dependencefrom line \textbf{13} to line \textbf{37}.
+Because the assignment is inside a \texttt{if} block, static analysis alone
+is unable to disprove this dependence. Instead, prior speculative systems
+will use memory speculation to remove it, and add the monitoring overheads.
+However, if we can speculate the control dependence introduced by the
+\texttt{if} statement in line \textbf{11}, and feed this speculative
+assumption to static analysis, the RAW dependence can be removed. This
+combination of control speculation and static analysis is superior due to
+the fact that the overhead of control speculation is neglectable compared
+to memory speculation.
 
 \subsubsection{Expensive Privatization}
 
@@ -205,15 +203,19 @@ live-out value handling.
 Apart from bookkeeping during loop execution, privatization also introduces
 the cost of merging the parallel workers' states during checkpointing.
 
-Prior work has attempted to remove this bookkeeping and merging cost for
-live-out objects. Integrated in Polaris, there is a certain analysis
-\cite{tu:94:lcpc} to infer some properties of a memory object to avoid
-overheads.
-
+From the example in Figure. \ref{fig:dijkstra_motivation}, static analysis
+alone can disprove all RAW dependence and safely privatize the
+\textbf{pathcost} object. However, because \textbf{pathcost} is a live-out
+object, the bookkeeping and merging overheads are still there. To
+completely remove thse overheads, we find that the \texttt{for} loop in
+line \textbf{28} and \textbf{29} will overwrite the \textbf{pathcost}
+object and we can infer that the live-out of this object is from the last
+iteration of the loop, thus no bookkeeping and merging is needed.
 
 \subsection{Motivation}
-This work is motivated by this excessive use of memory speculation and
-expensive privatization of prior speculative systems that significantly
+This work is motivated by the opportunities to reduce or even remove two
+major overheads, namely the excessive use of memory speculation and the
+expensive privatization, of prior speculative systems that significantly
 limits their efficiency.
 %
 In the next section, we will show that using speculation-aware memory
