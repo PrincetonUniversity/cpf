@@ -63,8 +63,9 @@ Privateer with a code sample taken from the \texttt{dijkstra} benchmark
 version of which is shown in Figure ~\ref{fig:dijkstra_motivation}.
 The reuse of the array \texttt{\textbf{pathcost}} and global variable
 \texttt{\textbf{dist}} causes cross-iteration false dependence(s) that
-inhibit parallelization. Privateer creates private copies of
-\texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} for each worker.
+inhibit parallelization. Privateer removes these dependences by creating
+private copies of \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}}
+for each worker.
 
 \subsubsection{Excessive Use of Memory Speculation}
 Privateer's excessive use of memory speculation leads to large overheads
@@ -76,21 +77,21 @@ Privateer uses memory speculation to disprove the cross-iteration RAW
 dependence from line \textbf{13} to line \textbf{37} in order to privatize
 \texttt{\textbf{dist}}. Since the write to \texttt{\textbf{dist}} is inside
 a conditional block, static analysis alone is unable to disprove this
-dependence. Current speculative systems will first apply memory speculation
-to this dependence and then perform static analysis, adding logging and
-validation (overheads). If, however, we can use edge profiling to speculate
-that this conditional statement will always execute and pass this
-speculative assumption to the static analysis, this RAW dependence can be
-removed statically, avoiding all monitoring of reads to this object. This
-combination is superior to using memory speculation, as the cost for
-validating control speculation is negligible compared to that of memory
-speculation.
+dependence. Current speculative systems, including Privateer, will first
+apply memory speculation to this dependence and then perform static analysis,
+adding logging and validation (overheads). If, however, we can use edge
+profiling to speculate that this conditional statement will always execute
+and pass this speculative assumption to the static analysis, this RAW
+dependence can be removed with minimal cost, avoiding all monitoring of reads to
+this object. This combination is superior to using memory speculation,
+as the cost for validating control speculation is negligible compared to
+that of memory speculation.
 
 \subsubsection{Expensive Privatization}
 Perhaps counterintuitively, benchamrks that do not require memory speculation
 still have heavy overhead due to bookkeeping of the write set. For the
-\texttt{\textbf{blackscholes}} benchmark, Privateer logs 4 GB of writes,
-which constitutes 15\% of each parallel worker's time due to the inherent
+\texttt{blackscholes} benchmark, Privateer logs 4 GB of writes,
+which constitutes 15\% of each parallel worker's time, due to the inherent
 nature of privatization and need for the correct live-out value \{\textbf{XXX} Do we
 use blackscholes because we don't know how many writes of pathcost there
 are?\}. Apart from this overhead, privatization also introduces the cost of
