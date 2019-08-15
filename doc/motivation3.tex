@@ -1,3 +1,4 @@
+% !TEX root = paper.tex
 \section{Background and Motivation}
 \label{sec:motivation}
 
@@ -8,64 +9,60 @@
 Software-based automatic parallelization systems have been studied for over
 two decades.
 %
-Early works
-~\cite{blume:96:icpp,suif:94:stanford}
-focused on scientific code written in Fortran and lacked support for
-dynamic allocation or the complexity of pointers in modern C/C++ codes.
-% These works utilize privatization and reduction to create private copies of
-% data structures for each parallel worker to eliminate
-% cross-iteration memory-related dependences that inhibit parallelization.
-These works also do not use speculation and instead rely on either static
-analysis to remove dependences or run-time analysis to infer if the
-parallel version of the code is safe to use. The drawback of static
+% Static analysis and runtime analysis are limited
+Early works~\cite{blume:94:polaris,suif:94:stanford,rus:03:hybrid} focus on
+scientific code and use either static analysis to remove dependences or
+run-time analysis to infer if the parallel version of the code is safe to
+use. Privatization and reduction are also relied on analysis to remove flow
+dependences or prove the reduction property. The drawback of static
 analysis is that it is too imprecise to remove enough dependences to enable
 parallelization, while run-time analysis predicates can be too complex or
-expensive to extract. Later works ~\cite{Rus:07:ics,rus:03:hybrid,rauchwerger:99:pds}
-introduce speculation to discover, through profiling, dependences that rarely
-manifest at runtime and ignore them to overcome static analysis' limitation;
-the cost of using speculation is the added validation and recovery for
-guaranteeing correctness.
-
-Privatization and reduction are other ways to remove cross-iteration
-write-after-read (WAR) and write-after-write (WAW) dependences that inhibit
-parallelization; however, they require that no read-after-write (RAW)
-dependences exist to be applicable. Using only static analysis for
-dependence removal restricts usage of privatization and reduction to
-programs with simple control flows \{\textbf{XXX} Is this accurate?\}.
-In addition, these techniques require logging to ensure correct live-out
-values are communicated.
+expensive to extract. PD~\cite{rauchwerger:94:ics},
+LRPD~~\cite{dang:02:ipdps} introduce
+speculative privatization to overcome static analysis' limitations.
 
 More recent works ~\cite{mehrara:09:stmlite,kim:12:cgo,johnson:12:pldi} are
-able to use speculation when static analysis is insufficient to enable
-privatization or reduction of both statically and dynamically allocated
-objects. Privateer ~\cite{johnson:12:pldi} uses aggressive
-speculation to allow privatization and reduction to be widely applicable,
-even in the presence of unrestricted pointers.
-Employing speculation for privatization, however, requires extra validation
-that ensures no RAW dependence manifests at runtime. Examining the
-evaluation of Privateer, which greedily \{\textbf{XXX} is liberally a
-better word in this case?\} uses memory speculation to disprove
-dependences, reveals that this method, although widely applicable, indeed
-exhibits major overheads both in speculation validation and expensive
-privatization logging and checks.
+able to use speculation when static analysis is insufficient to remove
+dependences. This improves the applicability to loops with pointers and
+dynamic data structures.  Among these works, Privateer
+~\cite{johnson:12:pldi}, by using heap separation and aggressive
+speculation, supports both speculative privatization and reduction even in
+the presence of unrestricted pointers, and enables greater applicability
+than other speculative parallelization systems.  Yet, applicability doesn't
+necessarily translate to parallel performance. The results of automatic
+DOALL systems on real hardware are still underwhelming due to the existence
+of various overheads.
 
-ClusterDOALL ~\cite{kim:12:cgo} and CorD ~\cite{ctian:2008:micro} use
-static analysis after privatization is applied to remove unnecessary
-speculation checks, while Polaris ~\cite{tu:94:lcpc} includes an array
-analysis pass to avoid bookkeeping and merging overheads. However, we
-believe \{\textbf{XXX} do we though?\} that there are other ways to reduce
-these overheads further or even completely remove them in many cases.
+There have been attempts to reduce overheads.
+ClusterDOALL~\cite{kim:12:cgo} and CorD~\cite{ctian:2008:micro} use static
+analysis after privatization is applied to remove unnecessary memory
+speculation checks. Integrated in Polaris~\cite{blume:94:polaris}, automatic
+array privatization\cite{tu:94:lcpc} tries to avoid bookkeeping and merging
+overheads specific to privatization. However, for most general purpose
+programs, many workloads rely on irregular structures (e.g., trees, graphs,
+lists) and static analysis are mostly not applicable to them. We believe
+that there are better ways to reduce these overheads further or even
+completely remove them in many cases.
 
 \subsection{Overhead Investigation}
-In this section, we investigate the impact of the two main overheads of
-Privateer with a code sample taken from the \texttt{dijkstra} benchmark
-(used in Privateer's evaluation) from MiBench ~\cite{}, a simplified
-version of which is shown in Figure ~\ref{fig:dijkstra_motivation}.
-The reuse of the array \texttt{\textbf{pathcost}} and global variable
-\texttt{\textbf{dist}} causes cross-iteration false dependence(s) that
-inhibit parallelization. Privateer removes these dependences by creating
-private copies of \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}}
-for each worker.
+Privateer is the state-of-the-art parallelization technique for the
+workloads this paper targets. Hence, we started analyzing the overhead of
+this technique.
+%
+Examining the evaluation of Privateer, we spot two major overheads,
+excessive use of memory speculation which is general for prior speculative
+parallelization systems, and expensive privatization which applies to
+most systems with privatization.
+%
+In the following parts, we investigate the impact of this two main
+overheads on Privateer along with a motivating example taken from the
+\texttt{dijkstra} benchmark (used in Privateer's evaluation) from MiBench
+~\cite{}. A simplified version of this example is shown in Figure
+~\ref{fig:dijkstra_motivation}. The reuse of the array
+\texttt{\textbf{pathcost}} and global variable \texttt{\textbf{dist}}
+causes cross-iteration false dependence(s) that inhibit parallelization.
+Privateer removes these dependences by creating private copies of
+\texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} for each worker.
 
 \subsubsection{Excessive Use of Memory Speculation}
 Privateer's excessive use of memory speculation leads to large overheads
@@ -88,14 +85,13 @@ as the cost for validating control speculation is negligible compared to
 that of memory speculation.
 
 \subsubsection{Expensive Privatization}
-Perhaps counterintuitively, benchamrks that do not require memory speculation
-still have heavy overhead due to bookkeeping of the write set. For the
-\texttt{blackscholes} benchmark, Privateer logs 4 GB of writes,
+Perhaps counterintuitively, benchamrks that do not require memory
+speculation still have heavy overhead due to bookkeeping of the write set.
+For the \texttt{blackscholes} benchmark, Privateer logs 4 GB of writes,
 which constitutes 15\% of each parallel worker's time, due to the inherent
-nature of privatization and need for the correct live-out value \{\textbf{XXX} Do we
-use blackscholes because we don't know how many writes of pathcost there
-are?\}. Apart from this overhead, privatization also introduces the cost of
-merging the parallel workers' states during checkpointing. In Figure
+nature of privatization and need for the correct live-out value. Apart from
+this overhead, privatization also introduces the cost of merging the
+parallel workers' states during checkpointing. In Figure
 ~\ref{fig:dijkstra_motivation} static analysis alone can disprove all RAW
 dependences related to \texttt{\textbf{pathcost}} and safely privatize it.
 However, because \texttt{\textbf{pathcost}} is a live-out object, each
@@ -129,6 +125,6 @@ applicability.
       \input{figures/dijkstra_motivation}
     \end{minipage}
     }
-\caption{Sequential \textit{dijkstra} example from MiBench~\cite{}}
+\caption{Sequential \textit{dijkstra} example from MiBench~\cite{guthaus:2001:iiwsc}}
 \label{fig:dijkstra_motivation}
 \end{figure}
