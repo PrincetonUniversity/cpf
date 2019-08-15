@@ -1,4 +1,4 @@
-\begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt, belowskip=0pt, firstnumber=1]
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt, firstnumber=1]
 int *pathcost; // dyn alloc 1-D N
 int *adj; // dyn alloc 2-D NxN
 int dist;
@@ -39,7 +39,7 @@ firstnumber=28]
       int v = dequeue();
       for (i=0; i<N; i++) {
 \end{lstlisting}
-\begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt,
+\begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,
 belowskip=0pt, firstnumber=37,name=dij_checks]
         nDist = adj[v][i] + dist;
 \end{lstlisting}
