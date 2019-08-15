@@ -5,9 +5,9 @@
 \begin{tabular}{|l|c|c||c|c||c||c|c|c|c||c|c|c|c|}
 % \begin{tabular}{|l|c|c||c|c||c|c|c|}
 \hline
-\multirow{2}{*}{Benchmark} & \multirow{2}{*}{Suite} & \multirow{2}{*}{\makecell{Execution Time Coverage \\(Theoretical Max Speedup)}} &
-\multicolumn{2}{c||}{Speculation-Aware Memory Analysis Coverage} &
-\multirow{2}{*}{\makecell{Proposed Enablers Coverage}} &
+\multirow{2}{*}{Benchmark} & \multirow{2}{*}{Suite} & \multirow{2}{*}{\parbox[c]{3.4cm}{\centering {Execution Time Coverage \\(Theoretical Max Speedup)}}} &
+\multicolumn{2}{c||}{SAMA's Dependence Coverage} &
+\multirow{2}{*}{\parbox[c]{2.4cm}{\centering Proposed Enablers'\\ Object Coverage}} &
 % \multirow{2}{*}{\makecell{Private Read Size}} &
 % \multirow{2}{*}{\makecell{Private Write Size}} \\
 \multicolumn{4}{c||}{Private Read Size} &
@@ -18,11 +18,11 @@
 \cline{4-5}
 \cline{7-14}
 &  &
-& {\centering RAW Dependences}   & {\centering WAW Dependences}
-& & Privateer & Privateer\textsubscript{no\_read} & \namensp
-\textsubscript{cheap\_spec} & \namensp
-& Privateer & Privateer\textsubscript{no\_read} & \namensp
-\textsubscript{cheap\_spec} & \namensp \\
+& {\centering RAW Cross-Iter}   & {\centering WAW Cross-Iter}
+& & \parbox[c]{1.1cm}{\centering Privateer} & \parbox[c]{1.5cm}{\centering \namensp\textsubscript{v1}} &
+\parbox[c]{1.5cm}{\centering \namensp\textsubscript{v2}} & \parbox[c]{1.3cm}{\centering \namensp}
+& \parbox[c]{1.1cm}{\centering Privateer} & \parbox[c]{1.5cm}{\centering \namensp\textsubscript{v1}} &
+\parbox[c]{1.5cm}{\centering \namensp\textsubscript{v2}} & \parbox[c]{1.3cm}{\centering \namensp} \\
 \hline
 
 % enc-md5
@@ -40,27 +40,27 @@ enc-md5    & Trimaran & 100.0\% (28.0$\times$) & \textbf{87 (7\%)} & \textbf{45 
 %{\parbox[l]{5cm}{-scanfile c756hel.in \\-trainfile1 a10.img \\-trainfile2 hc.img\\ -stride 1 -startx 60 \\-starty 90 -endx 210 \\ -endy 240 -objects 10}} & input1   \\
 % 2mm
 \hline
-2mm        & PolyBench & 100.0\% (28.0$\times$)  & \textit{N/A} & \textit{N/A} & \textbf{2 (100\%)} &
+2mm        & PolyBench & 100.0\% (28.0$\times$)  & N/A & N/A & \textbf{2 (100\%)} &
            1TB & 0B & 0B & 0B & 1TB & 1GB & 0B & 0B \\ %  & 2360.60  & 4096 4096 4096 4096     & -  \\
 % 3mm
 \hline
-3mm        & PolyBench & 100.0\% (28.0$\times$)  & \textit{N/A} & \textit{N/A} & \textbf{3 (100\%)} &
+3mm        & PolyBench & 100.0\% (28.0$\times$)  & N/A & N/A & \textbf{3 (100\%)} &
            3TB & 0B & 0B & 0B & 1.5TB & 2.25GB & 0B & 0B \\ %  & 3515.78 & 4096 4096 4096 4096 4096    & -  \\
 % correlation
 \hline
-correlation & PolyBench & 99.7\% (25.9$\times$) & \textit{N/A} & 0 (0\%)  & 0 (0\%) &
+correlation & PolyBench & 99.7\% (25.9$\times$) & N/A & 0 (0\%)  & 0 (0\%) &
             0B & 0B & 0B & 0B & 192MB & 192MB & 192MB & 192MB \\ %  & 914.39& 4096 4096   & - \\
 % covariance
 \hline
-covariance & PolyBench & 99.9\% (27.3$\times$) & \textit{N/A} & 0 (0\%) & 0 (0\%) &
+covariance & PolyBench & 99.9\% (27.3$\times$) & N/A & 0 (0\%) & 0 (0\%) &
            0B & 0B & 0B & 0B & 192GB & 192MB & 192MB & 192MB \\ % & 894.37 & 4096 4096 & -  \\
 % doitgen
 \hline
-doitgen   & PolyBench & 99.6\% (25.3$\times$) & \textit{N/A} & \textit{N/A} & \textbf{2 (100\%)} &
+doitgen   & PolyBench & 99.6\% (25.3$\times$) & N/A & N/A & \textbf{2 (100\%)} &
           2.53TB & 0B & 0B & 0B & 2.54TB & 10.1GB & 0B & 0B \\ %  & 1034.86 & 768 768 768 & -  \\
 % gemm
 \hline
-gemm     & PolyBench  & 100.0\% (28.0$\times$) & \textit{N/A} & \textit{N/A} & \textbf{1 (100\%)} &
+gemm     & PolyBench  & 100.0\% (28.0$\times$) & N/A & N/A & \textbf{1 (100\%)} &
          128MB & 0B & 0B & 0B & 256MB & 256MB & 0B & 0B \\ % & 1182.50 & 4096 4096 4096    & -  \\
 % blackscholes
 \hline
