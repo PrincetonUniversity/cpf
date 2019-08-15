@@ -58,6 +58,15 @@ HELIX does not rely on speculation to avoid the related overhead, which limits t
 Targeting such loops increases the communication demand, which makes HELIX particularly appealing when coupled with an architecture support designed to accelerate core-to-core communication.
 On the other hand, LSD decreases the speculation overhead enough to make DOALL parallelization practical on existing commodity multicores.
 
+%% Previous Attempts to Reduce Runtime Overhead
+
+% There are some attempts to identify and reduce some overheads. Hybrid
+% Analysis~\cite{rus:03:hybrid} and Sensitivity Analysis~\cite{Rus:07:ics}
+% combine static analysis and run-time analysis to generate cheap predicates
+% for memory dependences, which reduce the run-time overhead. Recent
+% work~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} avoids some memory
+% speculations by speculating higher-level properties like local objects
+% whose validation does not require logging or communication.
 
 \paragraph{Speculative Compilers:}
 
