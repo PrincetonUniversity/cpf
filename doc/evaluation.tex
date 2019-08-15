@@ -166,25 +166,24 @@ Table \ref{tab:benchmark-list} shows the overhead of private reads and
 writes for each of the variants of Privateer and \namensp. These results
 demonstrate the correlation between the overheads and the speedup that can
 be achieved. Redundant read elimination \{\textbf{XXX is this the right
-  name?}\} removes reads that \textbf{something}... Using cheap
-  speculation, we reduce are able to move some of the private objects to
-  the cheaper heaps \{\textbf{XXX} better wording\}. Using collaboration
-  removes the remaining unnecessary logs that cannot be inferred with
-  static analysis alone.
+name?}\} removes reads that can be statically be inferred to never fail.
+Using cheap speculation, we are able to move some of the private objects to
+the heaps that do not require expensive logging and checks.
+Using collaboration removes the remaining unnecessary logs that cannot
+be removed with static analysis alone.
 \{\textbf{XXX} Put in something about checkpoints\}
 
 \subsection{Misspeculation Analysis}
-\begin{figure*}[htp]
-  \includegraphics[width=0.9\textwidth]{figures/misspec}
+\begin{figure}[htp]
+  \includegraphics[width=\columnwidth]{figures/misspec-crop}
   \caption{Misspeculation performance across speculative benchmarks}
   \label{fig:misspec}
-\end{figure*}
+\end{figure}
 Figure \ref{fig:misspec} shows how misspeculation affects the
-performance of the six speculative benchmarks with misspeculation rates of
-0.1\% and 0.2\%. Since none of the benchmarks exhibit misspeculation on the
+performance of the six speculative benchmarks with a misspeculation rate of
+0.1\%. Since none of the benchmarks exhibit misspeculation on the
 given input sets, we artificially inject misspeculation at the end of
-every 1000 and 500 iterations, respectively, to observe the performance
-degradation.
+every 1000 iterations to observe the performance degradation.
 Note that for many benchmarks, speculation is only used
 because analysis cannot disprove a dependence, even though manually
 examining the source code reveals that the dependence will never manifest.
@@ -194,15 +193,14 @@ check.
 % static analysis can disprove many speculative assumptions and for many of
 % the benchmarks, misspeculation is only possible during a heap check.
 The inputs for \texttt{179.art} were not large enough to have
-enough iterations for misspeculation at these rates, so we perform a
+enough iterations for misspeculation at this rate, so we perform a
 weighted average of non-misspeculating and misspeculating runs to achieve
-an average corresponding to the respective rates.
-These results demonstrate
-that \name performs well with only high confidence speculation.
-\textbf{Something about how some benchmarks cannot misspec
-with any input, only that analysis cannot prove that} A system that has
-larger overheads has a larger chance of speculation (since they use more
-speculative assumptions), but we minimize the amount of speculation.
+an average corresponding to the respective rate.
+These results demonstrate that \name performs well with only high
+confidence speculation.
+Systems that have larger overheads have a larger chance of speculation (since
+they use more speculative assumptions), but we minimize the amount of speculation.
+\{\textbf{XXX} Reword this\}
 % As the iteration within a checkpoint that misspeculation
 % occurs can affect the recovery cost, we inject these misspeculations in the
 % middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more
