@@ -1,13 +1,13 @@
 % !TEX root = ../paper.tex
 \small
 \centering
-\resizebox{\textwidth}{!}{
+\resizebox{1.0\textwidth}{!}{%
 \begin{tabular}{|l|c|c||c|c||c||c|c|c|c||c|c|c|c|}
 % \begin{tabular}{|l|c|c||c|c||c|c|c|}
 \hline
-\multirow{2}{*}{Benchmark} & \multirow{2}{*}{Suite} & \multirow{2}{*}{\parbox[c]{3.4cm}{\centering {Execution Time Coverage \\(Theoretical Max Speedup)}}} &
-\multicolumn{2}{c||}{SAMA's Dependence Coverage} &
-\multirow{2}{*}{\parbox[c]{2.4cm}{\centering Proposed Enablers'\\ Object Coverage}} &
+\multirow{2}{*}{Benchmark} & \multirow{2}{*}{Suite} & \multirow{2}{*}{\parbox[c]{2.8cm}{\centering \makecell{ \% of Execution Time \\ (Theoretical Speedup)}}} &
+\multicolumn{2}{c||}{\makecell{SAMA's Crosss-Iter \\Dependence Cov}} &
+\multirow{2}{*}{\parbox[c]{1.8cm}{\centering New Enablers'\\ Object Cov}} &
 % \multirow{2}{*}{\makecell{Private Read Size}} &
 % \multirow{2}{*}{\makecell{Private Write Size}} \\
 \multicolumn{4}{c||}{Private Read Size} &
@@ -18,11 +18,11 @@
 \cline{4-5}
 \cline{7-14}
 &  &
-& {\centering RAW Cross-Iter}   & {\centering WAW Cross-Iter}
-& & \parbox[c]{1.1cm}{\centering Privateer} & \parbox[c]{1.5cm}{\centering \namensp\textsubscript{v1}} &
-\parbox[c]{1.5cm}{\centering \namensp\textsubscript{v2}} & \parbox[c]{1.3cm}{\centering \namensp}
-& \parbox[c]{1.1cm}{\centering Privateer} & \parbox[c]{1.5cm}{\centering \namensp\textsubscript{v1}} &
-\parbox[c]{1.5cm}{\centering \namensp\textsubscript{v2}} & \parbox[c]{1.3cm}{\centering \namensp} \\
+& {\centering RAW}   & {\centering WAW}
+& & \parbox[c]{1.1cm}{\centering Privateer} & \parbox[c]{0.8cm}{\centering v1} &
+\parbox[c]{0.8cm}{\centering v2} & \parbox[c]{1.3cm}{\centering \namensp}
+& \parbox[c]{1.1cm}{\centering Privateer} & \parbox[c]{0.8cm}{\centering v1} &
+\parbox[c]{0.8cm}{\centering v2} & \parbox[c]{1.3cm}{\centering \namensp} \\
 \hline
 
 % enc-md5
