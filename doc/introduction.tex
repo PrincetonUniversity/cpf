@@ -1,64 +1,23 @@
 % !TEX root = paper.tex
 \section{Introduction}
 
-% \begin{table*}[t]
-%   \include{figures/related-work-tab}
-%   \caption{
-%     Comparison of \name with Automatic DOALL software-only systems.
-%   }
-%   \label{tab:related-work}
-%     \vspace{-5pt}
-% \end{table*}
+Using PThreads~\cite{pthread:web}, Map-Reduce~\cite{dean:08:cacm},
+OpenMP~\cite{openmp:web}, and other libraries and languages,
+programmers routinely produce coarse grained parallel (CGP) programs
+even at warehouse scale.  At the other end of the parallism
+granularity spectrum, compilers and out-of-order processors
+consistently extract instruction-level parallelism (ILP) from programs
+without any programmer intervention.  Unfortunately, despite
+developments in parallel programming langauges, parallel libraries,
+and parallelizing compilers, reliably finding parallelism appropriate
+for multicore remains a challenge.  Programs with CGP are not ideally
+suited for multicore as they tend to stress multicore's shared
+resources, such as caches and memory bandwidth.  Google revealed, in a
+candid disclosure atypical of a field with many trade secrets, that
+their multicore utilization rarely exceeds
+20\%~\cite{barroso:07:computer}.  Despite progress in recent years,
+automatic parallelization for multicore remains defficient.
 
-Multicore architectures are ubiquitous in systems.  Thus, extracting
-parallelism is more important than ever to harvest more performance
-from existing hardware.
-%
-%This burden of extracting sufficient parallelism has fallen on
-%programmers and compilers.
-Yet, despite many new tools, languages, and libraries designed for
-multicore, multicore remains a grossly underutilized technology.
-
-%Programmers?
-%
-Manually expressing parallelism is tedious and error-prone. The
-programmers that do attempt parallelism typically rely on popular
-approaches (e.g., PThreads~\cite{pthread:web},
-OpenMP~\cite{openmp:web}, Map-Reduce~\cite{dean:08:cacm}) that focus
-on extracting coarse grained parallelism from programs with simple
-control and data flow. This is beneficial for various workloads in
-cluster and warehouse-scale systems but is insufficient for general
-purpose programs on multicore, where finer-grained parallelization is
-needed.
-
-%Even if manual parallelization is successfully applied, %a program is
-%manually parallelized, it is still an unappealing option due to the
-%high maintenance cost of parallel code compared to sequential (five
-%times more expensive according to Google~\cite{google_cite_simone}).
-%
-
-
-%autopar is very useful
-Automatic parallelization is a more attractive approach to make
-efficient use of multicore systems.
-%Unfortunately, even after 15 years of multicore, automatic
-%parallelization is still mostly limited to scientific and
-%data-intensive applications.  the routine extraction of TLP remains
-%elusive.
-%
-Automatic parallelization techniques utilize analysis and enabling
-transformations to distribute, without data races, work across
-processes or threads.
-%
-Analysis infers program properties, while enabling transformations
-modify the program to eliminate parallelization inhibitors identified
-by the analysis, the main inhibitor being reuse of data structures.
-Privatization, a key enabling transformation for
-parallelization~\cite{citations_from_privateer}, can remove contention
-caused by this reuse by creating a private copy of the data for each parallel
-worker.
-
-%analyis limitations
 Early works in automatic parallelization had limited applicability
 (restrained to regular code patterns, e.g. scientific applications)
 due to their reliance on static dependence analysis (including alias
@@ -84,6 +43,29 @@ speculative privatization proposed in Privateer~\cite{johnson:12:pldi}.
 Yet, despite their potential, speculative software systems face real
 challenges that prevent their widespread
 adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
+
+
+Automatic parallelization is a more attractive approach to make
+efficient use of multicore systems.
+%Unfortunately, even after 15 years of multicore, automatic
+%parallelization is still mostly limited to scientific and
+%data-intensive applications.  the routine extraction of TLP remains
+%elusive.
+%
+Automatic parallelization techniques utilize analysis and enabling
+transformations to distribute, without data races, work across
+processes or threads.
+%
+Analysis infers program properties, while enabling transformations
+modify the program to eliminate parallelization inhibitors identified
+by the analysis, the main inhibitor being reuse of data structures.
+Privatization, a key enabling transformation for
+parallelization~\cite{citations_from_privateer}, can remove contention
+caused by this reuse by creating a private copy of the data for each parallel
+worker.
+
+%analyis limitations
+
 % TODO: Add more citations here
 %
 %Major bottlenecks include high communication and bookkeeping costs
