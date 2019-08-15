@@ -409,14 +409,14 @@ outside the loop, but all their accesses are contained within the
 loop. This transformation's heap has CoW mapping and there is no copy-out
 process nor monitoring.
 
+\end{itemize}
+
 The first two variants have been explored by Tu et
 al.~\cite{ARRAY_privatization} but were limited to static analysis
 based detection of privatization.  Unlike any prior work, \name
 extends applicability of these variants with usage of speculative
 assumptions to programs with pointers, dynamic allocation, and type
 casts.
-
-\end{itemize}
 
 %\input{private_types}
 
@@ -533,7 +533,8 @@ The DOALL planner then selects the lowest cost solution for each
 memory object. For example, for \textit{dist} the local
 privatization's offer is selected since it is the cheapest
 privatization transformation and it requires a speculative assumption
-that other options require as well.
+that other options require as well. \textit{nDist} object (not shown
+in this figure) is also handled by local privatization.
 %
 Extracting this efficient plan would not be possible without the use
 speculation-aware memory analyzer and efficient speculative
