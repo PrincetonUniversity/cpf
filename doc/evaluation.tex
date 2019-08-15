@@ -171,7 +171,17 @@ Using cheap speculation, we are able to move some of the private objects to
 the heaps that do not require expensive logging and checks.
 Using collaboration removes the remaining unnecessary logs that cannot
 be removed with static analysis alone.
-\{\textbf{XXX} Put in something about checkpoints\}
+
+For most of the benchmarks, checkpointing does not add any
+significant (over 1\%) overhead; the exceptions are
+\texttt{052.alvinn}, \texttt{correlation}, and \texttt{covariance}.
+The inner loop of \texttt{052.alvinn} is chosen for parallelization --
+because the useful work of the loop is small and runs for 60,000
+iterations, checkpointing constitutes a considerable portion of the run
+time, \textasciitilde20\%. For \texttt{covariance} and \texttt{correlation},
+the speculation-aware memory analyzer could not avoid using memory
+speculation and as such, the checkpoints need to merge large private sets
+with an overhead of \textasciitilde10\% for both.
 
 \subsection{Misspeculation Analysis}
 \begin{figure}[htp]
