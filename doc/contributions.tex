@@ -15,8 +15,8 @@ speculative DOALL parallelization system.
 
 %
 Prior techniques independently apply speculative techniques to
-overcome the imprecision of memory analysis, which often exhibits
-excessive use of expensive memory speculation. \{\textbf{XXX} reword\}
+overcome the imprecision of memory analysis, often leading to
+excessive use of expensive memory speculation.
 %
 %This work suggests that exposing cheap-to-validate speculative
 %assumptions to static analysis can enable removal of memory
@@ -33,16 +33,15 @@ combines the strengths of static analysis and cheap-to-validate
 speculative assumptions to reduce the need for expensive speculation.
 If memory analysis fails on its own to resolve an analysis query, then
 it interprets cheap-to-validate speculative assumptions as facts
-ignoring the possibility of misspeculation. \{\textbf{XXX} what if the
-speculative assumption is not useful to the query?\}
+ignoring the possibility of misspeculation.
 %
-The inclusion of speculation changes the semantics of traditional memory
-analysis. It is now required to specify for each answer the
+The inclusion of speculation changes the semantics of traditional
+memory analysis. It is now required to specify for each answer the
 speculative assumptions, if any, that were used in the process.
 %
-Just applying speculation and then re-using \{\textbf{XXX} better word\} memory analysis would not
-have the same effect since the possibility of misspeculation restrains
-static analysis.
+Just applying speculation and then querying again memory analysis
+would not have the same effect since the possibility of misspeculation
+restrains static analysis.
 
 %When a query is received the memory analyzer tries to resolve it with
 %usage of just static analysis. If that fails, it tries to use memory
@@ -60,10 +59,10 @@ CAF~\cite{johnson:cgo:17}).
 The modularity of our static analysis simplifies the addition of
 speculation awareness. Only the analysis algorithms that could
 possibly benefit from the collaboration need to be extended with a
-speculative mode. \{\textbf{XXX} is it a different mode?\}
+speculative mode.
 %
-A monolithic memory analysis would be harder to extend for
-speculation awareness.
+A monolithic memory analysis would be harder to extend for speculation
+awareness.
 
 In the speculation-aware memory analyzer, \name utilizes speculative
 assumptions from two profilers: edge profiler (detects biased
@@ -82,9 +81,8 @@ Two examples of analysis passes that can benefit from this speculative
 information is kill-flow and unique access paths (UAP) algorithms.
 %
 Kill-flow analysis disproves memory dependences by finding killing
-operations along all feasible paths between two operations.
-\{\textbf{XXX} Are "killing operations" common knowledge? \}
-If kill-flow is able to use speculative control flow information, then
+operations along all feasible paths between two operations.  If
+kill-flow is able to use speculative control flow information, then
 the feasible paths might be reduced and kill-flow might be able to
 assert absence of a statically non-disprovable memory dependence.
 %
@@ -105,9 +103,8 @@ Regarding value prediction, if memory analysis passes assume that
 loaded value predictions are correct, then they can re-interpret a
 predicted load as a store of the predicted value. One analysis
 algorithm that can benefit from that is again kill-flow. Kill-flow
-treats the predictable load as a kill operation (i.e., a store) to any
-dominated operation that must-alias with the predicted load's memory
-location \{\textbf{XXX} reword this\}.
+treats the predictable load as a kill operation for must-aliasing data
+flows.
 
 %Apart from removal of dependences, the speculation-aware memory
 %analyzer is also used to characterize dependences.
@@ -137,11 +134,9 @@ dependent instructions.
 %speculative) in speculative parallelization only attempts to
 %completely remove dependences, while the speculation-aware memory
 %analyzer infers properties for even non-removable ones.
-Annotations may include more than one option for the same property if
-speculative assumptions are used. \{\textbf{XXX} What is an option?\}
-%
-Decision making is left for the planner, which can perform global
-reasoning.
+If a property cannot be statically inferred, then annotations may
+include alternatives; decision making is left for the planner.
+%, which can perform global reasoning.
 %The planner is responsible for selecting the most profitable option,
 %taking into consideration. Memory analyzer has a limited scope.
 
@@ -446,7 +441,7 @@ casts.
   \includegraphics[width=0.46\textwidth]{figures/perspective-example-crop}
 }
 }
-\caption{Property inference comparison of Privateer with LSD for memory
+\caption{Comparison of Privateer with \name for handling memory
 objects \textit{pathcost} and \textit{dist} of the hot loop of \textit{dijkstra}}
 \label{fig:dijkstra_motivation_comparison}
 \end{figure*}
@@ -470,7 +465,7 @@ objects \textit{pathcost} and \textit{dist} of the hot loop of \textit{dijkstra}
   \end{minipage}
 }
 }
-\caption{Source code comparison of Privateer with LSD for parallelized hot loop
+\caption{Source code comparison of Privateer with \name for parallelized hot loop
 of \textit{dijkstra}. Logging and checks
 during loop execution dominate the overheads.}
 \label{fig:dijkstra_motivation_comparison_source_code}
@@ -483,84 +478,119 @@ during loop execution dominate the overheads.}
 \subsection{Example}
 \label{motiv_example}
 
-This example underlines inefficiencies and limitations of prior work and
-showcases how the combination of static analysis with cheap-to-validate
-speculative assumptions can infer program properties that enable scalable
-parallelization.
+This example underlines inefficiencies and limitations of prior work
+and showcases how the contributions of this paper enable more scalable
+speculative parallelization.
 %
-Consider the code in
-Figure~\ref{fig:dijkstra_motivation} (taken from MiBench~\cite{} benchmark
-dijkstra, used in the evaluation of Privateer~\cite{}).
+Consider again the code in Figure~\ref{fig:dijkstra_motivation},
+briefly discussed~\ref{motiv_overheads}.
 %
-Reuse across iterations of the \textbf{pathcost} array and global variable
-\textbf{dist} creates cross-iteration false dependences that inhibit
-parallelization.
+Privatization enables parallelization by addressing cross-iteration
+false dependences introduced by the reuse of \textit{pathcost} array,
+and global variables \textit{nDist} and \textit{dist}.
 %
-Privatization enables parallelization of this loop by creating private
-copies of \textbf{pathcost} and \textbf{dist} memory objects for every
-worker.
+From prior work, Privateer~\cite{johnson:12:pldi} is the only
+automatic system to support privatization of dynamically allocated
+objects, like \textit{pathcost}, even in the presence of unrestricted
+pointers.
+
+Figure~\ref{fig:dijkstra_motivation_comparison} compares the
+compilation flow of \name with Privateer for handling memory objects
+%for privatizing
+\textit{pathcost} and \textit{dist}.
 %
-From prior work, Privateer~\cite{johnson:12:pldi} is the only automatic
-system to support privatization of dynamically allocated objects, like
-\textbf{pathcost}, even in the presence of unrestricted pointers.
+Privateer relies on profile information to infer that these two
+objects are privatizable and is forced to apply transformations with
+high runtime overheads.
+%Even if memory analysis was used instead of memory speculation, the
+%classifier sees the optimistic view of the program
 %
-Figure~\ref{fig:dijkstra_motivation_comparison} compares the property
-inference property of Privateer compared to this work.
-The difference is that
+On the other hand, \name employs an exploration phase that yields a
+much more profitable plan.
+%The PDG is annotated by the speculation-aware memory
+Notice how the PDG is annotated with properties and underlying
+speculative assumptions.
+%
+Based on the information on the PDG, three different transformations
+offer handling of memory objects. Their offers specify the set of
+speculative assumptions that are required for the transformation to be
+applicable.
+%For example, handling of \textit{dist} requires usage of control
+%speculation (for the branch in line 11,
+%fig.~\ref{fig:dijkstra_motivation}).
+%
+%Notice that \textit{dist} can be handled by all three
+%transformations.
+%
+The DOALL planner then selects the lowest cost solution for each
+memory object. For \textit{dist} the local privatization's offer is
+selected since it is the cheapest privatization transformation and it
+requires a speculative assumption that other options require as well.
+%
+This efficient plan would not be possible without the
+speculation-aware memory analyzer.
 
-Figure~\ref{fig:dijkstra_motivation_comparison_source_code} compares the
-resulting parallelized versions (in a simplified form) for Privateer and
-this work. The code includes all the added checks, logging and handling
-live-out overheads. The code changes are marked with the average added
-overhead over the useful work of each worker.
-It is clear that Privateer introduces a lot of added overhead considerably
-limiting its profitability. XXX on the other side ..
+%Notice that speculation-aware memory analyzer allows removal of the
+%RAW dependence between instruction 13 and 37 with a combination of
+%static analysis and control speculation. This dependence would require
+%usage of memory speculation in prior.
+%not only in Privateer but in any other automatic parallelization
+%speculative system.
 
 
-Privateer would choose to just do simple privatization with mem spec.
-The spec-aware analyzer allows removal of mem spec and efficient
-privatization in this case.
-
-\begin{itemize}
-\item
-Privatization of these memory objects requires:
-\begin{enumerate}
-\item
-identification of all accesses of these objects
-    within the loop
-\item
-absence of cross-iteration flow
-     dependences on each of these accesses
-\end{enumerate}
-
-\end{itemize}
+TODO: small fixes in fig for properties used in plan and rename to fix
+priv. explain overwrite and the annotation of WAW
 
 
-Remove text from figure 1. Just add some here, the rest has been explained
-earlier.
-Real dependnecs prevent
-DOALL can become applicable if these two objects are proven to have the
-private property.
+%Whilst the private property is enough for DOALL
+%Notice that we infer an additional property that improves the profitability
+%of parallelization.
 
-We compare our approach where we combine static analysis with cheap-to-validate
-with privateer's monolithic approach that over-speculates and is limited by high
-runtime overheads.
+%For inferring the property that a private memory object has the additional local-private
+%property, it suffices to identify all accesses of the memory object
+%and check that all of them are within the loop.
+%locally-accessed property.
 
-We initially present the compilation flow for both approaches, then the
-resulting parallelized code and finally the flow of live-in and live-out memory
-data.
 
-Whilst the private property is enough for DOALL
-Notice that we infer an additional property that improves the profitability
-of parallelization.
+Figure~\ref{fig:dijkstra_motivation_comparison_source_code} compares
+the resulting parallelized versions (in a simplified form) for
+Privateer and \namensp. The code includes all the added checks,
+logging and handling live-out overheads. The code changes are marked
+with the average added overhead over the useful work of each worker.
+It is clear that Privateer introduces a lot of added overhead
+considerably limiting its profitability. \namensp, on the other hand,
+thanks to the use of speculative-aware memory analyzer, careful
+selection of applied transformations, and use of efficient
+privatization variants is able to parallelize dijkstra with minimum
+overheads. In fact, \name exhibits 4.8$\times$ speedup over Privateer
+for dijkstra (see~\ref{eval}).
 
+
+%Privateer would choose to just do simple privatization with mem spec.
+%The spec-aware analyzer allows removal of mem spec and efficient
+%privatization in this case.
+%
+%\begin{itemize}
+%\item
+%Privatization of these memory objects requires:
+%\begin{enumerate}
+%\item
+%identification of all accesses of these objects
+%    within the loop
+%\item
+%absence of cross-iteration flow
+%     dependences on each of these accesses
+%\end{enumerate}
+%
+%\end{itemize}
+%
+%
+%DOALL can become applicable if these two objects are proven to have the
+%private property.
+%
+%We compare our approach where we combine static analysis with cheap-to-validate
+%with privateer's monolithic approach that over-speculates and is limited by high
+%runtime overheads.
+%
 %Note that anti-dependences are ignored since both systems use
 %process-based runtime systems.
-
-For inferring the property that a memory object has the locally-accessed
-property, it suffices to identify all accesses of the memory object. If all
-these accesses are within the loop then the memory object has the
-locally-accessed property.
-
-
-
