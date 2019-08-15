@@ -177,7 +177,7 @@ current implementation).
 \input{runtime}
 
 \subsection{Recovery}
-When misspeculation is detected by a worker, either at the end of an
+When misspeculation is detected by a worker, either during an
 iteration or at checkpoint time, other workers continue until the last
 valid checkpoint, then waits for recovery to be finished. Once all the
 workers reach this checkpoint, the main process will execute the loop
