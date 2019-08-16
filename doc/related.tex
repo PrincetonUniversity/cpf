@@ -67,6 +67,13 @@ tests to generate predicates for memory dependences, which reduce the
 run-time overhead. Yet, all of these optimization efforts are rudimentary
 compared to \namensp.
 
+Another line of work extracts parallelism among loop iterations by ignoring data dependences rather than speculating their non-existence~\cite{campanoni:2015:cgo,Udupa:2011:AEB:1993498.1993555,misailovic2013parallelizing}.
+These approaches extract parallelism sacrificing the program's output quality.
+Instead, \name extracts parallelism while guaranteeing the preservation of the original output quality.
+
+Finally, some recent work speculate on properties of data dependences like commutativity~\cite{kulkarni:07:pldi,Nguyen:2014:DGO:2541940.2541964} and having short memory~\cite{Deiana:2018:UPN:3173162.3173181}.
+These techniques involve heavy speculation and they require developers to cast programs in specialized code patterns expected by their compilers and runtimes.
+Instead, \name parallelization is transparent to developers allowing them to write their code how they prefer to target their specific goals (e.g., productivity, maintainability, integrability).
 
 % HELIX
 % The HELIX parallelizing compiler extracts TLP by distributing loop
