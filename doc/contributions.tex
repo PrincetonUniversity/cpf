@@ -2,11 +2,11 @@
 
 Current parallelizing compiler designs force code analyses, transformations, and speculation techniques to work as a pipeline.
 This excludes the possibility of non-linear and fine-grain interactions, which makes important parallelization opportunities unreachable.
-To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled (described in section~\ref{analyzer}) to boost the discovery of parallelization opportunities.
+To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (section~\ref{analyzer}).
 This tight interaction generates information in the form of a dependence graph annotated with speculative assumptions.
 \name's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
-These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enabled their non-linear and fine-grained interactions.
-The new interfaces within our parallelizing compiler create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
+These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enable their non-linear and fine-grained interactions.
+These new interfaces create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
 These new degrees of freedom expand the design space explored by parallelizing compilers.
 Hence, \name introduces a new concept to properly and efficiently explore such space: the planner (section~\ref{planner}).
 This section ends describing how these new concepts work together to parallelize a real benchmark (section~\ref{motiv_example}).
