@@ -46,7 +46,7 @@ automatic parallelization.
 Following on the success of speculation for extracting ILP,
 speculation in automatic parallelization has gained traction in the
 last decade.  Speculation allows the compiler to optimize for the
-expected common case.  The effect is dramatic since there are many
+expected case.  The effect is dramatic since there are many
 fewer dependences in practice than can be proved nonexistent by memory
 analysis.  Memory flow speculation is a popular speculative enabling
 transform that asserts the absence of flow dependences not manifested
@@ -70,9 +70,9 @@ communicate speculative accesses to additional validation code.  For
 larger regions with many speculation checks, the validation cost can
 become prohibitively expensive, negating the benefits of the
 parallelization.  Speculative privatization may also entail high
-overheads, but in a different way.  Correct merging the private memory
+overheads, but in a different way.  Correctly merging the private memory
 state of each parallel worker at the end of a loop invocation can
-require speculative privatizatin systems to monitor large write sets
+require speculative privatization systems to monitor large write sets
 during execution, significantly degrading their
 profitability~\cite{kim:12:cgo,johnson:12:pldi,rauchwerger:99:pds}.
 
