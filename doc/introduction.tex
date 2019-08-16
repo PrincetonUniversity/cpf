@@ -14,13 +14,12 @@ for multicore remains a challenge.  Programs with CGP are not ideally
 suited for multicore as they tend to stress multicore's shared
 resources, such as caches and memory bandwidth.  Google revealed, in a
 candid disclosure, that their multicore utilization rarely exceeds
-20\%~\cite{barroso:07:computer}. Other researchers have also
-subsequently corroborated this observation~\cite{chung:13:isca}.
-Despite progress in recent years, automatic parallelization for
-multicore remains deficient.
+20\%~\cite{barroso:07:computer}. Other researchers have also made this
+observation~\cite{chung:13:isca}.  Despite progress in recent years,
+automatic parallelization for multicore remains deficient.
 
-Parallelizing compilers are the integration of program analysis,
-enabling transformations, and parallelization patterns designed to
+Parallelizing compilers integrate program analysis,
+enabling transformations, and parallelization patterns to
 find work that can execute concurrently.  Automatic parallelization
 naturally focuses on loops because that is where programs spend their
 time.  An essential aspect of program analysis in a parallelizing
@@ -38,63 +37,43 @@ structures.  Many parallelization patterns exist, but among the most
 desirable is DOALL, the independent execution of loop iterations.
 
 For decades, parallelizing compilers only performed enabling
-transformations that could be proven correct.  This created a heavy
-reliance on the abilty of memory analysis to precisely determine how
-memory was used.  Since memory analysis is undecidable and imprecise
-in practice, parallelizing compilers failed to parallelize many codes.
-While there was some success in regular scientific codes,
-applicability was severely limited.
+transformations that could be proven correct with respect to the facts
+provided by static analyses.  While this approach showed some success
+in scientific codes, the dependence upon memory analysis, an analysis
+notorious for its imprecision, severely limited the applicability of
+automatic parallelization.
 
 Following on the success of speculation for extracting ILP,
 speculation in automatic parallelization has gained traction in the
-last decade.  Speculation frees the parallelizing compiler to optimize
-an expected common case, and ignore rare or impossible cases not
-recognized by memory analysis.  Introduction of speculation led to
-proposals of new speculation-based enabling transforms.  The most
-commonly used speculative enabling transform is memory flow
-speculation which asserts absence of flow dependences not manifested
-during profiling, and validates this assertion at runtime.
-%Using speculation, various enabling transforms exhibit higher
-%applicability.  One such case is the
-Another important enabler is the speculative privatization proposed in
-Privateer~\cite{johnson:12:pldi} which handles dynamic data structures
-even in the presence of unrestricted pointers, an insurmountable task
-for a conservative privatization transform.
-%Privateer enables parallelization by speculatively privatizing the
-%memory state of parallel workers.
-%
-%research into speculation has shown incredible potential for the
-%applicability and aggressiveness of parallelizing
-%transformations~\cite{zhong:08:hpca, johnson:12:pldi}.
-%
+last decade.  Speculation allows the compiler to optimize for the
+expected common case.  The effect is dramatic since there are many
+fewer dependences in practice than can be proved nonexistant by memory
+analysis.  Memory flow speculation is a popular speculative enabling
+transform that asserts the absence of flow dependences not manifested
+(or manifested infrequently) during profiling, backing its assertions
+with runtime checks to initiate misspeculation recovery when
+necessary.  Another important speculative enabling transform is
+speculative privatization proposed in
+Privateer~\cite{johnson:12:pldi}.  With a speculative approach,
+Privateer is able to handle dynamic data structures even in the
+presence of unrestricted pointers, an task that proved insurmountable
+for non-speculative privatization techniques.
 
-
-%speculation problems
-Yet, despite their potential, speculative software systems face real
-challenges that prevent their widespread
+Despite the dramatic advance that speculation for automatic
+parallelization represents, challenges remain that prevent widespread
 adoption~\cite{cascaval:08:stmtoy:short,prabhu:03:ppopp,kelsey:09:cgo}.
-% TODO: Add more citations here
-%
-%Major bottlenecks include high communication and bookkeeping costs
-%for memory flow speculation validation, and memory live-out handling.
-%and privatization.  The observed pattern is the more applicable
-%speculation made, the less efficient it became.
-%
-The relaxed program dependence structure offered by memory flow
-speculation comes with a high cost.  Even if we assume that
+While memory flow speculation is popular, its relaxed program
+dependence structure comes with a high cost.  Even if we assume that
 misspeculation never occurs, validation of memory flow speculation
 requires instrumenting memory operations within the parallel region to
 log or communicate speculative accesses to a validation system. As the
 size of the speculative region increases, the validation cost becomes
 prohibitively expensive and outweighs any parallelization benefit.
-%
 Similarly, speculative privatization may also entail high overheads.
-Correctly merging the private memory state of parallel workers
-%processes, to the committed memory state
-often forces speculative systems to monitor large write sets during
-parallel execution, significantly degrading their
+Correctly merging the private memory state of parallel workers often
+forces speculative systems to monitor large write sets during parallel
+execution, significantly degrading their
 profitability~\cite{kim:12:cgo,johnson:12:pldi,rauchwerger:99:pds}.
-%to ensure correct live-out state after parallel invocation.
 
 To attain the parallelization coverage of speculative techniques
 while minimizing the usage of memory flow speculation and the cost of
