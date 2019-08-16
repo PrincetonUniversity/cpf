@@ -20,6 +20,7 @@ These new interfaces create extra degrees of freedom, which enable \name to real
 %speculative DOALL parallelization system.
 
 \subsection{Planning}
+\label{planning}
 %
 Unlike prior speculative systems that apply a sequence of
 parallelization-enabling transforms in a fixed order, \name proposes a
@@ -85,6 +86,7 @@ These are the transformations that are applied at the transformation
 phase of compilation.
 
 \subsection{Speculation-Aware Memory Analyzer}
+\label{sama_short}
 
 Prior techniques use memory analysis and speculative assumptions
 independently.  Instead, this work proposes a speculation-aware memory
@@ -220,10 +222,10 @@ as ``added OH''.}
 \subsection{Example}
 \label{motiv_example}
 
-Next we describe how \name succeeds at parallelizing
-\texttt{dijkstra} efficiently. This section also highlights the limitations
-of prior work that blocked them as well as how the new concepts introduced
-in \name overcomes them.
+Next we describe how \name succeeds at parallelizing \texttt{dijkstra}
+efficiently. This section also highlights the limitations of prior
+work and how the new ideas introduced in \name
+(\cref{planning,sama_short,new_enablers}) overcome them.
 %
 Consider again the code in Figure~\ref{fig:dijkstra_motivation},
 briefly discussed in~\ref{motiv_overheads}.
@@ -254,7 +256,7 @@ operation always overwrites the footprint of the source operation.
 Based on the information on the PDG, three different transforms offer
 handling of memory objects, including \textbf{overwrite privatization} and
 \textbf{local privatization} proposed in
-section~\ref{sec:enablers}.
+section~\cref{new_enablers}.
 
 %For example, handling of \textit{dist} requires usage of control
 %speculation (for the branch in line 11,
@@ -283,16 +285,14 @@ privatization.
 
 
 %
-Privateer, on the other hand, without the support of speculation-aware
-memory analyzer and  efficient speculative privatization transform, relies
-on profile information to infer that these two objects are privatizable and
-is forced to apply transforms with privacy checks and merging of private
-copies, resulting in high runtime overheads. The use of the relaxed PDG,
-whose dependences are removed a priori with speculation, necessitates
-instrumenting checks, as it is ambiguous how each dependence was removed.
-Moreover, this prevents the more efficient variants of privatization to be
-used because static analysis cannot infer post priori the properties of an
-object without knowing its speculative assumptions.
+Privateer, on the other hand, relies on profile information to infer
+that these two objects are privatizable and is forced to apply
+transforms with privacy checks and merging of private copies,
+resulting in high runtime overheads. The use of a speculatively
+relaxed PDG necessitates memory speculation validation, as it is
+ambiguous how each dependence was removed.  Moreover, a speculative
+PDG with no further information prevents the application of the
+efficient speculative privatizations variants described in this paper.
 
 %Even if memory analysis was used instead of memory speculation, the
 %classifier sees the optimistic view of the program
