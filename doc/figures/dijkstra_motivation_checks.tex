@@ -11,8 +11,8 @@ int dequeue() {
 
   \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-    // Privacy Local Check & Logging -- < 1% added overhead
-    private_write(&dist, sizeof(int), md);
+    // Privacy Local Check & Logging
+    private_write(&dist, sizeof(int), md); // < 1% added OH
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost,dist},aboveskip=0pt,
@@ -34,9 +34,9 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
   void *md = alloc(); // allocate metadata
-  // Separation Local Check -- < 0.001% added overhead
-  check_heap(pathcost, PRIVATE);
-  check_heap(&dist, PRIVATE);
+  // Separation Local Check
+  check_heap(pathcost, PRIVATE); // < 0.001% added OH
+  check_heap(&dist, PRIVATE); // < 0.001% added OH
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt,
@@ -46,8 +46,8 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-    // Privacy Local Check & Logging -- < 1% added overhead
-    private_write(pathcost, N*sizeof(int), md);
+    // Privacy Local Check & Logging
+    private_write(pathcost, N*sizeof(int), md); // < 1% added OH
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
@@ -62,9 +62,9 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-        // Privacy Local Check & Logging -- 11.4%,13.3% added overhead
-        private_read(&dist, sizeof(int), md);
-        private_write(&nDist, sizeof(int), md);
+        // Privacy Local Check & Logging
+        private_read(&dist, sizeof(int), md); // 11.4% added OH
+        private_write(&nDist, sizeof(int), md); // 13.3% added OH
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
@@ -73,8 +73,8 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-        // Privacy Local Check & Logging -- 11.6% added overhead
-        private_read(&pathcost[i], sizeof(int), md);
+        // Privacy Local Check & Logging
+        private_read(&pathcost[i], sizeof(int), md); // 11.6% added OH
   \end{lstlisting}
 
 
@@ -84,8 +84,8 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-          // Privacy Local Check & Logging -- < 1% added overhead
-          private_write(&pathcost[i], sizeof(int), md);
+          // Privacy Local Check & Logging
+          private_write(&pathcost[i], sizeof(int), md); // < 1% added OH
   \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
@@ -99,7 +99,7 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
     if (checkpointDue()) {
-      checkPrivAcccessesConflicts(md); // < 1% added overhead
+      checkPrivAcccessesConflicts(md); // < 1% added OH
     }
   \end{lstlisting}
 
@@ -109,7 +109,7 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-  communicateLiveOutMemState(md); // < 1% added overhead
+  communicateLiveOutMemState(md); // < 1% added OH
   \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,

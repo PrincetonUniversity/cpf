@@ -21,8 +21,8 @@ firstnumber=13, name=dij_checks]
 \end{lstlisting}
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray}, firstnumber=auto, name=dij_checks]
-  else // 0% added overhead
-    misspec("Control misspec in dequeue()");
+  else
+    misspec("Control misspec in dequeue()"); // 0% added OH
 \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt, belowskip=0pt,
@@ -35,8 +35,8 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks,showlines=true]
-  // Separation Local Check -- < 0.001% added overhead
-  check_heap(pathcost, OVERWRITE_PRIVATE);
+  // Separation Local Check
+  check_heap(pathcost, OVERWRITE_PRIVATE); // < 0.001% added OH
   \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
@@ -89,9 +89,9 @@ belowskip=0pt, firstnumber=auto,name=dij_checks,showlines=true]
 aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
 firstnumber=auto, name=dij_checks,showlines=true]
   // only last iter's pathcost array
-  // needs to be communicated -- < 1% added overhead
+  // needs to be communicated
   if (src == N-1+step)
-    communicate_pathcost();
+    communicate_pathcost(); // < 1% added OH
 \end{lstlisting}
 
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
