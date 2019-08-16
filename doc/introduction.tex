@@ -82,28 +82,27 @@ also reducing its costs.  The proposed system, called Per{\em
   spec}tive, is an automatic parallelization framework integrating a
 speculation-aware memory analyzer, efficient variants of speculative
 privatization, and a parallelization planner to discover the best
-performing set of transforms and avoid certain unnecessary
+performing set of transforms.  This avoids certain unnecessary
 speculation overheads of prior work.
 
-In Per{\em spec}tive, the speculation-aware memory analyzer helps the
-parallelization planner understand the full impact of a speculative
-assertion.  In practice, Per{\em spec}tive often recognizes that an
-inexpensive speculative enabler addresses problems thought by prior
-systems to require additional and more expensive speculation.  For
-example, observing the pruning of a path never taken in profiling by
+In Per{\em spec}tive, the speculation-aware memory analyzer provides
+an awareness of the full impact of each speculative assertion.  In
+practice, Per{\em spec}tive often recognizes that an inexpensive
+speculative enabler addresses problems thought by prior systems to
+require additional and more expensive speculation.  For example,
+observing the pruning of a path never taken in profiling by
 control-flow speculation, the speculation-aware memory analyzer knows
 to remove memory dependences that exist as a result of the existance
 of the pruned path.  In contrast, prior work systems are unaware of
 these impacts and unnecessarily employ additional speculative
 techniques to remove those memory dependences.
 
-Per{\em spec}tive's planner makes adding new specutive enablers feasible.  The
-planner, with information with the speculation-aware memory analyzer,
-selects speculative enablers based on their cost and overall impacts.
-Prior work systems were simply not sophisticated enough to make these
-decisions in an informed way.  As a consquence, these systems
-generally had a small numbrer of powerful, but expensive to validate,
-speculative enablers.
+Per{\em spec}tive's planner makes adding new specutive enablers
+feasible because it selects speculative enablers based on their cost
+and overall impacts.  Prior work systems were simply not sophisticated
+enough to make these decisions in an informed way.  As a consquence,
+these systems generally had a small numbrer of powerful, but expensive
+to validate, speculative enablers.
 
 The primary contributions of this paper are:
 \begin{itemize}
