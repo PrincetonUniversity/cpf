@@ -12,12 +12,12 @@ for both speculative and non-speculatively parallelized programs.
 \paragraph{Process-based approach}
 The runtime system of \name uses a process-based parallelization scheme,
 as opposed to a thread-based one for multiple reasons. First, it allows the
-use the copy-on-write (CoW) semantics of
+use of copy-on-write (CoW) semantics of
 processes to achieve low overhead for communicating live-in values from the
 main process to the workers.
 % Or do we force it to use CoW?
 It also gives an implicit separation between the speculative states of the
-workers and the committed state that the main process sees, when
+workers and the committed state that the main process sees when
 speculation is used. To facilitate cheap heap assignment validation, we
 segment each worker's virtual memory address into disjoint sections,
 corresponding to each transform's heap, enabling cheap heap assignment

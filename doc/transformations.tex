@@ -59,7 +59,7 @@ memory objects it is selected to handle
 to its own heap, disjoint from any others; transforms may also
 perform additional transform-specific modifications.
 
-Separating the objects is essential
+Separating objects is essential
 for two reasons. First, each transform may demand different
 memory mapping semantics and handles objects differently at commit.
 Second, mapping of memory accesses to
@@ -118,7 +118,7 @@ We propose four efficient variants of the privatization transform.
   among all parallel workers, since there is no overlapping memory
   accesses.
   %
-  No monitoring of write sets is needed. At commit the heap is copied-out
+  No monitoring of write sets is needed. At commit, the heap is copied-out
   to the non-speculative state.
 %
 %If the selected parallelization plan is non-speculative, then this
@@ -129,7 +129,7 @@ We propose four efficient variants of the privatization transform.
 
 \item Overwrite Private: This transform's heap has
   CoW (copy-on-write) mapping. At the end of the parallel
-  invocation the last executed iteration
+  invocation, the last executed iteration
   state is copied-out and no monitoring is needed.
 
 %Additional applicability guard:
@@ -145,7 +145,7 @@ We propose four efficient variants of the privatization transform.
   relies on value prediction's speculative assumptions.
 
 \item Local Private: This transform's heap has
-  CoW mapping and there is no need for copy-out or monitoring.
+  CoW mapping, and there is no need for copy-out or monitoring.
 
 \end{itemize}
 
@@ -197,7 +197,7 @@ We propose four efficient variants of the privatization transform.
 Cross-iteration register dependences
 %(not related to induction variables)
 are handled with reduction, replication, control speculation or value
-prediction. Replication replicates side-effect free computation across
+prediction. Replication replicates side-effect-free computation across
 parallel workers to overcome cross-iteration dependences and avoids
 inter-thread communication.
 %

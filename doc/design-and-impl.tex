@@ -30,14 +30,14 @@ instructions. The applicability guard of each enabling
 transform examines the annotated PDG and creates transform
 proposals that offer to remove parallelization-inhibiting cross-iteration
 dependences in the loop along with its cost. A DOALL planner considers
-these proposals, selects set of minimum cost options and generates a sequence
+these proposals, selects a set of minimum cost options, and generates a sequence
 of transforms, if a profitable DOALL plan is available.
 Finally, we select a set of
 compatible parallelizable loops with the maximum profitability, apply the
 tranformations in their plans, and generate the parallel IR which is
 then linked with the runtime and compiled as the parallel executable.
 
- This section begins with discussion of the planning phase which
+ This section begins with a discussion of the planning phase which
  includes the main contributions of this paper and then subsequently
  describes other components of the framework.
 
@@ -100,7 +100,7 @@ In the speculation-aware memory analyzer, \name utilizes speculative
 assumptions from two profilers: edge profiler (detects biased
 branches) and loaded value predictor (predicts loaded values).
 %
-While use of these two speculative assumptions in conjuction with static
+While the use of these two speculative assumptions in conjuction with static
 analysis already enables up to 2.5$\times$ improvement over a system with
 no collaboration of memory analysis and speculation (see~\cref{eval}),
 exposing even more cheap-to-validate speculative assumptions to memory
@@ -117,7 +117,7 @@ information is kill-flow and unique access paths (UAP) algorithms.
 Kill-flow analysis disproves memory dependences by finding killing
 operations along all feasible paths between two operations.  If
 kill-flow uses speculative control flow information, the feasible
-paths are reduced and kill-flow asserts absence of a statically
+paths are reduced, and kill-flow asserts absence of a statically
 non-disprovable memory dependence.
 %
 UAP collects a points-to set of objects for a pointer stored into a
@@ -423,7 +423,7 @@ Any performance improvements from these optimizations are negligible
 compared to the benefits of successful parallelization.
 %
 For example, LLVM tries to sink common instructions from two different
-execution paths. This reduces the code size but when applied to memory
+execution paths. This reduces the code size, but when applied to memory
 operations, it complicates the inference of the underlying objects.
 %
 To avoid such problems, \namensp 's preprocessing step only applies a
