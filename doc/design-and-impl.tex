@@ -466,18 +466,16 @@ then linked with the runtime and compiled as the parallel executable.
 (i) an edge profiler~\cite{LLVM:CGO04} that identifies biased
 branches and produces a speculative control flow;
 %
-(ii) a memory flow dependence profiler (\`{a} la
-~\cite{chen:04:cc}) that asserts the absence of non-observed data
-flows;
+(ii) a memory flow dependence profiler~\cite{chen:04:cc} that asserts
+the absence of non-observed data flows;
 %
-(iii) a value-prediction profiler (\`{a} la
-~\cite{gabbay:97:micro}) that detects predictable loads;
+(iii) a value-prediction profiler ~\cite{gabbay:97:micro} that detects predictable loads;
 %
-(iv) a pointer-to-object profiler (\`{a} la ~\cite{johnson:12:pldi})
+(iv) a pointer-to-object profiler ~\cite{johnson:12:pldi}
 that produces a points-to map that for allows detection of underlying objects
 for every memory access; and,
 %
-(v) an object lifetime profiler (\`{a} la ~\cite{johnson:12:pldi})
+(v) an object lifetime profiler ~\cite{johnson:12:pldi}
 that detects short-lived memory objects, namely objects that exist only within a
 single loop iteration.
 %
