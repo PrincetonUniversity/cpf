@@ -155,8 +155,9 @@ void PreparedStrategy::computeProducesAndQueues(
 
 void PreparedStrategy::addInstsToStage(ISet &insts, VSet &avail, BBSet &rel, const ISet &is)
 {
-  for(ISet::const_iterator i=is.begin(), e=is.end(); i!=e; ++i)
+  for(ISet::const_iterator i=is.begin(), e=is.end(); i!=e; ++i) {
     addInstToStage(insts, avail, rel, *i);
+  }
 }
 
 void PreparedStrategy::addInstToStage(ISet &insts, VSet &avail, BBSet &rel, Instruction *inst)
@@ -333,6 +334,9 @@ bool PreparedStrategy::rematerializeBackSliceRec(
   if (isa<InvokeInst>(inst))
     return false;
 
+  DEBUG(errs() << "inst " << *inst
+               << " and cost: " << perf->relative_weight(inst) << "\n");
+
   if (!isa<LoadInst>(inst))
     rematerializeCost += perf->relative_weight(inst);
   else
@@ -383,6 +387,21 @@ bool PreparedStrategy::rematerializeBackSliceInsteadOfComm(
     cost /= estimatedCostOfComm;
     return true;
   }
+
+   errs() << "Rematerialization not possible for inst : " << *inst << "\n";
+
+    for (Instruction *I : rematInsts) {
+      DEBUG(errs() << "IN remat insts" << *I
+                   << "\n");
+    }
+
+    for (Instruction *loadI : commLoads) {
+      DEBUG(errs() << "IN load comms " << *loadI
+                   << "\n");
+    }
+
+
+
   // better to communicate inst rather than rematerialize backwards slice
   return false;
 }
@@ -395,6 +414,10 @@ void PreparedStrategy::communicateValue(Instruction *operand,
                                         // Outputs
                                         ISet &insts, VSet &avail, BBSet &rel,
                                         ConsumeFrom &cons) {
+
+  if (!operand || avail.count(operand))
+    return;
+
   DEBUG(errs() << "communicated operand, used but not available: " << *operand
                << "\n");
 
@@ -403,6 +426,12 @@ void PreparedStrategy::communicateValue(Instruction *operand,
   for (sourceStage = 0; sourceStage < stageno; ++sourceStage)
     if (available[sourceStage].count(operand))
       break;
+
+  if (sourceStage >= stageno) {
+    errs() << "Moduele:\n " << *operand->getModule() << '\n';
+    errs() << "Not available : " << *operand << '\n';
+  }
+
   assert(sourceStage < stageno &&
          "Operand should be available from an *earlier* stage");
 
@@ -438,6 +467,8 @@ bool PreparedStrategy::communicateOnce(const PipelineStrategy::Stages &stages,
       if (!operand || avail.count(operand))
         continue;
       // 'operand' is used, but not available.
+
+      errs() << "Inst: " << *inst << "  does not have op:\n" << *operand << "\n";
 
       // if comm needed, would this consume occur in the replicated stage?
       bool consumeOccursInReplicatedStage =

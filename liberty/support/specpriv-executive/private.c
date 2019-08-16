@@ -1,6 +1,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
+#include <pthread.h>
+#include<sys/wait.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "api.h"
@@ -32,7 +35,6 @@ static uint64_t code64 = 0;
 #if SHADOW_MEM == VECTOR
 static __m128i code128;
 #endif
-
 
 //------------------------------------------------------------------
 // Privatization support
@@ -97,6 +99,15 @@ Iteration __specpriv_get_first_iter(void)
   return firstIteration;
 }
 
+void *__specpriv_worker_perform_checkpoint_pthread(void *arg) {
+  // pthread_detach(pthread_self());
+  __specpriv_worker_perform_checkpoint(0);
+  pthread_exit(NULL);
+  // return 0;
+}
+
+#define CORE(n)     ( n )
+
 // Called by __specpriv_worker_starts()
 // Called by __specpriv_end_iter()
 void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
@@ -119,7 +130,95 @@ void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
     {
       DEBUG(printf("Performing checkpoint at iteration %d because code8 == %d\n",
               i, NUM_RESERVED_SHADOW_VALUES););
+
+//#if 0
+      pthread_t *p_thread = __specpriv_ckpt_thread();
+
+      //if (__specpriv_sizeof_redux() > 64 || __specpriv_sizeof_private() > 96)
+      if (0)
+      {
+
+      if (__specpriv_pthread_to_join()) {
+        /*
+        pthread_mutex_t *thread_lock = __specpriv_thread_lock();
+        pthread_cond_t *cond = __specpriv_ckpt_thread_cond();
+        // wait for the last checkpoint to finish
+
+        printf("about to get lock, cond, call for checkpoint, worker %u\n", __specpriv_my_worker_id());
+        fflush(stdout);
+        pthread_mutex_lock(thread_lock);
+        __specpriv_set_ckpt_cur_iter(i);
+        printf("got lock, cond, call for checkpoint, worker %u\n", __specpriv_my_worker_id());
+        fflush(stdout);
+        pthread_cond_signal(cond);
+        pthread_mutex_unlock(thread_lock);
+        */
+
+        pthread_join(*p_thread, NULL);
+      }
+        //printf("after getting lock, cond, call for checkpoint, worker %u\n", __specpriv_my_worker_id());
+        //fflush(stdout);
+
+      // copy redux, private, shadow, killpriv heaps in preparation of
+      // checkpointing by the other thread
+
+      memcpy((uint8_t *)PRIV_ADDR + __specpriv_sizeof_private(),
+             (uint8_t *)PRIV_ADDR, __specpriv_sizeof_private());
+      memcpy((uint8_t *)SHADOW_ADDR + __specpriv_sizeof_private(),
+             (uint8_t *)SHADOW_ADDR, __specpriv_sizeof_private());
+      memcpy((uint8_t *)KILLPRIV_ADDR + __specpriv_sizeof_killprivate(),
+             (uint8_t *)KILLPRIV_ADDR, __specpriv_sizeof_killprivate());
+      memcpy((uint8_t *)REDUX_ADDR + __specpriv_sizeof_redux(),
+             (uint8_t *)REDUX_ADDR, __specpriv_sizeof_redux());
+
+      __specpriv_set_ckpt_cur_iter(i);
+
+      pthread_attr_t attr;
+      cpu_set_t cpus;
+      pthread_attr_init(&attr);
+      CPU_ZERO(&cpus);
+      CPU_SET(CORE(NUM_PROCS + ((__specpriv_my_worker_id() + 1) % NUM_PROCS)),
+              &cpus);
+      pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+
+      pthread_create(p_thread, &attr,
+                     __specpriv_worker_perform_checkpoint_pthread, NULL);
+     // pthread_detach(*p_thread);
+
+//#endif
+
+      } else {
+        __specpriv_set_ckpt_cur_iter(i);
+        __specpriv_worker_perform_checkpoint(0);
+      }
+
+      /*
+    pid_t *ckpt_pid = __specpriv_ckpt_pid();
+    if (__specpriv_pid_to_join()) {
+      waitpid( *ckpt_pid, 0, 0 );
+    }
+
+    //pid_t pid = fork();
+    *ckpt_pid = fork();
+    //if( pid == 0 )
+    if( *ckpt_pid == 0 )
+    {
+      // child
+      cpu_set_t affinity;
+      CPU_ZERO(&affinity);
+      CPU_SET(CORE(NUM_PROCS + ((__specpriv_my_worker_id() + 1) % NUM_PROCS)),
+              &affinity);
+      sched_setaffinity(0, sizeof(cpu_set_t), &affinity);
+
       __specpriv_worker_perform_checkpoint(0);
+      _exit(0);
+    }
+    */
+
+    //waitpid( pid, 0, 0 );
+
+      //void *ret;
+      //pthread_join(p_thread, &ret);
     }
 
     return;
@@ -898,8 +997,8 @@ Bool __specpriv_distill_worker_private_into_partial(
 
   if( len > 0 )
   {
-    uint8_t *src_p = (uint8_t*)PRIV_ADDR,           // pointer to worker's private value
-            *src_s = (uint8_t*)SHADOW_ADDR,         // pointer to worker's shadow
+    uint8_t *src_p = (uint8_t*)PRIV_ADDR + len,           // pointer to worker's private value
+            *src_s = (uint8_t*)SHADOW_ADDR + len,         // pointer to worker's shadow
             *dst_p = (uint8_t*)partial_priv->base,  // pointer to main's private value
             *dst_s = (uint8_t*)partial_shadow->base;// pointer to main's shadow
 
@@ -993,7 +1092,7 @@ Bool __specpriv_distill_worker_killprivate_into_partial(
         );
     // no shadow memory to deal with and we only need the latest iteration's values so
     // memcpy works
-    memcpy( (uint8_t *) partial_killpriv->base, (uint8_t *) KILLPRIV_ADDR, len );
+    memcpy( (uint8_t *) partial_killpriv->base, (uint8_t *) KILLPRIV_ADDR + len, len );
   }
   TADD(worker_committed_killpriv_to_partial_time, start);
 
