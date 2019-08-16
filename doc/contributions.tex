@@ -1,8 +1,8 @@
 \section{The \name Approach}
 \label{sec:approach}
 
-Current parallelizing compiler designs force code analyses, transformations, and speculation techniques to work as a pipeline.
-This excludes the possibility of non-linear and fine-grain interactions, which makes important parallelization opportunities unreachable.
+Current parallelizing compiler designs force code analyses, transformations, and speculative techniques to work as a pipeline.
+This design excludes the possibility of non-linear and fine-grain interactions between them, which makes important parallelization opportunities unreachable.
 To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (section~\ref{analyzer}).
 This tight interaction generates information in the form of a dependence graph annotated with speculative assumptions.
 \name's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
