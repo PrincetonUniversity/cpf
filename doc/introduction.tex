@@ -3,12 +3,12 @@
 
 Using PThreads~\cite{pthreads:spec}, Map-Reduce~\cite{dean:04:osdi},
 OpenMP~\cite{openmp:spec}, and other libraries and languages,
-programmers routinely produce coarse grained parallel (CGP) programs
-even at warehouse scale.  At the other end of the parallelism
+programmers routinely produce coarse-grained parallel (CGP) programs
+even at the warehouse scale.  At the other end of the parallelism
 granularity spectrum, compilers and out-of-order processors
 consistently extract instruction-level parallelism (ILP) from programs
 without any programmer intervention.  Unfortunately, despite
-developments in parallel programming langauges, parallel libraries,
+developments in parallel programming languages, parallel libraries,
 and parallelizing compilers, reliably finding parallelism appropriate
 for multicore remains a challenge.  Programs with CGP are not ideally
 suited for multicore as they tend to stress multicore's shared
@@ -19,19 +19,19 @@ observation~\cite{chung:13:isca}.  Despite progress in recent years,
 automatic parallelization is not yet a reliable solution.
 
 Parallelizing compilers integrate program analysis,
-enabling transformations, and parallelization patterns to
+enabling transformations and parallelization patterns to
 find work that can execute concurrently.  Automatic parallelization
 naturally focuses on loops because that is where programs spend their
 time.  An essential aspect of program analysis in a parallelizing
 compiler is memory analysis because the compiler must understand how
-loops use memory objects in order to divide their work across threads
+loops use memory objects to divide their work across threads
 or processes.  Enabling transforms use control flow and data flow
 facts from analysis to make the code amenable to a given
-parallelization pattern.  Examples of enabling transforms include loop
+parallelization pattern.  Examples of enabling transform include loop
 skewing which re-arranges array accesses to move cross-iteration
 dependences out of inner loops, reduction which expands storage
 locations to relax ordering constraints on associative and commutative
-operations, and privatization which create private data copies for
+operations and privatization which creates private data copies for
 each worker process to remove contention caused by the reuse of data
 structures.  Many parallelization patterns exist, but among the most
 desirable is DOALL, the independent execution of loop iterations.

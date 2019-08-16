@@ -79,7 +79,7 @@ all benchmarks running up to 28 cores. These speedups are
 relative to the sequential performance of the original code, compiled
 with \texttt{clang++ -O3}. \name achieves scalable performance on all the
 benchmarks due to the overhead reduction resulting from the use
-of the speculation-aware memory analyzer and the new enablers.
+of the speculation-aware memory analyzer, the new enablers, and the planner.
 To quantify their performance, Figure~\ref{fig:speedup-compare} compares
 \namensp's results with Privateer and two variant of \name with various
 components disabled.
@@ -329,7 +329,7 @@ seen in the performance of \texttt{179.art}, \texttt{enc-md5}, and
 \subsection{Misspeculation Evaluation}
 \begin{figure}[htp]
   \includegraphics[width=\columnwidth]{figures/misspec-crop}
-  \caption{Impact of misspeculation on benchmarks requiring speculation}
+  \caption{Impact of misspeculation}
   \label{fig:misspec}
 \end{figure}
 Figure~\ref{fig:misspec} shows how misspeculation affects the
