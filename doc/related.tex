@@ -37,16 +37,16 @@
 
 Early non-speculative DOALL parallelizing compilers
 (Polaris\cite{blume:94:polaris},
-SUIF\cite{amarasinghe:93:pldi,suif:94:stanford} achieve good results are
-limited by imprecise static analysis and heavyweight run-time analysis.
-They also lack in support for dynamically allocated memory objects, which
-are widely used in modern programming. Recent works on non-speculative
-parallelization (HELIX~\cite{simone:12:cgo},
-DOCyclical~\cite{yu2016cyclical}, DSWP~\cite{ottoni:05:micro}, and
-PS-DSWP~\cite{raman:08a:cgo}) focus more on alternative parallelization
-paradigms like DOACROSS and DOPIPE, which allow communication of flow
-dependences among cores. \name focuses on DOALL but the contributions of
-this work are complementary with other parallelization paradigms.
+SUIF\cite{amarasinghe:93:pldi,suif:94:stanford} are limited by imprecise
+static analysis and heavyweight run-time analysis. They also lack in
+support for dynamically allocated memory objects, which are widely used in
+modern programming. Recent works on non-speculative parallelization
+(HELIX~\cite{simone:12:cgo}, DOCyclical~\cite{yu2016cyclical},
+DSWP~\cite{ottoni:05:micro}, and PS-DSWP~\cite{raman:08a:cgo}) focus more
+on alternative parallelization paradigms like DOACROSS and DOPIPE, which
+allow communication of flow dependences among cores. \name focuses on DOALL
+but the contributions of this work are complementary with other
+parallelization paradigms.
 
 LRPD\cite{rauchwerger:99:pds}, R-LRPD\cite{dang:02:ipdps} leverages
 speculation to evaluate privatization criterion, extends the applicability
@@ -54,21 +54,20 @@ of DOALL. Yet it is still limited to array-based objects.
 STMlite~\cite{mehrara:09:stmlite}, CorD~\cite{tian:10:pldi}, and
 Privateer~\cite{johnson:12:pldi} use speculation extensively to privatize
 objects for general purpose programs. As mentioned in Privateer, STMlite
-and CorD don't support speculative reduction, and limit the applicability
+and CorD do not support speculative reduction, and limit the applicability
 to static cases. Privateer, by introducing heap separation, achieves the
 state-of-the-art applicability. However, compared to \namensp, it fails to
 recognize a lot of optimization opportunities and suffers from the two
 major overhead mentioned in~\cref{sec:motivation}.
 
-Recent works~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} reduce
-memory speculation by speculating higher-level properties like local
-objects whose validation does not require logging or communication.
-SPEC-DSWP~\cite{vachharajani:07:pact} tries to over speculate and undo
-unnecessary speculation. Sensitivity Analysis~\cite{Rus:07:ics} uses a
-cascade design of runtime tests to generate predicates for memory
-dependences, which reduce the run-time overhead. Yet, all of these
-optimization efforts focus on removing some overheads while \namensp takes
-a sensible approach to explore the design space using a planner.
+Recent works~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} speculates
+higher-level properties like local objects whose validation does not
+require logging or communication. SPEC-DSWP~\cite{vachharajani:07:pact}
+over speculates and undoes unnecessary speculation afterwards. Yet, all of
+these optimization efforts focus on removing some overheads in an ad hoc
+way which may miss opportunities due to lack of information while
+\name takes a sensible approach to explore the design space using a
+planner.
 
 Another line of work extracts parallelism among loop iterations by ignoring
 data dependences rather than speculating their
