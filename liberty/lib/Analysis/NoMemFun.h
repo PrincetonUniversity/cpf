@@ -295,4 +295,5 @@
 // stdlib.h
   "calloc",
   "malloc",
+  "realloc",
   "free",

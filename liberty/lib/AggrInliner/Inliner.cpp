@@ -17,6 +17,8 @@
 
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Analysis/LoopAA.h"
+//#include "liberty/Analysis/LLVMAAResults.h"
 
 #include <queue>
 #include <unordered_set>
@@ -37,8 +39,11 @@ struct Inliner: public ModulePass
   void getAnalysisUsage(AnalysisUsage &au) const
   {
     au.addRequired< ModuleLoops >();
+    au.addRequired< LoopAA >();
     au.addRequired< BlockFrequencyInfoWrapperPass >();
     au.addRequired< Targets >();
+//    au.addRequired< LLVMAAResults >();
+ //   au.addRequired< PDGBuilder >();
   }
 
   bool runOnModule(Module &mod)
@@ -60,6 +65,19 @@ private:
 
   // keep list of already processed functions
   std::unordered_set<Function*> processedFunctions;
+
+  // avoid inlining functions that are commonly commutative and can be handled
+  // as a function call
+  bool shouldNotBeInlined(Function *F) {
+    std::string random_func_str = "random";
+    //std::string malloc_func_str = "alloc";
+    std::string funcName = F->getName().str();
+    if (funcName.find(random_func_str) != std::string::npos) {
+    //    funcName.find(malloc_func_str) != std::string::npos) {
+      return true;
+    }
+    return false;
+  }
 
   bool isRecursiveFnFast(Function *F) {
     for (BasicBlock &BB : *F) {
@@ -92,7 +110,6 @@ private:
                  std::unordered_set<Function *> &curPathVisited) {
     if (isSpeculativelyDeadBB(BB))
       return;
-
     for (Instruction &I : BB) {
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
@@ -116,6 +133,9 @@ private:
       return false;
     curPathVisited.insert(F);
 
+//    if (shouldNotBeInlined(F))
+//      return false;
+
     if (processedFunctions.count(F)) {
       curPathVisited.erase(F);
       return true;
@@ -133,6 +153,9 @@ private:
     std::unordered_set<Function *> curPathVisited;
     Function *loopFun = loop->getHeader()->getParent();
     curPathVisited.insert(loopFun);
+
+    //getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
+    //LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
 
     for (BasicBlock *BB : loop->getBlocks())
       processBB(*BB, curPathVisited);
@@ -200,6 +223,103 @@ private:
 
     return modified;
   }
+
+  /*
+  TODO: call queryMemoryDep(src, dst, LoopAA::Before, LoopAA::After, loop, aa) the fun call is chosen as both the src and dst and checked against all the currently exposed insts of the loop.
+  whenever a function call is involved in a dep and it is not inlined, inline it
+  maintain two lists. CouldbeInlinedFunCALLs -> already processed and the toBeInlined ones.
+  */
+
+bool queryMemoryDep(Instruction *src, Instruction *dst,
+                                       LoopAA::TemporalRelation FW,
+                                       LoopAA::TemporalRelation RV, Loop *loop,
+                                       LoopAA *aa) {
+  if (!src->mayReadOrWriteMemory())
+    return false;
+  if (!dst->mayReadOrWriteMemory())
+    return false;
+  if (!src->mayWriteToMemory() && !dst->mayWriteToMemory())
+    return false;
+
+  bool loopCarried = FW != RV;
+
+  // forward dep test
+  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
+  if (LoopAA::NoModRef == forward)
+    return false;
+
+  // forward is Mod, ModRef, or Ref
+
+  if ((forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+      !src->mayWriteToMemory()) {
+    DEBUG(errs() << "forward modref result is mod or modref but src "
+                    "instruction does not "
+                    "write to memory");
+    if (forward == LoopAA::ModRef)
+      forward = LoopAA::Ref;
+    else {
+      forward = LoopAA::NoModRef;
+      return false;
+    }
+  }
+
+  if ((forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
+      !src->mayReadFromMemory()) {
+    DEBUG(errs() << "forward modref result is ref or modref but src "
+                    "instruction does not "
+                    "read from memory");
+    if (forward == LoopAA::ModRef)
+      forward = LoopAA::Mod;
+    else {
+      forward = LoopAA::NoModRef;
+      return false;
+    }
+  }
+
+  // reverse dep test
+  LoopAA::ModRefResult reverse = forward;
+
+  // in some cases calling reverse is not needed depending on whether dst writes
+  // or/and reads to/from memory but in favor of correctness (AA stack does not
+  // just check aliasing) instead of performance we call reverse and use
+  // assertions to identify accuracy bugs of AA stack
+  if (loopCarried || src != dst)
+    reverse = aa->modref(dst, RV, src, loop);
+
+  if ((reverse == LoopAA::Mod || reverse == LoopAA::ModRef) &&
+      !dst->mayWriteToMemory()) {
+    DEBUG(errs() << "reverse modref result is mod or modref but dst "
+                    "instruction does not "
+                    "write to memory");
+    if (reverse == LoopAA::ModRef)
+      reverse = LoopAA::Ref;
+    else
+      reverse = LoopAA::NoModRef;
+  }
+
+  if ((reverse == LoopAA::Ref || reverse == LoopAA::ModRef) &&
+      !dst->mayReadFromMemory()) {
+    DEBUG(errs() << "reverse modref result is ref or modref but src "
+                    "instruction does not "
+                    "read from memory");
+    if (reverse == LoopAA::ModRef)
+      reverse = LoopAA::Mod;
+    else
+      reverse = LoopAA::NoModRef;
+  }
+
+  if (LoopAA::NoModRef == reverse)
+    return false;
+
+  if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
+    return false; // RaR dep; who cares.
+
+  // At this point, we know there is one or more of
+  // a flow-, anti-, or output-dependence.
+
+  return true;
+}
+
 };
 
 char Inliner::ID = 0;
