@@ -87,6 +87,8 @@ iteration or at checkpoint time, other workers continue up to and commit the las
 valid checkpoint, then wait for recovery to finish.
 The main process will execute the loop
 sequentially up to and including the misspeculated iteration, using the
-committed checkpoint as the starting state. Restarting
-the workers at this point is no different from beginning the invocation,
-aside from the starting iteration sent to the workers.
+committed checkpoint as the starting state, and restart the parallel
+workers.
+% Restarting
+% the workers at this point is no different from beginning the invocation,
+% aside from the starting iteration sent to the workers.
