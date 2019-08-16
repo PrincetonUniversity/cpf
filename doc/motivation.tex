@@ -9,11 +9,11 @@ for a long time.
 Early works including Polaris~\cite{blume:94:polaris},
 SUIF~\cite{suif:94:stanford}, PD~\cite{rauchwerger:94:ics} and Hybrid
 Analysis~\cite{rus:03:hybrid} use either static analysis to remove
-dependences or run-time analysis to infer if the parallel code is safe to
+dependences or runtime analysis to infer if the parallel code is safe to
 execute. Privatization and reduction of these systems rely on
 analysis to remove all flow dependences or prove the reduction property.
 The drawback of static analysis is that it is too imprecise to parallelize
-complex loops, while run-time analysis predicates can be too expensive to
+complex loops, while runtime analysis predicates can be too expensive to
 extract. LRPD~\cite{dang:02:ipdps} and R-LRPD~\cite{dang:02:ipdps}
 introduce speculative privatization, which executes the loop first and then
 checks for violation of privatization criterion, to overcome static
