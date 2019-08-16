@@ -42,7 +42,7 @@ applicable. However, when dealing with general purpose programs, they are
 limited by imprecise static analysis and heavyweight run-time analysis.
 They also lack in support for dynamically allocated memory objects, which
 are widely used in modern programming. Recent works on non-speculative
-parallelization (HELIX, DSWP, and PS-DSWP) focus more on alternative
+parallelization (HELIX~\cite{simone:12:cgo}, DOCyclic~\cite{yu2016cyclical}, DSWP~\cite{ottoni:05:micro}, and PS-DSWP~\cite{raman:08a:cgo}) focus more on alternative
 parallelization paradigms like DOACROSS and DOPIPE, which allow
 communication of flow dependences among cores. \name focuses on DOALL but
 the contributions of this work are complementary with other parallelization
