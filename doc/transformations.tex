@@ -68,12 +68,10 @@ unrestricted pointers like C/C++. Ensuring that all objects' accesses
 are contained within a transform's heap is sufficient to
 validate underlying object assumptions. This idea of separation has
 been explored previously by Johnson et al. (Privateer~\cite{johnson:12:pldi}).
-The speculative assumptions used for each selected transform also need
-to be validated at runtime to ensure correctness.
 
 % Memory-related enabling transforms collect a set of memory objects
 % for which they are applicable (see ~\cref{enablers}).
-The list of memory-related enabling transforms is as follows:
+Memory-related enabling transforms include:
 
 \begin{itemize}
 %
