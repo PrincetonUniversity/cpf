@@ -174,18 +174,7 @@ object can be allocated to only one heap throughout the program in our
 current implementation).
 
 \subsection{Runtime}
-\input{runtime}
-
-\subsection{Recovery}
-When misspeculation is detected by a worker, either during an
-iteration or at checkpoint time, other workers continue until the last
-valid checkpoint, then waits for recovery to be finished. Once all the
-workers reach this checkpoint, the main process will execute the loop
-sequentially up to and including the misspeculated iteration, using the
-committed checkpoint as the valid starting state \{XXX Reword\}. Restarting
-the workers at this point is no different from beginning the invocation,
-aside from the starting iteration sent to the workers.
-
+\input{runtime2}
 
 %In this work, we introduce a set of transformations to explore more
 %opportunities of parallelization.

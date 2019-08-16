@@ -1,0 +1,74 @@
+\subsection{Runtime}
+
+\namensp's provides an efficient runtime
+for both speculative and non-speculatively parallelized programs.
+
+% Process-based approach gives us:
+%   1. Cheap live-in copying
+%   2. Separation between speculative and committed state
+%   3. Cheap heap checks
+\paragraph{Process-based approach}
+The runtime system of \name uses a process-based parallelization scheme,
+similar to that of Privateer, as opposed to a thread-based one for multiple
+reasons. First, it allows the use the copy-on-write (CoW) semantics of
+processes to achieve low overhead for communicating live-in values from the
+main process to the workers.
+% Or do we force it to use CoW?
+It also gives an implicit separation between the speculative states of the
+workers and the committed state that the main process sees, when
+speculation is used. To facilitate cheap heap assignment validation, we
+segment each worker's virtual memory address into disjoint sections, each
+of which corresponds to one of the \textbf{N} heaps. Checking which heap an object
+belongs to becomes trivial, involving only a bitwise \texttt{AND} of the
+object's virtual address with its heap's address mask.
+% This segmentation
+% also gives an added benefit of reducing the overhead for logging, as
+This is not possible
+with a thread-based system, in which workers share the same virtual address
+space.
+
+% Shared is used for checkpointing, copying live-outs, and independently
+% privatized objects. Although the runtime code uses shared memory for
+% other purposes (private, redux, shadow), this is only an implementation
+% detail that makes the code more readable.
+\paragraph{Use of shared memory}
+We utilize POSIX named shared memory in \texttt{\textbf{/dev/shm}} to share
+data between workers and the main process as well as between workers
+themselves.
+% Do we explain what independently privatized means?
+For non-speculatively independently privatized objects, the workers
+each \texttt{\textbf{mmap()}} with shared permissions the independent heap
+from the main process, which negates the overhead for merging worker states
+and copying out live-out values. This gives us performance near that of
+thread-based systems for non-speculative (independent) privatization.
+% Shared memory is also used for collecting each worker's private memory
+% during a checkpoint operation. The last worker to reach a checkpoi
+% Does not integrate well with the previous sentence
+
+\paragraph{Logging and validation}
+Each transformation inserts specialized logging and validation for the
+objects that it handles; depending on the transformation, these checks may
+trigger misspeculation. Note that these checks only detects disallowed
+operations within iterations of each worker, and not across workers.
+
+\paragraph{Checkpointing and misspeculation}
+Checkpointing is used to validate reads and writes to private objects
+across workers and save the current program state in
+the case of misspeculation. When a worker reaches an iteration marked with
+a checkpoint operation, it will map the checkpoint object to its virtual
+memory space and ensure that its own writes to privatized data did not
+coincide with a read by another worker. Checkpointing is inherently
+sequential and increasing the amount of data that needs to be merged can
+significantly affect the overall performance.
+
+\paragraph{Recovery}
+The use of speculation necessitates recovery code in the chance that
+misspeculation occurs.
+When misspeculation is detected by a worker, either during an
+iteration or at checkpoint time, other workers continue up to and commit the last
+valid checkpoint, then wait for recovery to be finished.
+The main process will execute the loop
+sequentially up to and including the misspeculated iteration, using the
+committed checkpoint as the starting state. Restarting
+the workers at this point is no different from beginning the invocation,
+aside from the starting iteration sent to the workers.
