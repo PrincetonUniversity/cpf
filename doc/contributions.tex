@@ -443,7 +443,7 @@ casts.
 
 \begin{figure*}[!t]
 \centering
-\resizebox{0.85\linewidth}{!}{
+\resizebox{0.90\linewidth}{!}{
 \subfloat[Privateer~\cite{johnson:12:pldi}]{
   \centering
   \includegraphics[width=0.46\textwidth]{figures/privateer-example-crop}
@@ -455,14 +455,14 @@ casts.
 }
 }
 \caption{Comparison of Privateer with \name for handling memory
-objects \textit{pathcost} and \textit{dist} of the hot loop of \textit{dijkstra}}
+objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of \texttt{dijkstra}}
 \label{fig:dijkstra_motivation_comparison}
 \end{figure*}
 
 \begin{figure*}[!h]
 \centering
 \scriptsize
-\resizebox{0.75\linewidth}{!}{
+\resizebox{0.78\linewidth}{!}{
   % \subfloat[Sequential code]{
   %   \begin{minipage}{6cm}
   %     \input{figures/dijkstra_motivation}
@@ -483,9 +483,9 @@ objects \textit{pathcost} and \textit{dist} of the hot loop of \textit{dijkstra}
   \end{minipage}
 }
 }
-\caption{Source code comparison of Privateer with \name for parallelized hot loop
-of \textit{dijkstra}. Logging and checks
-during loop execution dominate the overheads.}
+\caption{Parallelized code comparison of Privateer with \name for
+\texttt{dijkstra}. Logging and checks during loop execution dominate the
+overheads.}
 \label{fig:dijkstra_motivation_comparison_source_code}
 \end{figure*}
 %caption,
