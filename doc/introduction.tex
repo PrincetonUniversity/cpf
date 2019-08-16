@@ -31,11 +31,11 @@ facts from analysis to make the code amenable to a given
 parallelization pattern.  Examples of enabling transforms include loop
 skewing which re-arranges array accesses to move cross-iteration
 dependences out of inner loops, reduction which expands storage
-locations to relax ordering constraints on associative, commutative
-operations, and privatization which removes contention caused by the
-reuse of data structures.  Many parallelization patterns exist, but
-among the most desirable is DOALL, the independent execution of loop
-iterations.
+locations to relax ordering constraints on associative and commutative
+operations, and privatization which create private data copies for
+each worker process to remove contention caused by the reuse of data
+structures.  Many parallelization patterns exist, but among the most
+desirable is DOALL, the independent execution of loop iterations.
 
 For decades, parallelizing compilers only performed enabling
 transformations that could be proven correct.  This created a heavy
@@ -47,15 +47,21 @@ applicability was severely limited.
 
 Following on the success of speculation for extracting ILP,
 speculation in automatic parallelization has gained traction in the
-last decade.  Speculation frees the compiler to optimize an expected
-common case.  Since it can ignore rare or impossible cases not
-recognized by memory analysis, speculation frees automatic
-parallelization from the memory analysis problem.  Using speculation,
-various enabling transforms exhibit higher applicability.  One such
-case is the speculative privatization proposed in
+last decade.  Speculation frees the parallelizing compiler to optimize
+an expected common case, and ignore rare or impossible cases not
+recognized by memory analysis.  Introduction of speculation led to
+proposals of new speculation-based enabling transforms.  The most
+commonly used speculative enabling transform is memory flow
+speculation which asserts absence of flow dependences not manifested
+during profiling, and validates this assertion at runtime.
+%Using speculation, various enabling transforms exhibit higher
+%applicability.  One such case is the
+Another important enabler is the speculative privatization proposed in
 Privateer~\cite{johnson:12:pldi} which handles dynamic data structures
 even in the presence of unrestricted pointers; an insurmountable task
 for a conservative privatization transform.
+%Privateer enables parallelization by speculatively privatizing the
+%memory state of parallel workers.
 %
 %research into speculation has shown incredible potential for the
 %applicability and aggressiveness of parallelizing
@@ -82,13 +88,12 @@ log or communicate speculative accesses to a validation system. As the
 size of the speculative region increases, the validation cost becomes
 prohibitively expensive and outweighs any parallelization benefit.
 %
-Similarly, speculative enabling transformations,
-%most prominently
-in particular speculative privatization, may also entail high
-overheads.  Merging the private memory state of workers to the
-committed memory state correctly often forces speculative systems to monitor
-large write sets during parallel execution, significantly degrading
-their profitability~\cite{kim:12:cgo,johnson:12:pldi,LRPD?}.
+Similarly, speculative privatization may also entail high overheads.
+Correctly merging the private memory state of parallel workers
+%processes, to the committed memory state
+often forces speculative systems to monitor large write sets during
+parallel execution, significantly degrading their
+profitability~\cite{kim:12:cgo,johnson:12:pldi,LRPD?}.
 %to ensure correct live-out state after parallel invocation.
 
 To attain the parallelization coverage of speculative techniques,
