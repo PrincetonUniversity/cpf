@@ -28,7 +28,7 @@ analysis fails to address. This improves the applicability to loops with
 pointers and dynamic data structures.  Among these works, Privateer
 ~\cite{johnson:12:pldi}, by using speculative heap separation, supports
 both speculative privatization and reduction even in the presence of
-unrestricted pointers, and enables greater applicability than other
+unrestricted pointers and enables greater applicability than other
 automatic speculative-DOALL systems.
 
 Despite that great applicability has been achieved, the results of
@@ -93,12 +93,12 @@ workloads this paper targets. Hence, we investigated its results to find
 the missing opportunities to reduce overheads.
 %
 Examining the evaluation of Privateer, we spotted two major overheads,
-excessive use of memory speculation which is general for prior speculative
+excessive use of memory speculation, which is general for prior speculative
 parallelization systems, and expensive privatization which applies to
 most systems with privatization.
 %
 In \ref{sec:excessive-memory-spec} and \ref{sec:excessive-priv}, we present
-the impact of this two main overheads on Privateer along with a motivating
+the impact of these two main overheads on Privateer along with a motivating
 example taken from the \texttt{dijkstra} benchmark (used in Privateer's
 evaluation) from MiBench ~\cite{guthaus:2001:iiwsc}. Simplified code of this example is
 shown in Figure~\ref{fig:dijkstra_motivation}. The reuse of the array
@@ -134,10 +134,10 @@ compared to that of memory speculation.
 
 \subsubsection{Expensive Privatization}
 \label{sec:excessive-priv}
-Perhaps counterintuitively, benchamrks that do not require memory
+Perhaps counterintuitively, benchmarks that do not require memory
 speculation still have heavy overhead due to bookkeeping of the write set
 due to the inherent nature of privatization. For \texttt{dijkstra}, even
-assuming all the private reads are removed, Privateer still need to log
+assuming all the private reads are removed, Privateer still needs to log
 56.8 GB of writes, which constitutes around 20\% of each parallel worker's
 time. Apart from this overhead, privatization also introduces the cost of
 merging the parallel workers' states during checkpointing. In
