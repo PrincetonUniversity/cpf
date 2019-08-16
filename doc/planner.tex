@@ -1,8 +1,8 @@
 The planner chooses the best performing set of transformations that
 enable DOALL parallelization.
 %
-The inputs of the planner are an annotated loop-centric PDG (generated
-by the speculation-aware memory analyzer) and the transformation
+The inputs of the planner are an annotated, using the
+speculation-aware memory analyzer, loop PDG, and the transformation
 proposals of the enabling transformations.
 %
 %
@@ -20,15 +20,6 @@ dependence.
 %register and control dependences, the planner examines individual
 %dependences one by one and greedily selects the cheapest option for
 %each one.  
-%
-%
-While simple, this approach is already enough to improve the
-state-of-the-art of parallelizing compilers. 
-%This is because \name has tightly merged speculation techniques with
-%static analyses. 
-Even though we can always increase the complexity of the planner, we
-did not find yet empirical evidence that justify such extra
-complexity. 
 %
 If there is a memory object, or a cross-iteration register or control
 dependences that cannot be addressed by any enabling transformation
