@@ -12,49 +12,58 @@ Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
 \name is evaluated against 12 C and C++ benchmarks, covering all the
 parallelizable (exhibiting speedup) benchmarks from two
 state-of-the-art automatic speculative-DOALL parallelization
-papers(Privateer~\cite{johnson:12:pldi} and Cluster
-Spec-DOALL~\cite{kim:12:cgo}). We also include one more benchmark
+papers(Privateer~\cite{johnson:12:pldi}, Cluster
+Spec-DOALL~\cite{kim:12:cgo}) as well one more benchmark
 (179.art) from HELIX~\cite{simone:12:cgo}, a non-speculative automatic
-parallelization system.  This work focuses on boosting the efficiency
-of automatic parallelization rather than increasing its applicability.
-This is why we choose benchmarks that have been parallelized in prior
-work.
+parallelization system.
+We choose benchmarks that have been parallelized in prior work because this
+work is focused on boosting the efficiency of automatic parallelization
+rather than increasing its applicability.
 
-These benchmarks are from five benchmark suites (SPEC\cite{},
-PARSEC\cite{bienia:08:parsec}, PolyBench\cite{},
-MiBench\cite{guthaus:2001:iiwsc}, Trimaran\cite{trimaran:web}). All
-PolyBench benchmarks and \texttt{dijkstra} from MiBench are modified
-to accept command line arguments and allocate arrays dynamically in
-the same way as in~\cite{johnson:12:pldi, kim:12:cgo}.
+% These benchmarks are from five benchmark suites (SPEC\cite{},
+% PARSEC\cite{bienia:08:parsec}, PolyBench\cite{},
+% MiBench\cite{guthaus:2001:iiwsc}, Trimaran\cite{trimaran:web}).
+We modify the benchmarks from the Polybench and \texttt{dijkstra} from
+MiBench to dynamically allocate previously static arrays in order to accept
+command line-defined sizes in the same way as ~\cite{johnson:12:pldi, kim:12:cgo}.
+% All PolyBench benchmarks and \texttt{dijkstra} from MiBench are modified
+% to accept command line arguments and allocate arrays dynamically in
+% the same way as in~\cite{johnson:12:pldi, kim:12:cgo}.
 %This modification is used to create bigger inputs, necessary for
 %separating profiling and evaluation input sets.
 %
 %for exhibiting speedups on 28 cores
 %
-Benchmark are profiled using small profiling inputs, while all the
+Benchmark are profiled using small inputs, while all the
 experiments presented in this section are conducted using different,
 large evaluation inputs. The evaluation inputs are chosen to be large
 enough for the sequential version to run for at least 10 minutes to
-observe scalability on 28 cores.
+observe accurate measurements on 28 cores. Reported speedups are an average
+of 5 runs to minimize the effect of the variance in execution time that
+manifests between runs.
 
 
 \begin{table*}[h]
   \centering
   \include{figures/benchmark-tab}
   \caption{
-    Benchmark Details: (a) Execution time coverage is the percentage of
-  execution time of paralleized loops. Based on it, the theoretical speedup
-  is calculated using Amdahl's Law with the assumptions of no overheads and
-  28 workers.  (b) SAMA's (Speculation-Aware Memory Analyzer's) cross-iter
-  cov is the number and percentage of cross-iteration dependences handled
-  by SAMA that were unresolved by static analysis alone. Entries denotes by
-  ``N/A'' indicate all dependences are handled by static analysis.  (c)
-  Proposed enablers’ cov is the number and percentage of objects
-  covered by efficient speculation privatization transformations proposed
-  in this work. (d) Private read and write sizes are measured using the
-  test input for each benchmark. v1 stands for
-  \name with only planner; v2 stands for \name with
-  planner and propsed enablers.}
+    Benchmark Details:
+    (A) Percentage of
+    execution time spent inside the parallelized loop(s) compared to
+    that of the whole program. The theoretical speedup
+    is calculated using Amdahl's Law with the assumptions of no overheads and
+    running with 28 workers.
+    (B) Number and percentage of cross-iteration dependences
+    handled by Speculation-Aware Memory Analyzer (SAMA) that were unresolved by
+    static analysis alone. Entries denotes by
+    ``N/A'' indicate all dependences are handled by static analysis.
+    (C) Number and percentage of objects covered by efficient speculative
+    privatization transformations proposed
+    in this work.
+    (D) Private read and write sizes measured using the
+    test input for each benchmark; v1 represents
+    \name with only the planner; v2 represents \name with
+    the planner and propsed enablers.}
   \label{tab:benchmark-list}
     \vspace{-5pt}
 \end{table*}
@@ -66,22 +75,24 @@ observe scalability on 28 cores.
   \resizebox{0.90\textwidth}{!}{
   \includegraphics[width=\textwidth]{figures/multi-core-crop}
   }
-  \caption{Fully Automatic Whole Program Speedup over Best Sequential}
+  \caption{Fully Automatic Whole Program Speedup over Sequential}
   \label{fig:multi-core-scale}
 \end{figure*}
 
 Figure \ref{fig:multi-core-scale} presents whole program speedups for
-all benchmarks running on from 1 to 28 cores. These speedups are
-relatvie to the best sequential performance of the original code, compiled
+all benchmarks running on one (1) to 28 cores. These speedups are
+relatvie to the sequential performance of the original code, compiled
 with \texttt{clang++ -O3}. \name achieves scalable performance on all the
 benchmarks.
 
-Note that due to the larger cache size with multiple cores,  and the
-cheaper \texttt{malloc} that are used in our heaps, super-linear speedups
-are possible and observed in four benchmarks(\texttt{enc-md5},
-\texttt{dijkstra}, \texttt{doitgen}, and \texttt{179.art}).
-
-\{\textbf{XXX} Something about what the super-linear speedup comes from\}
+We replace all calls to \texttt{\textbf{malloc()}} inside a parallelized
+loop with our own heap allocator. Our implementation of this allocator
+does not track segments of memory that have been freed for later use in the
+way most C/C++ runtime libraries do and as such, the overhead for dynamic
+(de)allocation is drastically reduced for some benchmarks, namely
+\texttt{swaptions} and \texttt{dijkstra}. This is apparent in the
+super-linear \{\textbf{XXX} or better-than-theoretical\} speedup that we
+observe for these benchmarks.
 
 % enc-md5, swaptions, gemm, 3mm, 2mm, blackscholes, doitgen
 \texttt{enc-md5}, \texttt{swaptions}, \texttt{gemm}, \texttt{2mm},
