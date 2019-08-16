@@ -83,6 +83,7 @@ then linked with the runtime and compiled as the parallel executable.
 
 Making memory analysis aware of cheap-to-validate speculation reduces the
 need for expensive memory speculation.
+
 \name's memory analysis is composed of many simple analysis algorithms
 that collaboratively respond to queries (e.g.
 CAF~\cite{johnson:cgo:17}).
@@ -175,8 +176,11 @@ include alternatives; decision making is left for the planner.
 %taking into consideration. Memory analyzer has a limited scope.
 
 
-\subsection{Enabling Transformations}
+\subsection{Enabling Transforms}
 \label{enablers}
+
+Enabling transformations address memory, register or/and control
+cross-iteration dependences.
 
 % Transformations modify the code to remove parallelization inhibitors.
 %
@@ -307,8 +311,6 @@ include alternatives; decision making is left for the planner.
 \input{transformations}
 
 %\subsubsection{Efficient Speculative Privatization Variants}
-\subsubsection{New Enablers}
-\label{novel_transf}
 
 %Ensuring correct live-out memory state often requires extensive bookkeeping,
 %during parallel execution, for the write footprint of private objects. To make
@@ -343,10 +345,6 @@ include alternatives; decision making is left for the planner.
 % communication. At commit, the private copies of each worker are merged
 % according to metadata that specify which worker wrote each byte last.
 
-To avoid expensive monitoring of write sets during parallel execution
-and minimize copy-out costs, we propose four efficient variants of
-this transformation, introduced in \cref{new_enablers}. This section
-describes the behaviors of each of them at runtime.
 %
 % To be applicable, these variants require apart from the basic
 % privatization property additional memory object properties.
@@ -359,42 +357,6 @@ describes the behaviors of each of them at runtime.
 %ClusterDoall~\cite{}) are only able to infer the simple private property and
 %thus always require costly checks or monitoring.
 
-\begin{itemize}
-%
-\item \textbf{Independent:} This transformation's heap is shared
-  among all parallel workers, since there is no overlapping memory
-  accesses.
-  %
-  No monitoring of write sets is needed. At commit the heap is copied-out
-  to the non-speculative state.
-%
-%If the selected parallelization plan is non-speculative, then this
-%heap is also shared with the main process and copy-in and copy-out
-%overheads are eliminated as well.
-
-%Behavior : No write set monitoring performed. Memory object is shared among parallel workers.
-
-\item \textbf{Overwrite Private:} This transformation's heap has
-  CoW (copy-on-write) mapping. At the end of the parallel
-  invocation the last executed iteration
-  state is copied-out and no monitoring is needed.
-
-%Additional applicability guard:
-%object has loop-invariant condition for last update within the loop.
-%
-%Behavior: No write set monitoring performed. The live-out state for
-%object with this property is the memory state of the last iteration
-%executed before commit.
-
-\item \textbf{Predictable Private:} This transformation's heap
-  has CoW mapping. The live-out state is predictable, so no monitoring
-  or merging of parallel workers state is needed. This transformation
-  relies on value prediction's speculative assumptions.
-
-\item \textbf{Local Private:} This transformation's heap has
-  CoW mapping and there is no need for copy-out or monitoring.
-
-\end{itemize}
 
 %\input{private_types}
 

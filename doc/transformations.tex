@@ -1,8 +1,8 @@
 
 \subsubsection{Memory Dependences}
 
-Memory-related enabling transformations collect a set of memory objects
-for which they are applicable (see ~\cref{enablers}).
+% Memory-related enabling transformations collect a set of memory objects
+% for which they are applicable (see ~\cref{enablers}).
 
 \paragraph{Applicability:}
 %
@@ -50,42 +50,6 @@ framework and in the context of DOALL parallelization, this simplified
 cost model proved sufficient for detection of minimal cost plans.
 
 %TODO: maybe add discussion about their cost
-Enabling transformations address memory, register or/and control
-cross-iteration dependences.
-
-\begin{itemize}
-%
-\item Privatization: Discussed in ~\ref{novel_transf}
-
-\item Reduction: Applicable for objects that only participate in
-reduction operations. When applied, reallocates
-its objects to the reduction heap. At commit, objects of parallel
-workers are merged according to their reduction operation.
-
-%Applicability guard: objects that only participate to reduction
-%operations
-
-%Transformation Application: only separate objects to reduction heap
-
-%Runtime support: at commit merge all objects according to their
-%reduction operation
-
-\item Short-lived: Applicable for objects that only exist within one
-iteration of the loop. Reallocates its objects to the
-short-lived heap when applied and inserts check to ensure that all
-the objects of the heap are freed at the end of each iteration.
-% During runtime, the short-lived property is checked.
-
-\item Read-only: Applicable for objects that are never written to within
-the loop. Reallocates its objects to the read heap when applied. Requires no
-transformation-specific checks.
-
-\item IO deferral: Applicable for shared IO objects. When applied, it
-replaces IO library calls with custom calls. During runtime, it
-collects output operations and performs them in-order at commit.
-
-\end{itemize}
-
 \paragraph{Transformation Application:}
 Each transformation reallocates
 memory objects it is selected to handle
@@ -106,6 +70,85 @@ validate underlying object assumptions. This idea of separation has
 been explored previously by Johnson et al. (Privateer~\cite{johnson:12:pldi}).
 The speculative assumptions used for each selected transformation also need
 to be validated at runtime to ensure correctness.
+
+% Memory-related enabling transformations collect a set of memory objects
+% for which they are applicable (see ~\cref{enablers}).
+The list of memory-related enabling transforms is as follows:
+
+\begin{itemize}
+%
+  \item \textbf{Privatization:} Applicable for objects with no false dependences.
+  Requires costly logging and merging at commit.
+
+\item \textbf{Reduction:} Applicable for objects that only participate in
+reduction operations. At commit, objects of parallel
+workers are merged according to their reduction operation.
+
+%Applicability guard: objects that only participate to reduction
+%operations
+
+%Transformation Application: only separate objects to reduction heap
+
+%Runtime support: at commit merge all objects according to their
+%reduction operation
+
+\item \textbf{Short-lived:} Applicable for objects that only exist within one
+iteration of the loop. Inserts check to ensure that all
+the objects of the heap are freed at the end of each iteration.
+% During runtime, the short-lived property is checked.
+
+\item \textbf{Read-only:} Applicable for objects that are never written to within
+the loop. Requires no transformation-specific checks.
+
+\item \textbf{IO deferral:} Applicable for shared IO objects. When applied, it
+replaces IO library calls with custom calls. During runtime, it
+collects output operations and performs them in-order at commit.
+
+\end{itemize}
+
+\paragraph{Efficient privatization variants}
+\label{novel_transf}
+We propose four efficient variants of the privatization transform.
+% To avoid expensive monitoring of write sets during parallel execution
+% and minimize copy-out costs, we propose four efficient variants of
+% this transformation, introduced in \cref{new_enablers}.
+\begin{itemize}
+%
+\item Independent: This transformation's heap is shared
+  among all parallel workers, since there is no overlapping memory
+  accesses.
+  %
+  No monitoring of write sets is needed. At commit the heap is copied-out
+  to the non-speculative state.
+%
+%If the selected parallelization plan is non-speculative, then this
+%heap is also shared with the main process and copy-in and copy-out
+%overheads are eliminated as well.
+
+%Behavior : No write set monitoring performed. Memory object is shared among parallel workers.
+
+\item Overwrite Private: This transformation's heap has
+  CoW (copy-on-write) mapping. At the end of the parallel
+  invocation the last executed iteration
+  state is copied-out and no monitoring is needed.
+
+%Additional applicability guard:
+%object has loop-invariant condition for last update within the loop.
+%
+%Behavior: No write set monitoring performed. The live-out state for
+%object with this property is the memory state of the last iteration
+%executed before commit.
+
+\item Predictable Private: This transformation's heap
+  has CoW mapping. The live-out state is predictable, so no monitoring
+  or merging of parallel workers state is needed. This transformation
+  relies on value prediction's speculative assumptions.
+
+\item Local Private: This transformation's heap has
+  CoW mapping and there is no need for copy-out or monitoring.
+
+\end{itemize}
+
 % The applicability guard also records the speculative assumptions used
 % to infer applicability for a memory object. These assumptions would
 % need to be validated at runtime for the transformation to be correct.
@@ -146,8 +189,8 @@ to be validated at runtime to ensure correctness.
 % paper.  Other enabling transformations that are used in our framework
 % but have been proposed in prior work are discussed in
 % section \ref{design_transf}.
-We propose the following enabling transformations for addressing memory,
-register, and/or control cross-iteration dependences.
+% We propose the following enabling transformations for addressing memory,
+% register, and/or control cross-iteration dependences.
 
 \subsubsection{Register \& Control Dependences}
 
