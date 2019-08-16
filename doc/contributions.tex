@@ -36,12 +36,15 @@ compilation and the actual transformation that is applied, if
 selected, in the transformation phase.
 %This separation of decision making and application of transformations
 %allows \name to carefully select the most profitable plan.
-The applicability guard utilizes memory analysis and speculative
-assumptions to determine which parallelization inhibitors the
-transform can handle.
+The applicability guard utilizes properties produced by memory
+analysis and speculative assumptions\footnote{We define speculative
+assumptions as predictions of program properties based on profile
+information.} to determine which parallelization inhibitors the
+corresponding transform can handle.
 %
-We define speculative assumptions as predictions of program properties
-based on profile information.
+The interface between memory analysis and speculative assumptions, and
+enabling transforms is an annotated with properties program dependence
+graph (PDG).
 %
 %The used speculative assumptions would need to be validated at
 %runtime for the transformation to be correct.
