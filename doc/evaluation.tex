@@ -93,7 +93,7 @@ in the paper. Although a state-of-the-art framework in terms of applicability,
 Privateer misses opportunities to remove read checks as mentioned in
 STMLite\cite{mehrara:09:stmlite} and Cluster Spec-DOALL\cite{kim:12:cgo}.
 For non-speculatively parallelized benchmarks especially, Privateer does not use
-static analysis and as a result has unnecessarily large read and write
+static analysis, and as a result has unnecessarily large read and write
 sets.
 %
 
@@ -124,7 +124,7 @@ which each iteration writes to a different location in a privatized array.
 Since this is determined statically, we can refrain from monitoring any of
 these writes. In \texttt{blackscholes}, the \texttt{\textbf{prices}} array
 is fully overwritten at every iteration; therefore, we only need to take
-the last iteration's writes as the liveout. In \texttt{dijkstra},
+the last iteration's writes as the live-out. In \texttt{dijkstra},
 the \texttt{\textbf{pathcost}} array is killed at the beginning of each
 iteration and similar to \texttt{blackscholes}, only requires the last
 iteration's writes to be known.
@@ -149,7 +149,7 @@ the write sets need to be monitored, limiting the achievable speedup to
 % \texttt{179.art}
 
 
-Using the speculatiion-aware memory analyzer addresses dependences not
+Using the speculation-aware memory analyzer addresses dependences not
 covered by static analysis in
 \texttt{enc-md5}, \texttt{179.art}, \texttt{blackscholes}, and
 \texttt{dijkstra}, shown in (B) of Table ~\ref{tab:benchmark-list}. However,
@@ -268,12 +268,12 @@ with an overhead of \textasciitilde10\% for each.
 
 For several benchmarks, we observed speedups that exceed their theoretical
 limits, which we attribute to two factors:
-(1) we replace all calls to \texttt{\textbf{malloc()}} inside a parallelized
+(1) We replace all calls to \texttt{\textbf{malloc()}} inside a parallelized
 loop with our own heap allocator. Our implementation of this allocator
 does not track segments of memory that have been freed for later use in the
 way most C/C++ runtime libraries do and as such, the overhead for dynamic
 (de)allocation is drastically reduced, which is seen in \texttt{dijkstra}.
-(2) using multiple cores increases the effective cache size which may
+(2) Using multiple cores increases the effective cache size which may
 reduce access times to memory~\cite{jeon:11:oopsla}. This effect can be
 seen in the performance of \texttt{179.art}, \texttt{enc-md5}, and
 \texttt{doitgen}.
