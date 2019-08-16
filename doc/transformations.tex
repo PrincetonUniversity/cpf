@@ -1,10 +1,10 @@
-Enabling transformations address memory, register or/and control
-cross-iteration dependences.
+% Enabling transformations address memory, register or/and control
+% cross-iteration dependences.
 
 \subsubsection{Memory Dependences}
 
 Memory-related enabling transformation collect a set of memory objects
-for which they are applicable (see ~\ref{enablers}).
+for which they are applicable (see ~\cref{enablers}).
 
 %TODO: maybe add discussion about their cost
 
@@ -28,7 +28,7 @@ workers are merged according to their reduction operation.
 \item Short-lived: Applicable for objects that only exist within one
 iteration of the loop. Reallocates its objects to the
 short-lived heap when applied and inserts check to ensure that all
-the objects of the heap are freed at the end of the iteration.
+the objects of the heap are freed at the end of each iteration.
 % During runtime, the short-lived property is checked.
 
 \item Read-only: Applicable for objects that are never written to within
@@ -37,7 +37,7 @@ transformation-specific checks.
 
 \item IO deferral: Applicable for shared IO objects. When applied, it
 replaces IO library calls with custom calls. During runtime, it
-collects output operations and performs them in order at commit.
+collects output operations and performs them in-order at commit.
 
 \end{itemize}
 
@@ -47,7 +47,7 @@ Cross-iteration register dependences
 %(not related to induction variables)
 are handled with reduction, replication, control speculation or value
 prediction. Replication replicates side-effect free computation across
-parallel workers to overcome cross-iteration dependences and avoid
+parallel workers to overcome cross-iteration dependences and avoids
 inter-thread communication.
 %
 Cross-iteration control dependences are handled either with
