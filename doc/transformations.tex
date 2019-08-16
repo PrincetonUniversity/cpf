@@ -75,10 +75,10 @@ Memory-related enabling transforms include:
 
 \begin{itemize}
 %
-  \item \textbf{Privatization:} Applicable for objects with no false dependences.
+  \item Privatization: Applicable for objects with no false dependences.
   Requires costly logging and merging at commit.
 
-\item \textbf{Reduction:} Applicable for objects that only participate in
+\item Reduction: Applicable for objects that only participate in
 reduction operations. At commit, objects of parallel
 workers are merged according to their reduction operation.
 
@@ -90,15 +90,15 @@ workers are merged according to their reduction operation.
 %Runtime support: at commit merge all objects according to their
 %reduction operation
 
-\item \textbf{Short-lived:} Applicable for objects that only exist within one
+\item Short-lived: Applicable for objects that only exist within one
 iteration of the loop. Inserts check to ensure that all
 the objects of the heap are freed at the end of each iteration.
 % During runtime, the short-lived property is checked.
 
-\item \textbf{Read-only:} Applicable for objects that are never written to within
+\item Read-only: Applicable for objects that are never written to within
 the loop. Requires no transform-specific checks.
 
-\item \textbf{IO deferral:} Applicable for shared IO objects. When applied, it
+\item IO deferral: Applicable for shared IO objects. When applied, it
 replaces IO library calls with custom calls. During runtime, it
 collects output operations and performs them in-order at commit.
 
