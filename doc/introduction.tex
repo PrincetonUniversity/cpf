@@ -70,9 +70,9 @@ communicate speculative accesses to additional validation code.  For
 larger regions with many speculation checks, the validation cost can
 become prohibitively expensive, negating the benefits of the
 parallelization.  Speculative privatization may also entail high
-overheads, but in a different way.  Correct merging the private memory
+overheads, but in a different way.  Correctly merging the private memory
 state of each parallel worker at the end of a loop invocation can
-require speculative privatizatin systems to monitor large write sets
+require speculative privatization systems to monitor large write sets
 during execution, significantly degrading their
 profitability~\cite{kim:12:cgo,johnson:12:pldi,rauchwerger:99:pds}.
 
