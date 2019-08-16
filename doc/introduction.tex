@@ -16,7 +16,7 @@ resources, such as caches and memory bandwidth.  Google revealed, in a
 candid disclosure, that their multicore utilization rarely exceeds
 20\%~\cite{barroso:07:computer}. Other researchers have also made this
 observation~\cite{chung:13:isca}.  Despite progress in recent years,
-automatic parallelization for multicore remains deficient.
+automatic parallelization is not yet a reliable solution.
 
 Parallelizing compilers integrate program analysis,
 enabling transformations, and parallelization patterns to
@@ -47,7 +47,7 @@ Following on the success of speculation for extracting ILP,
 speculation in automatic parallelization has gained traction in the
 last decade.  Speculation allows the compiler to optimize for the
 expected common case.  The effect is dramatic since there are many
-fewer dependences in practice than can be proved nonexistant by memory
+fewer dependences in practice than can be proved nonexistent by memory
 analysis.  Memory flow speculation is a popular speculative enabling
 transform that asserts the absence of flow dependences not manifested
 (or manifested infrequently) during profiling, backing its assertions
