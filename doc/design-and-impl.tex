@@ -15,28 +15,31 @@ ideas described in section~\ref{sec:approach}.
 
 
 Figure~\ref{fig:compiler-pipeline} depicts an overview of the \name
-framework, which includes a set of profilers, a parallelizing compiler
+framework, which includes a set of profilers, a parallelizing compiler,
 and a runtime system.
 %
-The compilation flow begins with a preprocessing step that produces a
-target LLVM intermediate representation (IR) which is then used to
-generate profiling results.  Based on profiling results, a set of hot
-loops is selected.  In the second phase of the compilation, each hot
-loop is processed separately.  The speculation-aware memory analyzer
-is queried to annotate a PDG with properties regarding dependences and
-instructions.  The applicability guards of the enabling
-transformations examine the PDG and create transformation proposals to
-remove parallelization-inhibiting cross-iteration dependences in the
-loop. A DOALL planner considers these proposals, selects the minimum
-cost options and generates a sequence of transformations if a
-profitable DOALL plan is available.  Finally, we select a set of
-compatible parallelizable loops with the maximum profit, apply the
+The compilation flow begins with a preprocessing step that adds
+instrumentation in the LLVM intermediate representation (IR) for
+generating profiling results, from which a set of hot
+loops is selected.
+% In the second phase of the compilation, each hot
+% loop is processed separately.
+The speculation-aware memory analyzer
+is queried to annotate the PDG with properties regarding dependences and
+instructions. The applicability guard of each enabling
+transformation examines the annotated PDG and creates transformation
+proposals that offer to remove parallelization-inhibiting cross-iteration
+dependences in the loop along with its cost. A DOALL planner considers
+these proposals, selects set of minimum cost options and generates a sequence
+of transformations, if a profitable DOALL plan is available.
+Finally, we select a set of
+compatible parallelizable loops with the maximum profitability, apply the
 tranformations in their plans, and generate the parallel IR which is
-then linked with an runtime and compiled as the parallel executable.
+then linked with the runtime and compiled as the parallel executable.
 
-This section begins with discussion of the planning phase which
-includes the main contributions of this paper and then subsequently
-describes other components of the framework.
+% This section begins with discussion of the planning phase which
+% includes the main contributions of this paper and then subsequently
+% describes other components of the framework.
 
 %\subsection{Speculation-Aware Memory Analyzer}
 %\label{analyzer}
@@ -458,26 +461,24 @@ describes other components of the framework.
 \subsection{Profiling}
 %\subsection{Speculative Assumptions}
 
-A set of profilers generate speculative assumptions:
+\name uses a set of profilers to generate speculative assumptions:
 %
-(i) an edge profiler~\ref{llvm_edge_profiling} identifies biased
-branches and produces a speculative control flow that can be used by
-analysis passes, or directly disprove dependences on speculatively
-dead basic blocks;
+(i) an edge profiler~\cite{LLVM:CGO04} that identifies biased
+branches and produces a speculative control flow;
 %
-(ii) a memory flow dependence  profiler (\`{a} la
-~\cite{privateer4citation}) asserts absence of non-observed data
+(ii) a memory flow dependence profiler (\`{a} la
+~\cite{chen:04:cc}) that asserts the absence of non-observed data
 flows;
 %
 (iii) a value-prediction profiler (\`{a} la
-~\cite{privateer11citation}) detects predictable loads;
+~\cite{gabbay:97:micro}) that detects predictable loads;
 %
 (iv) a pointer-to-object profiler (\`{a} la ~\cite{johnson:12:pldi})
-produces a points-to map that allows detection of underlying objects
+that produces a points-to map that for allows detection of underlying objects
 for every memory access; and,
 %
 (v) an object lifetime profiler (\`{a} la ~\cite{johnson:12:pldi})
-detects short-lived memory objects, namely objects that exist only within a
+that detects short-lived memory objects, namely objects that exist only within a
 single loop iteration.
 %
 
@@ -493,9 +494,9 @@ single loop iteration.
 
 The compilation process begins with a preprocessing step that
 generates the targeted for parallelization intermediate representation
-(IR) of the program. We use Clang~\cite{} to generate LLVM~\cite{} IR
+(IR) of the program. We use Clang~\cite{LLVM:CGO04} to generate LLVM IR
 from the sequential C/C++ programs followed by LLVM IR optimizations.
-Then we perform a pass of profile-guided aggressive, yet selective
+We then perform a pass of selective profile-guided
 inlining and finally another round of LLVM IR optimizations to produce
 the target LLVM IR that is used as the starting point for the rest of
 the compilation process.
@@ -505,10 +506,10 @@ the compilation process.
 Transformations in this preprocessing step are crucial for the
 applicability and profitability of parallelization.
 %
-Parallelizing compilers usually just compile the source code with -O3
-flag to get an initial IR version and then perform a few additional
+Parallelizing compilers usually compile the source code with the \textit{-O3}
+flag to get the initial IR and then perform a few additional
 passes.
-%
+% XXX Doesn't sound vague at all...
 However, traditional compiler transformations are meant for optimized
 sequential execution.
 %
@@ -529,12 +530,12 @@ canonicalize the IR.
 Contrary to LLVM IR optimizations, frontend optimizations by Clang can
 be applied more freely.
 %
-If Clang optimizations are not applied then some information extracted
-from the source code could be omitted from the generated LLVM IR.  In
+If Clang optimizations are not applied, some information extracted
+from the source code may be omitted from the generated LLVM IR.  In
 fact, we noticed that when no optimization is used in the frontend
 (\textit{clang -O0 -Xclang -disable-O0-optnone}), some very helpful
 LLVM intrinsics (e.g., lifetime start/end intrinsics for stack
-allocations) are lost.  To avoid this, we compile with -O1 flag for
+allocations) are lost.  To avoid this, we compile with \textit{-O1} flag for
 frontend optimizations but disable LLVM optimizations (\textit{-O1
 -Xclang -disable-llvm-passes}).
 
@@ -544,49 +545,50 @@ frontend optimizations but disable LLVM optimizations (\textit{-O1
 Interprocedural analysis is complicated and expensive, restricting the
 precision or scalability of static analysis.
 %
-Dependences related to callsites often prevent parallelization or lead
+Dependences involving callsites often prevent parallelization or lead
 to extensive usage of expensive-to-validate memory flow speculation.
 %
 Inlining can mitigate this problem, but the heuristics used in
-industrial compilers are tailored for sequential execution
-optimization and are mostly irrelevant to effective parallelization.
+industrial compilers that determine whether to inline or not are tailored
+for sequential code optimization and are mostly irrelevant to
+effective parallelization.
 %
 % code size expansion
 %When parallelization is applicable, these
 %
 More aggressive inlining is needed for parallelization. Naive
 aggressive inlining, though, would lead to code size explosion and
-exponential increase in compilation time. Avoiding inlining in some
+exponential increase in compilation time so avoiding inlining in some
 cases
 %Filtering of some callsites
 is still essential.
 %
 
 \name uses profile information to detect hot loops and speculatively
-dead callsites.  Only callsites that are within these hot loops and
+dead callsites. Only callsites that are within these hot loops and
 that cannot be speculated away with control speculation are inlined.
 %
-Of these callsites, \name also avoids inlining the ones that do not
+Of these callsites, \name also avoids inlining ones that do not
 sink or source cross-iteration dependences that inhibit DOALL
 parallelization.
 %
 %just get a summary.  hard to handle them separetely end up
 %overspeculating because it is hard to find the problem.
 
-Inlining is sometimes also useful outside the hot loops.
+Inlining is also sometimes useful outside the hot loops.
 %
 Static analysis can easily infer alias and underlying object queries
 for global variables whose address is never
-captured~\cite{johnson:17:cgo}.  However, if the address of a global
-variable is passed as an argument to a function, then the analysis in
+captured~\cite{johnson:14:pldi}. However, if the address of a global
+variable is passed as an argument to a function, then analysis in
 most cases conservatively assumes that the address is stored in memory
-(i.e. captured)  within the function. Inlining diminishes this
+(i.e. captured) within the function. Inlining diminishes this
 problem.
 
 
 \subsection{Loop Selection} An execution time profiler, similar to
-gprof~\cite{Privateer26}, finds hot loops (at least 10\% of total
-program execution).
+gprof~\cite{gnu:binutils:web}, finds hot loops that execute for at least 10\%
+of the total program execution.
 %
 For each hot loop, the compiler finds a DOALL parallelization plan and
 estimates its profitability.
@@ -599,7 +601,6 @@ conflict with the assignments of a more profitable loop (every memory
 object can be allocated to only one heap throughout the program in our
 current implementation).
 
-\subsection{Runtime}
 \input{runtime2}
 
 %In this work, we introduce a set of transformations to explore more

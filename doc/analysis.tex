@@ -1,11 +1,11 @@
 \name uses a state-of-the-art memory dependence analysis framework
-tailored for parallelization (\`{a} la CAF\cite{johnson:cgo:17}), in
+tailored for parallelization (\`{a} la CAF\cite{johnson:14:pldi}), in
 which multiple simple analysis algorithms collaboratively attempt to
-disprove dependences, and minimize the need for speculation.
+disprove dependences and minimize the need for speculation.
 %
-Static analysis is also used to identify underlying memory objects of
-memory operations and characterize dependences that cannot
-be disproved (see section~\ref{overview_dependence_analysis}).
+% Static analysis is also used to identify underlying memory objects of
+% memory operations and characterize dependences that cannot
+% be disproved (see section~\ref{overview_dependence_analysis}).
 %In section~\ref{} we discussed how a dependence is characterized as
 %\textit{overwrite}.
 
@@ -22,20 +22,21 @@ This approximation prevents detection of a common pattern (seen in
 052.alvinn, 179.art, dijkstra) that can be observed in the code in
 Figure~\ref{fig:dijkstra_motivation}.
 %
-Instruction in line 29 kills values flowing from the previous
-iteration to the read in line 41.  However, there is no dominance
-relation, and thus it is not be detected.
+The write to \texttt{\textbf{pathcost}} in line \textbf{29} kills
+values flowing from the previous iteration to the read in line \textbf{41}.
+However, there is no dominance
+relation, and thus it cannot be detected.
 %
-We extend Kill-Flow algorithm to detect this pattern.  Observe that
-the loop header of the inner loop in line 28 dominates the read in
-line 41.  The extended Kill-Flow treats this inner loop as a single
+We extend the Kill-Flow algorithm to detect this pattern. Observe that
+the loop header of the inner loop in line \textbf{28} dominates the
+read in line \textbf{41}. The extended Kill-Flow treats this inner loop as a single
 operation that overwrites a range of memory locations. This way, it
-can easily be proven that this range write overwrites at every
-iteration the memory addresses that are read in line 41.
+can easily be proven that this range write overwrites
+the memory addresses that are read in line \textbf{41} at every iteration.
 %
 %The effect of this extension on the running time of Kill-Flow is
 %negligible.
 %
 This extension allows us to disprove additional data flows compared to
-the state-of-the-art, and further reduce the need for memory
+the state-of-the-art and further reduce the need for memory
 speculation.

@@ -12,10 +12,10 @@ for which they are applicable (see ~\ref{enablers}).
 %
 \item Privatization: Discussed in ~\ref{novel_transf}
 
-\item Reduction: Applicable for objects that only participate to
-reduction operations. When applied, separates its objects to the
-reduction heap. At commit objects of parallel workers are merged
-according to their reduction operation.
+\item Reduction: Applicable for objects that only participate in
+reduction operations. When applied, reallocates
+its objects to the reduction heap. At commit, objects of parallel
+workers are merged according to their reduction operation.
 
 %Applicability guard: objects that only participate to reduction
 %operations
@@ -26,13 +26,13 @@ according to their reduction operation.
 %reduction operation
 
 \item Short-lived: Applicable for objects that only exist within one
-iteration of the loop. When applied, separates its objects to the
-short-lived heap and inserts check to ensure that all the objects of
-the heap are freed at the end of the iteration. During runtime, the
-short-lived property is checked.
+iteration of the loop. Reallocates its objects to the
+short-lived heap when applied and inserts check to ensure that all
+the objects of the heap are freed at the end of the iteration.
+% During runtime, the short-lived property is checked.
 
-\item Read-only: Applicable for objects that are never written to.
-When applied, separates its objects to the read heap. No
+\item Read-only: Applicable for objects that are never written to within
+the loop. Reallocates its objects to the read heap when applied. Requires no
 transformation-specific checks.
 
 \item IO deferral: Applicable for shared IO objects. When applied, it
