@@ -4,7 +4,7 @@
 %int *adj; // dyn alloc 2-D NxN
 %int dist, v, src, i;
 
-\begin{lstlisting}[morekeywords={pathcost}, belowskip=0pt, firstnumber=9, name=dij_checks]
+\begin{lstlisting}[morekeywords={pathcost}, belowskip=0pt, firstnumber=10, name=dij_checks]
 int dequeue() {
   if (!emptyQ()) {
 \end{lstlisting}
@@ -39,7 +39,8 @@ void worker_loop(int start, int N, int step) {
   check_heap(&dist, PRIVATE);
   \end{lstlisting}
 
-  \begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt, firstnumber=auto,name=dij_checks]
+  \begin{lstlisting}[morekeywords={pathcost},aboveskip=0pt, belowskip=0pt,
+  firstnumber=25,name=dij_checks]
   for (src=start; src<N; src+=step) {
   \end{lstlisting}
 
@@ -61,9 +62,8 @@ void worker_loop(int start, int N, int step) {
 
   \begin{lstlisting}[morekeywords={pathcost,dist,nDist}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
-        // Privacy Local Check & Logging -- 11.4% added overhead
+        // Privacy Local Check & Logging -- 11.4%,13.3% added overhead
         private_read(&dist, sizeof(int), md);
-        // Privacy Local Check & Logging -- 13.3% added overhead
         private_write(&nDist, sizeof(int), md);
   \end{lstlisting}
 
@@ -99,8 +99,7 @@ void worker_loop(int start, int N, int step) {
   \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,belowskip=0pt,backgroundcolor=\color{lightgray},
   firstnumber=auto, name=dij_checks]
     if (checkpointDue()) {
-      // check conflicts with other workers -- < 1% added overhead
-      checkPrivAcccessesConflicts(md);
+      checkPrivAcccessesConflicts(md); // < 1% added overhead
     }
   \end{lstlisting}
 

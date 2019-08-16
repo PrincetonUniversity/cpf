@@ -40,15 +40,15 @@ firstnumber=28]
       for (i=0; i<N; i++) {
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost,dist}, aboveskip=0pt,
-belowskip=0pt, firstnumber=37,name=dij_checks]
+belowskip=0pt, firstnumber=38,name=dij_checks]
         nDist = adj[v][i] + dist;
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
-firstnumber=40]
+firstnumber=41]
         if (pathcost[i] > nDist) {
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt, belowskip=0pt,
-firstnumber=43]
+firstnumber=44]
           pathcost[i] = nDist;
           enqueue(i, nDist);
         }
@@ -60,6 +60,6 @@ belowskip=0pt, firstnumber=52]
   }
 \end{lstlisting}
 \begin{lstlisting}[morekeywords={pathcost}, aboveskip=0pt,
-belowskip=0pt, firstnumber=57]
+belowskip=0pt, firstnumber=54]
 }
 \end{lstlisting}
