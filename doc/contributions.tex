@@ -23,6 +23,7 @@ These new interfaces create extra degrees of freedom, which enable \name to real
 %assuming application of all speculative techniques and then undo
 %speculation whenever it is not needed.
 %Then undo speculation whenever it was not needed.
+% <<<<<<< HEAD
 
 \subsection{Planning}
 %
@@ -57,6 +58,42 @@ transformation proposal which is sent to the planner.
 %The effect of each enabling transform is collected in a
 %transformation proposal.
 %
+%=======
+
+%\subsection{Planning}
+%%
+%Unlike prior speculative systems that apply a sequence of
+%parallelization-enabling transforms in a fixed order, \name proposes a
+%more sensible approach: before applying any transformation, plan
+%first.
+
+%Enabling transforms modify the code to remove parallelization
+%inhibitors, which in the context of DOALL parallelization are
+%cross-iteration dependences.
+%%
+%All transformations are split into two parts. The applicability guard
+%that participates in the planning phase of the compilation and the
+%actual transformation that is applied, if selected, in the
+%transformation phase.
+%%This separation of decision making and application of transformations
+%%allows \name to carefully select the most profitable plan.
+%The applicability guard utilizes memory analysis and speculative
+%assumptions to determine which parallelization inhibitors the
+%transform can handle.
+%%
+%We define speculative assumptions as predictions of program properties
+%based on profile information.
+%%
+%%The used speculative assumptions would need to be validated at
+%%runtime for the transformation to be correct.
+%%
+%The output of each applicability guard is collected in a
+%transformation proposal which is sent to the planner.
+%%
+%%The effect of each enabling transform is collected in a
+%%transformation proposal.
+%%
+%>>>>>>> 1c0e46076ff07f968a1629bac033e26f66d0aecd
 The proposal also includes a cost for the application of the
 transformation itself and a set of speculative assumptions required
 for the transformation to be applicable and correct.
@@ -97,6 +134,7 @@ Just applying speculation and then querying memory analysis again
 would not have the same effect since the possibility of misspeculation
 restrains static analysis.
 
+<<<<<<< HEAD
 %<<<<<<< HEAD
 %%When a query is received the memory analyzer tries to resolve it with
 %%usage of just static analysis. If that fails, it tries to use memory
@@ -200,6 +238,8 @@ restrains static analysis.
 
 %Transformations modify the code to remove parallelization inhibitors.
 %=======
+=======
+>>>>>>> 1c0e46076ff07f968a1629bac033e26f66d0aecd
 \subsection{New Enabling Transformations}
 
 %Either all static, all speculation.
@@ -210,7 +250,10 @@ dependence structure relaxed with the use of all the available
 speculative assumptions.  This approach not only creates ambiguity in
 terms of what speculative assumptions are necessary but also prevents
 usage of efficient variants of transformations.
+<<<<<<< HEAD
 % >>>>>>> 0d462d9440acd9d74db98235404d4d81cc3b9db2
+=======
+>>>>>>> 1c0e46076ff07f968a1629bac033e26f66d0aecd
 %
 By exposing a combination of static analysis information and
 speculative assumptions, \name enables more efficient enabling
