@@ -23,7 +23,6 @@ These new interfaces create extra degrees of freedom, which enable \name to real
 %assuming application of all speculative techniques and then undo
 %speculation whenever it is not needed.
 %Then undo speculation whenever it was not needed.
-% <<<<<<< HEAD
 
 \subsection{Planning}
 %
@@ -58,42 +57,6 @@ transformation proposal which is sent to the planner.
 %The effect of each enabling transform is collected in a
 %transformation proposal.
 %
-%=======
-
-%\subsection{Planning}
-%%
-%Unlike prior speculative systems that apply a sequence of
-%parallelization-enabling transforms in a fixed order, \name proposes a
-%more sensible approach: before applying any transformation, plan
-%first.
-
-%Enabling transforms modify the code to remove parallelization
-%inhibitors, which in the context of DOALL parallelization are
-%cross-iteration dependences.
-%%
-%All transformations are split into two parts. The applicability guard
-%that participates in the planning phase of the compilation and the
-%actual transformation that is applied, if selected, in the
-%transformation phase.
-%%This separation of decision making and application of transformations
-%%allows \name to carefully select the most profitable plan.
-%The applicability guard utilizes memory analysis and speculative
-%assumptions to determine which parallelization inhibitors the
-%transform can handle.
-%%
-%We define speculative assumptions as predictions of program properties
-%based on profile information.
-%%
-%%The used speculative assumptions would need to be validated at
-%%runtime for the transformation to be correct.
-%%
-%The output of each applicability guard is collected in a
-%transformation proposal which is sent to the planner.
-%%
-%%The effect of each enabling transform is collected in a
-%%transformation proposal.
-%%
-%>>>>>>> 1c0e46076ff07f968a1629bac033e26f66d0aecd
 The proposal also includes a cost for the application of the
 transformation itself and a set of speculative assumptions required
 for the transformation to be applicable and correct.
@@ -134,112 +97,6 @@ Just applying speculation and then querying memory analysis again
 would not have the same effect since the possibility of misspeculation
 restrains static analysis.
 
-<<<<<<< HEAD
-%<<<<<<< HEAD
-%%When a query is received the memory analyzer tries to resolve it with
-%%usage of just static analysis. If that fails, it tries to use memory
-%%analysis with cheap-speculative assumptions.
-%%If that still fails then it resorts to memory speculation.
-%%
-%%
-%%Memory analysis annotates a PDG with information utilized by the
-%%decision making process in the rest of the planning phase.
-
-%\name's memory analysis is composed of many simple analysis algorithms
-%that collaboratively respond to queries ~\cite{johnson:14:pldi}.
-%%
-%The modularity of our static analysis simplifies the addition of
-%speculation awareness. Only the analysis algorithms that could
-%possibly benefit from the collaboration need to be extended with a
-%speculative mode.
-%%
-%A monolithic memory analysis would be harder to extend for speculation
-%awareness.
-
-%In the speculation-aware memory analyzer, \name utilizes speculative
-%assumptions from two profilers: edge profiler (detects biased
-%branches) and loaded value predictor (predicts loaded values).
-%%
-%Exposing other cheap-to-validate speculative assumptions to memory
-%analysis could also be beneficial.  Such exploration is left for
-%future work.
-%%This paper just stratches the surface of this
-
-%Edge profiling can produce a speculative control flow. This
-%speculative control flow can be used by memory analysis passes to
-%handle more queries.
-%%
-%Two examples of analysis passes that can benefit from this speculative
-%information is kill-flow and unique access paths (UAP) algorithms.
-%%
-%Kill-flow analysis disproves memory dependences by finding killing
-%operations along all feasible paths between two operations.  If
-%kill-flow is able to use speculative control flow information, then
-%the feasible paths might be reduced and kill-flow might be able to
-%assert absence of a statically non-disprovable memory dependence.
-%%
-%UAP collects a points-to set of objects for a pointer stored into a
-%non-captured memory location (i.e., address never stored into memory
-%and never passed to an externally defined function).
-%%Alias queries related to this memory location produce new alias
-%%queries for each value stored in this memory location.
-%Use of speculative control flow information enables detection of
-%speculatively dead stores in this set, decreasing its size and thus
-%simplifying alias queries for this pointer.
-
-%%In both examples, without speculative control flow awareness, prior
-%%speculative parallelization systems would be forced to use expensive
-%%memory speculation instead.
-
-%Regarding value prediction, if memory analysis passes assume that
-%loaded value predictions are correct, then they can re-interpret a
-%predicted load as a store of the predicted value. One analysis
-%algorithm that can benefit from that is again kill-flow. Kill-flow
-%treats the predictable load as a kill operation for must-aliasing data
-%flows.
-
-%%Apart from removal of dependences, the speculation-aware memory
-%%analyzer is also used to characterize dependences.
-%%%and dependent instructions.
-%%%
-%%Traditionally, dependence analysis (static, dynamic or speculative) in
-%%speculative parallelization only attempts to completely remove
-%%dependences.
-%%%
-%%If a dependence cannot be removed even with usage of speculation,
-%%because it is a real dependence that frequently manifests at runtime,
-%%no useful information is provided related to this dependence.
-%%%
-%%The memory analyzer though could still infer some useful property for
-%%this dependence or the dependent instructions.
-%%%
-%%This information is essential to enable certain transformations, such
-%%as the efficient variants of speculative privatization described in
-%%section ~\ref{novel_transf}.
-
-%The speculation-aware memory analyzer is queried to populate a program
-%dependence graph (PDG) annotated with information utilized by the rest
-%of the planning phase, namely by enabling transformations and the
-%planner. Annotations include properties for the dependences and the
-%dependent instructions.
-%%Note that traditional dependence analysis (static, dynamic or
-%%speculative) in speculative parallelization only attempts to
-%%completely remove dependences, while the speculation-aware memory
-%%analyzer infers properties for even non-removable ones.
-%If a property cannot be statically inferred, then annotations may
-%include alternatives; decision making is left for the planner.
-%%, which can perform global reasoning.
-%%The planner is responsible for selecting the most profitable option,
-%%taking into consideration. Memory analyzer has a limited scope.
-
-
-%\subsection{Enabling Transformations}
-%\label{enablers}
-
-%Transformations modify the code to remove parallelization inhibitors.
-%=======
-=======
->>>>>>> 1c0e46076ff07f968a1629bac033e26f66d0aecd
 \subsection{New Enabling Transformations}
 
 %Either all static, all speculation.
@@ -250,10 +107,6 @@ dependence structure relaxed with the use of all the available
 speculative assumptions.  This approach not only creates ambiguity in
 terms of what speculative assumptions are necessary but also prevents
 usage of efficient variants of transformations.
-<<<<<<< HEAD
-% >>>>>>> 0d462d9440acd9d74db98235404d4d81cc3b9db2
-=======
->>>>>>> 1c0e46076ff07f968a1629bac033e26f66d0aecd
 %
 By exposing a combination of static analysis information and
 speculative assumptions, \name enables more efficient enabling
@@ -366,24 +219,22 @@ objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of \texttt{dijkstr
   %   }
 \subfloat[Privateer~\cite{johnson:12:pldi}]{
   \centering
-  \begin{minipage}{9.4cm}
+  \begin{minipage}{9.2cm}
   \input{figures/dijkstra_motivation_checks}
   \end{minipage}
 }
 \qquad
 \qquad
-\qquad
-\qquad
-\subfloat[This Work]{
+\subfloat[This work]{
   \centering
-  \begin{minipage}{8.2cm}
+  \begin{minipage}{7cm}
   \input{figures/dijkstra_motivation_checks_our}
   \end{minipage}
 }
 }
 \caption{Parallelized code comparison of Privateer with \name for
 \texttt{dijkstra}. Logging and checks during loop execution dominate the
-overheads, indicated in the code as ``added OH''.}
+overheads.}
 \label{fig:dijkstra_motivation_comparison_source_code}
 \end{figure*}
 %caption,
