@@ -48,17 +48,15 @@ time that manifests between runs.
   \include{figures/benchmark-tab}
   \caption{
     Benchmark Details:
-    (A) Percentage of
-    execution time spent inside the parallelized loop(s). Theoretical speedup
-    is calculated using Amdahl's Law with 28 workers.
-    (B) Number of cross-iteration dependences
-    handled by Speculation-Aware Memory Analyzer (SAMA) unresolvable by
-    static analysis alone. ``N/A'' indicate all dependences are handled by static analysis.
-    (C) Number of objects covered by efficient speculative
-    privatization transforms proposed
-    in this work.
-    (D) Private read and write sizes measured using the
-    evaluation input for each benchmark; v1 represents
+    (A) \% of
+    execution time spent inside parallelized loop(s). Theoretical speedup
+    calculated using Amdahl's Law with 28 workers.
+    (B) \# of cross-iteration dependences
+    handled by Speculation-Aware Memory Analyzer unresolvable by
+    static analysis. ``N/A'' indicates all dependences are handled by static analysis.
+    (C) \# of objects covered by proposed speculative
+    privatization transforms.
+    (D) Private read and write sizes for each benchmark; v1 represents
     \name with only the planner; v2 represents \name with
     the planner and propsed enablers.}
   \label{tab:benchmark-list}
