@@ -1,16 +1,16 @@
 \section{The \name Approach}
 \label{sec:approach}
 
-Current parallelizing compiler designs force code analyses, transformations, and speculative techniques to work as a pipeline.
+Current parallelizing compiler designs force code analyses, transforms, and speculative techniques to work as a pipeline.
 This design excludes the possibility of non-linear and fine-grain interactions between them, which makes important parallelization opportunities unreachable.
-To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (section~\ref{analyzer}).
+To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (\cref{sama_short}).
 This tight interaction generates information in the form of a dependence graph annotated with speculative assumptions.
-\namensp's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
+\namensp's design also tightly couples code transforms with speculative assumptions to drastically reduce the overhead of the formers (\cref{enablers}).
 %These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enable their non-linear and fine-grained interactions.
 These new interfaces create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
 
 %\name combines a speculation-aware memory analyzer, enabling
-%transformations including efficient speculative privatization, and a
+%transforms including efficient speculative privatization, and a
 %parallelization planner into an exploration phase designed to find the
 %best performing set of parallelization techniques.  This section
 %discusses the main contributions of this paper
@@ -24,18 +24,18 @@ These new interfaces create extra degrees of freedom, which enable \name to real
 %
 Unlike prior speculative systems that apply a sequence of
 parallelization-enabling transforms in a fixed order, \name proposes a
-more sensible approach: before applying any transformation, plan
+more sensible approach: before applying any transform, plan
 first.
 
 Enabling transforms modify the code to remove parallelization
 inhibitors, which in the context of DOALL parallelization are
 cross-iteration dependences.
 %
-To facilitate planning, all transformations are split into two parts.
+To facilitate planning, all transforms are split into two parts.
 The applicability guard that participates in the planning phase of the
-compilation, and the actual transformation that is applied, if
-selected, in the transformation phase.
-%This separation of decision making and application of transformations
+compilation, and the actual transform that is applied, if
+selected, in the transform phase.
+%This separation of decision making and application of transforms
 %allows \name to carefully select the most profitable plan.
 The applicability guard utilizes properties produced by memory
 analysis and speculative assumptions\footnote{We define speculative
@@ -48,41 +48,41 @@ enabling transforms is an annotated with properties program dependence
 graph (PDG).
 %
 %The used speculative assumptions would need to be validated at
-%runtime for the transformation to be correct.
+%runtime for the transform to be correct.
 %
 The output of each applicability guard is collected in a
-transformation proposal which is sent to the planner.
+transform proposal which is sent to the planner.
 %
 %The effect of each enabling transform is collected in a
-%transformation proposal.
+%transform proposal.
 %
 The proposal also includes a cost for the application of the
-transformation itself and a set of speculative assumptions required
-for the transformation to be applicable and correct.
+transform itself and a set of speculative assumptions required
+for the transform to be applicable and correct.
 
-Memory-related transformations, instead of targeting cross-iteration
+Memory-related transforms, instead of targeting cross-iteration
 dependences, offer to handle a set of memory objects, in effect
 addressing all their cross-iteration dependences. This object-centric
 approach is motivated by the fact that memory-related enabling
-transformations often operate at an object level. For example, the
-privatization transformation creates private copies of memory objects.
+transforms often operate at an object level. For example, the
+privatization transform creates private copies of memory objects.
 
 \paragraph{Planner}
 
 %The input to the planner is a program dependence graph and
-%transformation proposals of the enabling transformations.
+%transform proposals of the enabling transforms.
 %
 The output of the planner is the best performing set of
-transformations that addresses all the parallelization inhibitors.
+transforms that addresses all the parallelization inhibitors.
 %
 The planner is able to perform global reasoning by centralizing the
 currently decentralized and greedy decision-making process found in
 prior parallelizing compilers.
 %
-The generated plan includes a set of enabling transformations and a
-set of transformations for validating speculative assumptions.
+The generated plan includes a set of enabling transforms and a
+set of transforms for validating speculative assumptions.
 %
-These are the transformations that are applied at the transformation
+These are the transforms that are applied at the transform
 phase of compilation.
 
 \subsection{Speculation-Aware Memory Analyzer}
@@ -105,21 +105,21 @@ would not have the same effect since the possibility of misspeculation
 restrains static analysis. For more details regarding
 speculation-aware memory analysis see \cref{sama}.
 
-\subsection{New Enabling Transformations}
-\label{sec:new_enablers}
+\subsection{New Enabling Transforms}
+\label{new_enablers}
 
 %Either all static, all speculation.
 Prior work on speculative parallelization often focuses on the
-enabling effect of transformations without considering their cost.  To
+enabling effect of transforms without considering their cost.  To
 maximize applicability, enabling transforms are often given a program
 dependence structure relaxed with the use of all the available
 speculative assumptions.  This approach not only creates ambiguity in
 terms of what speculative assumptions are necessary but also prevents
-usage of efficient variants of transformations.
+usage of efficient variants of transforms.
 %
 By exposing a combination of static analysis information and
 speculative assumptions, \name enables more efficient enabling
-transformations.  This is especially true for the case of speculative
+transforms.  This is especially true for the case of speculative
 privatization, efficient variants of which are explored in this paper.
 %
 We first discuss speculative privatization as it appears in prior work
@@ -138,7 +138,7 @@ according to metadata that specify which worker last wrote each byte.
 
 To avoid expensive monitoring of write sets during parallel execution
 and minimize copy-out costs, we propose four efficient variants of
-this transformation.
+this transform.
 %
 These variants require additional memory object properties apart from the basic
 privatization property to be applicable.  Private
@@ -225,10 +225,10 @@ as ``added OH''.}
 Next, we describe how \name succeeds at parallelizing \texttt{dijkstra}
 efficiently. This section also highlights the limitations of prior
 work and how the new ideas introduced in \name
-(\cref{planning,sama_short,new_enablers}) overcome them.
+(\cref{planning}, \cref{sama_short}, \cref{new_enablers}) overcome them.
 %
 Consider again the code in Figure~\ref{fig:dijkstra_motivation},
-briefly discussed in~\ref{motiv_overheads}.
+briefly discussed in~\cref{motiv_overheads}.
 %
 Figure~\ref{fig:dijkstra_motivation_comparison} compares the
 compilation flow of \name with that of Privateer for handling memory objects
@@ -238,11 +238,10 @@ compilation flow of \name with that of Privateer for handling memory objects
 than Privateer's scheme.
 %The PDG is annotated by the speculation-aware memory
 Notice how the PDG is annotated with properties and underlying speculative
-assumptions by the speculation-aware memory analyzer. Speculation-aware
-memory analyzer allows removal of the RAW dependence between instruction
-\textbf{13}
-and \textbf{37} with a combination of static analysis and control speculation. This
-dependence would require usage of memory speculation in prior work.
+assumptions by the \textbf{speculation-aware memory analyzer} which allows
+removal of the RAW dependence between instruction \textbf{13} and
+\textbf{37} with a combination of static analysis and control speculation.
+This dependence would require usage of memory speculation in prior work.
 %
 % Just removing dependences in the PDG creates ambiguity on how a
 % dependence can be resolved, leading to over-speculation. The PDG
@@ -263,20 +262,20 @@ section~\cref{new_enablers}.
 %fig.~\ref{fig:dijkstra_motivation}).
 %
 %Notice that \textit{dist} can be handled by all three
-%transformations.
+%transforms.
 %
-The DOALL planner then selects the lowest cost solution for each memory
+The \textbf{DOALL planner} then selects the lowest cost solution for each memory
 object. For example, the local privatization's
 offer is selected for \texttt{\textbf{dist}} since it is the cheapest
 privatization transform, and its
-speculative assumption is the same as those of other options'.
+speculative assumption is the same as those of other options.
 The \texttt{\textbf{nDist}} object (not shown in this figure) is also handled
 by local privatization. \texttt{\textbf{pathcost}} is resolved by overwrite
 privatization.
 % %
 % Extracting this efficient plan would not be possible without the use
 % speculation-aware memory analyzer and efficient speculative
-% privatization transformations.
+% privatization transforms.
 
 % From prior work, Privateer~\cite{johnson:12:pldi} is the only
 % automatic system to support privatization of dynamically allocated
@@ -320,9 +319,9 @@ handling overheads. The code changes are marked with the average added
 overhead compared to the useful work of each worker. It is clear that \name is
 able to parallelize \texttt{dijkstra} with minimum overheads thanks to the
 use of speculative-aware memory analyzer, careful selection of applied
-transformations, and use of efficient privatization variants. In fact,
+transforms, and use of efficient privatization variants. In fact,
 \name exhibits 4.8$\times$ speedup over Privateer for \texttt{dijkstra}
-(see~\ref{eval}).
+(see~\cref{eval}).
 
 %Privateer would choose to just do simple privatization with mem spec.
 %The spec-aware analyzer allows removal of mem spec and efficient

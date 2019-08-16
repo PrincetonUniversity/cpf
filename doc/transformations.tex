@@ -1,35 +1,35 @@
 
 \subsubsection{Memory Dependences}
 
-% Memory-related enabling transformations collect a set of memory objects
+% Memory-related enabling transforms collect a set of memory objects
 % for which they are applicable (see ~\cref{enablers}).
 
 \paragraph{Applicability:}
 %
-The applicability guard of a transformation uses the results of the
+The applicability guard of a transform uses the results of the
 speculation-aware memory analyzer to determine which memory objects
-satisfy the properties required by the transformation and records the
+satisfy the properties required by the transform and records the
 speculative assumptions used.
 %
 % XXX Make sure to add that assumptions need to be validated at runtime
 % later on
 % The applicability guard also records the speculative assumptions used
 % to infer applicability for a memory object. These assumptions would
-% need to be validated at runtime for the transformation to be correct.
+% need to be validated at runtime for the transform to be correct.
 
-\paragraph{Transformation proposal:} The output of each applicability
-guard is assembled in a transformation proposal which is sent to the
+\paragraph{Transform proposal:} The output of each applicability
+guard is assembled in a transform proposal which is sent to the
 DOALL planner (\cref{planner}).
 %
 The proposal includes for each memory object an estimated handling
-cost based on the transformation itself and the validation cost of the
+cost based on the transform itself and the validation cost of the
 used speculative assumptions.
 %
-%The cost of each transformation is determined by the cost of the
-%transformation itself and the cost of the speculative assumptions
-%required for the transformation to be applicable.
+%The cost of each transform is determined by the cost of the
+%transform itself and the cost of the speculative assumptions
+%required for the transform to be applicable.
 %
-For simplicity, each transformation and speculation
+For simplicity, each transform and speculation
 validation operation is assigned a fixed
 %predefined
 cost that ensures a basic ordering among the options. For
@@ -41,37 +41,37 @@ control speculation has no cost.
 %The estimated cost computation is very basic and just ensures basic
 %ordering among the options.
 %
-%Every transformation is assigned an arbitrary cost that ensures some
-%ordering among transformation. Speculative assumptions is similarly
+%Every transform is assigned an arbitrary cost that ensures some
+%ordering among transform. Speculative assumptions is similarly
 %computed.
 %
-For the set of transformations and speculative assumptions in our
+For the set of transforms and speculative assumptions in our
 framework and in the context of DOALL parallelization, this simplified
 cost model proved sufficient for detection of minimal cost plans.
 
 %TODO: maybe add discussion about their cost
-\paragraph{Transformation Application:}
-Each transformation reallocates
+\paragraph{Transform Application:}
+Each transform reallocates
 memory objects it is selected to handle
-%If, during the planning phase, a transformation is selected for a set
-%of memory objects, then during the code transformation phase, the
-%transformation separates these objects
-to its own heap, disjoint from any others; transformations may also
-perform additional transformation-specific modifications.
+%If, during the planning phase, a transform is selected for a set
+%of memory objects, then during the code transform phase, the
+%transform separates these objects
+to its own heap, disjoint from any others; transforms may also
+perform additional transform-specific modifications.
 
 Separating the objects is essential
-for two reasons. First, each transformation may demand different
+for two reasons. First, each transform may demand different
 memory mapping semantics and handles objects differently at commit.
 Second, mapping of memory accesses to
 objects often relies on profiling information, especially in languages with
 unrestricted pointers like C/C++. Ensuring that all objects' accesses
-are contained within a transformation's heap is sufficient to
+are contained within a transform's heap is sufficient to
 validate underlying object assumptions. This idea of separation has
 been explored previously by Johnson et al. (Privateer~\cite{johnson:12:pldi}).
-The speculative assumptions used for each selected transformation also need
+The speculative assumptions used for each selected transform also need
 to be validated at runtime to ensure correctness.
 
-% Memory-related enabling transformations collect a set of memory objects
+% Memory-related enabling transforms collect a set of memory objects
 % for which they are applicable (see ~\cref{enablers}).
 The list of memory-related enabling transforms is as follows:
 
@@ -87,7 +87,7 @@ workers are merged according to their reduction operation.
 %Applicability guard: objects that only participate to reduction
 %operations
 
-%Transformation Application: only separate objects to reduction heap
+%transform Application: only separate objects to reduction heap
 
 %Runtime support: at commit merge all objects according to their
 %reduction operation
@@ -98,7 +98,7 @@ the objects of the heap are freed at the end of each iteration.
 % During runtime, the short-lived property is checked.
 
 \item \textbf{Read-only:} Applicable for objects that are never written to within
-the loop. Requires no transformation-specific checks.
+the loop. Requires no transform-specific checks.
 
 \item \textbf{IO deferral:} Applicable for shared IO objects. When applied, it
 replaces IO library calls with custom calls. During runtime, it
@@ -111,10 +111,10 @@ collects output operations and performs them in-order at commit.
 We propose four efficient variants of the privatization transform.
 % To avoid expensive monitoring of write sets during parallel execution
 % and minimize copy-out costs, we propose four efficient variants of
-% this transformation, introduced in \cref{new_enablers}.
+% this transform, introduced in \cref{new_enablers}.
 \begin{itemize}
 %
-\item Independent: This transformation's heap is shared
+\item Independent: This transform's heap is shared
   among all parallel workers, since there is no overlapping memory
   accesses.
   %
@@ -127,7 +127,7 @@ We propose four efficient variants of the privatization transform.
 
 %Behavior : No write set monitoring performed. Memory object is shared among parallel workers.
 
-\item Overwrite Private: This transformation's heap has
+\item Overwrite Private: This transform's heap has
   CoW (copy-on-write) mapping. At the end of the parallel
   invocation the last executed iteration
   state is copied-out and no monitoring is needed.
@@ -139,25 +139,25 @@ We propose four efficient variants of the privatization transform.
 %object with this property is the memory state of the last iteration
 %executed before commit.
 
-\item Predictable Private: This transformation's heap
+\item Predictable Private: This transform's heap
   has CoW mapping. The live-out state is predictable, so no monitoring
-  or merging of parallel workers state is needed. This transformation
+  or merging of parallel workers state is needed. This transform
   relies on value prediction's speculative assumptions.
 
-\item Local Private: This transformation's heap has
+\item Local Private: This transform's heap has
   CoW mapping and there is no need for copy-out or monitoring.
 
 \end{itemize}
 
 % The applicability guard also records the speculative assumptions used
 % to infer applicability for a memory object. These assumptions would
-% need to be validated at runtime for the transformation to be correct.
+% need to be validated at runtime for the transform to be correct.
 %Separation checks are required for memory accesses whose underlying
 %objects are discovered via profiling.
 %The runtime function for re-allocation of memory objects can be
-%specialized by each transformation.
+%specialized by each transform.
 %
-%Each transformation has its own runtime support for handling its
+%Each transform has its own runtime support for handling its
 %objects during execution.
 
 %The idea of separating memory objects has been explored previously by
@@ -173,23 +173,23 @@ We propose four efficient variants of the privatization transform.
 %By contrast, \name employs a modular and extensible design that
 %facilitates planning and selection of minimal cost solutions without
 %unnecessary speculation.
-%where enabling transformations offer to handle memory objects along
+%where enabling transforms offer to handle memory objects along
 %with estimated costs -offers with costs and the selection happens.
 %
 
-%Every transformation can optimize the checks that are applied to its
+%Every transform can optimize the checks that are applied to its
 %objects knowing that there is no aliasing with other objects handled
-%by different transformations.
+%by different transforms.
 
 %ensures that all accesses of a memory object have the required
 %properties.
 
 % We describe in the next section efficient variants of the speculative
-% privatization transformation, which constitute a contribution of this
-% paper.  Other enabling transformations that are used in our framework
+% privatization transform, which constitute a contribution of this
+% paper.  Other enabling transforms that are used in our framework
 % but have been proposed in prior work are discussed in
 % section \ref{design_transf}.
-% We propose the following enabling transformations for addressing memory,
+% We propose the following enabling transforms for addressing memory,
 % register, and/or control cross-iteration dependences.
 
 \subsubsection{Register \& Control Dependences}
@@ -207,7 +207,7 @@ replication or control speculation.
 Use of replication allows handling of uncounted loops, namely loops
 with unknown trip count when the loop is invoked.
 %
-In terms of transformation cost, all transformations have constant
+In terms of transform cost, all transforms have constant
 cost except for replication.  Replication's cost depends on how many
 instructions need to be replicated. Non-speculative enablers
 (reduction and replication) are preferred, in most cases, over

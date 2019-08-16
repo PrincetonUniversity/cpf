@@ -11,7 +11,7 @@
 %assumptions.
 %
 \name is a framework for DOALL parallelization that incorporates the
-ideas described in section~\ref{sec:approach}.
+ideas described in~\cref{sec:approach}.
 
 
 Figure~\ref{fig:compiler-pipeline} depicts an overview of the \name
@@ -27,11 +27,11 @@ loops is selected.
 The speculation-aware memory analyzer
 is queried to annotate the PDG with properties regarding dependences and
 instructions. The applicability guard of each enabling
-transformation examines the annotated PDG and creates transformation
+transform examines the annotated PDG and creates transform
 proposals that offer to remove parallelization-inhibiting cross-iteration
 dependences in the loop along with its cost. A DOALL planner considers
 these proposals, selects set of minimum cost options and generates a sequence
-of transformations, if a profitable DOALL plan is available.
+of transforms, if a profitable DOALL plan is available.
 Finally, we select a set of
 compatible parallelizable loops with the maximum profitability, apply the
 tranformations in their plans, and generate the parallel IR which is
@@ -100,13 +100,12 @@ In the speculation-aware memory analyzer, \name utilizes speculative
 assumptions from two profilers: edge profiler (detects biased
 branches) and loaded value predictor (predicts loaded values).
 %
-While use of these two speculative assumptions in conjuction with
-static analysis already enables up to 2.5$\times$ improvement over a
-system with no collaboration of memory analysis and speculation (see
-~\cref{eval}), exposing even more cheap-to-validate speculative
-assumptions to memory analysis could also be beneficial.  Such
-exploration is left for future work.
-%This paper just stratches the surface of this
+While use of these two speculative assumptions in conjuction with static
+analysis already enables up to 2.5$\times$ improvement over a system with
+no collaboration of memory analysis and speculation (see~\cref{eval}),
+exposing even more cheap-to-validate speculative assumptions to memory
+analysis could also be beneficial.  Such exploration is left for future
+work.%This paper just stratches the surface of this
 
 \name uses edge profiling to produce a speculative control flow. This
 speculative control flow can be used by memory analysis passes to
@@ -156,13 +155,13 @@ flows.
 %The memory analyzer though could still infer some useful property for
 %this dependence or the dependent instructions.
 %%
-%This information is essential to enable certain transformations, such
+%This information is essential to enable certain transforms, such
 %as the efficient variants of speculative privatization described in
 %section ~\ref{novel_transf}.
 
 The speculation-aware memory analyzer is queried to populate a program
 dependence graph (PDG) annotated with information utilized by the rest
-of the planning phase, namely by enabling transformations and the
+of the planning phase, namely by enabling transforms and the
 planner. Annotations include properties for the dependences and the
 dependent instructions.
 %Note that traditional dependence analysis (static, dynamic or
@@ -179,39 +178,39 @@ include alternatives; decision making is left for the planner.
 \subsection{Enabling Transforms}
 \label{enablers}
 
-Enabling transformations address memory, register or/and control
+Enabling transforms address memory, register or/and control
 cross-iteration dependences.
 
-% Transformations modify the code to remove parallelization inhibitors.
+% transforms modify the code to remove parallelization inhibitors.
 %
-% All transformations in \name are split into two parts: (1) the applicability guard
+% All transforms in \name are split into two parts: (1) the applicability guard
 % that participates in the planning phase of the compilation, and (2) the
-% actual transformation that, if selected, is applied in the
-% transformation phase.
+% actual transform that, if selected, is applied in the
+% transform phase.
 %This scheme seperates the desicion part from the actual
-%transformation and allows us to evaluate the cost of each dependence
+%transform and allows us to evaluate the cost of each dependence
 %separetely and
-% This separation of decision making and application of transformations
+% This separation of decision making and application of transforms
 % This allows careful selection the most profitable plan instead of
 % applying a fixed
 % (regardless of the input program)
-% set of enabling transformations and speculative techniques.
+% set of enabling transforms and speculative techniques.
 
-%Enabling transformations address memory, register or/and control
+%Enabling transforms address memory, register or/and control
 %cross-iteration dependences.
 %
-% This section focuses on memory related enabling transformations.
+% This section focuses on memory related enabling transforms.
 % Register and control cross-iteration dependence handling is discussed
 % in section~\ref{design_transf}.
 
 % \subsubsection*{Memory-related Enablers}
 
 % To enable DOALL parallelization all cross-iteration memory dependences
-% need to be addressed.  However, many enabling transformations operate
+% need to be addressed.  However, many enabling transforms operate
 % at a memory object level. For example, the privatization
-% transformation create private copies of memory objects. This motivates
+% transform create private copies of memory objects. This motivates
 % an object-centric approach.  Instead of targeting cross-iteration
-% dependences, enabling transformation offer to handle a set of memory
+% dependences, enabling transform offer to handle a set of memory
 % objects, in effect offer to address all their cross-iteration
 % dependences.
 
@@ -224,21 +223,21 @@ cross-iteration dependences.
 %combination of cheap-to-validate speculative assumptions and static
 %analysis.
 %
-%The \textit{applicability} guard of an enabling transformation
+%The \textit{applicability} guard of an enabling transform
 %determines which memory objects have certain properties required by
-%the transformation.
+%the transform.
 %
 %examines the memory objects in the loop's memory footprint and
 %determines which memory objects
 %
-%The applicability guard of a transformation determines, using the
+%The applicability guard of a transform determines, using the
 %results of the speculation-aware memory analyzer,  which memory
 %objects have certain properties required by the corresponding
-%transformation and under which assumptions.
+%transform and under which assumptions.
 %%
 %Assumptions are speculative information that require validation for
-%the transformation to be correct, while applicability for a memory
-%object means that the transformations can address all the
+%the transform to be correct, while applicability for a memory
+%object means that the transforms can address all the
 %cross-iteration dependences related to this memory object. \{\textbf{XXX}
 %Pretty unclear what these two sentences means\}
 
@@ -246,30 +245,30 @@ cross-iteration dependences.
 %
 %\paragraph{Applicability:}
 %%
-%The applicability guard of a transformation uses the results of the
+%The applicability guard of a transform uses the results of the
 %speculation-aware memory analyzer to determine which memory objects
-%satisfy the properties required by the transformation and records the
+%satisfy the properties required by the transform and records the
 %speculative assumptions used.
 %%
 %% XXX Make sure to add that assumptions need to be validated at runtime
 %% later on
 %% The applicability guard also records the speculative assumptions used
 %% to infer applicability for a memory object. These assumptions would
-%% need to be validated at runtime for the transformation to be correct.
+%% need to be validated at runtime for the transform to be correct.
 
-%\paragraph{Transformation proposal:} The output of each applicability
-%guard is assembled in a transformation proposal which is sent to the
+%\paragraph{transform proposal:} The output of each applicability
+%guard is assembled in a transform proposal which is sent to the
 %DOALL planner (\cref{planner}).
 %%
 %The proposal includes for each memory object an estimated handling
-%cost based on the transformation itself and the validation cost of the
+%cost based on the transform itself and the validation cost of the
 %used speculative assumptions.
 %%
-%%The cost of each transformation is determined by the cost of the
-%%transformation itself and the cost of the speculative assumptions
-%%required for the transformation to be applicable.
+%%The cost of each transform is determined by the cost of the
+%%transform itself and the cost of the speculative assumptions
+%%required for the transform to be applicable.
 %%
-%For simplicity, each transformation and speculation
+%For simplicity, each transform and speculation
 %validation operation is assigned a fixed
 %%predefined
 %cost that ensures a basic ordering among the options. For
@@ -281,11 +280,11 @@ cross-iteration dependences.
 %%The estimated cost computation is very basic and just ensures basic
 %%ordering among the options.
 %%
-%%Every transformation is assigned an arbitrary cost that ensures some
-%%ordering among transformation. Speculative assumptions is similarly
+%%Every transform is assigned an arbitrary cost that ensures some
+%%ordering among transform. Speculative assumptions is similarly
 %%computed.
 %%
-%For the set of transformations and speculative assumptions in our
+%For the set of transforms and speculative assumptions in our
 %framework and in the context of DOALL parallelization, this simplified
 %cost model proved sufficient for detection of minimal cost plans.
 %
@@ -295,16 +294,16 @@ cross-iteration dependences.
 %
 %
 %which speculative assumptions need to be validated for the
-%transformation to be correct.
+%transform to be correct.
 %
-%Object-centric transformation.  All memory objects need to be handled
-%by a transformation.
+%Object-centric transform.  All memory objects need to be handled
+%by a transform.
 %
 %each access of the memory object should preserve the property
 %
-%Finally, each transformation
+%Finally, each transform
 %includes in its proposal the set of speculative assumptions validation
-%necessary for each memory object for the transformation applicability
+%necessary for each memory object for the transform applicability
 %to be correct.
 
 
@@ -407,14 +406,14 @@ the compilation process.
 
 \subsubsection{LLVM optimizations}
 
-Transformations in this preprocessing step are crucial for the
+Transforms in this preprocessing step are crucial for the
 applicability and profitability of parallelization.
 %
 Parallelizing compilers usually compile the source code with the \textit{-O3}
 flag to get the initial IR and then perform a few additional
 passes.
 % XXX Doesn't sound vague at all...
-However, traditional compiler transformations are meant for optimized
+However, traditional compiler transforms are meant for optimized
 sequential execution.
 %
 Some of these optimizations could unnecessarily complicate the code
@@ -428,7 +427,7 @@ execution paths. This reduces the code size but when applied to memory
 operations, it complicates the inference of the underlying objects.
 %
 To avoid such problems, \namensp 's preprocessing step only applies a
-small set of LLVM IR enabling transformations that simplify and
+small set of LLVM IR enabling transforms that simplify and
 canonicalize the IR.
 
 %Contrary to LLVM (version 5.0.2) IR optimizations, frontend optimizations by Clang can
