@@ -5,13 +5,17 @@
 \begin{tabular}{|l|c|c||c|c||c||c|c|c|c||c|c|c|c|}
 % \begin{tabular}{|l|c|c||c|c||c|c|c|}
 \hline
-\multirow{2}{*}{Benchmark} & \multirow{2}{*}{Suite} & \multirow{2}{*}{\parbox[c]{2.8cm}{\centering \makecell{ \% of Execution Time \\ (Theoretical Speedup)}}} &
-\multicolumn{2}{c||}{\makecell{SAMA's Crosss-Iter \\Dependence Cov}} &
-\multirow{2}{*}{\parbox[c]{1.8cm}{\centering New Enablers'\\ Object Cov}} &
+\multirow{2}{*}{Benchmark} & \multirow{2}{*}{Suite} &
+\multirow{2}{*}{\parbox[c]{3.1cm}{\centering \makecell{ \% of Execution
+Time \\ (Theoretical Speedup)~\textsuperscript{(A)}}}} &
+\multicolumn{2}{c||}{\makecell{SAMA's Crosss-Iter \\Dependence
+Cov~\textsuperscript{(B)}}} &
+\multirow{2}{*}{\parbox[c]{2cm}{\centering New Enablers'\\ Object
+Cov~\textsuperscript{(C)}}} &
 % \multirow{2}{*}{\makecell{Private Read Size}} &
 % \multirow{2}{*}{\makecell{Private Write Size}} \\
-\multicolumn{4}{c||}{Private Read Size} &
-\multicolumn{4}{c|}{Private Write Size} \\
+\multicolumn{4}{c||}{Private Read Size~\textsuperscript{(D)}} &
+\multicolumn{4}{c|}{Private Write Size~\textsuperscript{(D)}} \\
  % & \makecell{Sequential \\Time}  & Arguments & Input    \\
 
 % Priv read/write order is privateer, both, perspective_cheap_spec, perspective
@@ -27,52 +31,52 @@
 
 % enc-md5
 \hline
-enc-md5    & Trimaran & 100.0\% (28.0$\times$) & \textbf{87 (7\%)} & \textbf{45 (69\%)} & \textbf{5 (83\%)} &
+enc-md5    & Trimaran & 100.0\% (28.0$\times$) & \textbf{87} & \textbf{45} & \textbf{5} &
            1.87TB & 9.21MB & 39.1KB & 39.1KB & 581GB & 581GB & 43.2KB & 43.2KB \\ % & 863.47  & 1000 & -  \\
 % 052.alvinn
 \hline
-052.alvinn & SPEC FP  & 97.5\% (16.7$\times$) & 0 (0\%) & 0 (0\%) & \textbf{4 (100\%)} &
+052.alvinn & SPEC FP  & 97.5\% (16.7$\times$) & 0 & 0 & \textbf{4} &
            153GB & 0B & 0B & 0B & 107GB & 59.9GB & 4.08GB & 10.2MB \\  % & 741.29  & 60000  & input 1  \\
 % 179.art
 \hline
-179.art    & SPEC FP  & 99.1\% (22.5$\times$) & \textbf{8 (21\%)} & \textbf{8 (11\%)} & \textbf{7 (70\%)} &
+179.art    & SPEC FP  & 99.1\% (22.5$\times$) & \textbf{8} & \textbf{8} & \textbf{7} &
            1.6TB & 64.8GB & 64.8GB & 0B & 958GB & 958GB & 1.68GB & 1.68GB \\ %  & 702.32  &
 %{\parbox[l]{5cm}{-scanfile c756hel.in \\-trainfile1 a10.img \\-trainfile2 hc.img\\ -stride 1 -startx 60 \\-starty 90 -endx 210 \\ -endy 240 -objects 10}} & input1   \\
 % 2mm
 \hline
-2mm        & PolyBench & 100.0\% (28.0$\times$)  & N/A & N/A & \textbf{2 (100\%)} &
+2mm        & PolyBench & 100.0\% (28.0$\times$)  & N/A & N/A & \textbf{2} &
            1TB & 0B & 0B & 0B & 1TB & 1GB & 0B & 0B \\ %  & 2360.60  & 4096 4096 4096 4096     & -  \\
 % 3mm
 \hline
-3mm        & PolyBench & 100.0\% (28.0$\times$)  & N/A & N/A & \textbf{3 (100\%)} &
+3mm        & PolyBench & 100.0\% (28.0$\times$)  & N/A & N/A & \textbf{3} &
            3TB & 0B & 0B & 0B & 1.5TB & 2.25GB & 0B & 0B \\ %  & 3515.78 & 4096 4096 4096 4096 4096    & -  \\
 % correlation
 \hline
-correlation & PolyBench & 99.7\% (25.9$\times$) & N/A & 0 (0\%)  & 0 (0\%) &
+correlation & PolyBench & 99.7\% (25.9$\times$) & N/A & 0  & 0 &
             0B & 0B & 0B & 0B & 192MB & 192MB & 192MB & 192MB \\ %  & 914.39& 4096 4096   & - \\
 % covariance
 \hline
-covariance & PolyBench & 99.9\% (27.3$\times$) & N/A & 0 (0\%) & 0 (0\%) &
+covariance & PolyBench & 99.9\% (27.3$\times$) & N/A & 0 & 0 &
            0B & 0B & 0B & 0B & 192GB & 192MB & 192MB & 192MB \\ % & 894.37 & 4096 4096 & -  \\
 % doitgen
 \hline
-doitgen   & PolyBench & 99.6\% (25.3$\times$) & N/A & N/A & \textbf{2 (100\%)} &
+doitgen   & PolyBench & 99.6\% (25.3$\times$) & N/A & N/A & \textbf{2} &
           2.53TB & 0B & 0B & 0B & 2.54TB & 10.1GB & 0B & 0B \\ %  & 1034.86 & 768 768 768 & -  \\
 % gemm
 \hline
-gemm     & PolyBench  & 100.0\% (28.0$\times$) & N/A & N/A & \textbf{1 (100\%)} &
+gemm     & PolyBench  & 100.0\% (28.0$\times$) & N/A & N/A & \textbf{1} &
          128MB & 0B & 0B & 0B & 256MB & 256MB & 0B & 0B \\ % & 1182.50 & 4096 4096 4096    & -  \\
 % blackscholes
 \hline
-blackscholes & PARSEC & 99.7\% (25.9$\times$) & 0 (0\%) & \textbf{1 (33\%)} & \textbf{1 (100\%)} &
+blackscholes & PARSEC & 99.7\% (25.9$\times$) & 0 & \textbf{1} & \textbf{1} &
              0B & 0B & 0B & 0B & 37.3GB & 37.3GB & 336B & 336B \\ % & 4702.20 & 1 in\_10M.txt out\_10M.txt   & ref   \\
 % swaptions
 \hline
-swaptions & PARSEC & 100.0\% (28.0$\times$)  & 0 (0\%) & 0 (0\%) & 0 (0\%) &
+swaptions & PARSEC & 100.0\% (28.0$\times$)  & 0 & 0 & 0 &
           703KB & 0B & 0B & 0B & 165KB & 165KB & 165KB & 165KB \\ % & 1546.29 & -ns 10000 -sm 40000 -nt 1 & -  \\
 % dijkstra
 \hline
-dijkstra & MiBench  & 99.7\% (25.9$\times$) & \textbf{4 (7\%)} & \textbf{18 (26\%)} & \textbf{8 (100\%)} &
+dijkstra & MiBench  & 99.7\% (25.9$\times$) & \textbf{4} & \textbf{18} & \textbf{8} &
          973GB & 648GB & 648GB & 0B & 649GB & 649GB & 663MB & 3.61KB \\ % & 842.8 & .. & input3000 & input3000.in 3000  & input300 \\
 \hline
 \end{tabular}

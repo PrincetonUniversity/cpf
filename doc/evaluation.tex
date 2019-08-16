@@ -53,7 +53,7 @@ time that manifests between runs.
     that of the whole program. The theoretical speedup
     is calculated using Amdahl's Law with the assumptions of no overheads and
     running with 28 workers.
-    (B) Number and percentage of cross-iteration dependences
+    (B) Number of cross-iteration dependences
     handled by Speculation-Aware Memory Analyzer (SAMA) that were unresolved by
     static analysis alone. Entries denotes by
     ``N/A'' indicate all dependences are handled by static analysis.
@@ -84,7 +84,8 @@ all benchmarks running on one (1) to 28 cores. These speedups are
 relative to the sequential performance of the original code, compiled
 with \texttt{clang++ -O3}. \name achieves scalable performance on all the
 benchmarks due to the overhead reduction resulting from the use
-of SAMA and the new enablers. Figure \ref{fig:speedup-compare} compares \namensp's results
+of the speculation-aware memory analyzer and the new enablers.
+Figure \ref{fig:speedup-compare} compares \namensp's results
 with Privateer and two variant of \namensp with various components disabled.
 
 The first bar shows the performance of Privateer implemented with best practices.
@@ -144,9 +145,9 @@ register dependence of the induction variable, which is logged every
 iteration before a checkpoint.
 
 \texttt{covariance} and \texttt{correlation} have complex WAW dependences
-that cannot be resolved even with SAMA and the write sets need to be
-monitored, limiting the achievable speedup to 20.5$\times$ and 21$\times$,
-respectively.
+that cannot be resolved even with speculation-aware memory analyzer and
+the write sets need to be monitored, limiting the achievable speedup to
+20.5$\times$ and 21$\times$, respectively.
 
 % \texttt{179.art}
 
@@ -307,7 +308,6 @@ confidence speculation and requires tight integration with static analysis
 to avoid heavy-weight speculation whenever possible.
 Systems that have larger overheads have a larger chance of speculation (since
 they use more speculative assumptions), but we minimize the amount of speculation.
-\{\textbf{XXX} Reword this\}
 % As the iteration within a checkpoint that misspeculation
 % occurs can affect the recovery cost, we inject these misspeculations in the
 % middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more
