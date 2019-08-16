@@ -1,8 +1,8 @@
 The planner chooses the best performing set of transformations that
-enable DOALL parallelization.
+enables DOALL parallelization.
 %
-The inputs of the planner are an annotated loop-centric PDG (generated
-by the speculation-aware memory analyzer) and the transformation
+The inputs of the planner are the annotated loop-centric PDG generated
+by the speculation-aware memory analyzer and the transformation
 proposals of the enabling transformations.
 %
 %
@@ -10,7 +10,7 @@ proposals of the enabling transformations.
 %Thus, all the cross-iteration dependences need to be handled.
 %
 The planner greedily selects the cheapest transformation proposal for
-each memory object and for each cross-iteration register and control
+each memory object and for each cross-iteration register and/or control
 dependence.
 %for each memory object the cheapest transformation proposal that can
 %address the cross-iteration dependences of this object.  %If all the
@@ -19,18 +19,18 @@ dependence.
 %can only be handled by one transformation.  % For cross-iteration
 %register and control dependences, the planner examines individual
 %dependences one by one and greedily selects the cheapest option for
-%each one.  
+%each one.
 %
 %
-While simple, this approach is already enough to improve the
-state-of-the-art of parallelizing compilers. 
+% While simple, this approach is enough to improve the
+% state-of-the-art of parallelizing compilers.
 %This is because \name has tightly merged speculation techniques with
-%static analyses. 
+%static analyses.
 Even though we can always increase the complexity of the planner, we
-did not find yet empirical evidence that justify such extra
-complexity. 
+have not found empirical evidence that justifies such extra
+complexity.
 %
-If there is a memory object, or a cross-iteration register or control
+If there is a memory object or a cross-iteration register or control
 dependences that cannot be addressed by any enabling transformation
 then the planner concludes that DOALL is not applicable.
 %
@@ -41,7 +41,7 @@ then the planner concludes that DOALL is not applicable.
 The output of the planner is the best performing
 %minimum overall estimated cost
 set of transformations that address all the cross-iteration
-dependences. 
+dependences.
 %with minimum estimated cost.
 %
 %The selected set of transformations in the plan includes the selected
@@ -49,10 +49,10 @@ dependences.
 %speculative assumptions.
 %
 The generated plan includes a set of enabling transformations and a
-set of validation transformations for speculative assumptions.  The
+set of validation transformations for speculative assumptions. The
 plan also specifies for each selected enabling transformation which
 memory objects or register/control cross-iteration dependences the
-transformation was selected for.
+transformation was selected to handle.
 %
-Note that the planner produces non-speculative plans, if no
-speculative assumptions are required for DOALL parallelization.
+Note that if no speculative assumptions are used, the planner produces
+non-speculative plans, forgoing the need for any speculation overhead.

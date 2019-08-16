@@ -391,22 +391,25 @@ register, and/or control cross-iteration dependences.
 % and then describe new variants that perform more efficient
 % privatization.
 
-Prior software speculative systems with extended support for
-privatization~\cite{johnson:12:pldi,kim:12:cgo} only infer the basic
-privatization property that there are no cross-iteration data flows
-for a memory object.
+% This section describes the behavior of the new enablers introduced in
+% \cref{new_enablers}.
+% Prior software speculative systems with extended support for
+% privatization~\cite{johnson:12:pldi,kim:12:cgo} only infer the basic
+% privatization property that there are no cross-iteration data flows
+% for a memory object.
 %
-Speculative privatization application involves instrumentation of all
-write accesses of privatized objects for costly logging or
-communication. At commit, the private copies of each worker are merged
-according to metadata that specify which worker wrote each byte last.
+% Speculative privatization application involves instrumentation of all
+% write accesses of privatized objects for costly logging or
+% communication. At commit, the private copies of each worker are merged
+% according to metadata that specify which worker wrote each byte last.
 
 To avoid expensive monitoring of write sets during parallel execution
 and minimize copy-out costs, we propose four efficient variants of
-this transformation.
+this transformation, introduced in \cref{new_enablers}. This section
+describes the behaviors of each of them at runtime.
 %
-To be applicable, these variants require apart from the basic
-privatization property additional memory object properties.
+% To be applicable, these variants require apart from the basic
+% privatization property additional memory object properties.
 
 %Table~\ref{tab:priv_types} summarizes how these properties can facilitate more
 %efficient parallelization compared to just inferring that a memory object is
@@ -418,13 +421,12 @@ privatization property additional memory object properties.
 
 \begin{itemize}
 %
-\item Independent: Applicable for private objects that have no
-loop-carried false dependences. This transformation's heap is shared
-among all parallel workers, since there is no overlapping memory
-accesses.
-%
-No monitoring of write sets is needed. At commit the heap is copied-out
-to the non-speculative state.
+\item \textbf{Independent:} This transformation's heap is shared
+  among all parallel workers, since there is no overlapping memory
+  accesses.
+  %
+  No monitoring of write sets is needed. At commit the heap is copied-out
+  to the non-speculative state.
 %
 %If the selected parallelization plan is non-speculative, then this
 %heap is also shared with the main process and copy-in and copy-out
@@ -432,11 +434,10 @@ to the non-speculative state.
 
 %Behavior : No write set monitoring performed. Memory object is shared among parallel workers.
 
-\item Overwrite Private: Applicable for private objects that are
-written at the same locations at every loop iteration (unconditionally
-updated objects). This transformation's heap has CoW (copy-on-write) mapping
-and at the end of the parallel invocation the last executed iteration
-state is copied-out. No monitoring is needed.
+\item \textbf{Overwrite Private:} This transformation's heap has
+  CoW (copy-on-write) mapping. At the end of the parallel
+  invocation the last executed iteration
+  state is copied-out and no monitoring is needed.
 
 %Additional applicability guard:
 %object has loop-invariant condition for last update within the loop.
@@ -445,22 +446,19 @@ state is copied-out. No monitoring is needed.
 %object with this property is the memory state of the last iteration
 %executed before commit.
 
-\item Predictable Private: Applicable for private objects that have
-predictable live-out content. This transformation's heap has CoW mapping. The
-live-out state is predictable, so no monitoring and merging parallel
-workers state is needed. This transformation relies on value
-prediction speculative assumptions.
+\item \textbf{Predictable Private:} This transformation's heap
+  has CoW mapping. The live-out state is predictable, so no monitoring
+  or merging of parallel workers state is needed. This transformation
+  relies on value prediction's speculative assumptions.
 
-\item Local Private: Applicable for private objects that are allocated
-outside the loop, but all their accesses are contained within the
-loop. This transformation's heap has CoW mapping and there is no copy-out
-process nor monitoring.
+\item \textbf{Local Private:} This transformation's heap has
+  CoW mapping and there is no need for copy-out or monitoring.
 
 \end{itemize}
 
 The first two variants have been explored by Tu et
-al.~\cite{ARRAY_privatization} but were limited to static analysis
-based detection of privatization.  Unlike any prior work, \name
+al.~\cite{tu:94:lcbc} but were limited to static analysis
+based detection of privatization. Unlike prior work, \name
 extends applicability of these variants with usage of speculative
 assumptions to programs with pointers, dynamic allocation, and type
 casts.
@@ -512,7 +510,7 @@ inlining and finally another round of LLVM IR optimizations to produce
 the target LLVM IR that is used as the starting point for the rest of
 the compilation process.
 
-\subsubsection{Clang and LLVM optimizations}
+\subsubsection{LLVM optimizations}
 
 Transformations in this preprocessing step are crucial for the
 applicability and profitability of parallelization.
@@ -538,23 +536,23 @@ To avoid such problems, \namensp 's preprocessing step only applies a
 small set of LLVM IR enabling transformations that simplify and
 canonicalize the IR.
 
-Contrary to LLVM (version 5.0.2) IR optimizations, frontend optimizations by Clang can
-be applied more freely.
-%
-If Clang optimizations are not applied, some information extracted
-from the source code may be omitted from the generated LLVM IR.  In
-fact, we noticed that when no optimization is used in the frontend
-(\textit{clang -O0 -Xclang -disable-O0-optnone}), some very helpful
-LLVM intrinsics (e.g., lifetime start/end intrinsics for stack
-allocations) are lost.  To avoid this, we compile with \textit{-O1} flag for
-frontend optimizations but disable LLVM optimizations (\textit{-O1
--Xclang -disable-llvm-passes}).
+%Contrary to LLVM (version 5.0.2) IR optimizations, frontend optimizations by Clang can
+%be applied more freely.
+%%
+%If Clang optimizations are not applied, some information extracted
+%from the source code may be omitted from the generated LLVM IR.  In
+%fact, we noticed that when no optimization is used in the frontend
+%(\textit{clang -O0 -Xclang -disable-O0-optnone}), some very helpful
+%LLVM intrinsics (e.g., lifetime start/end intrinsics for stack
+%allocations) are lost.  To avoid this, we compile with \textit{-O1} flag for
+%frontend optimizations but disable LLVM optimizations (\textit{-O1
+%-Xclang -disable-llvm-passes}).
 
 
 \subsubsection{Profile-Guided Selective Inlining}
 
-Interprocedural analysis is complicated and expensive, restricting the
-precision or scalability of static analysis.
+% Interprocedural analysis is complicated and expensive, restricting the
+% precision or scalability of static analysis.
 %
 Dependences involving callsites often prevent parallelization or lead
 to extensive usage of expensive-to-validate memory flow speculation.
@@ -567,12 +565,12 @@ effective parallelization.
 % code size expansion
 %When parallelization is applicable, these
 %
-More aggressive inlining is needed for parallelization. Naive
-aggressive inlining, though, would lead to code size explosion and
-exponential increase in compilation time so avoiding inlining in some
-cases
-%Filtering of some callsites
-is still essential.
+%More aggressive inlining is needed for parallelization. Naive
+%aggressive inlining, though, would lead to code size explosion and
+%exponential increase in compilation time so avoiding inlining in some
+%cases
+%%Filtering of some callsites
+%is still essential.
 %
 
 \name uses profile information to detect hot loops and speculatively
