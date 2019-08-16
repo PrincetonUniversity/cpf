@@ -8,7 +8,7 @@
 
 %\name enables efficient speculative parallelization by leveraging
 %fine-grained combination of static analysis and cheap-to-validate
-%assumptions.
+%assertions.
 %
 \name is a framework for DOALL parallelization that incorporates the
 ideas described in~\cref{sec:approach}.
@@ -97,13 +97,13 @@ speculative mode.
 % awareness.
 
 In the speculation-aware memory analyzer, \name utilizes speculative
-assumptions from two profilers: edge profiler (detects biased
+assertions from two profilers: edge profiler (detects biased
 branches) and loaded value predictor (predicts loaded values).
 %
-While the use of these two speculative assumptions in conjuction with static
+While the use of these two speculative assertions in conjuction with static
 analysis already enables up to 2.5$\times$ improvement over a system with
 no collaboration of memory analysis and speculation (see~\cref{eval}),
-exposing even more cheap-to-validate speculative assumptions to memory
+exposing even more cheap-to-validate speculative assertions to memory
 analysis could also be beneficial.  Such exploration is left for future
 work.%This paper just stratches the surface of this
 
@@ -366,7 +366,7 @@ cross-iteration dependences.
 \subsection{Profiling}
 %\subsection{Speculative Assumptions}
 
-\name uses a set of profilers to generate speculative assumptions:
+\name uses a set of profilers to generate speculative assertions:
 %
 (i) an edge profiler~\cite{LLVM:CGO04} that identifies biased
 branches and produces a speculative control flow;

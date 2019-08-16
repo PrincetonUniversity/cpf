@@ -54,11 +54,11 @@ time that manifests between runs.
     (B) Number of cross-iteration dependences
     handled by Speculation-Aware Memory Analyzer (SAMA) unresolvable by
     static analysis alone. ``N/A'' indicate all dependences are handled by static analysis.
-    (C) Number and percentage of objects covered by efficient speculative
-    privatization transformations proposed
+    (C) Number of objects covered by efficient speculative
+    privatization transforms proposed
     in this work.
     (D) Private read and write sizes measured using the
-    test input for each benchmark; v1 represents
+    evaluation input for each benchmark; v1 represents
     \name with only the planner; v2 represents \name with
     the planner and propsed enablers.}
   \label{tab:benchmark-list}
@@ -76,33 +76,53 @@ time that manifests between runs.
   \label{fig:multi-core-scale}
 \end{figure*}
 
-Figure \ref{fig:multi-core-scale} presents whole program speedups for
-all benchmarks running on one (1) to 28 cores. These speedups are
+Figure~\ref{fig:multi-core-scale} presents whole program speedups for
+all benchmarks running up to 28 cores. These speedups are
 relative to the sequential performance of the original code, compiled
 with \texttt{clang++ -O3}. \name achieves scalable performance on all the
 benchmarks due to the overhead reduction resulting from the use
 of the speculation-aware memory analyzer and the new enablers.
-Figure \ref{fig:speedup-compare} compares \namensp's results
-with Privateer and two variant of \name with various components disabled.
+To quantify their performance, Figure~\ref{fig:speedup-compare} compares
+\namensp's results with Privateer and two variant of \name with various
+components disabled.
 
-The first bar shows the performance of Privateer implemented with best practices.
+% The limitations of Privateer, implemented with best practices, can be seen
+% in the first bar of Figure ~\ref{fig:speedup-compare}.
+We implement a version of Privateer based on the design presented in
+~\cite{johnson:12:pldi} and achieve comparable speedups and runtime
+overheads that scale with the larger input sets we use.
 % Peephole optimizations are used to reduce the use of memory
 % speculation and to hoist and combine memory checks out of the inner loop(s).
-The speedup and runtime breakdown results are comparable to those reported
-in the paper. Although a state-of-the-art framework in terms of applicability,
-Privateer misses opportunities to remove read checks as mentioned in
+% Although we use larger inputs for evaluation, the speedups and runtime overheads
+% scale with those reported in ~\cite{johnson:12:pldi}.
+Despite being a
+state-of-the-art framework in terms of applicability, Privateer misses
+opportunities to remove read checks as mentioned in
 STMLite\cite{mehrara:09:stmlite} and Cluster Spec-DOALL\cite{kim:12:cgo}.
-For non-speculatively parallelized benchmarks especially, Privateer does not use
-static analysis, and as a result has unnecessarily large read and write
-sets.
+% <<<<<<< HEAD
+This is shown in (D) of Table~\ref{tab:benchmark-list}, where many
+benchmarks, parallelized both speculatively and non-speculatively, have
+large read sets that limit their achievable speedup. The first bar of
+Figure~\ref{fig:speedup-compare} shows the manifestation of these overheads at
+runtime, which are especially high for benchmarks with many reads and
+writes to privatized object(s) such as \texttt{3mm}, \texttt{doitgen}, and
+\texttt{dijkstra}.
+% Privateer does not use static analysis and as a result has unnecessarily large read and write
+% sets, especially for non-speculatively parallelized benchmarks.
+% =======
+% For non-speculatively parallelized benchmarks especially, Privateer does not use
+% static analysis, and as a result has unnecessarily large read and write
+% sets.
+% >>>>>>> bbfc627307c29b03f071a18ed1a454e82d2c145f
 %
 
-The second bar demonstrates the effect of using information from static
-analysis, profiling, and transformations to infer unnecessary reads in the
-case of objects privatized without the use of speculation. We notice
-that \texttt{2mm}, \texttt{3mm}, \texttt{doitgen}, \texttt{enc-md5}, and
-\texttt{179.art} benefit from this improvement. (D) in Table
-\ref{tab:benchmark-list} reveals that for \texttt{doitgen} and \texttt{3mm},
+Using a planner that takes into account information from static
+analysis, profiling, and transforms to infer unnecessary checks on reads
+of non-speculatively privatized objects reduces the read set of many
+benchmarks. We notice in the second bar of Figure
+~\ref{fig:speedup-compare} that \texttt{2mm}, \texttt{3mm}, \texttt{doitgen},
+\texttt{enc-md5}, and \texttt{179.art} benefit from this improvement. (D)
+in Table~\ref{tab:benchmark-list} reveals that for \texttt{doitgen} and \texttt{3mm},
 the read set size is reduced from 2.53TB and 3TB, respectively, to zero.
 The absence of these reads also allows monitoring of writes to the same
 location inside the loop to be hoisted outside the loop, further decreasing
@@ -116,30 +136,50 @@ the overhead.
 % checkpoint is needed in the runtime.
 %
 
-The third bar shows how the addition of the enablers proposed in section
-\ref{novel_transf} to the planner affects performance. These enablers
-avoid adding expensive monitoring of writes taking into account specific
-properties of memory objects. \texttt{2mm} and \texttt{3mm} have loops in
-which each iteration writes to a different location in a privatized array.
-Since this is determined statically, we can refrain from monitoring any of
-these writes. In \texttt{blackscholes}, the \texttt{\textbf{prices}} array
-is fully overwritten at every iteration; therefore, we only need to take
-the last iteration's writes as the live-out. In \texttt{dijkstra},
+% <<<<<<< HEAD
+The enablers proposed in
+\cref{sec:new_enablers} takes into account specific properties of memory
+objects and are able to avoid expensive monitoring of writes.
+\texttt{2mm} and \texttt{3mm} have arrays that can be handled by
+the independent privatization transform, avoiding monitoring any
+writes and increasing the speedup, shown in the third bar of Figure
+~\ref{fig:speedup-compare}, by 2$\times$ and 4.7$\times$,
+respectively. In \texttt{blackscholes}, the \texttt{\textbf{prices}} array
+is fully overwritten at every iteration and can be handled with the
+overwrite private transform. In \texttt{dijkstra},
+% =======
+% The third bar shows how the addition of the enablers proposed in section
+% \ref{novel_transf} to the planner affects performance. These enablers
+% avoid adding expensive monitoring of writes taking into account specific
+% properties of memory objects. \texttt{2mm} and \texttt{3mm} have loops in
+% which each iteration writes to a different location in a privatized array.
+% Since this is determined statically, we can refrain from monitoring any of
+% these writes. In \texttt{blackscholes}, the \texttt{\textbf{prices}} array
+% is fully overwritten at every iteration; therefore, we only need to take
+% the last iteration's writes as the live-out. In \texttt{dijkstra},
+% >>>>>>> bbfc627307c29b03f071a18ed1a454e82d2c145f
 the \texttt{\textbf{pathcost}} array is killed at the beginning of each
 iteration and similar to \texttt{blackscholes}, only requires the last
 iteration's writes to be known.
 
-The last bar illustrates the performance of adding the speculation-aware
-memory analyzer to the list of features. The main performance benefit of
-this is seen with \texttt{dijkstra}, where the read check of
-\texttt{\textbf{dist}} is removed. Using control speculation in conjunction
-with kill-flow analysis can remove the RAW dependence between lines
-\textbf{14} and \textbf{38}, which is unremovable with static analysis
-alone or using static analysis after control speculation is applied.
+Adding the speculation-aware
+memory analyzer to the list of features facilitates the removal of
+dependences unresolvable by static analysis.
+The effect that this has is seen most prominently with \texttt{dijkstra},
+where the read check of \texttt{\textbf{dist}} can be removed. The use of
+control speculation in conjunction with kill-flow analysis can remove the
+RAW dependence between lines \textbf{14} and \textbf{38}. Since all the
+accesses to \texttt{\textbf{dist}} are contained within the loop, the local
+private transform can privatize this object without any monitoring, giving
+a 27.4$\times$ speedup, 4.9$\times$ over Privateer.
+Dependences from \texttt{enc-md5}, \texttt{179.art}, and
+\texttt{blackscholes} are also removed with this addition but they either
+are rarely exhibited or are in the outer loop and do not contribute much to
+the runtime overhead.
 % XXX Should we talk about why or is this explained earlier in the paper?
-The remaining 3.61KB of monitored writes results from a cross-iteration
-register dependence of the induction variable, which is logged every
-iteration before a checkpoint.
+% The remaining 3.61KB of monitored writes results from a cross-iteration
+% register dependence of the induction variable, which is logged every
+% iteration before a checkpoint.
 
 \texttt{covariance} and \texttt{correlation} have complex WAW dependences
 that cannot be resolved even with speculation-aware memory analyzer and
@@ -149,13 +189,23 @@ the write sets need to be monitored, limiting the achievable speedup to
 % \texttt{179.art}
 
 
-Using the speculation-aware memory analyzer addresses dependences not
-covered by static analysis in
-\texttt{enc-md5}, \texttt{179.art}, \texttt{blackscholes}, and
-\texttt{dijkstra}, shown in (B) of Table ~\ref{tab:benchmark-list}. However,
-many of these dependences are in the outer loops (with the exception
-being \texttt{dijkstra}) and do not affect the overall performance much.
-Nevertheless, this approach is worth exploring further in future work.
+% <<<<<<< HEAD
+% The use of speculation-aware memory analyzer addresses dependences not
+% covered by static analysis in
+% \texttt{enc-md5}, \texttt{179.art}, \texttt{blackscholes}, and
+% \texttt{dijkstra}, shown in (B) of Table ~\ref{tab:benchmark-list}. However,
+% many of these dependences are in the outer loops (with the exception
+% being \texttt{dijkstra}) and do not affect the overall performance much.
+% Nevertheless, this approach is worth exploring further in future work.
+% =======
+% Using the speculation-aware memory analyzer addresses dependences not
+% covered by static analysis in
+% \texttt{enc-md5}, \texttt{179.art}, \texttt{blackscholes}, and
+% \texttt{dijkstra}, shown in (B) of Table~\ref{tab:benchmark-list}. However,
+% many of these dependences are in the outer loops (with the exception
+% being \texttt{dijkstra}) and do not affect the overall performance much.
+% Nevertheless, this approach is worth exploring further in future work.
+% >>>>>>> bbfc627307c29b03f071a18ed1a454e82d2c145f
 % XXX Better wording for this.
 
 % The third bar presents the results of \name without the cheap
@@ -224,7 +274,7 @@ Nevertheless, this approach is worth exploring further in future work.
 
 % Present in a table, which enablers were used for all benchmarks
 
-\subsection{Aspects Affecting Performance}
+% \subsection{Sub- and Super-Linear Speedups}
 % XXX Better wording of this
 
 % \begin{figure*}[htp]
@@ -247,23 +297,23 @@ Nevertheless, this approach is worth exploring further in future work.
 % how we remove dependences with redundant private read elimination,
 % the new kill\_private heap, and collaboration \}
 
-Along with adding its own overheads, the instrumentation inserted to monitor
-reads and writes can also disable other optimizations, such as
-vectorization. The use of vectorization in \texttt{052.alvinn} yields 30\%
-speedup in the sequential execution. With logging of arbitrary addresses, the loop
-vectorizer of LLVM cannot infer that these do not alias with any other
-pointer of a previously vectorizable instruction.
+% Along with adding its own overheads, the instrumentation inserted to monitor
+% reads and writes can also disable other optimizations, such as
+% vectorization. The use of vectorization in \texttt{052.alvinn} yields 30\%
+% speedup in the sequential execution. With logging of arbitrary addresses, the loop
+% vectorizer of LLVM cannot infer that these do not alias with any other
+% pointer of a previously vectorizable instruction.
 % XXX Is this worded horribly? Too wired to tell now
 
-For most of the benchmarks, checkpointing does not add any
+For most of the benchmarks parallelized with \namensp, checkpointing does not add any
 significant (>1\%) overhead; the exceptions are
-\texttt{052.alvinn}, \texttt{correlation}, and \texttt{covariance}.
+\texttt{052.alvinn}, \texttt{correlation}, and \texttt{covariance}, which
+exhibit lower-than-expected speedups. % XXX ???
 The inner loop of \texttt{052.alvinn} is chosen for parallelization --
 because the useful work of the loop is small and runs for 60,000
 iterations, checkpointing constitutes a considerable portion of the run
 time, \textasciitilde20\%. For \texttt{covariance} and \texttt{correlation},
-the speculation-aware memory analyzer could not avoid using memory
-speculation and as such, the checkpoints need to merge large private sets
+the use of the basic privatization transform entails the checkpoints merge large private sets
 with an overhead of \textasciitilde10\% for each.
 
 For several benchmarks, we observed speedups that exceed their theoretical
@@ -284,16 +334,16 @@ seen in the performance of \texttt{179.art}, \texttt{enc-md5}, and
   \caption{Impact of misspeculation on benchmarks requiring speculation}
   \label{fig:misspec}
 \end{figure}
-Figure \ref{fig:misspec} shows how misspeculation affects the
-performance of the six speculative benchmarks with a misspeculation rate of
-0.1\%. Since none of the benchmarks exhibit misspeculation on the
+Figure~\ref{fig:misspec} shows how misspeculation affects the
+performance of the six of the eight speculative benchmarks with a misspeculation rate of
+0.1\%.
+Since none of the benchmarks exhibit misspeculation on the
 given input sets, we artificially inject misspeculation at the end of
 every 1000 iterations to observe the performance degradation.
-Note that for many benchmarks, speculation is only used
-because analysis cannot disprove a dependence, even though manually
-examining the source code reveals that the dependence will never manifest.
-Thus, the only place misspeculation can possibly occur is during a heap
-check.
+Note that we do not evaluate the impact of misspeculation on \texttt{covariance}
+or \texttt{correlation} as the only place misspeculation can occur is
+during a heap check. Manually inspecting the source code reveals that this
+will never fail.
 % Note that misspeculation with \name is extremely unlikely, as
 % static analysis can disprove many speculative assumptions and for many of
 % the benchmarks, misspeculation is only possible during a heap check.
@@ -304,8 +354,7 @@ an average corresponding to the respective rate.
 These results demonstrate that \name performs well with only high
 confidence speculation and requires tight integration with static analysis
 to avoid heavy-weight speculation whenever possible.
-Systems that have larger overheads have a larger chance of speculation (since
-they use more speculative assumptions), but we minimize the amount of speculation.
+
 % As the iteration within a checkpoint that misspeculation
 % occurs can affect the recovery cost, we inject these misspeculations in the
 % middle of a checkpoint chunk (\textbf{XXX} find better wording) to have a more

@@ -9,12 +9,12 @@
 The applicability guard of a transform uses the results of the
 speculation-aware memory analyzer to determine which memory objects
 satisfy the properties required by the transform and records the
-speculative assumptions used.
+speculative assertions used.
 %
-% XXX Make sure to add that assumptions need to be validated at runtime
+% XXX Make sure to add that assertions need to be validated at runtime
 % later on
-% The applicability guard also records the speculative assumptions used
-% to infer applicability for a memory object. These assumptions would
+% The applicability guard also records the speculative assertions used
+% to infer applicability for a memory object. These assertions would
 % need to be validated at runtime for the transform to be correct.
 
 \paragraph{Transform proposal:} The output of each applicability
@@ -23,10 +23,10 @@ DOALL planner (\cref{planner}).
 %
 The proposal includes for each memory object an estimated handling
 cost based on the transform itself and the validation cost of the
-used speculative assumptions.
+used speculative assertions.
 %
 %The cost of each transform is determined by the cost of the
-%transform itself and the cost of the speculative assumptions
+%transform itself and the cost of the speculative assertions
 %required for the transform to be applicable.
 %
 For simplicity, each transform and speculation
@@ -34,7 +34,7 @@ validation operation is assigned a fixed
 %predefined
 cost that ensures a basic ordering among the options. For
 example,
-%regarding speculative assumptions,
+%regarding speculative assertions,
 memory speculation has an extremely high cost (expensive validation),
 loaded value prediction has a much smaller cost, while
 control speculation has no cost.
@@ -42,10 +42,10 @@ control speculation has no cost.
 %ordering among the options.
 %
 %Every transform is assigned an arbitrary cost that ensures some
-%ordering among transform. Speculative assumptions is similarly
+%ordering among transform. Speculative assertions is similarly
 %computed.
 %
-For the set of transforms and speculative assumptions in our
+For the set of transforms and speculative assertions in our
 framework and in the context of DOALL parallelization, this simplified
 cost model proved sufficient for detection of minimal cost plans.
 
@@ -66,7 +66,7 @@ Second, mapping of memory accesses to
 objects often relies on profiling information, especially in languages with
 unrestricted pointers like C/C++. Ensuring that all objects' accesses
 are contained within a transform's heap is sufficient to
-validate underlying object assumptions. This idea of separation has
+validate underlying object assertions. This idea of separation has
 been explored previously by Johnson et al. (Privateer~\cite{johnson:12:pldi}).
 
 % Memory-related enabling transforms collect a set of memory objects
@@ -140,15 +140,15 @@ We propose four efficient variants of the privatization transform.
 \item Predictable Private: This transform's heap
   has CoW mapping. The live-out state is predictable, so no monitoring
   or merging of parallel workers state is needed. This transform
-  relies on value prediction's speculative assumptions.
+  relies on value prediction's speculative assertions.
 
 \item Local Private: This transform's heap has
   CoW mapping, and there is no need for copy-out or monitoring.
 
 \end{itemize}
 
-% The applicability guard also records the speculative assumptions used
-% to infer applicability for a memory object. These assumptions would
+% The applicability guard also records the speculative assertions used
+% to infer applicability for a memory object. These assertions would
 % need to be validated at runtime for the transform to be correct.
 %Separation checks are required for memory accesses whose underlying
 %objects are discovered via profiling.
