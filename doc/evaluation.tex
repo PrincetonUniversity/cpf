@@ -79,11 +79,11 @@ manifests between runs.
   \label{fig:multi-core-scale}
 \end{figure*}
 
-Figure \ref{fig:multi-core-scale} presents whole program speedups for
-all benchmarks running on one (1) to 28 cores. These speedups are
-relatvie to the sequential performance of the original code, compiled
-with \texttt{clang++ -O3}. \name achieves scalable performance on all the
-benchmarks.
+Figure \ref{fig:multi-core-scale} presents whole program speedups,
+automatically yielded by \name, for all benchmarks with varying number
+of cores. These speedups are relative to sequential performance of the
+original code, compiled with \texttt{clang -O3}. \name achieves
+scalable performance on all the benchmarks.
 
 We replace all calls to \texttt{\textbf{malloc()}} inside a parallelized
 loop with our own heap allocator. Our implementation of this allocator
