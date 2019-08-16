@@ -1,4 +1,6 @@
-\subsection{Runtime}
+\subsection{Universal Low-Overhead Runtime}
+% XXX Maybe a better word than universal. Want to highlight that it handles
+% both spec and non-spec
 
 \namensp's provides an efficient runtime
 for both speculative and non-speculatively parallelized programs.
@@ -17,8 +19,8 @@ main process to the workers.
 It also gives an implicit separation between the speculative states of the
 workers and the committed state that the main process sees, when
 speculation is used. To facilitate cheap heap assignment validation, we
-segment each worker's virtual memory address into disjoint sections, each
-of which corresponds to one of the \textbf{N} heaps. Checking which heap an object
+segment each worker's virtual memory address into disjoint sections,
+corresponding to each transformation's heap. Checking which heap an object
 belongs to becomes trivial, involving only a bitwise \texttt{AND} of the
 object's virtual address with its heap's address mask.
 % This segmentation
