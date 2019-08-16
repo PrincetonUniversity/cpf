@@ -100,7 +100,7 @@ most systems with privatization.
 In \ref{sec:excessive-memory-spec} and \ref{sec:excessive-priv}, we present
 the impact of this two main overheads on Privateer along with a motivating
 example taken from the \texttt{dijkstra} benchmark (used in Privateer's
-evaluation) from MiBench ~\cite{guthaus:2001:iiwsc}. A simplified code of this example is
+evaluation) from MiBench ~\cite{guthaus:2001:iiwsc}. Simplified code of this example is
 shown in Figure~\ref{fig:dijkstra_motivation}. The reuse of the array
 \texttt{\textbf{pathcost}} and global variable \texttt{\textbf{dist}}
 causes cross-iteration false dependence(s) that inhibit parallelization.
@@ -149,16 +149,16 @@ requires a log in order to determine which worker writes each byte of the
 object. We can infer, though, that the \texttt{for} loop in lines
 \textbf{28} and \textbf{29} will overwrite \texttt{\textbf{pathcost}} at
 every iteration. Thus, the live-out values will only come from the last
-iteration and no bookkeeping is needed.
+iteration, and no bookkeeping is needed.
 
 \subsection{Motivation}
-This work is motivated by the need of reducing significatly the two main
+This work is motivated by the need of reducing significantly the two main
 sources of overhead described above, namely the excessive use of memory
 speculation and the expensive privatization, of prior speculative systems
 that significantly limits their efficiency.
 %
 In the next section, we will show that by using speculation-aware memory
-analyzer in conjuction with efficient privatization under a sensible
+analyzer in conjunction with efficient privatization under a sensible
 planner allows an efficient and scalable automatic parallelization while
 maintaining the state-of-the-art applicability.
 
