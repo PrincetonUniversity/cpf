@@ -59,18 +59,18 @@ then linked with the runtime and compiled as the parallel executable.
 %By making memory analysis aware of cheap-to-validate speculative
 %assumptions,
 %
-This work proposes a speculation-aware memory analyzer that
-combines the strengths of static analysis and cheap-to-validate
-speculative assumptions to reduce the need for expensive speculation by
-interpreting cheap-to-validate speculative assumptions as facts when memory
-analysis fails.
-%
-The inclusion of speculation changes the semantics of traditional
-memory analysis. It is now required to specify for each answer the
-speculative assumptions, if any, that were used in the process.
-%
-This differs from applying speculation and querying memory analysis again
-since the possibility of misspeculation restrains static analysis.
+%This work proposes a speculation-aware memory analyzer that
+%combines the strengths of static analysis and cheap-to-validate
+%speculative assumptions to reduce the need for expensive speculation by
+%interpreting cheap-to-validate speculative assumptions as facts when memory
+%analysis fails.
+%%
+%The inclusion of speculation changes the semantics of traditional
+%memory analysis. It is now required to specify for each answer the
+%speculative assumptions, if any, that were used in the process.
+%%
+%This differs from applying speculation and querying memory analysis again
+%since the possibility of misspeculation restrains static analysis.
 
 %When a query is received the memory analyzer tries to resolve it with
 %usage of just static analysis. If that fails, it tries to use memory
@@ -81,6 +81,8 @@ since the possibility of misspeculation restrains static analysis.
 %Memory analysis annotates a PDG with information utilized by the
 %decision making process in the rest of the planning phase.
 
+Making memory analysis aware of cheap-to-validate speculation reduces the
+need for expensive memory speculation.
 \name's memory analysis is composed of many simple analysis algorithms
 that collaboratively respond to queries (e.g.
 CAF~\cite{johnson:cgo:17}).
