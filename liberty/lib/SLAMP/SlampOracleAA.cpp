@@ -249,6 +249,7 @@ LoopAA::ModRefResult SlampOracle::modref(
 
     if ( result > ( result & chainresult ) )
     {
+      /*
       errs() << "result " << result << "\n";
       errs() << "chainresult " << chainresult << "\n";
       errs() << A->getParent()->getParent()->getName() << "::" << A->getParent()->getName();
@@ -256,9 +257,14 @@ LoopAA::ModRefResult SlampOracle::modref(
       errs() << B->getParent()->getParent()->getName() << "::" << B->getParent()->getName();
       B->dump();
       errs() << "rel: " << rel << "\n";
-      assert( false );
+      */
+      //assert( false );
+      if (result > chainresult)
+        result = chainresult;
     }
-    result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+    else
+      result = ModRefResult(result & chainresult );
+    //result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
   }
 
   return result;
