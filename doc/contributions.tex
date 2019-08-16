@@ -5,8 +5,8 @@ Current parallelizing compiler designs force code analyses, transformations, and
 This design excludes the possibility of non-linear and fine-grain interactions between them, which makes important parallelization opportunities unreachable.
 To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (section~\ref{analyzer}).
 This tight interaction generates information in the form of a dependence graph annotated with speculative assumptions.
-\name's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
-These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enable their non-linear and fine-grained interactions.
+name's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
+%These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enable their non-linear and fine-grained interactions.
 These new interfaces create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
 
 %\name combines a speculation-aware memory analyzer, enabling
@@ -19,11 +19,6 @@ These new interfaces create extra degrees of freedom, which enable \name to real
 %improvements over Privateer~\cite{johnson:12:pldi}, a state-of-the-art
 %speculative DOALL parallelization system.
 
-%Speculative systems typically get an optimistic view of the program
-%assuming application of all speculative techniques and then undo
-%speculation whenever it is not needed.
-%Then undo speculation whenever it was not needed.
-
 \subsection{Planning}
 %
 Unlike prior speculative systems that apply a sequence of
@@ -35,10 +30,10 @@ Enabling transforms modify the code to remove parallelization
 inhibitors, which in the context of DOALL parallelization are
 cross-iteration dependences.
 %
-All transformations are split into two parts. The applicability guard
-that participates in the planning phase of the compilation and the
-actual transformation that is applied, if selected, in the
-transformation phase.
+To facilitate planning, all transformations are split into two parts.
+The applicability guard that participates in the planning phase of the
+compilation and the actual transformation that is applied, if
+selected, in the transformation phase.
 %This separation of decision making and application of transformations
 %allows \name to carefully select the most profitable plan.
 The applicability guard utilizes memory analysis and speculative
@@ -60,6 +55,13 @@ transformation proposal which is sent to the planner.
 The proposal also includes a cost for the application of the
 transformation itself and a set of speculative assumptions required
 for the transformation to be applicable and correct.
+
+Memory-related transformations instead of targeting cross-iteration
+dependences, offer to handle a set of memory objects, in effect
+addressing all their cross-iteration dependences. This object-centric
+approach is motivated by the fact that memory-related enabling
+transformations often operate at an object level. For example, the
+privatization transformation create private copies of memory objects.
 
 \paragraph{Planner}
 
@@ -95,7 +97,8 @@ speculative assumptions, if any, that were used in the process.
 %
 Just applying speculation and then querying memory analysis again
 would not have the same effect since the possibility of misspeculation
-restrains static analysis.
+restrains static analysis. For more details regarding
+speculation-aware memory analysis see \cref{sama}.
 
 \subsection{New Enabling Transformations}
 
@@ -132,56 +135,21 @@ and minimize copy-out costs, we propose four efficient variants of
 this transformation.
 %
 To be applicable, these variants require apart from the basic
-privatization property additional memory object properties.
+privatization property additional memory object properties.  Private
+objects could additionally be (a) be independent (no loop-carried false
+dependences); (b) overwrite (written at the same locations at every
+loop iteration); (c) predictable (predictable live-out content);
+or (d) local (allocated outside the loop, but all accesses are
+contained within the loop).
 
-\begin{itemize}
-%
-\item Independent: Applicable for private objects that have no
-loop-carried false dependences. This transformation's heap is shared
-among all parallel workers, since there are no overlapping memory
-accesses.
-%
-No monitoring of write sets is needed. At commit the heap is copied-out
-to the non-speculative state.
-%
-%If the selected parallelization plan is non-speculative, then this
-%heap is also shared with the main process and copy-in and copy-out
-%overheads are eliminated as well.
-
-\item Overwrite Private: Applicable for private objects that are
-written at the same locations at every loop iteration (unconditionally
-updated objects). This transformation's heap has CoW (copy-on-write) mapping
-and at the end of the parallel invocation the last executed iteration
-state is copied-out. No monitoring is needed.
-
-%Additional applicability guard:
-%object has loop-invariant condition for last update within the loop.
-%
-%Behavior: No write set monitoring performed. The live-out state for
-%object with this property is the memory state of the last iteration
-%executed before commit.
-
-\item Predictable Private: Applicable for private objects that have
-predictable live-out content. This transformation's heap has CoW mapping. The
-live-out state is predictable, so no monitoring and merging parallel
-workers state is needed. This transformation relies on value
-prediction speculative assumptions.
-
-\item Local Private: Applicable for private objects that are allocated
-outside the loop, but all their accesses are contained within the
-loop. This transformation's heap has CoW mapping and there is no copy-out
-process nor monitoring.
-
-\end{itemize}
-
+Inference of any of these four private properties allows complete
+elimination of bookkeeping costs, required by basic privatization.
 The first two variants have been explored by Tu et
-al.~\cite{ARRAY_privatization} but were limited to static analysis
-based detection of privatization.  Unlike any prior work, \name
-extends applicability of these variants with usage of speculative
+al.~\cite{tu:94:lcpc} but were limited to static analysis based
+detection of privatization. Unlike any prior work, \name extends
+applicability of these two variants with usage of speculative
 assumptions to programs with pointers, dynamic allocation, and type
 casts.
-
-
 
 
 
