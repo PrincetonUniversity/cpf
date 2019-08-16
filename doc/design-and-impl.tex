@@ -584,23 +584,23 @@ parallelization.
 %just get a summary.  hard to handle them separetely end up
 %overspeculating because it is hard to find the problem.
 
-Inlining is also sometimes useful outside the hot loops.
-%
-Static analysis can easily infer alias and underlying object queries
-for global variables whose address is never
-captured~\cite{johnson:14:pldi}. However, if the address of a global
-variable is passed as an argument to a function, then analysis in
-most cases conservatively assumes that the address is stored in memory
-(i.e. captured) within the function. Inlining diminishes this
-problem.
+%Inlining is also sometimes useful outside the hot loops.
+%%
+%Static analysis can easily infer alias and underlying object queries
+%for global variables whose address is never
+%captured~\cite{johnson:14:pldi}. However, if the address of a global
+%variable is passed as an argument to a function, then analysis in
+%most cases conservatively assumes that the address is stored in memory
+%(i.e. captured) within the function. Inlining diminishes this
+%problem.
 
 
 \subsection{Loop Selection} An execution time profiler, similar to
 gprof~\cite{gnu:binutils:web}, finds hot loops that execute for at least 10\%
 of the total program execution.
 %
-For each hot loop, the compiler finds a DOALL parallelization plan and
-estimates its profitability.
+% For each hot loop, the compiler finds a DOALL parallelization plan and
+% estimates its profitability.
 %
 Out of the profitably parallelizable loops, certain loops are not
 selected for parallelization. The excluded loops are either

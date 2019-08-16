@@ -1,4 +1,4 @@
-\subsection{Universal Low-Overhead Runtime}
+\subsection{Runtime}
 % XXX Maybe a better word than universal. Want to highlight that it handles
 % both spec and non-spec
 
@@ -11,8 +11,8 @@ for both speculative and non-speculatively parallelized programs.
 %   3. Cheap heap checks
 \paragraph{Process-based approach}
 The runtime system of \name uses a process-based parallelization scheme,
-similar to that of Privateer, as opposed to a thread-based one for multiple
-reasons. First, it allows the use the copy-on-write (CoW) semantics of
+as opposed to a thread-based one for multiple reasons. First, it allows the
+use the copy-on-write (CoW) semantics of
 processes to achieve low overhead for communicating live-in values from the
 main process to the workers.
 % Or do we force it to use CoW?
@@ -20,14 +20,16 @@ It also gives an implicit separation between the speculative states of the
 workers and the committed state that the main process sees, when
 speculation is used. To facilitate cheap heap assignment validation, we
 segment each worker's virtual memory address into disjoint sections,
-corresponding to each transformation's heap. Checking which heap an object
-belongs to becomes trivial, involving only a bitwise \texttt{AND} of the
-object's virtual address with its heap's address mask.
+corresponding to each transform's heap, enabling cheap heap assignment
+checks.
+% which heap an object
+% belongs to becomes trivial, involving only a bitwise \texttt{AND} of the
+% object's virtual address with its heap's address mask.
 % This segmentation
 % also gives an added benefit of reducing the overhead for logging, as
-This is not possible
-with a thread-based system, in which workers share the same virtual address
-space.
+% This is not possible
+% with a thread-based system, in which workers share the same virtual address
+% space.
 
 % Shared is used for checkpointing, copying live-outs, and independently
 % privatized objects. Although the runtime code uses shared memory for
@@ -35,23 +37,36 @@ space.
 % detail that makes the code more readable.
 \paragraph{Use of shared memory}
 We utilize POSIX named shared memory in \texttt{\textbf{/dev/shm}} to share
-data between workers and the main process as well as between workers
-themselves.
+data among workers and the main process.
 % Do we explain what independently privatized means?
-For non-speculatively independently privatized objects, the workers
-each \texttt{\textbf{mmap()}} with shared permissions the independent heap
-from the main process, which negates the overhead for merging worker states
-and copying out live-out values. This gives us performance near that of
-thread-based systems for non-speculative (independent) privatization.
+For non-speculatively parallelization plans, we can use
+\texttt{\textbf{mmap()}} with shared permissions,
+% to share the independent heap
+% from the main process, which
+negating the overhead of merging worker states and copying out live-out values.
+% To avoid the cost of multiple forks() at runtime, we spawn processes only
+% once at the beginning of the program and remap each worker's virtual memory
+% at the start of each invocation.
+To avoid the overhead of process spawning for inner loops with multiple
+invocations (\texttt{052.alvinn}), we \texttt{\textbf{fork()}} only once at
+program startup and remap each worker's virtual memory at the start of
+every invocation.
+% For inner loops with multiple invocations (parallelized loop in
+% \texttt{052.alvinn}), we \texttt{\textbf{fork()}} only once at the
+% beginning
+% at every invocation and remap each worker's virtual memory at the start
+% of every invocation.
+% This gives us performance near that of
+% thread-based systems for non-speculative (independent) privatization.
 % Shared memory is also used for collecting each worker's private memory
 % during a checkpoint operation. The last worker to reach a checkpoi
 % Does not integrate well with the previous sentence
 
-\paragraph{Logging and validation}
-Each transformation inserts specialized logging and validation for the
-objects that it handles; depending on the transformation, these checks may
-trigger misspeculation. Note that these checks only detects disallowed
-operations within iterations of each worker, and not across workers.
+% \paragraph{Logging and validation}
+% Each transformation inserts specialized logging and validation for the
+% objects that it handles; depending on the transformation, these checks may
+% trigger misspeculation. Note that these checks only detects disallowed
+% operations within iterations of each worker, and not across workers.
 
 \paragraph{Checkpointing and misspeculation}
 Checkpointing is used to validate reads and writes to private objects
@@ -59,16 +74,17 @@ across workers and save the current program state in
 the case of misspeculation. When a worker reaches an iteration marked with
 a checkpoint operation, it will map the checkpoint object to its virtual
 memory space and ensure that its own writes to privatized data did not
-coincide with a read by another worker. Checkpointing is inherently
-sequential and increasing the amount of data that needs to be merged can
-significantly affect the overall performance.
+coincide with a read by another worker.
+% Checkpointing is inherently
+% sequential and increasing the amount of data that needs to be merged can
+% significantly affect the overall performance.
 
 \paragraph{Recovery}
-The use of speculation necessitates recovery code in the chance that
+The use of speculation necessitates recovery code in case
 misspeculation occurs.
 When misspeculation is detected by a worker, either during an
 iteration or at checkpoint time, other workers continue up to and commit the last
-valid checkpoint, then wait for recovery to be finished.
+valid checkpoint, then wait for recovery to finish.
 The main process will execute the loop
 sequentially up to and including the misspeculated iteration, using the
 committed checkpoint as the starting state. Restarting
