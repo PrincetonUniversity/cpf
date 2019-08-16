@@ -1,16 +1,16 @@
-The planner chooses the best performing set of transformations that
-enable DOALL parallelization.
+The planner chooses the best performing set of transforms that enables
+DOALL parallelization.
 %
 The inputs of the planner are an annotated loop-centric PDG (generated
-by the speculation-aware memory analyzer) and the transformation
-proposals of the enabling transformations.
+by the speculation-aware memory analyzer) and the transform proposals
+of the enabling transforms.
 %
 %
 %In DOALL parallelization each iteration needs to run independently.
 %Thus, all the cross-iteration dependences need to be handled.
 %
-The planner greedily selects the cheapest transformation proposal for
-each memory object and for each cross-iteration register and control
+The planner greedily selects the cheapest transform proposal for each
+memory object and for each cross-iteration register and control
 dependence.
 %for each memory object the cheapest transformation proposal that can
 %address the cross-iteration dependences of this object.  %If all the
@@ -31,28 +31,23 @@ did not find yet empirical evidence that justify such extra
 complexity. 
 %
 If there is a memory object, or a cross-iteration register or control
-dependences that cannot be addressed by any enabling transformation
-then the planner concludes that DOALL is not applicable.
+dependences that cannot be addressed by any enabling transform then
+the planner concludes that DOALL is not applicable.
 %
 %Planner decides the profitability, performing global reasoning
 %instead of the traditional local reasoning of transformation when
 %applied in a sequence.
 %
-The output of the planner is the best performing
-%minimum overall estimated cost
-set of transformations that address all the cross-iteration
-dependences. 
-%with minimum estimated cost.
 %
 %The selected set of transformations in the plan includes the selected
 %transformations and validation code generator for their accompanying
 %speculative assumptions.
 %
-The generated plan includes a set of enabling transformations and a
-set of validation transformations for speculative assumptions.  The
-plan also specifies for each selected enabling transformation which
-memory objects or register/control cross-iteration dependences the
-transformation was selected for.
+%The generated plan includes a set of enabling transformations and a
+%set of validation transformations for speculative assumptions.  The
+%plan also specifies for each selected enabling transformation which
+%memory objects or register/control cross-iteration dependences the
+%transformation was selected for.
 %
 Note that the planner produces non-speculative plans, if no
 speculative assumptions are required for DOALL parallelization.
