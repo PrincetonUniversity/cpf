@@ -24,17 +24,20 @@ enabling transformations, and parallelization patterns designed to
 find work that can execute concurrently.  Automatic parallelization
 naturally focuses on loops because that is where programs spend their
 time.  An essential aspect of program analysis in a parallelizing
-copmiler is memory analysis because the compiler must understand how
+compiler is memory analysis because the compiler must understand how
 loops use memory objects in order to divide their work across threads
 or processes.  Enabling transforms use control flow and data flow
 facts from analysis to make the code amenable to a given
-parallelization pattern.  Examples of enabling transforms include XXX
-which YYY, AAAA (use example from scientific codes - loop skewing for
-example) which BBBB, and privatization which ZZZ.  Many
-parallelization patterns exist, but among the most desirable is DOALL,
-the independent execution of loop iterations.
+parallelization pattern.  Examples of enabling transforms include loop
+skewing which re-arranges array accesses to move cross-iteration
+dependences out of inner loops, reduction which expands storage
+locations to relax ordering constraints on associative and commutative
+operations, and privatization which create private data copies for
+each worker process to remove contention caused by the reuse of data
+structures.  Many parallelization patterns exist, but among the most
+desirable is DOALL, the independent execution of loop iterations.
 
-For decades, parallelizing compilers only performed enbling
+For decades, parallelizing compilers only performed enabling
 transformations that could be proven correct.  This created a heavy
 reliance on the abilty of memory analysis to precisely determine how
 memory was used.  Since memory analysis is undecidable and imprecise
@@ -44,63 +47,39 @@ applicability was severely limited.
 
 Following on the success of speculation for extracting ILP,
 speculation in automatic parallelization has gained traction in the
-last decade.  Speculation frees the compiler to optimize an expected
-common case.  Since it can ignore rare cases or impossible cases not
-recognized by memory analysis, speculation frees automatic
-parallelization from the memory analsis problem.  In enabling
-transforms speculation inolves...
-
-
-XXXX HERE XXXX
-
-
-dependences, overcoming static analysis' constraints.  Speculation
-also led to the design of speculative versions of enabling
-transformations that exhibit higher applicability than their
-conservative counterparts.  One such example is highly applicable
-speculative privatization~\cite{johnson:12:pldi}, a key enabling
-transformation for parallelization~\cite{citations_from_privateer}
-that can remove contention caused by the reuse of data structures.
-%by creating a private copies for each parallel worker.
+last decade.  Speculation frees the parallelizing compiler to optimize
+an expected common case, and ignore rare or impossible cases not
+recognized by memory analysis.  Introduction of speculation led to
+proposals of new speculation-based enabling transforms.  The most
+commonly used speculative enabling transform is memory flow
+speculation which asserts absence of flow dependences not manifested
+during profiling, and validates this assertion at runtime.
+%Using speculation, various enabling transforms exhibit higher
+%applicability.  One such case is the
+Another important enabler is the speculative privatization proposed in
+Privateer~\cite{johnson:12:pldi} which handles dynamic data structures
+even in the presence of unrestricted pointers; an insurmountable task
+for a conservative privatization transform.
+%Privateer enables parallelization by speculatively privatizing the
+%memory state of parallel workers.
 %
 %research into speculation has shown incredible potential for the
 %applicability and aggressiveness of parallelizing
 %transformations~\cite{zhong:08:hpca, johnson:12:pldi}.
 %
+
+
 %speculation problems
 Yet, despite their potential, speculative software systems face real
 challenges that prevent their widespread
 adoption~\cite{cascaval:08:stmtoy:short, .., ..}.
-
-
-%Automatic parallelization is a more attractive approach to make
-%efficient use of multicore systems.
-%%Unfortunately, even after 15 years of multicore, automatic
-%%parallelization is still mostly limited to scientific and
-%%data-intensive applications.  the routine extraction of TLP remains
-%%elusive.
-%%
-%Automatic parallelization techniques utilize analysis and enabling
-%transformations to distribute, without data races, work across
-%processes or threads.
-%%
-%Analysis infers program properties, while enabling transformations
-%modify the program to eliminate parallelization inhibitors identified
-%by the analysis, the main inhibitor being reuse of data structures.
-%Privatization, a key enabling transformation for
-%parallelization~\cite{citations_from_privateer}, can remove contention
-%caused by this reuse by creating a private copy of the data for each parallel
-%worker.
-
-%analyis limitations
-
 % TODO: Add more citations here
 %
 %Major bottlenecks include high communication and bookkeeping costs
 %for memory flow speculation validation, and memory live-out handling.
 %and privatization.  The observed pattern is the more applicable
 %speculation made, the less efficient it became.
-
+%
 The relaxed program dependence structure offered by memory flow
 speculation comes with a high cost.  Even if we assume that
 misspeculation never occurs, validation of memory flow speculation
@@ -108,14 +87,13 @@ requires instrumenting memory operations within the parallel region to
 log or communicate speculative accesses to a validation system. As the
 size of the speculative region increases, the validation cost becomes
 prohibitively expensive and outweighs any parallelization benefit.
-
-Similarly, speculative enabling transformations,
-%most prominently
-in particular speculative privatization, may also entail high
-overheads.  Merging the private memory state of workers to the
-committed memory state correctly often forces speculative systems to monitor
-large write sets during parallel execution, significantly degrading
-their profitability~\cite{kim:12:cgo,johnson:12:pldi,LRPD?}.
+%
+Similarly, speculative privatization may also entail high overheads.
+Correctly merging the private memory state of parallel workers
+%processes, to the committed memory state
+often forces speculative systems to monitor large write sets during
+parallel execution, significantly degrading their
+profitability~\cite{kim:12:cgo,johnson:12:pldi,LRPD?}.
 %to ensure correct live-out state after parallel invocation.
 
 To attain the parallelization coverage of speculative techniques,
@@ -124,20 +102,20 @@ privatization,
 %
 this work proposes an automatic parallelization framework which
 combines a speculation-aware memory analyzer, efficient variants of
-speculative privatization, and a parallelization planner. These
-components during an exploration phase discover the best performing
-set of parallelization techniques. This way, certain unnecessary
-parallelization overheads of prior work are avoided.
+speculative privatization, and a parallelization planner
+%These components during an exploration phase
+to discover the best performing set of transforms and avoid certain
+unnecessary parallelization overheads of prior work.
 %
 An important distinguishing factor from prior work, which uses static
-analysis and speculative assumptions separately and infer
-different program properties in isolation, this work combines
-the strengths of static analysis and cheap-to-validate speculative
-assumptions to enable more efficient speculative parallelization.
+analysis and speculative assumptions separately and infer different
+program properties in isolation, this work combines the strengths of
+static analysis and cheap-to-validate speculative assumptions to
+enable more efficient speculative parallelization.
 
 Making memory analysis aware of cheap-to-validate speculative
-assumptions occasionally enables removal of memory dependences that
-would require, in prior work, expensive memory flow speculation.
+assumptions enables removal of memory dependences that would require,
+in prior work, expensive memory flow speculation.
 %
 For example, edge profiling detects never taken branches, while
 kill-flow analysis disproves memory dependences by finding killing
@@ -151,16 +129,16 @@ Note that by just applying control speculation and then re-running
 memory analysis on the transformed code would not have the same
 effect.  Memory analysis needs to treat this speculative information
 as a fact and ignore the possibility of misspeculation.
-\{\textbf{XXX} express this better\}
 
 Combining static analysis with cheap-to-validate speculative
 assumptions also enables efficient variants of speculative
 privatization.
 %
-These variants avoid the extensive bookkeeping that is observed in the
-state-of-the-art scheme for speculative privatization~\cite{johnson:12:pldi}.
+These variants avoid the extensive bookkeeping that is observed in
+Privateer, the state-of-the-art scheme for speculative
+privatization~\cite{johnson:12:pldi}.
 %
-The difference is that this prior work relies exclusively on profiling
+The difference is that Privateer relies exclusively on profiling
 information to prove privatizability and thus needs to dynamically
 detect the last written value of each privatized byte.
 %
@@ -227,7 +205,3 @@ careful selection of applied transformations, and a lightweight
 process-based runtime system.  No prior work is able to parallelize
 all these benchmarks with such sparse usage of memory speculation and
 efficient privatization; thus no prior work could achieve comparable results.
-%                                               ^
-%                                               |
-%                                               |
-%                                             savage

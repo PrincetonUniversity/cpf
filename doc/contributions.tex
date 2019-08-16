@@ -1,14 +1,22 @@
 \section{The \name Approach}
 
-\name combines a speculation-aware memory analyzer, enabling
-transformations including efficient speculative privatization, and a
-parallelization planner into an exploration phase designed to find the
-best performing set of parallelization techniques.  This section
-discusses the main contributions of this paper
-(sections~\ref{analyzer},\ref{enablers},\ref{planner}), and
-presents a code example (section~\ref{motiv_example}) to underline
-improvements over Privateer~\cite{johnson:12:pldi}, a state-of-the-art
-speculative DOALL parallelization system.
+\name introduces a compiler design where static code analyses and speculation approaches are tightly coupled (described in section~\ref{analyzer}) to make parallelizing compilers ready for becoming a commodity.
+This tight integration is accomplished by introducing new interfaces between compilation passes (interfaces and the related passes are described in section~\ref{enablers}).
+The new interfaces within our parallelizing compiler create extra degrees of freedom, which enable \name to obtain the applicability of speculation-based approaches with the efficiency of static analyses ones.
+These new degrees of freedom expand the design space explored by parallelizing compilers.
+Hence, \name introduces a new concept to properly and efficiently explore such space: the planner (section~\ref{planner}).
+This section ends describing how these new concepts work together to parallelize a real benchmark (section~\ref{motiv_example}).
+
+
+%\name combines a speculation-aware memory analyzer, enabling
+%transformations including efficient speculative privatization, and a
+%parallelization planner into an exploration phase designed to find the
+%best performing set of parallelization techniques.  This section
+%discusses the main contributions of this paper
+%(sections~\ref{analyzer},\ref{enablers},\ref{planner}), and
+%presents a code example (section~\ref{motiv_example}) to underline
+%improvements over Privateer~\cite{johnson:12:pldi}, a state-of-the-art
+%speculative DOALL parallelization system.
 
 \subsection{Speculation-Aware Memory Analyzer}
 \label{analyzer}
