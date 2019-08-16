@@ -1,17 +1,18 @@
 % !TEX root = paper.tex
 \section{Evaluation}
-
+\label{eval}
 \name is evaluated on a commodity shared-memory machine with two 14-core
 Intel Xeon CPU E5-2697 v3 processors (28 cores total) running at 2.60GHz
 (turbo-boost disabled) with 756GB of memory. The operating system is
 64-bit Ubuntu 16.04.5 LTS with GCC 5.5 (version 5.5.0 20171010).
-\namensp's compiler is implemented in the LLVM Compiler Infrastructure
-(version 5.0.2).
+\namensp's compiler is implemented on the LLVM Compiler Infrastructure
+(version 5.0.2)\cite{LLVM:CGO04}.
+
 
 \name is evaluated against 12 C and C++ benchmarks, covering all the
-parallelizable (exhibiting some speedup) benchmarks from two
+parallelizable (exhibiting speedup) benchmarks from two
 state-of-the-art automatic speculative-DOALL parallelization
-papers(Privateer~\cite{johnson:12:pldi}, Cluster
+papers(Privateer~\cite{johnson:12:pldi} and Cluster
 Spec-DOALL~\cite{kim:12:cgo}). We also include one more benchmark
 (179.art) from HELIX~\cite{simone:12:cgo}, a non-speculative automatic
 parallelization system.  This work focuses on boosting the efficiency
@@ -70,10 +71,15 @@ observe scalability on 28 cores.
 \end{figure*}
 
 Figure \ref{fig:multi-core-scale} presents whole program speedups for
-all benchmarks running on one (1) to 28 cores. These speedups are
+all benchmarks running on from 1 to 28 cores. These speedups are
 relatvie to the best sequential performance of the original code, compiled
 with \texttt{clang++ -O3}. \name achieves scalable performance on all the
 benchmarks.
+
+Note that due to the larger cache size with multiple cores,  and the
+cheaper \texttt{malloc} that are used in our heaps, super-linear speedups
+are possible and observed in four benchmarks(\texttt{enc-md5},
+\texttt{dijkstra}, \texttt{doitgen}, and \texttt{179.art}).
 
 \{\textbf{XXX} Something about what the super-linear speedup comes from\}
 
