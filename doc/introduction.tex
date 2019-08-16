@@ -4,7 +4,7 @@
 Using PThreads~\cite{pthreads:spec}, Map-Reduce~\cite{dean:04:osdi},
 OpenMP~\cite{openmp:spec}, and other libraries and languages,
 programmers routinely produce coarse grained parallel (CGP) programs
-even at warehouse scale.  At the other end of the parallism
+even at warehouse scale.  At the other end of the parallelism
 granularity spectrum, compilers and out-of-order processors
 consistently extract instruction-level parallelism (ILP) from programs
 without any programmer intervention.  Unfortunately, despite
@@ -63,102 +63,60 @@ Despite the dramatic advance that speculation for automatic
 parallelization represents, challenges remain that prevent widespread
 adoption~\cite{cascaval:08:stmtoy:short,prabhu:03:ppopp,kelsey:09:cgo}.
 While memory flow speculation is popular, its relaxed program
-dependence structure comes with a high cost.  Even if we assume that
-misspeculation never occurs, validation of memory flow speculation
-requires instrumenting memory operations within the parallel region to
-log or communicate speculative accesses to a validation system. As the
-size of the speculative region increases, the validation cost becomes
-prohibitively expensive and outweighs any parallelization benefit.
-Similarly, speculative privatization may also entail high overheads.
-Correctly merging the private memory state of parallel workers often
-forces speculative systems to monitor large write sets during parallel
-execution, significantly degrading their
+dependence structure comes with a high cost.  Even without any
+misspeculation, validation of memory flow speculation requires
+instrumenting memory operations on every iteration to log or
+communicate speculative accesses to additional validation code.  For
+larger regions with many speculation checks, the validation cost can
+become prohibitively expensive, negating the benefits of the
+parallelization.  Speculative privatization may also entail high
+overheads, but in a different way.  Correct merging the private memory
+state of each parallel worker at the end of a loop invocation can
+require speculative privatizatin systems to monitor large write sets
+during execution, significantly degrading their
 profitability~\cite{kim:12:cgo,johnson:12:pldi,rauchwerger:99:pds}.
 
-To attain the parallelization coverage of speculative techniques
-while minimizing the usage of memory flow speculation and the cost of
-privatization,
-%
-this work proposes an automatic parallelization framework which
-combines a speculation-aware memory analyzer, efficient variants of
-speculative privatization, and a parallelization planner
-%These components during an exploration phase
-to discover the best performing set of transforms and avoid certain
-unnecessary parallelization overheads of prior work.
-%
-An important distinguishing factor from prior work, which uses static
-analysis and speculative assumptions separately and infer different
-program properties in isolation, is the combination of the strengths of
-static analysis and cheap-to-validate speculative assumptions to
-enable more efficient speculative parallelization.
+The goal of this work is to produce a parallelizing compiler that
+achieves the coverage of speculative parallelization techniques while
+also reducing its costs.  The proposed system, called Per{\em
+  spec}tive, is an automatic parallelization framework integrating a
+speculation-aware memory analyzer, efficient variants of speculative
+privatization, and a parallelization planner to discover the best
+performing set of transforms and avoid certain unnecessary
+speculation overheads of prior work.  
 
-Making memory analysis aware of cheap-to-validate speculative
-assumptions enables removal of memory dependences that would require,
-in prior work, expensive memory flow speculation.
-%
-For example, edge profiling detects never taken branches, while
-kill-flow analysis disproves memory dependences by finding killing
-operations along all feasible paths between two operations. If
-kill-flow is able to use speculative control flow information, then it
-can assert absence of, non statically disprovable, memory dependences
-under a cheap-to-validate speculative assumption.
-%This idea is inspired by the benefits of collaboration among static
-%analysis algorithms in CAF~\cite{johnson:17:cgo}.
-Note that by just applying control speculation and then re-running
-memory analysis on the transformed code would not have the same
-effect.  Memory analysis needs to treat this speculative information
-as a fact and ignore the possibility of misspeculation.
+In Per{\em spec}tive, the speculation-aware memory analyzer helps the
+parallelization planner understand the full impact of a speculative
+assertion.  In practice, Per{\em spec}tive often recognizes that an
+inexpensive speculative enabler addresses problems thought by prior
+systems to require additional and more expensive speculation.  For
+example, observing the pruning of a path never taken in profiling by
+control-flow speculation, the speculation-aware memory analyzer knows
+to remove memory dependences that cannot exist without memory
+operations the pruned path.  In contrast, prior work systems are
+unaware of these impacts and unnecessarily employ additional
+speculative techniques to remove those memory dependences.
 
-Combining static analysis with cheap-to-validate speculative
-assumptions also enables efficient variants of speculative
-privatization.
-%
-These variants avoid the extensive bookkeeping observed in
-Privateer, the state-of-the-art scheme for speculative
-privatization~\cite{johnson:12:pldi}.
-%
-Privateer relies exclusively on profiling
-information to prove privatizability and thus needs to dynamically
-detect the last written value of each privatized byte.
-%
-The need for speculation to privatize should not exclude, though, the
-use of static analysis to infer additional properties that minimize
-the privatization overheads.
-
-This paper presents \namensp, an instantiation of this proposed framework
-for DOALL parallelization. \name consists of a parallelizing
-LLVM-based compiler and a lightweight
-%, unified (for both speculative and non-speculative execution)
-runtime system. The compiler selects minimal-cost solutions to
-parallelization inhibitors using state-of-the-art static analysis
-(e.g. CAF~\cite{johnson:14:pldi}) and profiling-based speculative
-assumptions, while the runtime offers efficient parallel execution and
-low-cost speculation validation.
-
-We focus on DOALL because it is the ideal parallelization technique
-when applicable. It is simple to orchestrate, delivers high
-thread-level parallelism with low communication overheads, and it is
-the most studied parallelization technique in literature both by pure
-static analysis-based
-approaches~\cite{suif:94:stanford,blume:94:polaris,rus:03:hybrid,rauchwerger:94:ics}
-and speculation-based
-approaches~\cite{rauchwerger:99:pds,dang:02:ipdps,mehrara:09:stmlite,kim:12:cgo,johnson:12:pldi}.  Further, its potential coverage is
-extensive when paired with speculation~\cite{zhong:08:hpca}, but still,
-results of prior work on real hardware are underwhelming.
+Per{\em spec}tive makes adding new specutive enablers feasible.  The
+planner in combination with the speculation-aware memory analyzer
+selects speculative enablers based on their cost and overall impacts.
+Prior work systems were simply not sophisticated enough to make these
+decisions in an informed way.  As a consquence, these systems
+generally had a small numbrer of powerful, but expensive to validate,
+speculative enablers.
 
 The primary contributions of this paper are:
 \begin{itemize}
 
 \item The first \textbf{speculation-aware} memory analyzer that takes
-full advantage of speculation by allowing memory analysis to interpret
-cheap-to-validate speculative assumptions as facts;
-%combined strenghts
+  full advantage of speculation by allowing memory analysis to
+  interpret speculative assertions as program facts;
 
-\item Novel efficient \textbf{speculative privatization transformations}
+\item New efficient \textbf{speculative privatization transformations}
 that avoid the overheads of prior speculative privatization
 techniques;
 
-\item A novel \textbf{planning} phase that combines non-speculative
+\item A \textbf{planning} phase that combines non-speculative
 and speculative techniques to select the most profitable set of
 parallelization-enabling transformations;
 
@@ -171,17 +129,55 @@ parallelization overheads of prior work.
 
 \name achieves scalable automatic parallelization on commodity
 shared-memory machines without any programmer hints.  We evaluate
-\name on a set of 12 C/C++ benchmarks that have been used in
-state-of-the-art automatic parallelization systems'
-papers~\cite{johnson:12:pldi,kim:12:cgo,simone:12:cgo}. On a
-28-core machine, \name yields a geomean whole-program speedup of
-23.0$\times$ over sequential execution and 2$\times$ compared to a
-state-of-the-art speculative DOALL system~\cite{johnson:12:pldi}.
-These speedups are thanks to effective usage of static properties of
-the code in conjunction with cheap speculative assumptions,
-%to avoid memory flow speculation and minimize privatization costs,
-%
-careful selection of applied transformations, and a lightweight
-process-based runtime system.  No prior work is able to parallelize
-all these benchmarks with such sparse usage of memory speculation and
-efficient privatization; thus no prior work could achieve comparable results.
+\name on a set of 12 C/C++ benchmarks used in prior state-of-the-art
+automatic parallelization system
+papers~\cite{johnson:12:pldi,kim:12:cgo,simone:12:cgo}. On a 28-core
+machine, \name yields a geomean whole-program speedup of 23.0$\times$
+over sequential execution.  This represents a doubling in performance
+compared to Privateer, the most effiicent prior state-of-the-art
+speculative DOALL system~\cite{johnson:12:pldi}.  These results come
+from the effective usage of static properties of the code in
+conjunction with cheap speculative assumptions, the careful selection
+of applied transformations, and a lightweight process-based runtime
+system.  Per{\em spec}tive represents an important advance in
+fulfilling the promise of automatic parallelization.
+
+
+
+%PriorNo prior work is able to parallelize all these benchmarks with
+%such sparse usage of memory speculation and efficient privatization;
+%thus no prior work could achieve comparable results.
+
+%Combining static analysis with cheap-to-validate speculative
+%assumptions also enables efficient variants of speculative
+%privatization.  These variants avoid the extensive bookkeeping
+%observed in Privateer, the state-of-the-art scheme for speculative
+%privatization~\cite{johnson:12:pldi}.  Privateer relies exclusively
+%on profiling information to prove privatizability and thus needs to
+%dynamically detect the last written value of each privatized byte.
+%The need for speculation to privatize should not exclude, though, the
+%use of static analysis to infer additional properties that minimize
+%the privatization overheads.
+
+%This paper presents \namensp, an instantiation of this proposed
+%framework for DOALL parallelization. \name consists of a
+%parallelizing LLVM-based compiler and a lightweight , unified (for
+%both speculative and non-speculative execution) runtime system. The
+%compiler selects minimal-cost solutions to parallelization inhibitors
+%using state-of-the-art static analysis
+%(e.g. CAF~\cite{johnson:14:pldi}) and profiling-based speculative
+%assumptions, while the runtime offers efficient parallel execution
+%and low-cost speculation validation.
+
+%We focus on DOALL because it is the ideal parallelization technique
+%when applicable. It is simple to orchestrate, delivers high
+%thread-level parallelism with low communication overheads, and it is
+%the most studied parallelization technique in literature both by pure
+%static analysis-based
+%approaches~\cite{suif:94:stanford,blume:94:polaris,rus:03:hybrid,rauchwerger:94:ics}
+%and speculation-based
+%approaches~\cite{rauchwerger:99:pds,dang:02:ipdps,mehrara:09:stmlite,kim:12:cgo,johnson:12:pldi}.
+%Further, its potential coverage is extensive when paired with
+%speculation~\cite{zhong:08:hpca}, but still, results of prior work on
+%real hardware are underwhelming.
+
