@@ -163,7 +163,7 @@ casts.
 
 \begin{figure*}[!t]
 \centering
-\resizebox{0.90\linewidth}{!}{
+\resizebox{0.86\linewidth}{!}{
 \subfloat[Privateer~\cite{johnson:12:pldi}]{
   \centering
   \includegraphics[width=0.46\textwidth]{figures/privateer-example-crop}
@@ -174,7 +174,7 @@ casts.
   \includegraphics[width=0.46\textwidth]{figures/perspective-example-crop}
 }
 }
-\caption{Comparison of decision process of Privateer and \name for handling memory
+\caption{Comparison of decision process for handling memory
 objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of
 \texttt{dijkstra}. Numbers in circles are line numbers in
 Figure~\ref{fig:dijkstra_motivation}; ``UO=\{\#\}'' means the underlying
@@ -185,7 +185,7 @@ object is allocated/declared in line \#.}
 \begin{figure*}[!h]
 \centering
 \scriptsize
-\resizebox{0.80\linewidth}{!}{
+\resizebox{0.86\linewidth}{!}{
   % \subfloat[Sequential code]{
   %   \begin{minipage}{6cm}
   %     \input{figures/dijkstra_motivation}
@@ -206,9 +206,9 @@ object is allocated/declared in line \#.}
   \end{minipage}
 }
 }
-\caption{Parallelized code comparison between Privateer and \name for
-\texttt{dijkstra}. Logging and checks during loop execution dominate the
-overheads, indicated in the code as ``added OH''.}
+\caption{Comparison of parallelized code of \texttt{dijkstra}. Logging and
+checks during loop execution dominate the overheads, indicated in the code
+as ``added OH''.}
 \label{fig:dijkstra_motivation_comparison_source_code}
 \end{figure*}
 %caption,
