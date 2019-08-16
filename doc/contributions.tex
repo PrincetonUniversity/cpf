@@ -5,7 +5,7 @@ Current parallelizing compiler designs force code analyses, transformations, and
 This design excludes the possibility of non-linear and fine-grain interactions between them, which makes important parallelization opportunities unreachable.
 To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (section~\ref{analyzer}).
 This tight interaction generates information in the form of a dependence graph annotated with speculative assumptions.
-name's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
+\namensp's design also tightly couples code transformations with speculative assumptions to drastically reduce the overhead of the formers (section~\ref{enablers}).
 %These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enable their non-linear and fine-grained interactions.
 These new interfaces create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
 
@@ -36,12 +36,15 @@ compilation and the actual transformation that is applied, if
 selected, in the transformation phase.
 %This separation of decision making and application of transformations
 %allows \name to carefully select the most profitable plan.
-The applicability guard utilizes memory analysis and speculative
-assumptions to determine which parallelization inhibitors the
-transform can handle.
+The applicability guard utilizes properties produced by memory
+analysis and speculative assumptions\footnote{We define speculative
+assumptions as predictions of program properties based on profile
+information.} to determine which parallelization inhibitors the
+corresponding transform can handle.
 %
-We define speculative assumptions as predictions of program properties
-based on profile information.
+The interface between memory analysis and speculative assumptions, and
+enabling transforms is an annotated with properties program dependence
+graph (PDG).
 %
 %The used speculative assumptions would need to be validated at
 %runtime for the transformation to be correct.
@@ -160,26 +163,29 @@ casts.
 
 \begin{figure*}[!t]
 \centering
-\resizebox{0.90\linewidth}{!}{
+\resizebox{0.86\linewidth}{!}{
 \subfloat[Privateer~\cite{johnson:12:pldi}]{
   \centering
   \includegraphics[width=0.46\textwidth]{figures/privateer-example-crop}
 }
 \qquad
-\subfloat[This work]{
+\subfloat[\name (This Work)]{
   \centering
   \includegraphics[width=0.46\textwidth]{figures/perspective-example-crop}
 }
 }
-\caption{Comparison of Privateer with \name for handling memory
-objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of \texttt{dijkstra}}
+\caption{Comparison of decision process for handling memory
+objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of
+\texttt{dijkstra}. Numbers in circles are line numbers in
+Figure~\ref{fig:dijkstra_motivation}; ``UO=\{\#\}'' means the underlying
+object is allocated/declared in line \#.}
 \label{fig:dijkstra_motivation_comparison}
 \end{figure*}
 
 \begin{figure*}[!h]
 \centering
 \scriptsize
-\resizebox{0.78\linewidth}{!}{
+\resizebox{0.86\linewidth}{!}{
   % \subfloat[Sequential code]{
   %   \begin{minipage}{6cm}
   %     \input{figures/dijkstra_motivation}
@@ -193,16 +199,16 @@ objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of \texttt{dijkstr
 }
 \qquad
 \qquad
-\subfloat[This Work]{
+\subfloat[\name (This Work)]{
   \centering
   \begin{minipage}{8.2cm}
   \input{figures/dijkstra_motivation_checks_our}
   \end{minipage}
 }
 }
-\caption{Parallelized code comparison of Privateer with \name for
-\texttt{dijkstra}. Logging and checks during loop execution dominate the
-overheads, indicated in the code as ```added OH''.}
+\caption{Comparison of parallelized code of \texttt{dijkstra}. Logging and
+checks during loop execution dominate the overheads, indicated in the code
+as ``added OH''.}
 \label{fig:dijkstra_motivation_comparison_source_code}
 \end{figure*}
 %caption,
