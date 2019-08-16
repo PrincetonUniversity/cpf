@@ -146,14 +146,13 @@ The need for speculation to privatize should not exclude, though, the
 use of static analysis to infer additional properties that minimize
 the privatization overheads.
 
-This paper presents \name, an instantiation of this proposed framework
-for DOALL\footnote{loop iterations run independently of each other}
-parallelization. \name consists of a parallelizing LLVM-based compiler
-and a lightweight
+This paper presents \namensp, an instantiation of this proposed framework
+for DOALL parallelization. \name consists of a parallelizing
+LLVM-based compiler and a lightweight
 %, unified (for both speculative and non-speculative execution)
 runtime system. The compiler selects minimal-cost solutions to
 parallelization inhibitors using state-of-the-art static analysis
-(\`{a} la CAF~\cite{johnson:14:pldi}) and profiling-based speculative
+(e.g. CAF~\cite{johnson:14:pldi}) and profiling-based speculative
 assumptions, while the runtime offers efficient parallel execution and
 low-cost speculation validation.
 
@@ -161,8 +160,10 @@ We focus on DOALL because it is the ideal parallelization technique
 when applicable. It is simple to orchestrate, delivers high
 thread-level parallelism with low communication overheads, and it is
 the most studied parallelization technique in literature both by pure
-static analysis-based approaches~\cite{..,.,..} and speculation-based
-approaches~\cite{..,..,..,..}.  Further, its potential coverage is
+static analysis-based
+approaches~\cite{suif:94:stanford,blume:94:polaris,rus:03:hybrid,rauchwerger:94:ics}
+and speculation-based
+approaches~\cite{rauchwerger:99:pds,dang:02:ipdps,mehrara:09:stmlite,kim:12:cgo,johnson:12:pldi}.  Further, its potential coverage is
 extensive when paired with speculation~\cite{zhong:08:hpca}, but still,
 results of prior work on real hardware are underwhelming.
 
