@@ -126,7 +126,7 @@ this dependence. Current speculative systems, including Privateer, will
 first apply memory speculation to this dependence and then perform static
 analysis, adding logging and validation (overheads). If, however, we can
 use edge profiling to speculate that this conditional statement will always
-execute and pass this speculative assumption to the static analysis, this
+execute and pass this speculative assertion to the static analysis, this
 RAW dependence can be removed with minimal cost, avoiding all monitoring of
 reads to this object. This combination is superior to using memory
 speculation, as the cost for validating control speculation is negligible
