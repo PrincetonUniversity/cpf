@@ -33,7 +33,7 @@ cross-iteration dependences.
 %
 To facilitate planning, all transformations are split into two parts.
 The applicability guard that participates in the planning phase of the
-compilation and the actual transformation that is applied, if
+compilation, and the actual transformation that is applied, if
 selected, in the transformation phase.
 %This separation of decision making and application of transformations
 %allows \name to carefully select the most profitable plan.
@@ -60,12 +60,12 @@ The proposal also includes a cost for the application of the
 transformation itself and a set of speculative assumptions required
 for the transformation to be applicable and correct.
 
-Memory-related transformations instead of targeting cross-iteration
+Memory-related transformations, instead of targeting cross-iteration
 dependences, offer to handle a set of memory objects, in effect
 addressing all their cross-iteration dependences. This object-centric
 approach is motivated by the fact that memory-related enabling
 transformations often operate at an object level. For example, the
-privatization transformation create private copies of memory objects.
+privatization transformation creates private copies of memory objects.
 
 \paragraph{Planner}
 
@@ -140,8 +140,8 @@ To avoid expensive monitoring of write sets during parallel execution
 and minimize copy-out costs, we propose four efficient variants of
 this transformation.
 %
-To be applicable, these variants require apart from the basic
-privatization property additional memory object properties.  Private
+These variants require additional memory object properties apart from the basic
+privatization property to be applicable.  Private
 objects could additionally be (a) be independent (no loop-carried false
 dependences); (b) overwrite (written at the same locations at every
 loop iteration); (c) predictable (predictable live-out content);
@@ -153,7 +153,7 @@ elimination of bookkeeping costs, required by basic privatization.
 The first two variants have been explored by Tu et
 al.~\cite{tu:94:lcpc} but were limited to static analysis based
 detection of privatization. Unlike any prior work, \name extends
-applicability of these two variants with usage of speculative
+the applicability of these two variants with the usage of speculative
 assumptions to programs with pointers, dynamic allocation, and type
 casts.
 
@@ -222,7 +222,7 @@ as ``added OH''.}
 \subsection{Example}
 \label{motiv_example}
 
-Next we describe how \name succeeds at parallelizing \texttt{dijkstra}
+Next, we describe how \name succeeds at parallelizing \texttt{dijkstra}
 efficiently. This section also highlights the limitations of prior
 work and how the new ideas introduced in \name
 (\cref{planning,sama_short,new_enablers}) overcome them.
@@ -268,7 +268,7 @@ section~\cref{new_enablers}.
 The DOALL planner then selects the lowest cost solution for each memory
 object. For example, the local privatization's
 offer is selected for \texttt{\textbf{dist}} since it is the cheapest
-privatization transform and its
+privatization transform, and its
 speculative assumption is the same as those of other options'.
 The \texttt{\textbf{nDist}} object (not shown in this figure) is also handled
 by local privatization. \texttt{\textbf{pathcost}} is resolved by overwrite
