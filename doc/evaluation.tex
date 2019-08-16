@@ -49,14 +49,11 @@ time that manifests between runs.
   \caption{
     Benchmark Details:
     (A) Percentage of
-    execution time spent inside the parallelized loop(s) compared to
-    that of the whole program. The theoretical speedup
-    is calculated using Amdahl's Law with the assumptions of no overheads and
-    running with 28 workers.
+    execution time spent inside the parallelized loop(s). Theoretical speedup
+    is calculated using Amdahl's Law with 28 workers.
     (B) Number of cross-iteration dependences
-    handled by Speculation-Aware Memory Analyzer (SAMA) that were unresolved by
-    static analysis alone. Entries denotes by
-    ``N/A'' indicate all dependences are handled by static analysis.
+    handled by Speculation-Aware Memory Analyzer (SAMA) unresolvable by
+    static analysis alone. ``N/A'' indicate all dependences are handled by static analysis.
     (C) Number and percentage of objects covered by efficient speculative
     privatization transformations proposed
     in this work.
@@ -152,7 +149,8 @@ the write sets need to be monitored, limiting the achievable speedup to
 % \texttt{179.art}
 
 
-Using SAMA addresses dependences not covered by static analysis in
+Using the speculatiion-aware memory analyzer addresses dependences not
+covered by static analysis in
 \texttt{enc-md5}, \texttt{179.art}, \texttt{blackscholes}, and
 \texttt{dijkstra}, shown in (B) of Table ~\ref{tab:benchmark-list}. However,
 many of these dependences are in the outer loops (with the exception
@@ -283,7 +281,8 @@ seen in the performance of \texttt{179.art}, \texttt{enc-md5}, and
 \subsection{Misspeculation Evaluation}
 \begin{figure}[htp]
   \includegraphics[width=\columnwidth]{figures/misspec-crop}
-  \caption{Misspeculation performance across speculative benchmarks}
+  \caption{Misspeculation performance across benchmarks requiring use of
+  speculative assumptions}
   \label{fig:misspec}
 \end{figure}
 Figure \ref{fig:misspec} shows how misspeculation affects the
