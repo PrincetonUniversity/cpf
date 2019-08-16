@@ -169,20 +169,23 @@ casts.
   \includegraphics[width=0.46\textwidth]{figures/privateer-example-crop}
 }
 \qquad
-\subfloat[This work]{
+\subfloat[\name (This Work)]{
   \centering
   \includegraphics[width=0.46\textwidth]{figures/perspective-example-crop}
 }
 }
-\caption{Comparison of Privateer with \name for handling memory
-objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of \texttt{dijkstra}}
+\caption{Comparison of decision process of Privateer and \name for handling memory
+objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of
+\texttt{dijkstra}. Numbers in circles are line numbers in
+Figure~\ref{fig:dijkstra_motivation}; ``UO=\{\#\}'' means the underlying
+object is allocated/declared in line \#.}
 \label{fig:dijkstra_motivation_comparison}
 \end{figure*}
 
 \begin{figure*}[!h]
 \centering
 \scriptsize
-\resizebox{0.78\linewidth}{!}{
+\resizebox{0.80\linewidth}{!}{
   % \subfloat[Sequential code]{
   %   \begin{minipage}{6cm}
   %     \input{figures/dijkstra_motivation}
@@ -196,16 +199,16 @@ objects \texttt{\textbf{pathcost}} and \texttt{\textbf{dist}} of \texttt{dijkstr
 }
 \qquad
 \qquad
-\subfloat[This Work]{
+\subfloat[\name (This Work)]{
   \centering
   \begin{minipage}{8.2cm}
   \input{figures/dijkstra_motivation_checks_our}
   \end{minipage}
 }
 }
-\caption{Parallelized code comparison of Privateer with \name for
+\caption{Parallelized code comparison between Privateer and \name for
 \texttt{dijkstra}. Logging and checks during loop execution dominate the
-overheads, indicated in the code as ```added OH''.}
+overheads, indicated in the code as ``added OH''.}
 \label{fig:dijkstra_motivation_comparison_source_code}
 \end{figure*}
 %caption,
