@@ -60,123 +60,7 @@ transformation proposal which is sent to the planner.
 The proposal also includes a cost for the application of the
 transformation itself and a set of speculative assumptions required
 for the transformation to be applicable and correct.
-%
-%All these proposals are sent to the planner.
 
-
-
-%For a transform to be considered, it needs to express its enabling
-%effect if it were to be applied, along with its cost.
-%
-
-%Certain transforms extract information directly from profile
-%information. These transforms
-%exposes this information
-
-%create speculative assumptions, which we
-%define as a prediction of a program property based on profile
-%information.
-%These assumptions can be used by other enabling
-%transformations to overcome the limitations of static analysis.
-
-%As more enabling transforms are introduced, multiple transforms may
-%resolve the same parallelization inhibitor,
-%
-%These options create new degrees of freedom that necessitate planning.
-%
-
-
-%Further, certain transforms may need
-%cannot be applied unless
-%certain dependences are removed (e.g. privatization requires that no
-%RAW dependences exist).
-%elp from
-%analysis and other transforms to be applicable while some
-%transforms, i.e., speculative transforms only depend on profiling
-%information.
-%
-%
-%Certain enabling transforms require that their preconditions be
-%satisfied. This can be resolved with static analysis, when applicable,
-%or with results from profiling. We introduce the concept of
-%speculative assumptions, which are results of profiling that can be
-%assumed to be true if needed by another transformation. Treating these
-%assumptions as %true
-%
-%ither through static analysis or the application of another
-%transformation. In the latter case,
-
-%extract information directly from profile
-%information. These transforms create speculative assumptions, which we
-%define as a prediction of a program property based on profile
-%information.  These assumptions can be used by other enabling
-%transformations to overcome the limitations of static analysis.
-%
-%
-%
-%
-%Planning requires that each transform express its enabling effect if
-%the transform were to be applied.
-%
-%the
-%presence of a planner. This planner selects the set of transforms that
-%covers all parallelization inhibitors with the minimal overall cost.
-%
-%
-
-
-%Transforms also need to specify the
-%overhead that their application introduces.
-%
-
-%Prior work on speculative parallelization mostly focuses on the
-%enabling effect of transformation without considering their cost.
-%%
-%The enabling effect increases the applicability of parallelization
-%systems. The cost affects the efficiency.
-%%
-%This work focuses on improving the efficiency of parallelization
-%techniques, rather than the applicability.  To that end, \name focus
-%on identifying minimal cost enablers.
-
-%Transforms need new interfaces to express their effect
-%Need interfaces need for transforms to communicate.
-
-%\paragraph{Effect of enabling transforms:}
-%The effect is expressed relative to dependences and dependent
-%instructions. Most prior work focuses on removal of dependences.
-%However, this work underlines the importance of characterizing even
-%non-removable dependences and the dependent instructions.
-
-
-%
-%The planner gathers information from everyone and then performs global
-%reasoning to decide which transformations to apply.
-
-
-%All the information need to be exposed to the planners.
-
-%All this information and options  create new degrees of freedom and
-%expand the design space explored by parallelizing compilers. Hence,
-%\name introduces a planner to properly and efficiently explore such
-%space.
-
-
-%The effect of enabling transforms may be overlapping. More than one
-%transform may handle the same problem and block the application of
-%other transformations.
-%
-
-%\name introduces a planner to explore all the
-%available options and select the best
-
-
-%\name to carefully select the most profitable plan instead of
-%applying a fixed (regardless of the input program) set of enabling
-%transformations and speculative techniques.
-
-
-%\subsubsection{Planner}
 \paragraph{Planner}
 
 %The input to the planner is a program dependence graph and
@@ -224,81 +108,37 @@ speculative assumptions.  This approach not only creates ambiguity in
 terms of what speculative assumptions are necessary but also prevents
 usage of efficient variants of transformations.
 %
-Exposing a combination of static analysis information and speculative
-assumptions, \name enables more efficient enabling transformations.
-This is especially true for the case of speculative privatization,
-efficient variant of which are explored in this paper.
+By exposing a combination of static analysis information and
+speculative assumptions, \name enables more efficient enabling
+transformations.  This is especially true for the case of speculative
+privatization, efficient variants of which are explored in this paper.
 %
 We first discuss speculative privatization as it appears in prior work
 and then describe new variants that perform more efficient
 privatization.
-
-
-%%
-%The enabling effect increases the applicability of parallelization
-%systems. The cost affects the efficiency.
-%%
-%This work focuses on improving the efficiency of parallelization
-%techniques, rather than the applicability.  To that end, \name focus
-%on identifying minimal cost enablers.
-
-%Transforms need new interfaces to express their effect
-%Need interfaces need for transforms to communicate.
-
-%Exposing all this information also enables the
-%creation of more efficient enablers, that handle the same problem as
-%others but more efficiently.
-
-%This modular planning phase allows easy extensibility with new
-%transformations.
-%
-%With all this information exposed, it becomes clearer that
-%more efficient version of enabling transformation can be explored.
-%
-%These variants require a combination of static analysis and
-%speculative assumptions to be inferred.
-
-%Prior techniques just focus on applicability and removing deps.
-%only spec info or only static info are exposed.
-
-%Now transformations are separated by the applicability guard.
-
-%The difference of speculative or non-speculative depends on the
-%speculative assumptions.
-
-%In this work, we propose new variants for speculative privatization.
-
-
-%Just because speculation enables privatization is no enough.
-%Using more information, we realized that there are better
-%transformaions that use more information and possibly use more
-%speculation but require less validation codst.
 
 Prior software speculative systems with extended support of
 privatization~\cite{johnson:12:pldi,kim:12:cgo} only infer the basic
 privatization property that there are no cross-iteration data flows
 for a memory object.
 %
-Speculative privatization application involves instrumentation of all
-write accesses of privatized objects for costly logging or
+Speculative privatization application involves costly instrumentation
+of all write accesses of privatized objects for logging or
 communication. At commit, the private copies of each worker are merged
-according to metadata that specify which worker wrote each byte last.
+according to metadata that specify which worker last wrote each byte.
 
 To avoid expensive monitoring of write sets during parallel execution
 and minimize copy-out costs, we propose four efficient variants of
 this transformation.
 %
 To be applicable, these variants require apart from the basic
-privatization property additional memory object properties. Note that
-in order for these variants to be efficient these properties need to
-be proven with a combination of static analysis and speculative
-assumptions.
+privatization property additional memory object properties.
 
 \begin{itemize}
 %
 \item Independent: Applicable for private objects that have no
 loop-carried false dependences. This transformation's heap is shared
-among all parallel workers, since there is no overlapping memory
+among all parallel workers, since there are no overlapping memory
 accesses.
 %
 No monitoring of write sets is needed. At commit the heap is copied-out
@@ -307,8 +147,6 @@ to the non-speculative state.
 %If the selected parallelization plan is non-speculative, then this
 %heap is also shared with the main process and copy-in and copy-out
 %overheads are eliminated as well.
-
-%Behavior : No write set monitoring performed. Memory object is shared among parallel workers.
 
 \item Overwrite Private: Applicable for private objects that are
 written at the same locations at every loop iteration (unconditionally
