@@ -92,10 +92,10 @@ inexpensive speculative enabler addresses problems thought by prior
 systems to require additional and more expensive speculation.  For
 example, observing the pruning of a path never taken in profiling by
 control-flow speculation, the speculation-aware memory analyzer knows
-to remove memory dependences that cannot exist without memory
-operations the pruned path.  In contrast, prior work systems are
-unaware of these impacts and unnecessarily employ additional
-speculative techniques to remove those memory dependences.
+to remove memory dependences that exist as a result of the existance
+of the pruned path.  In contrast, prior work systems are unaware of
+these impacts and unnecessarily employ additional speculative
+techniques to remove those memory dependences.
 
 Per{\em spec}tive makes adding new specutive enablers feasible.  The
 planner in combination with the speculation-aware memory analyzer
