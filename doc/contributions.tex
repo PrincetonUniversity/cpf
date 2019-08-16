@@ -3,9 +3,9 @@
 
 Current parallelizing compiler designs force code analyses, transforms, and speculative techniques to work as a pipeline.
 This design excludes the possibility of non-linear and fine-grain interactions between them, which makes important parallelization opportunities unreachable.
-To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities (\cref{sama_short}).
+To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities.
 This tight interaction generates information in the form of a dependence graph annotated with speculative assumptions.
-\namensp's design also tightly couples code transforms with speculative assumptions to drastically reduce the overhead of the formers (\cref{enablers}).
+\namensp's design also tightly couples code transforms with speculative assumptions to drastically reduce the overhead of the formers.
 %These tight integrations are accomplished introducing new interfaces between compilation passes (section~\ref{enablers}) that enable their non-linear and fine-grained interactions.
 These new interfaces create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
 
