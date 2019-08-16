@@ -861,7 +861,7 @@ Bool __specpriv_distill_worker_redux_into_partial(MappedHeap * partial_redux,
   ReductionInfo *info = __specpriv_first_reduction_info();
   for(; info; info = info->next)
   {
-    void *native_au = info->au;
+    void *native_au = (uint8_t *)info->au + __specpriv_sizeof_redux();
     void *dst_au = heap_translate(native_au, partial_redux);
 
     void *dst_dep_au = NULL;

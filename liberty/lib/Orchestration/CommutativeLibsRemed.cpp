@@ -7,7 +7,7 @@
 
 #include "liberty/Orchestration/CommutativeLibsRemed.h"
 
-#define DEFAULT_COMM_LIBS_REMED_COST 100
+#define DEFAULT_COMM_LIBS_REMED_COST 15
 
 namespace liberty
 {
@@ -18,6 +18,8 @@ STATISTIC(numMemDepRemoved, "Num mem deps from comm libs");
 STATISTIC(numFunCallsMemDepRemoved,
           "Num mem deps removed from comm libs related "
           "to self commutative function calls");
+STATISTIC(numPureFun, "Num mem deps removed from comm libs related "
+                      "to pure function calls");
 STATISTIC(numRegQueries, "Num register deps queries");
 STATISTIC(numRegDepRemoved, "Num register deps removed");
 
@@ -28,6 +30,29 @@ const std::unordered_set<std::string>
     CommutativeLibsRemediator::CommFunNamesSet{"malloc", "calloc",  "realloc",
                                                "free",   "xalloc",  "rand",
                                                "random", "lrand48", "drand48"};
+
+// make a guess, needed to address random func in 456.hmmer
+bool couldBeCommutative(const Function *F) {
+  std::string random_func_str = "random";
+  std::string alloc_func_str = "alloc";
+  std::string funcName = F->getName().str();
+  if (funcName.find(random_func_str) != std::string::npos ||
+      funcName.find(alloc_func_str) != std::string::npos) {
+    return true;
+  }
+  return false;
+}
+
+bool couldBePure(const Function *F) {
+  std::string random_func_str = "random";
+  std::string alloc_func_str = "alloc";
+  std::string funcName = F->getName().str();
+  if (funcName.find(random_func_str) != std::string::npos ||
+      funcName.find(alloc_func_str) != std::string::npos) {
+    return true;
+  }
+  return false;
+}
 
 void CommutativeLibsRemedy::apply(Task *task) {
   // TODO: ask programmer. Programmer questions should be applied first before any transformation
@@ -81,7 +106,8 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
 
   // remove deps between calls to self commutative functions (reflexive dep)
   if (CalledFunA && CalledFunA == CalledFunB &&
-      CommFunNamesSet.count(CalledFunA->getName().str())) {
+      (CommFunNamesSet.count(CalledFunA->getName().str()) ||
+       couldBeCommutative(CalledFunA))) {
     ++numMemDepRemoved;
     ++numFunCallsMemDepRemoved;
     DEBUG(errs() << "Removed dep with commutative library identification. Dep "
@@ -90,6 +116,8 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
                  << CalledFunA->getName() << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->functionName = CalledFunA->getName();
+    remedResp.remedy = remedy;
+    return remedResp;
   }
 
   // check if deps across different iterations can be removed due to self
@@ -98,8 +126,11 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
     const Function *FunA = A->getParent()->getParent();
     const Function *FunB = B->getParent()->getParent();
 
-    if ((CalledFunA && CalledFunA == FunB &&
-         CommFunNamesSet.count(FunB->getName().str()))) {
+    bool couldBeCommFunA = couldBeCommutative(FunA);
+    bool couldBeCommFunB = couldBeCommutative(FunB);
+
+    if (CalledFunA && CalledFunA == FunB &&
+        (CommFunNamesSet.count(FunB->getName().str()) || couldBeCommFunB)) {
       ++numMemDepRemoved;
       DEBUG(
           errs() << "Removed dep with commutative library identification. Dep "
@@ -108,9 +139,13 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
                  << CalledFunA->getName() << '\n');
       remedResp.depRes = DepResult::NoDep;
       remedy->functionName = CalledFunA->getName();
+      remedResp.remedy = remedy;
+      return remedResp;
     } else if ((CalledFunB && CalledFunB == FunA &&
-                CommFunNamesSet.count(FunA->getName().str())) ||
-               (FunA == FunB && CommFunNamesSet.count(FunA->getName().str()))) {
+                (CommFunNamesSet.count(FunA->getName().str()) ||
+                 couldBeCommFunA)) ||
+               (FunA == FunB && (CommFunNamesSet.count(FunA->getName().str()) ||
+                                 couldBeCommFunA))) {
       ++numMemDepRemoved;
       DEBUG(
           errs() << "Removed dep with commutative library identification. Dep "
@@ -119,8 +154,64 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
                  << FunA->getName() << '\n');
       remedResp.depRes = DepResult::NoDep;
       remedy->functionName = FunA->getName();
+      remedResp.remedy = remedy;
+      return remedResp;
     }
   }
+
+  // check for function that are guessed to be pure
+  if (CalledFunA && couldBePure(CalledFunA)) {
+    ++numMemDepRemoved;
+    ++numPureFun;
+    DEBUG(errs() << "Removed dep with pure fun guessing. Dep "
+                    "between function calls. Called function that was "
+                    "considered pure was "
+                 << CalledFunA->getName() << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->functionName = CalledFunA->getName();
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+  else if (CalledFunB && couldBePure(CalledFunB)) {
+    ++numMemDepRemoved;
+    ++numPureFun;
+    DEBUG(errs() << "Removed dep with pure fun guessing. Dep "
+                    "between function calls. Called function that was "
+                    "considered pure was "
+                 << CalledFunB->getName() << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->functionName = CalledFunB->getName();
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
+  const Function *FunA = A->getParent()->getParent();
+  const Function *FunB = B->getParent()->getParent();
+  bool couldBePureFunA = couldBePure(FunA);
+  bool couldBePureFunB = couldBePure(FunB);
+
+  if (FunA && couldBePureFunA) {
+    ++numMemDepRemoved;
+    ++numPureFun;
+    DEBUG(errs() << "Removed dep with pure fun gueussing. Function that was "
+                    "considered pure was "
+                 << FunA->getName() << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->functionName = FunA->getName();
+    remedResp.remedy = remedy;
+    return remedResp;
+  } else if (FunB && couldBePureFunB) {
+    ++numMemDepRemoved;
+    ++numPureFun;
+    DEBUG(errs() << "Removed dep with pure fun gueussing. Function that was "
+                    "considered pure was "
+                 << FunB->getName() << '\n');
+    remedResp.depRes = DepResult::NoDep;
+    remedy->functionName = FunB->getName();
+    remedResp.remedy = remedy;
+    return remedResp;
+  }
+
   remedResp.remedy = remedy;
   return remedResp;
 }

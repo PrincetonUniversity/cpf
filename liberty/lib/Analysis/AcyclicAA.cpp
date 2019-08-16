@@ -75,7 +75,8 @@ namespace liberty
       return false;
 
     // Check for malloc, calloc, realloc, new, et al.
-    if(F->returnDoesNotAlias() || isNoAliasFn(v, &tli))
+    if (F->returnDoesNotAlias() || isNoAliasFn(v, &tli) ||
+        F->getName() == "sre_malloc" || F->getName() == "sre_realloc")
       return true;
 
     return false;

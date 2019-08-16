@@ -199,7 +199,7 @@ void __specpriv_worker_remap_private(void)
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_priv, &mpriv0 );
   if( sizeof_private )
-    heap_alloc( &mpriv0, sizeof_private );
+    heap_alloc( &mpriv0, 2*sizeof_private );
 }
 
 void __specpriv_worker_unmap_killprivate( void )
@@ -215,7 +215,7 @@ void __specpriv_worker_remap_killprivate( void )
   ParallelControlBlock *pcb = __specpriv_get_pcb();
   heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_killpriv, &mkillpriv0 );
   if ( sizeof_killprivate )
-    heap_alloc( &mkillpriv0, sizeof_killprivate );
+    heap_alloc( &mkillpriv0, 2*sizeof_killprivate );
 }
 
 void __specpriv_fiveheaps_begin_invocation(void)
@@ -253,7 +253,7 @@ void __specpriv_initialize_worker_heaps(void)
   //ParallelControlBlock *pcb = __specpriv_get_pcb();
   //heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0 );
   if( sizeof_redux )
-    heap_alloc(&myRedux, sizeof_redux);
+    heap_alloc(&myRedux, 2*sizeof_redux);
     //heap_alloc(&mredux0, sizeof_redux);
 
   // map my 'shadow', and 'local' heaps
