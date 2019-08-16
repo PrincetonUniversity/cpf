@@ -1,4 +1,5 @@
 \section{The \name Approach}
+\label{sec:approach}
 
 \name introduces a compiler design where static code analyses and speculation approaches are tightly coupled (described in section~\ref{analyzer}) to make parallelizing compilers ready for becoming a commodity.
 This tight integration is accomplished by introducing new interfaces between compilation passes (interfaces and the related passes are described in section~\ref{enablers}).
@@ -62,7 +63,7 @@ restrains static analysis.
 
 \name's memory analysis is composed of many simple analysis algorithms
 that collaboratively respond to queries (\`{a} la
-CAF~\cite{johnson:cgo:17}).
+CAF~\cite{johnson:14:pldi}).
 %
 The modularity of our static analysis simplifies the addition of
 speculation awareness. Only the analysis algorithms that could
@@ -438,8 +439,8 @@ casts.
 
 \begin{figure*}[!t]
 \centering
-\resizebox{0.9\linewidth}{!}{
-\subfloat[Privateer~\cite{johnson:12:pdli}]{
+\resizebox{0.85\linewidth}{!}{
+\subfloat[Privateer~\cite{johnson:12:pldi}]{
   \centering
   \includegraphics[width=0.46\textwidth]{figures/privateer-example-crop}
 }
@@ -454,11 +455,16 @@ objects \textit{pathcost} and \textit{dist} of the hot loop of \textit{dijkstra}
 \label{fig:dijkstra_motivation_comparison}
 \end{figure*}
 
-\begin{figure*}[!b]
+\begin{figure*}[!h]
 \centering
 \scriptsize
-\resizebox{0.8\linewidth}{!}{
-\subfloat[Privateer~\cite{johnson:12:pdli}]{
+\resizebox{0.75\linewidth}{!}{
+  % \subfloat[Sequential code]{
+  %   \begin{minipage}{6cm}
+  %     \input{figures/dijkstra_motivation}
+  %   \end{minipage}
+  %   }
+\subfloat[Privateer~\cite{johnson:12:pldi}]{
   \centering
   \begin{minipage}{9.2cm}
   \input{figures/dijkstra_motivation_checks}
