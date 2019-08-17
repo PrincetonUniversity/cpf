@@ -1,7 +1,8 @@
 \section{The \name Approach}
 \label{sec:approach}
 
-Current parallelizing compiler designs involve code analyses, transforms, and speculative techniques to work mostly independenlty.
+Current parallelizing compiler designs involve code analyses, transforms,
+and speculative techniques to work mostly independently.
 This design makes important parallelization opportunities unreachable.
 To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities.
 This tight interaction generates information in the form of a dependence graph annotated with speculative assertions.
