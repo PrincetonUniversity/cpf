@@ -38,34 +38,34 @@
 Early non-speculative DOALL parallelizing compilers
 (Polaris\cite{blume:94:polaris},
 SUIF\cite{amarasinghe:93:pldi,suif:94:stanford} are limited by imprecise
-static analysis and heavyweight runtime analysis. They also lack in
+static analysis and heavyweight runtime analysis. They also lack
 support for dynamically allocated memory objects, which are widely used in
 modern programming. Recent works on non-speculative parallelization
 (HELIX~\cite{simone:12:cgo}, DOCyclical~\cite{yu2016cyclical},
 DSWP~\cite{ottoni:05:micro}, and PS-DSWP~\cite{raman:08a:cgo}) focus more
 on alternative parallelization paradigms like DOACROSS and DOPIPE, which
-allow communication of flow dependences among cores. \name focuses on DOALL, 
+allow communication of flow dependences among cores. \name focuses on DOALL,
 but the contributions of this work are complementary with other
 parallelization paradigms.
 
-LRPD\cite{rauchwerger:99:pds}, R-LRPD\cite{dang:02:ipdps} leverages
-speculation to evaluate privatization criterion, extends the applicability
-of DOALL. Yet it is still limited to array-based objects.
+LRPD\cite{rauchwerger:99:pds} and R-LRPD\cite{dang:02:ipdps} leverage
+speculation to evaluate privatization criterion, extending the applicability
+of DOALL. Yet they are still limited to array-based objects.
 STMlite~\cite{mehrara:09:stmlite}, CorD~\cite{tian:10:pldi}, and
 Privateer~\cite{johnson:12:pldi} use speculation extensively to privatize
 objects for general-purpose programs. As mentioned in Privateer, STMlite
-and CorD do not support speculative reduction, and limit the applicability
+and CorD do not support speculative reduction, limiting their applicability
 to static cases. Privateer, by introducing heap separation, achieves the
 state-of-the-art applicability. However, compared to \namensp, it fails to
 recognize a lot of optimization opportunities and suffers from the two
 major overhead mentioned in~\cref{sec:motivation}.
 
-Recent works~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} speculates
-higher-level properties like local objects whose validation does not
+Recent works~\cite{ctian:2008:micro,johnson:12:pldi,kim:12:cgo} speculate
+higher-level properties like local objects whose validation do not
 require logging or communication. SPEC-DSWP~\cite{vachharajani:07:pact}
-over speculates and undoes unnecessary speculation afterwards. Yet, all of
+over-speculates and undoes unnecessary speculation afterwards. Yet, all of
 these optimization efforts focus on removing some overheads in an ad hoc
-way which may miss opportunities due to lack of information while
+way which may miss opportunities due to lack of information, while
 \name takes a sensible approach to explore the design space using a
 planner.
 
@@ -76,7 +76,7 @@ planner.
 % quality. Instead, \name extracts parallelism while guaranteeing the
 % preservation of the original output quality.
 
-Finally, some recent work speculate on properties of data dependences like
+Finally, some recent work speculate properties of data dependences like
 commutativity~\cite{kulkarni:07:pldi,Nguyen:2014:DGO:2541940.2541964} and
 having short memory~\cite{Deiana:2018:UPN:3173162.3173181}. These
 techniques involve heavy speculation, and they require developers to cast
