@@ -2,12 +2,18 @@
 \label{sec:approach}
 
 Current parallelizing compiler designs involve code analyses, transforms,
-and speculative techniques to work mostly independently.
-This design makes important parallelization opportunities unreachable.
-To overcome this limitation, \name introduces a compiler design where static code analyses and speculation techniques are tightly coupled to boost their discovery of parallelization opportunities.
-This tight interaction generates information in the form of a dependence graph annotated with speculative assertions.
-\namensp's design also tightly couples code transforms with speculative assertions to drastically reduce the overhead of the formers.
-These new interfaces create extra degrees of freedom, which enable \name to realize many new parallelization opportunities reaching the applicability of speculation-based approaches with the efficiency of static analyses ones.
+and speculative techniques to work mostly independently.  This design makes
+important parallelization opportunities unreachable.  To overcome this
+limitation, \name introduces a compiler design where static code analyses
+and speculation techniques are tightly coupled to boost their discovery of
+parallelization opportunities.  This tight interaction generates
+information in the form of a dependence graph annotated with speculative
+assertions.  \namensp's design also tightly couples code transforms with
+speculative assertions to drastically reduce the overhead of the formers.
+These new interfaces create extra degrees of freedom, which enable \name to
+realize many new parallelization opportunities reaching the applicability
+of speculation-based approaches with the efficiency of static analyses
+ones.
 
 %\name combines a speculation-aware memory analyzer, enabling
 %transforms including efficient speculative privatization, and a
