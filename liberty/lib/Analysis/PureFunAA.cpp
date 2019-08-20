@@ -267,10 +267,14 @@ bool PureFunAA::runOnModule(Module &M) {
 }
 
 bool PureFunAA::isReadOnly(const Function *fun) const {
+  if (fun->hasFnAttribute(Attribute::ReadOnly))
+    return true;
   return isRecursiveProperty(fun, readOnlySet, writeSet, pureFunSet, isReadOnlyProp);
 }
 
 bool PureFunAA::isLocal(const Function *fun) const {
+  if (fun->hasFnAttribute(Attribute::ArgMemOnly))
+    return true;
   return isRecursiveProperty(fun, localSet, globalSet, localFunSet, isLocalProp);
 }
 
@@ -309,7 +313,8 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
   }
 
   // sot
-  if (noMemFunSet.count(fun1->getName().str().c_str())) {
+  if (noMemFunSet.count(fun1->getName().str().c_str()) ||
+      fun1->hasFnAttribute(Attribute::ReadNone)) {
     return NoModRef;
   }
 
@@ -348,7 +353,8 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
   }
 
   // sot
-  if (noMemFunSet.count(fun->getName().str().c_str())) {
+  if (noMemFunSet.count(fun->getName().str().c_str()) ||
+      fun->hasFnAttribute(Attribute::ReadNone)) {
     return NoModRef;
   }
 
