@@ -41,7 +41,8 @@ static bool isReadOnlyProp(const Instruction *inst) {
         return false;
     return true;
   }
-  return false;
+  // return true;
+  return !inst->mayWriteToMemory();
 }
 
 static bool isLocalProp(const Value *value) {
@@ -219,6 +220,8 @@ bool PureFunAA::argumentsAlias(const ImmutableCallSite CS,
     const Value *arg = CS.getArgument(i);
 
     if(arg->getType()->isPointerTy()) {
+
+  //add check here for argument attribute
 
       const int argSize = liberty::getTargetSize(arg, TD);
       if(aa->alias(P, Size, Same, arg, argSize, NULL)) {
