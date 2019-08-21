@@ -104,8 +104,7 @@ namespace liberty {
       return NULL;
 
     if (!f->getAttributes().hasAttribute(0, Attribute::NoAlias) &&
-            !isNoAliasFn(v, &tli) &&
-        f->getName() != "sre_malloc" && f->getName() != "sre_realloc")
+        !isNoAliasFn(v, &tli))
       return NULL;
 
     return source;

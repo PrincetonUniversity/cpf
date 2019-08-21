@@ -1,6 +1,5 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Analysis/ValueTracking.h"
-#include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 
@@ -64,8 +63,6 @@ static void GetUnderlyingObjects(
   //sot: GetUnderlyingObject needs as the second argument the DataLayout
 
   const Value *obj = GetUnderlyingObject(ptr, DL, 0);
-
-  //errs() << "UO: in GetUnderlyingObjects " << *obj << '\n';
 
   // Detect cycles.
   if( isAfterPHI )

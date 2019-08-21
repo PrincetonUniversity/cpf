@@ -296,7 +296,6 @@
   "atoi",
   "calloc",
   "malloc",
-  "realloc",
   "free",
 
   "__isnan",

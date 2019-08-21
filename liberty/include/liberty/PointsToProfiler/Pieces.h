@@ -77,8 +77,7 @@ struct AU : FoldingSetNode
   {
     return type == other.type
     &&     value == other.value
-    &&     (ctx->matches(other.ctx) || other.ctx->matches(ctx));
- //   &&     ctx == other.ctx;
+    &&     ctx == other.ctx;
   }
 
   void print(raw_ostream &) const;

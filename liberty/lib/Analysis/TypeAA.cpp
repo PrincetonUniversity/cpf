@@ -150,9 +150,6 @@ namespace liberty
     if( name == "realloc" )
       return true;
 
-    if (name == "sre_malloc" || name == "sre_realloc")
-      return true;
-
     return false;
   }
 

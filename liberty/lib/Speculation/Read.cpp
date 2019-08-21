@@ -368,12 +368,9 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
       for(Ptrs::iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
         reductions.push_back( ReduxAU(i->au,rt) );
 
-    else {
-      for(Ptrs::iterator i=aus.begin(), e=aus.end(); i!=e; ++i) {
+    else
+      for(Ptrs::iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
         reads.push_back( i->au );
-      }
-
-    }
 
     return true;
   }
@@ -854,19 +851,17 @@ uint16_t Read::getPointerResiduals(const Value *v, const Ctx *ctx) const
   const Ctx2Residual &c2r = pointer_residuals(v);
 
   const Ctx *queryCtx;
-  for (queryCtx = ctx; queryCtx && queryCtx->type == Ctx_Loop;
-       queryCtx = queryCtx->parent) {
-  }
+  for(queryCtx=ctx; queryCtx && queryCtx->type == Ctx_Loop; queryCtx=queryCtx->parent)
+    {}
 
   uint16_t acc = 0;
-  for (Ctx2Residual::const_iterator i = c2r.begin(), e = c2r.end(); i != e;
-       ++i) {
-    if (i->first->matches(queryCtx))
+  for(Ctx2Residual::const_iterator i=c2r.begin(), e=c2r.end(); i!=e; ++i)
+    if( i->first->matches( queryCtx ) )
       acc |= i->second;
-  }
 
   return acc;
 }
+
 
 bool Read::getUnderlyingAUs(const Value *ptr, const Ctx *ctx, Ptrs &aus) const
 {
@@ -946,7 +941,6 @@ bool Read::sem_escape_object(AU *au, Ctx *ctx, unsigned cnt)
 
 bool Read::sem_local_object(AU *au, Ctx *ctx, unsigned cnt)
 {
-  errs() << "sem_local_object: " << *au << " count " << cnt << "\n";
   locals[au][ctx] = cnt;
   return true;
 }
