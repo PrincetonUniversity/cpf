@@ -54,15 +54,10 @@ static bool isNoaliasWithinLoop(const Value *src, const Loop *L,
   CallSite cs = getCallSite(src);
   if( cs.getInstruction() )
     if (L->contains(cs.getInstruction())) {
-      if (cs.getCalledFunction()) {
+      if (cs.getCalledFunction())
         if (cs.getCalledFunction()->getAttributes().hasAttribute(
                 0, Attribute::NoAlias))
           return true;
-
-        if (cs.getCalledFunction()->getName() == "sre_malloc" ||
-            cs.getCalledFunction()->getName() == "sre_realloc")
-          return true;
-      }
 
       if (isNoAliasFn(src, &tli))
         return true;
@@ -84,13 +79,8 @@ LoopAA::AliasResult LoopVariantAllocation::aliasCheck(
   const Value *src1 = GetUnderlyingObject(P1.ptr, *DL, 0),
               *src2 = GetUnderlyingObject(P2.ptr, *DL, 0);
 
-  if (isNoaliasWithinLoop(src1, L, *tli) || isNoaliasWithinLoop(src2, L, *tli)) {
 
   DEBUG(errs() << "LoopVariantAllocation(" << *src1 << ", " << *src2 << ")\n");
-
-  DEBUG(errs() << "Loop Header: " << L->getHeader()->getName() << "\n");
-
-  }
 
   if (isNoaliasWithinLoop(src1, L, *tli) &&
       isNoaliasWithinLoop(src2, L, *tli)) {

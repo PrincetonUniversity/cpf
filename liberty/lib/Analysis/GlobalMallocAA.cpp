@@ -186,21 +186,6 @@ public:
     const GlobalValue *V1GlobalSrc = liberty::findGlobalSource(V1);
     const GlobalValue *V2GlobalSrc = liberty::findGlobalSource(V2);
 
-    /*
-    if (V1GlobalSrc) {
-      errs() << "V1GlobalSrc: " << *V1GlobalSrc << " for V1: " << *V1 << "\n";
-      const bool V1MallocOnly = !nonMalloc.count(V1GlobalSrc);
-      if (V1MallocOnly) {
-        const CISet V1set = mallocSrcs[V1GlobalSrc];
-        if (V1set.size() == 1)
-          errs() << "malloc src: " << **V1set.begin() << "\n";
-      }
-    }
-    if (V2GlobalSrc) {
-      errs() << "V2GlobalSrc: " << *V2GlobalSrc << " for V2: " << *V2 << "\n";
-    }
-    */
-
     const bool V1Exclusive = !nonExclusive.count(V1GlobalSrc);
     const bool V2Exclusive = !nonExclusive.count(V2GlobalSrc);
 

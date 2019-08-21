@@ -43,7 +43,6 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
   // check if selected remedies are yet implemented
   bool localityRemedUsed = false;
   bool memVerUsed = false;
-  bool localityAAUsed = false;
   for (auto &remed : *selectedRemeds) {
     if (!remed->getRemedyName().equals("counted-iv-remedy") &&
         !remed->getRemedyName().equals("locality-remedy") &&
@@ -61,9 +60,6 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
       memVerUsed = true;
       customHeapAlloc = true;
       nonSpecPrivRedux = false;
-      LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
-      if (!localityRemed->ptr1 && !localityRemed->ptr2)
-        localityAAUsed = true;
     }
 
     remed->read = read;
@@ -117,9 +113,6 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
       reallocateEnvAsShared(alloc, fcn_ctx);
   }
 
- // if (localityAAUsed)
-  //  applyLocality();
-
   // apply all selected remedies
   for (auto &remed: *selectedRemeds) {
     if (remed->getRemedyName().equals("counted-iv-remedy") ||
@@ -129,7 +122,7 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
       // already fixed or fixed implicitly
       continue;
 
-    if (remed->getRemedyName().equals("locality-remedy") && !localityAAUsed) {
+    if (remed->getRemedyName().equals("locality-remedy")) {
       //modified |= remed->apply(LDI);
       remed->apply(task);
       modified = true;

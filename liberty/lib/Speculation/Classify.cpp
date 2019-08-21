@@ -11,8 +11,6 @@
 #include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/PointsToAA.h"
-#include "liberty/SLAMP/SLAMPLoad.h"
-#include "liberty/SLAMP/SlampOracleAA.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
@@ -58,7 +56,6 @@ void Classify::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< TargetLibraryInfoWrapperPass >();
   au.addRequired< ModuleLoops >();
   au.addRequired< LAMPLoadProfile >();
-  au.addRequired< SLAMPLoadProfile >();
   au.addRequired< ReadPass >();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
@@ -84,11 +81,7 @@ bool Classify::runOnModule(Module &mod)
     ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
     EdgeCountOracle edgeaa(ctrlspec);
     edgeaa.InitializeLoopAA(this, mod.getDataLayout());
-    // sot - SLAMP
-    //SLAMPLoadProfile &slamp = getAnalysis< SLAMPLoadProfile >();
-    //SlampOracle slampaa(&slamp);
-    //slampaa.InitializeLoopAA(this, mod.getDataLayout());
-  // LAMP
+    // LAMP
     LAMPLoadProfile &lamp = getAnalysis< LAMPLoadProfile >();
     LampOracle lampaa(&lamp);
     lampaa.InitializeLoopAA(this, mod.getDataLayout());
@@ -149,8 +142,6 @@ static bool intersect_into(const AUs &a, const AUs &b, AUs &out)
 
       if( (*au1) == (*au2) )
       {
-        //errs() << "Intersected!!\n";
-
         // We only want to report it if we haven't already added it.
         if( std::find(out.begin() /*+size_in*/, out.end(), au1) != out.end() )
           continue;
@@ -179,7 +170,6 @@ static void strip_undefined_objects(AUs &out)
     if( out[i]->type == AU_Undefined )
     {
       DEBUG(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
-      DEBUG(errs() << "UNDEFINED object: " << *out[i] << "\n");
       std::swap( out[i], out.back() );
       out.pop_back();
       --i;
@@ -195,7 +185,6 @@ static void strip_undefined_objects(HeapAssignment::AUSet &out)
     if( au->type == AU_Undefined )
     {
       DEBUG(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
-      DEBUG(errs() << "UNDEFINED object: " << *au << "\n");
       out.erase(i);
       i = out.begin();
     }
@@ -212,7 +201,6 @@ static void strip_undefined_objects(HeapAssignment::ReduxAUSet &out)
     if( au->type == AU_Undefined )
     {
       DEBUG(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
-      DEBUG(errs() << "UNDEFINED object: " << *au << "\n");
       out.erase(i);
       i = out.begin();
     }
@@ -281,8 +269,6 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src, Inst
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop->getHeader());
 
-  //errs() << "LOop of interest: " << loop->getHeader()->getName() << "\n";
-
   for(CCPairs::const_iterator i=flows.begin(), e=flows.end(); i!=e; ++i)
   {
     const CtxInst srcp = i->first;
@@ -292,10 +278,6 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src, Inst
       continue;
     if( ctrlspec->isSpeculativelyDead(dstp) )
       continue;
-
- // const Instruction *srci = srcp.getInst();
- // const Instruction *dsti = dstp.getInst();
-    //errs() << "Flow from inst:\n   " << *srci << "  to inst :\n   " << *dsti << "\n";
 
     if( !getUnderlyingAUs(srcp,src_ctx, dstp,dst_ctx, aus) )
       return false;
@@ -377,10 +359,6 @@ bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx, const Ct
     }
   );
 
-  //if (aus.size() > size_before)
- //   errs() << "Undelying object found a flow from:\n" << *srci << "\nto:\n" << *dsti << "\n\n";
-
-
   return true;
 }
 
@@ -461,8 +439,6 @@ bool Classify::runOnLoop(Loop *loop)
   }
   // }}}
 
-  errs() << "Context ctx: " << *ctx << "\n";
-
   // Find local AUs first.
   for(AUs::const_iterator i=writes.begin(), e=writes.end(); i!=e; ++i)
   {
@@ -470,15 +446,12 @@ bool Classify::runOnLoop(Loop *loop)
 
     // Is this AU local?
     const Read::Ctx2Count &locals = spresults.find_locals(au);
-    for(Read::Ctx2Count::const_iterator j=locals.begin(), f=locals.end(); j!=f; ++j) {
-      errs() << "local au: " << *au << "\n";
-      errs() << "Context of au: " << *j->first << "\n";
+    for(Read::Ctx2Count::const_iterator j=locals.begin(), f=locals.end(); j!=f; ++j)
       if( j->first->matches(ctx) )
       {
         localAUs.insert(au);
         break;
       }
-    }
   }
 
   // reductionAUs = reductions \ locals
@@ -504,12 +477,8 @@ bool Classify::runOnLoop(Loop *loop)
       reductionAUs.erase(j);
     }
 
-    else {
+    else
       reductionAUs[ au ] = rt;
-
-     // errs() << "redux: au " << *au << "\n";
-
-    }
   }
   // reductionAUs = reductionAUs \ reads
   for(AUs::const_iterator i=reads.begin(), e=reads.end(); i!=e; ++i)
@@ -518,9 +487,6 @@ bool Classify::runOnLoop(Loop *loop)
     if( reductionAUs.count(au) )
     {
       reductionAUs.erase( au );
-
-
-     // errs() << "erase redux, it is read: au " << *au << "\n";
 
       // since the reduction entry
       // counted as both a read and a write.
@@ -535,8 +501,6 @@ bool Classify::runOnLoop(Loop *loop)
     if( reductionAUs.count(au) )
     {
       reductionAUs.erase( au );
-
-     // errs() << "erase redux, it is written: au " << *au << "\n";
 
       // since the reduction entry counted
       // as both a read and a write
@@ -997,30 +961,13 @@ HeapAssignment::Type HeapAssignment::classify(Ptrs &aus) const
 
     Type ty = classify(au);
 
-      //errs() << "uo: " << *au << "  with type " << ty << "  and prev type " << res << "\n";
-
     // first time through loop
     if( res == Unclassified )
       res = ty;
 
     // later iterations: ensure consistency!
-    else if( res != ty ) {
-
-     // errs() << "uo: " << *au << "  with type " << ty << "  and prev type " << res << "\n";
-
-      /*
-      // sot, could allow local and private objects, but instead of adding conditional for UO and private checks maybe it is better to promote the stores
-      if ((res == HeapAssignment::Private && ty == HeapAssignment::Local) ||
-          (ty == HeapAssignment::Private && res == HeapAssignment::Local) ||
-          (res == HeapAssignment::LocalPriv &&
-           (ty == HeapAssignment::Private || ty == HeapAssignment::Local))) {
-        res = HeapAssignment::LocalPriv;
-        continue;
-      }
-      */
-
+    else if( res != ty )
       return Unclassified;
-    }
   }
 
   return res;
@@ -1048,7 +995,7 @@ HeapAssignment::Type HeapAssignment::classify(AU *au) const
   if( ro.count(au) )
     return ReadOnly;
 
-  //errs() << "AU not classified within loop: " << *au << '\n';
+//  errs() << "AU not classified within loop: " << *au << '\n';
   return Unclassified;
 }
 
