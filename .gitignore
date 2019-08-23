@@ -1,12 +1,21 @@
+### Doc ###
+# To prevent the doc directory is added back
+/doc
+
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+
+# Thumbnails
+._*
+
 #==============================================================================#
 # File extensions to be ignored anywhere in the tree.
 #==============================================================================#
-
-# Executables
-*.d
-*.o
-*.a
-*.so
+.svn
 # Temp files created by most text editors.
 *~
 # Merge files created by git.
