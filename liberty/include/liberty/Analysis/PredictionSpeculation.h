@@ -17,6 +17,9 @@
 
 #include "liberty/Analysis/LoopAA.h"
 
+#include <unordered_set>
+#include <unordered_map>
+
 namespace liberty
 {
 using namespace llvm;
@@ -43,6 +46,8 @@ struct PredictionAA : public LoopAA // Not a pass!
 
   StringRef getLoopAAName() const { return "spec-priv-prediction-oracle-aa"; }
 
+  void setLoopOfInterest(Loop *L);
+
   virtual ModRefResult modref(
     const Instruction *i1,
     TemporalRelation rel,
@@ -62,6 +67,19 @@ struct PredictionAA : public LoopAA // Not a pass!
 
 private:
   PredictionSpeculation *predspec;
+
+  std::unordered_set<const Value *> predictableMemLocs;
+  std::unordered_set<const Value *> nonPredictableMemLocs;
+  std::unordered_map<const Value *, const Value *>
+      mustAliasWithPredictableMemLocMap;
+
+  bool mustAliasFast(const Value *ptr1, const Value *ptr2,
+                     const DataLayout &DL);
+
+  bool mustAlias(const Value *ptr1, const Value *ptr2);
+
+  bool isPredictablePtr(const Value *ptr, const DataLayout &DL);
+
 };
 
 
