@@ -1,0 +1,293 @@
+#define DEBUG_TYPE "experiment1"
+
+#include "llvm/Pass.h"
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/Support/FileSystem.h"
+
+#include "liberty/Analysis/LoopAA.h"
+#include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Analysis/TXIOAA.h"
+//#include "liberty/Analysis/CommutativeLibsAA.h"
+//#include "liberty/Analysis/CommutativeGuessAA.h"
+#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/LoopProf/Targets.h"
+#include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Utilities/MakePtr.h"
+
+#include "Exp.h"
+//#include "RoI.h"
+#include "Exp_PDG_NoTiming.h"
+#include "Exp_DAGSCC_NoTiming.h"
+#include "liberty/Orchestration/SmtxAA.h"
+
+namespace liberty
+{
+namespace SpecPriv
+{
+namespace FastDagSccExperiment
+{
+using namespace llvm;
+
+struct Exp_CGO20_Exhaustive : public ModulePass
+{
+  static char ID;
+  Exp_CGO20_Exhaustive() : ModulePass(ID) {}
+
+  StringRef getPassName() const { return "Timing-insensitive metrics; dumb"; }
+
+  void getAnalysisUsage(AnalysisUsage &au) const
+  {
+    au.addRequired< TargetLibraryInfoWrapperPass >();
+    au.addRequired< ModuleLoops >();
+    au.addRequired< LoopAA >();
+    au.addRequired< Targets >();
+    if( UseCntrSpec )
+      au.addRequired< ProfileGuidedControlSpeculator >();
+    if ( UseValuePred )
+      au.addRequired< ProfileGuidedPredictionSpeculator >();
+    if( UseOracle )
+      au.addRequired< SmtxSpeculationManager >();
+    au.setPreservesAll();
+  }
+
+  bool runOnModule(Module &mod)
+  {
+    countCyclesPerSecond();
+    ModuleLoops &mloops = getAnalysis< ModuleLoops >();
+    Targets &targets = getAnalysis< Targets >();
+
+    std::error_code ec;
+    raw_fd_ostream fout("cgo20-exhaustive-notiming.out", ec, sys::fs::F_RW);
+
+    fout << "# BOF\n";
+    fout << "$result ||= {}\n";
+    fout << "$result['" << BenchName << "'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") <<"'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") <<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") << "'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "'] ||= {}\n";
+
+    SmtxAA *smtxaa = 0;
+    EdgeCountOracle *edgeaa = 0;
+    PredictionAA *predaa = 0;
+    ControlSpeculation *ctrlspec;
+    PredictionSpeculation *predspec;
+    TXIOAA txioaa;
+    //CommutativeLibs commlibsaa;
+    //CommutativeGuess commguessaa;
+
+    const DataLayout& DL = mod.getDataLayout();
+
+    if( UseOracle )
+    {
+      SmtxSpeculationManager &smtxMan = getAnalysis< SmtxSpeculationManager >();
+      smtxaa = new SmtxAA(&smtxMan);
+      smtxaa->InitializeLoopAA(this, DL);
+    }
+
+    if ( UseCntrSpec )
+    {
+      ctrlspec =
+          getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+      edgeaa = new EdgeCountOracle(ctrlspec);
+      edgeaa->InitializeLoopAA(this, DL);
+    }
+
+    if ( UseValuePred )
+    {
+      predspec = getAnalysis<ProfileGuidedPredictionSpeculator>()
+                     .getPredictionSpecPtr();
+      predaa = new PredictionAA(predspec);
+      predaa->InitializeLoopAA(this, DL);
+    }
+
+    if ( UseTXIO )
+      txioaa.InitializeLoopAA(this, DL);
+
+    /*
+    if ( UseCommLibs )
+      commlibsaa.InitializeLoopAA(this, DL);
+
+    if ( UseCommGuess )
+      commguessaa.InitializeLoopAA(this, DL);
+    */
+
+    for(Targets::iterator i=targets.begin(mloops), e=targets.end(mloops); i!=e; ++i)
+      runOnLoop(fout, *i, ctrlspec, predspec);
+
+
+    if( UseOracle )
+      delete smtxaa;
+
+    if ( UseCntrSpec )
+      delete edgeaa;
+
+    if ( UseValuePred )
+      delete predaa;
+
+    fout << "# EOF\n";
+    fout.flush();
+    return false;
+  }
+
+private:
+
+  void runOnLoop(raw_ostream &fout, Loop *loop, ControlSpeculation *ctrlspec, PredictionSpeculation *predspec)
+  {
+    BasicBlock *header = loop->getHeader();
+    Function *fcn = header->getParent();
+
+    Twine nameT = Twine(fcn->getName()) + " :: " + header->getName();
+    std::string name = nameT.str();
+    errs() << "Working on " << name << "\n";
+
+    NoControlSpeculation noctrlspec;
+    NoPredictionSpeculation nopredspec;
+
+    if ( UseCntrSpec )
+      ctrlspec->setLoopOfInterest(loop->getHeader());
+    else
+      ctrlspec = &noctrlspec;
+
+    if ( !UseValuePred )
+      predspec = &nopredspec;
+
+    LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+    aa->stackHasChanged();
+
+    Vertices V(loop);
+
+    aa->dump();
+
+    std::string prefix = "$result['" + BenchName + "']['" + OptLevel + "']['"+AADesc+"']['"+(UseOracle?"ORACLE":"No ORACLE")+"']['"+ (HideContext ? "No Context" : "Contextualized")+"']['" + name + "']['Exhaustive']";
+
+/*
+    bool mustRunAgainForNumQueries = false;
+*/
+    {
+      Exp_PDG_NoTiming pdg(V,*ctrlspec,*predspec,aa->getDataLayout());
+      pdg.setAA(aa);
+      Exp_SCCs_NoTiming sccs(pdg);
+
+      bool success = Exp_SCCs_NoTiming::computeDagScc_Dumb(pdg,sccs);
+
+      fout << "$result['" << BenchName << "']['"<< OptLevel <<"']['"<<AADesc<<"']['"<<(UseOracle?"ORACLE":"No ORACLE")<<"']['"<<(HideContext ? "No Context" : "Contextualized")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC")<< "']['" << (UseValuePred?"VALUE_PRED":"No VALUE_PRED")<< "']['" << name << "'] ||= {}\n";
+      fout << prefix << " ||= {}\n";
+
+      if( sccs.abortTimeout )
+        fout << prefix << "['result'] = 'abort-timeout'\n";
+      else if( success )
+        fout << prefix << "['result'] = 'ok'\n";
+      else
+        fout << prefix << "['result'] = 'bail-out'\n";
+      fout << prefix << "['numV'] = " << pdg.numVertices() << '\n';
+      fout << prefix << "['numE'] = " << pdg.getE().size() << '\n';
+      fout << prefix << "['numSCCs'] = " << sccs.size() << '\n';
+      fout << prefix << "['numComputeSCCs'] = " << sccs.numRecomputeSCCs << '\n';
+      fout << prefix << "['nameQueriesSavedByRegCtrl'] = " << pdg.numQueriesSavedBecauseRedundantRegCtrl << '\n';
+
+/*
+      if( sccs.abortTimeout )
+        mustRunAgainForNumQueries = true;
+      else
+*/
+      {
+        fout << prefix << "['numQueries'] = " << pdg.numQueries << '\n';
+        fout << prefix << "['numNoModRefQueries'] = " << pdg.numNoModRefQueries << '\n';
+        fout << prefix << "['numDepQueries'] = " << pdg.numDepQueries << '\n';
+        fout << prefix << "['numPositiveDepQueries'] = " << pdg.numPositiveDepQueries << '\n';
+
+        // Only compute backedge density if we didn't time-out and if we have
+        // more than one SCC
+        if( sccs.size() > 1 )
+        {
+          /* Disabled for now...
+          unsigned numEdges=0, numMemEdges=0, numPositions=0;
+          computeBackedgeDensity(pdg,sccs, numEdges, numMemEdges, numPositions);
+          assert( numPositions > 0 );
+
+          const float allBackEdgeDensity = numEdges / (float) numPositions;
+          const float memBackEdgeDensity = numMemEdges / (float) numPositions;
+
+          fout << prefix << "['allBackEdgeDensity'] = " << allBackEdgeDensity << '\n';
+          fout << prefix << "['memBackEdgeDensity'] = " << memBackEdgeDensity << '\n';
+          */
+        }
+      }
+    }
+
+/*
+    // We want an accurate count of num queries even if construction would time-out
+    if( mustRunAgainForNumQueries )
+    {
+      errs() << "Must run again for num queries\n";
+      Exp_PDG_NoTiming pdg(V,ctrlspec,predspec,aa->getDataLayout());
+      pdg.setAA(aa);
+      Exp_SCCs_NoTiming sccs(pdg);
+
+      Exp_SCCs_NoTiming::computeDagScc_Dumb_OnlyCountNumQueries(pdg,sccs);
+      fout << prefix << "['numQueries'] = " << pdg.numQueries << '\n';
+      fout << prefix << "['numNoModRefQueries'] = " << pdg.numNoModRefQueries << '\n';
+      fout << prefix << "['numDepQueries'] = " << pdg.numDepQueries << '\n';
+      fout << prefix << "['numPositiveDepQueries'] = " << pdg.numPositiveDepQueries << '\n';
+    }
+*/
+  }
+
+  void computeBackedgeDensity(const Exp_PDG_NoTiming &pdg, const Exp_SCCs_NoTiming &sccs, unsigned &numEdges, unsigned &numMemEdges, unsigned &numPositions) const
+  {
+    // Foreach SCC
+    for(unsigned i=0, N=sccs.size(); i<N; ++i)
+    {
+      // List is in REVERSE top-order
+      const Exp_SCCs_NoTiming::SCC &late = sccs.get(i);
+
+      for(unsigned j=i+1; j<N; ++j)
+      {
+        // List is in REVERSE top-order
+        const Exp_SCCs_NoTiming::SCC &early = sccs.get(j);
+
+        countBackEdges(pdg, early, late, numEdges, numMemEdges, numPositions);
+      }
+    }
+
+  }
+
+  void countBackEdges(const Exp_PDG_NoTiming &pdg, const Exp_SCCs_NoTiming::SCC &early, const Exp_SCCs_NoTiming::SCC &late, unsigned &numEdges, unsigned &numMemEdges, unsigned &numPositions) const
+  {
+    const PartialEdgeSet &edgeset = pdg.getE();
+
+    for(unsigned i=0, N=early.size(); i<N; ++i)
+    {
+      Vertices::ID ve = early[i];
+
+      for(unsigned j=0, M=late.size(); j<M; ++j)
+      {
+        Vertices::ID vl = late[j];
+
+
+        const PartialEdge &edge = edgeset.find(vl,ve);
+
+        // Is there an edge?
+        ++numPositions;
+        if( edge.ii_reg || edge.ii_ctrl || edge.ii_mem
+        ||  edge.lc_reg || edge.lc_ctrl || edge.lc_mem )
+          ++numEdges;
+
+        // Is there a memory edge?
+        if( edge.ii_mem || edge.lc_mem )
+          ++numMemEdges;
+      }
+    }
+  }
+};
+
+char Exp_CGO20_Exhaustive::ID = 0;
+static RegisterPass<Exp_CGO20_Exhaustive> xxx("cgo20-exhaustive", "Experiment: timing-insensitive metrics, dumb method");
+}
+}
+}
