@@ -1794,7 +1794,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
 
 static RegisterPass<KillFlow_CtrlSpecAware>
-X("kill-flow-aa", "Reasons about operations which kill data flow between loop iterations.");
+X("kill-flow-ctrl-spec-aa", "Reasons about operations which kill data flow between loop iterations with ctrl spec awareness");
 static RegisterAnalysisGroup<liberty::LoopAA> Y(X);
 
 char KillFlow_CtrlSpecAware::ID = 0;
