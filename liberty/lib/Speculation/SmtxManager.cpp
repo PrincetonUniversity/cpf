@@ -254,6 +254,7 @@ void SmtxSpeculationManager::contextRenamedViaClone(
   map_assumptions(lcNoFlow, vmap);
 }
 
+/*
 void filter_anti_pipeline(const SmtxSpeculationManager::Assumptions &in, SmtxSpeculationManager::Assumptions &out, const PipelineStrategy &pipeline)
 {
   for(unsigned i=0, N=in.size(); i<N; ++i)
@@ -287,7 +288,6 @@ static void filter_anti_parallel_stage(const SmtxSpeculationManager::Assumptions
 
   }
 }
-
 
 void SmtxSpeculationManager::unspeculate(const Loop *loop, const PipelineStrategy &pipeline)
 {
@@ -325,6 +325,7 @@ void SmtxSpeculationManager::unspeculate(const Loop *loop, const PipelineStrateg
   numUnspeculatedLC += (before_lc-after_lc);
   numUnspeculatedII += (before_ii-after_ii);
 }
+*/
 
 void SmtxSpeculationManager::reset()
 {

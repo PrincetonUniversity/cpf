@@ -4,7 +4,7 @@
 #include "llvm/Pass.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/Speculation/UpdateOnClone.h"
-#include "liberty/Strategy/PipelineStrategy.h"
+//#include "liberty/Strategy/PipelineStrategy.h"
 
 namespace liberty
 {
@@ -65,7 +65,7 @@ struct SmtxSpeculationManager : public ModulePass, public UpdateOnClone
   // edges which are necessary to achieve the given pipeline.  In particular:
   //  - (anti-pipeline) keep those edges from a later stage to an earlier stage.
   //  - (anti-parallel stage) keep those loop-carried edges to/from a parallel stage.
-  void unspeculate(const Loop *loop, const PipelineStrategy &pipeline);
+ // void unspeculate(const Loop *loop, const PipelineStrategy &pipeline);
 
   // update on clone
   virtual void contextRenamedViaClone(
