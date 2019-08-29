@@ -28,6 +28,12 @@ extern cl::opt<bool> UseCommLibs;
 extern cl::opt<bool> UseCommGuess;
 extern cl::opt<bool> UsePureFun;
 extern cl::opt<bool> UseRedux;
+extern cl::opt<bool> UseRO;
+extern cl::opt<bool> UseLocal;
+extern cl::opt<bool> UsePointsTo;
+extern cl::opt<bool> UseOracle;
+extern cl::opt<bool> UsePtrResidue;
+extern cl::opt<bool> UseCAF;
 
 uint64_t countCyclesPerSecond();
 

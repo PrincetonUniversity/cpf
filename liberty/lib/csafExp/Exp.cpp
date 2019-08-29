@@ -34,6 +34,22 @@ cl::opt<bool> UseCntrSpec(
 cl::opt<bool> UseValuePred(
   "use-value-pred", cl::init(false), cl::Hidden,
   cl::desc("Use Value Prediction Remed"));
+cl::opt<bool> UsePointsTo(
+  "use-points-to", cl::init(false), cl::Hidden,
+  cl::desc("Use points-to information"));
+cl::opt<bool> UsePtrResidue(
+  "use-ptr-res", cl::init(false), cl::Hidden,
+  cl::desc("Use pointer residue"));
+cl::opt<bool> UseRO(
+  "use-read-only", cl::init(false), cl::Hidden,
+  cl::desc("Use read only"));
+cl::opt<bool> UseLocal(
+  "use-short-lived", cl::init(false), cl::Hidden,
+  cl::desc("Use short-lived"));
+cl::opt<bool> UseCAF(
+  "use-caf", cl::init(false), cl::Hidden,
+  cl::desc("Use CAF"));
+/*
 cl::opt<bool> UseTXIO(
   "use-txio", cl::init(false), cl::Hidden,
   cl::desc("Use TXIO Remed"));
@@ -49,6 +65,7 @@ cl::opt<bool> UsePureFun(
 cl::opt<bool> UseRedux(
   "use-redux", cl::init(false), cl::Hidden,
   cl::desc("Use scalar reductions"));
+*/
 
 uint64_t rdtsc(void)
 {
