@@ -3,8 +3,8 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 
-#include "liberty/Analysis/CallsiteDepthCombinator.h"
-#include "liberty/Analysis/KillFlow.h"
+#include "liberty/Analysis/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 
@@ -33,16 +33,16 @@ namespace liberty
   STATISTIC(numKillAggregateLoad,         "Num flows killed: load from killed aggregate");
   STATISTIC(numKillAggregateStore,        "Num flows killed: store to killed aggregate");
 
-  bool CallsiteDepthCombinator::runOnModule(Module &mod)
+  bool CallsiteDepthCombinator_CtrlSpecAware::runOnModule(Module &mod)
   {
     const DataLayout &DL = mod.getDataLayout();
     InitializeLoopAA(this, DL);
 
-    killflow = getAnalysisIfAvailable< KillFlow >();
+    killflow = getAnalysisIfAvailable< KillFlow_CtrlSpecAware >();
     if( !killflow )
     {
-      errs() << "KillFlow not available, creating a private instance.\n";
-      killflow = new KillFlow();
+      errs() << "KillFlow_CtrlSpecAware not available, creating a private instance.\n";
+      killflow = new KillFlow_CtrlSpecAware();
       killflow->setEffectiveNextAA( getNextAA() );
       killflow->setEffectiveTopAA( getTopAA() );
       killflow->setModuleLoops( & getAnalysis< ModuleLoops >() );
@@ -53,7 +53,7 @@ namespace liberty
     return false;
   }
 
-  bool CallsiteDepthCombinator::isEligible(const Instruction *i) const
+  bool CallsiteDepthCombinator_CtrlSpecAware::isEligible(const Instruction *i) const
   {
     CallSite cs = getCallSite(i);
     if( !cs.getInstruction() )
@@ -69,21 +69,21 @@ namespace liberty
     return true;
   }
 
-  void CallsiteDepthCombinator::getAnalysisUsage(AnalysisUsage &AU) const
+  void CallsiteDepthCombinator_CtrlSpecAware::getAnalysisUsage(AnalysisUsage &AU) const
   {
     LoopAA::getAnalysisUsage(AU);
     AU.addRequired< ModuleLoops >();
     //AU.addRequired< DominatorTreeWrapperPass >();
     //AU.addRequired< PostDominatorTreeWrapperPass >();
     //AU.addRequired< LoopInfoWrapperPass >();
-//    AU.addRequired< KillFlow >();
+//    AU.addRequired< KillFlow_CtrlSpecAware >();
     AU.setPreservesAll();        // Does not transform code
   }
 
-  static const Instruction *getToplevelInst(const CtxInst &ci)
+  static const Instruction *getToplevelInst(const CtxInst_CtrlSpecAware &ci)
   {
     const Instruction *inst = ci.getInst();
-    for(const CallsiteContext *ctx = ci.getContext().front(); ctx; ctx=ctx->getParent() )
+    for(const CallsiteContext_CtrlSpecAware *ctx = ci.getContext().front(); ctx; ctx=ctx->getParent() )
       inst = ctx->getLocationWithinParent();
 
     return inst;
@@ -92,8 +92,8 @@ namespace liberty
   /// Determine if it is possible for a store
   /// 'src' to flow to a load 'dst' across
   /// the backedge of L.
-  bool CallsiteDepthCombinator::mayFlowCrossIter(
-    const CtxInst &write, const CtxInst &read, const Loop *L, KillFlow &kill,
+  bool CallsiteDepthCombinator_CtrlSpecAware::mayFlowCrossIter(
+    const CtxInst_CtrlSpecAware &write, const CtxInst_CtrlSpecAware &read, const Loop *L, KillFlow_CtrlSpecAware &kill,
     time_t queryStart, unsigned Timeout)
   {
     const Instruction *src = getToplevelInst(write),
@@ -102,13 +102,13 @@ namespace liberty
     return mayFlowCrossIter(kill,src,dst,L,write,read,queryStart,Timeout);
   }
 
-  bool CallsiteDepthCombinator::mayFlowCrossIter(
-    KillFlow &kill,
+  bool CallsiteDepthCombinator_CtrlSpecAware::mayFlowCrossIter(
+    KillFlow_CtrlSpecAware &kill,
     const Instruction *src,
     const Instruction *dst,
     const Loop *L,
-    const CtxInst &write,
-    const CtxInst &read,
+    const CtxInst_CtrlSpecAware &write,
+    const CtxInst_CtrlSpecAware &read,
     time_t queryStart,unsigned Timeout)
   {
     ++numFlowTests;
@@ -249,13 +249,13 @@ namespace liberty
     return true;
   }
 
-  bool CallsiteDepthCombinator::mayFlowIntraIter(
-    KillFlow &kill,
+  bool CallsiteDepthCombinator_CtrlSpecAware::mayFlowIntraIter(
+    KillFlow_CtrlSpecAware &kill,
     const Instruction *src,
     const Instruction *dst,
     const Loop *L,
-    const CtxInst &write,
-    const CtxInst &read)
+    const CtxInst_CtrlSpecAware &write,
+    const CtxInst_CtrlSpecAware &read)
   {
     ++numFlowTests;
 
@@ -375,25 +375,25 @@ namespace liberty
     return true;
   }
 
-  bool CallsiteDepthCombinator::doFlowSearchCrossIter(
+  bool CallsiteDepthCombinator_CtrlSpecAware::doFlowSearchCrossIter(
     const Instruction *src,
     const Instruction *dst,
     const Loop *L,
-    KillFlow &kill,
+    KillFlow_CtrlSpecAware &kill,
     CCPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout)
   {
 
-    ReverseStoreSearch writes(src,kill,queryStart,Timeout);
+    ReverseStoreSearch_CtrlSpecAware writes(src,kill,queryStart,Timeout);
     INTROSPECT(
       errs() << "LiveOuts {\n";
       // List all live-outs and live-ins.
       // This is really inefficient; a normal
       // query enumerates only as many as are necessary
       // before it witnesses a flow.
-      for(InstSearch::iterator i=writes.begin(), e=writes.end(); i!=e; ++i)
+      for(InstSearch_CtrlSpecAware::iterator i=writes.begin(), e=writes.end(); i!=e; ++i)
       {
-        const CtxInst &write = *i;
+        const CtxInst_CtrlSpecAware &write = *i;
         errs() << "LiveOut(" << *src << ") write: " << write << '\n';
       }
       errs() << "}\n";
@@ -402,22 +402,22 @@ namespace liberty
     return doFlowSearchCrossIter(src,dst,L, writes,kill,allFlowsOut,queryStart, Timeout);
   }
 
-  bool CallsiteDepthCombinator::doFlowSearchCrossIter(
+  bool CallsiteDepthCombinator_CtrlSpecAware::doFlowSearchCrossIter(
     const Instruction *src,
     const Instruction *dst,
     const Loop *L,
-    InstSearch &writes,
-    KillFlow &kill,
+    InstSearch_CtrlSpecAware &writes,
+    KillFlow_CtrlSpecAware &kill,
     CCPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout)
   {
-    ForwardLoadSearch reads(dst,kill,queryStart,Timeout);
+    ForwardLoadSearch_CtrlSpecAware reads(dst,kill,queryStart,Timeout);
     INTROSPECT(
       errs() << "LiveIns {\n";
 
-      for(InstSearch::iterator j=reads.begin(), f=reads.end(); j!=f; ++j)
+      for(InstSearch_CtrlSpecAware::iterator j=reads.begin(), f=reads.end(); j!=f; ++j)
       {
-        const CtxInst &read = *j;
+        const CtxInst_CtrlSpecAware &read = *j;
         errs() << "LiveIn(" << *dst << ") read: " << read << '\n';
       }
 
@@ -427,13 +427,13 @@ namespace liberty
     return doFlowSearchCrossIter(src,dst,L, writes,reads, kill,allFlowsOut,queryStart, Timeout);
   }
 
-  bool CallsiteDepthCombinator::doFlowSearchCrossIter(
+  bool CallsiteDepthCombinator_CtrlSpecAware::doFlowSearchCrossIter(
     const Instruction *src,
     const Instruction *dst,
     const Loop *L,
-    InstSearch &writes,
-    InstSearch &reads,
-    KillFlow &kill,
+    InstSearch_CtrlSpecAware &writes,
+    InstSearch_CtrlSpecAware &reads,
+    KillFlow_CtrlSpecAware &kill,
     CCPairs *allFlowsOut,
     time_t queryStart,
     unsigned Timeout)
@@ -442,14 +442,14 @@ namespace liberty
     bool isFlow = false;
 
     // Not yet in cache.  Look it up.
-    for(InstSearch::iterator i=writes.begin(), e=writes.end(); i!=e; ++i)
+    for(InstSearch_CtrlSpecAware::iterator i=writes.begin(), e=writes.end(); i!=e; ++i)
     {
-      const CtxInst &write = *i;
+      const CtxInst_CtrlSpecAware &write = *i;
 //        errs() << "Write: " << write << '\n';
 
-      for(InstSearch::iterator j=reads.begin(), f=reads.end(); j!=f; ++j)
+      for(InstSearch_CtrlSpecAware::iterator j=reads.begin(), f=reads.end(); j!=f; ++j)
       {
-        const CtxInst &read = *j;
+        const CtxInst_CtrlSpecAware &read = *j;
 //          errs() << "  Read: " << read << '\n';
 
         if(Timeout > 0 && queryStart > 0)
@@ -467,8 +467,8 @@ namespace liberty
           continue;
 
         // TODO
-        // Is there some way that the ReverseStoreSearch
-        // and ForwardLoadSearch can (i) first, return
+        // Is there some way that the ReverseStoreSearch_CtrlSpecAware
+        // and ForwardLoadSearch_CtrlSpecAware can (i) first, return
         // unexpanded callsites, and (ii) allow this loop
         // to ask them to expand those callsites, if
         // necessary, but (iii) Leave those callsites
@@ -498,7 +498,7 @@ namespace liberty
     return isFlow;
   }
 
-  LoopAA::ModRefResult CallsiteDepthCombinator::modref(
+  LoopAA::ModRefResult CallsiteDepthCombinator_CtrlSpecAware::modref(
     const Instruction *inst1,
     TemporalRelation Rel,
     const Instruction *inst2,
@@ -613,7 +613,7 @@ namespace liberty
     return result;
   }
 
-  LoopAA::ModRefResult CallsiteDepthCombinator::modref(
+  LoopAA::ModRefResult CallsiteDepthCombinator_CtrlSpecAware::modref(
     const Instruction *i1,
     TemporalRelation Rel,
     const Value *p2,
@@ -637,10 +637,10 @@ namespace liberty
     return result;
   }
 
-  char CallsiteDepthCombinator::ID = 0;
+  char CallsiteDepthCombinator_CtrlSpecAware::ID = 0;
 
-  static RegisterPass<CallsiteDepthCombinator>
-  XX("callsite-depth-combinator-aa", "Alias analysis with deep inspection of callsites", false, true);
+  static RegisterPass<CallsiteDepthCombinator_CtrlSpecAware>
+  XX("callsite-depth-combinator-ctrl-spec-aa", "Alias analysis with deep inspection of callsites with ctrl spec awareness", false, true);
   static RegisterAnalysisGroup<liberty::LoopAA> Y(XX);
 
 
