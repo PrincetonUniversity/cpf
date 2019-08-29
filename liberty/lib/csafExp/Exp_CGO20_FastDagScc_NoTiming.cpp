@@ -11,6 +11,11 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/PredictionSpeculation.h"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/PtrResidueAA.h"
+#include "liberty/Orchestration/ReadOnlyAA.h"
+#include "liberty/Orchestration/ShortLivedAA.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/MakePtr.h"
@@ -19,7 +24,6 @@
 //#include "RoI.h"
 #include "Exp_PDG_NoTiming.h"
 #include "Exp_DAGSCC_NoTiming.h"
-#include "liberty/Orchestration/SmtxAA.h"
 
 namespace liberty
 {
