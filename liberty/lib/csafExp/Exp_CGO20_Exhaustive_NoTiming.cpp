@@ -4,9 +4,11 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Support/FileSystem.h"
 
-#include "liberty/Analysis/LoopAA.h"
+#include "liberty/Analysis/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
+#include "liberty/Analysis/LoopAA.h"
 //#include "liberty/Analysis/TXIOAA.h"
 //#include "liberty/Analysis/CommutativeLibsAA.h"
 //#include "liberty/Analysis/CommutativeGuessAA.h"
@@ -17,7 +19,9 @@
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Orchestration/ShortLivedAA.h"
 #include "liberty/Orchestration/SmtxAA.h"
+#include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Speculation/Read.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/MakePtr.h"
 
@@ -53,6 +57,16 @@ struct Exp_CGO20_Exhaustive : public ModulePass
       au.addRequired< ProfileGuidedPredictionSpeculator >();
     if( UseOracle )
       au.addRequired< SmtxSpeculationManager >();
+    if( UsePtrResidue )
+      au.addRequired< PtrResidueSpeculationManager >();
+    if (UsePointsTo || UseRO || UseLocal) {
+      au.addRequired<ReadPass>();
+      au.addRequired<Classify>();
+    }
+    if (UseCntrSpec && UseCAF) {
+      au.addRequired<KillFlow_CtrlSpecAware>();
+      au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+    }
     au.setPreservesAll();
   }
 
@@ -80,6 +94,11 @@ struct Exp_CGO20_Exhaustive : public ModulePass
     PredictionAA *predaa = 0;
     ControlSpeculation *ctrlspec;
     PredictionSpeculation *predspec;
+    PtrResidueAA *ptrresaa = 0;
+    PointsToAA *pointstoaa = 0;
+    //ReadOnlyAA *roaa = 0;
+    //ShortLivedAA *localaa = 0;
+
     //TXIOAA txioaa;
     //CommutativeLibs commlibsaa;
     //CommutativeGuess commguessaa;
@@ -109,6 +128,39 @@ struct Exp_CGO20_Exhaustive : public ModulePass
       predaa->InitializeLoopAA(this, DL);
     }
 
+    if ( UsePtrResidue )
+    {
+      PtrResidueSpeculationManager &ptrresMan = getAnalysis<PtrResidueSpeculationManager>();
+      ptrresaa = new PtrResidueAA(DL, ptrresMan);
+      ptrresaa->InitializeLoopAA(this, DL);
+    }
+
+    Read *spresults;
+    Classify *classify;
+
+    if ( UsePointsTo || UseRO || UseLocal)
+    {
+      spresults = &getAnalysis< ReadPass >().getProfileInfo();
+
+      if (UsePointsTo) {
+        pointstoaa = new PointsToAA(*spresults);
+        pointstoaa->InitializeLoopAA(this, DL);
+      }
+    }
+
+    if ( UseRO || UseLocal )
+    {
+      classify = &getAnalysis< Classify >();
+    }
+
+    KillFlow_CtrlSpecAware *killflow_aware;
+    CallsiteDepthCombinator_CtrlSpecAware *callsite_aware;
+    if (UseCntrSpec && UseCAF)
+    {
+      killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>();
+      callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+    }
+
     /*
     if ( UseTXIO )
       txioaa.InitializeLoopAA(this, DL);
@@ -121,7 +173,7 @@ struct Exp_CGO20_Exhaustive : public ModulePass
     */
 
     for(Targets::iterator i=targets.begin(mloops), e=targets.end(mloops); i!=e; ++i)
-      runOnLoop(fout, *i, ctrlspec, predspec);
+      runOnLoop(fout, *i, ctrlspec, predspec, spresults, classify, DL, predaa, killflow_aware, callsite_aware);
 
 
     if( UseOracle )
@@ -133,6 +185,12 @@ struct Exp_CGO20_Exhaustive : public ModulePass
     if ( UseValuePred )
       delete predaa;
 
+    if ( UsePtrResidue )
+      delete ptrresaa;
+
+    if ( UsePointsTo )
+      delete pointstoaa;
+
     fout << "# EOF\n";
     fout.flush();
     return false;
@@ -140,7 +198,7 @@ struct Exp_CGO20_Exhaustive : public ModulePass
 
 private:
 
-  void runOnLoop(raw_ostream &fout, Loop *loop, ControlSpeculation *ctrlspec, PredictionSpeculation *predspec)
+  void runOnLoop(raw_ostream &fout, Loop *loop, ControlSpeculation *ctrlspec, PredictionSpeculation *predspec, Read *spresults, Classify *classify, const DataLayout &DL, PredictionAA *predaa, KillFlow_CtrlSpecAware *killflow_aware, CallsiteDepthCombinator_CtrlSpecAware *callsite_aware)
   {
     BasicBlock *header = loop->getHeader();
     Function *fcn = header->getParent();
@@ -158,7 +216,34 @@ private:
       ctrlspec = &noctrlspec;
 
     if ( !UseValuePred )
+      predaa->setLoopOfInterest(loop);
+    else
       predspec = &nopredspec;
+
+    ReadOnlyAA *roaa = 0;
+    ShortLivedAA *localaa = 0;
+
+    if (UseRO || UseLocal) {
+      const HeapAssignment &asgn = classify->getAssignmentFor(loop);
+      // maybe need to check asgn.isValidFor(loop)
+      const Ctx *ctx = spresults->getCtx(loop);
+
+      if (UseRO) {
+        roaa = new ReadOnlyAA(*spresults, asgn, ctx);
+        roaa->InitializeLoopAA(this, DL);
+      }
+      if (UseLocal) {
+        localaa = new ShortLivedAA(*spresults, asgn, ctx);
+        localaa->InitializeLoopAA(this, DL);
+      }
+    }
+
+    if (UseCntrSpec && UseCAF) {
+      killflow_aware->setLoopOfInterest(loop);
+      callsite_aware->setLoopOfInterest(loop);
+    }
+
+    //TODO: add setLoopOfInterest for the rest
 
     LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
     aa->stackHasChanged();
@@ -240,6 +325,12 @@ private:
       fout << prefix << "['numPositiveDepQueries'] = " << pdg.numPositiveDepQueries << '\n';
     }
 */
+
+    if ( UseRO )
+      delete roaa;
+
+    if ( UseLocal )
+      delete localaa;
   }
 
   void computeBackedgeDensity(const Exp_PDG_NoTiming &pdg, const Exp_SCCs_NoTiming &sccs, unsigned &numEdges, unsigned &numMemEdges, unsigned &numPositions) const
