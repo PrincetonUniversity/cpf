@@ -129,7 +129,9 @@ using namespace SpecPriv;
       tgtLoop = L;
     }
 
-    StringRef getLoopAAName() const { return "kill-flow-aa"; }
+    virtual SchedulingPreference getSchedulingPreference() const { return SchedulingPreference( Low - 1 ); }
+
+    StringRef getLoopAAName() const { return "kill-flow-ctrl-spec-aa"; }
 
     void getAnalysisUsage(AnalysisUsage &AU) const
     {

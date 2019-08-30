@@ -40,10 +40,9 @@ struct EdgeCountOracle : public LoopAA // Not a pass!
     const Instruction *B,
     const Loop *L);
 
-    LoopAA::SchedulingPreference getSchedulingPreference() const
-    {
-      return SchedulingPreference(Low - 1);
-    }
+  LoopAA::SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Low);
+  }
 
 private:
   ControlSpeculation *speculator;

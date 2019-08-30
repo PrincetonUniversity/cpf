@@ -23,6 +23,10 @@ struct ReadOnlyAA : public LoopAA // Not a pass!
       : LoopAA(), read(rd), asgn(ha), ctx(cx) {}
       //: ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
+  virtual SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Bottom + 4);
+  }
+
   StringRef getLoopAAName() const { return "spec-priv-read-only-aa"; }
 
    LoopAA::AliasResult alias(

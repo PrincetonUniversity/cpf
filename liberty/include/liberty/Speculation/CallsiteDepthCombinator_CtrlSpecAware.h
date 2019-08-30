@@ -52,8 +52,8 @@ namespace liberty
 
     virtual bool runOnModule(Module &M);
 
-    virtual SchedulingPreference getSchedulingPreference() const { return SchedulingPreference( Normal - 1 ); }
-    StringRef getLoopAAName() const { return "callsite-depth-combinator-aa"; }
+    virtual SchedulingPreference getSchedulingPreference() const { return SchedulingPreference( Low - 2 ); }
+    StringRef getLoopAAName() const { return "callsite-depth-combinator-ctrl-spec-aa"; }
 
     void getAnalysisUsage(AnalysisUsage &AU) const;
 

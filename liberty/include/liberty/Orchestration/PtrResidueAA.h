@@ -24,6 +24,10 @@ struct PtrResidueAA : public LoopAA // Not a pass!
   PtrResidueAA(const DataLayout &TD, PtrResidueSpeculationManager &man)
     : LoopAA(), td(TD), manager(man) {}
 
+  virtual SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Low - 4);
+  }
+
   StringRef getLoopAAName() const { return "spec-priv-ptr-residue-aa"; }
 
   virtual AliasResult alias(
