@@ -20,6 +20,10 @@ struct ShortLivedAA : public ClassicLoopAA // Not a pass!
   ShortLivedAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
       : ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
+  virtual SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Bottom + 5);
+  }
+
   StringRef getLoopAAName() const { return "spec-priv-local-aa"; }
 
   virtual AliasResult aliasCheck(

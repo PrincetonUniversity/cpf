@@ -17,6 +17,10 @@ struct SmtxAA : public LoopAA // Not a pass!
 {
     SmtxAA(SmtxSpeculationManager *man) : LoopAA(), smtxMan(man) {}
 
+    virtual SchedulingPreference getSchedulingPreference() const {
+      return SchedulingPreference(Bottom);
+    }
+
     StringRef getLoopAAName() const { return "smtx-aa"; }
 
     AliasResult alias(

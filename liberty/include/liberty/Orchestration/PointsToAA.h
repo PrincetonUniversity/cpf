@@ -18,6 +18,10 @@ struct PointsToAA : public ClassicLoopAA // Not a pass!
 {
   PointsToAA(const Read &rd) : ClassicLoopAA(), read(rd) {}
 
+  virtual SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Bottom + 1);
+  }
+
   StringRef getLoopAAName() const { return "spec-priv-points-to-oracle-aa"; }
 
   virtual AliasResult aliasCheck(

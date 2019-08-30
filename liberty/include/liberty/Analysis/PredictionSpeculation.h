@@ -62,7 +62,7 @@ struct PredictionAA : public LoopAA // Not a pass!
 
     LoopAA::SchedulingPreference getSchedulingPreference() const
     {
-      return SchedulingPreference(Low);
+      return SchedulingPreference(Low - 3);
     }
 
 private:
