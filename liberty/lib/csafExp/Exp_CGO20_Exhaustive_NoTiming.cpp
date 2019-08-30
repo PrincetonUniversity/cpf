@@ -239,8 +239,8 @@ private:
     }
 
     if (UseCntrSpec && UseCAF) {
-      killflow_aware->setLoopOfInterest(loop);
-      callsite_aware->setLoopOfInterest(loop);
+      killflow_aware->setLoopOfInterest(ctrlspec, loop);
+      callsite_aware->setLoopOfInterest(ctrlspec, loop);
     }
 
     //TODO: add setLoopOfInterest for the rest
