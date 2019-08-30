@@ -83,17 +83,17 @@ struct Exp_CGO20_Exhaustive : public ModulePass
     fout << "$result ||= {}\n";
     fout << "$result['" << BenchName << "'] ||= {}\n";
     fout << "$result['" << BenchName << "']['" << OptLevel << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") <<"'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") <<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << (UseRO ? "READ_ONLY" : "No READ_ONLY") << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << (UseRO ? "READ_ONLY" : "No READ_ONLY") << (UseLocal ? "USE_LOCAL" : "No USE_LOCAL") << "'] ||= {}\n";
-    fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << (UseRO ? "READ_ONLY" : "No READ_ONLY") << (UseLocal ? "USE_LOCAL" : "No USE_LOCAL") << (UseCAF ? "CAF" : "No CAF") << "'] ||= {}\n";
-    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['"<< (HideContext ? "No Context" : "Contextualized") << "']['"<< (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") << "'] ||= {}\n"; */
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive'] ||= {}\n";
+    fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "'] ||= {}\n";
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") << "'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "']['" << (UseRO ? "READ_ONLY" : "No READ_ONLY") << "'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "']['" << (UseRO ? "READ_ONLY" : "No READ_ONLY") << "']['" << (UseLocal ? "USE_LOCAL" : "No USE_LOCAL") << "'] ||= {}\n"; */
+    /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "']['" << (UseRO ? "READ_ONLY" : "No READ_ONLY") << "']['" << (UseLocal ? "USE_LOCAL" : "No USE_LOCAL") << "']['" << (UseCAF ? "CAF" : "No CAF") << "'] ||= {}\n"; */
 
     SmtxAA *smtxaa = 0;
     EdgeCountOracle *edgeaa = 0;
@@ -256,7 +256,8 @@ private:
 
     aa->dump();
 
-    std::string prefix = "$result['" + BenchName + "']['" + OptLevel + "']['"+AADesc+"']['"+(UseOracle?"ORACLE":"No ORACLE")+"']['"+ (HideContext ? "No Context" : "Contextualized")+"']['" + name + "']['Exhaustive']";
+    /* std::string prefix = "$result['" + BenchName + "']['" + OptLevel + "']['" + AADesc + "']['" + (UseOracle ? "ORACLE" : "No ORACLE") + "']['" + name + "']['Exhaustive']"; */
+    std::string prefix = "$result['" + BenchName + "']['" + OptLevel + "']['Exhaustive']['" + AADesc + "']['" + name + "']"; // don't need all the stuff since we can infer it from AADesc
 
 /*
     bool mustRunAgainForNumQueries = false;
@@ -268,7 +269,8 @@ private:
 
       bool success = Exp_SCCs_NoTiming::computeDagScc_Dumb(pdg,sccs);
 
-      fout << "$result['" << BenchName << "']['"<< OptLevel <<"']['"<<AADesc<<"']['"<<(UseOracle?"ORACLE":"No ORACLE")<<"']['"<<(HideContext ? "No Context" : "Contextualized")<<"']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC")<< "']['" << (UseValuePred?"VALUE_PRED":"No VALUE_PRED")<< "']['" << name << "'] ||= {}\n";
+      /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<< "']['" << name << "']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "']['" << (UseRO ? "READ_ONLY" : "No READ_ONLY") << "']['" << (UseLocal ? "USE_LOCAL" : "No USE_LOCAL") << "']['" << (UseCAF ? "CAF" : "No CAF") << "'] ||= {}\n"; */
+      /* fout << "$result['" << BenchName << "']['" << OptLevel << "']['Exhaustive']['"<< AADesc << "']['"<< (UseOracle ? "ORACLE" : "No ORACLE")<< "']['" << name << "']['" << (UseCntrSpec?"CNTR_SPEC":"No CNTR_SPEC") <<"']['"<<  (UseValuePred?"VALUE_PRED":"No VALUE_PRED") << "']['" << (UsePtrResidue ? "PTR_RESIDUE" : "No PTR_RESIDUE") << "']['" << (UsePointsTo ? "POINTS_TO" : "No POINTS_TO") << "']['" << (UseRO ? "READ_ONLY" : "No READ_ONLY") << "']['" << (UseLocal ? "USE_LOCAL" : "No USE_LOCAL") << "']['" << (UseCAF ? "CAF" : "No CAF") << "'] ||= {}\n"; */
       fout << prefix << " ||= {}\n";
 
       if( sccs.abortTimeout )
