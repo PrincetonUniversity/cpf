@@ -8,6 +8,7 @@
 #include "liberty/Analysis/EdgeCountOracleAA.h"
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
@@ -69,10 +70,12 @@ struct Exp_CGO20_Exhaustive : public ModulePass
       au.addRequired<KillFlow_CtrlSpecAware>();
       au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
     }
-    if (((UsePointsTo || UseRO || UseLocal) && !UseCAF) || UseCAF) {
-      au.addRequired<PureFunAA>();
-      au.addRequired<SemiLocalFunAA>();
-    }
+
+    //if (((UsePointsTo || UseRO || UseLocal) && !UseCAF) || UseCAF) {
+    au.addRequired<PureFunAA>();
+    au.addRequired<SemiLocalFunAA>();
+    au.addRequired<KillFlow>();
+    //}
 
     au.setPreservesAll();
   }
@@ -117,13 +120,6 @@ struct Exp_CGO20_Exhaustive : public ModulePass
     //CommutativeGuess commguessaa;
 
     const DataLayout& DL = mod.getDataLayout();
-
-    if (UseCAF) {
-      PureFunAA &pure = getAnalysis<PureFunAA>();
-      SemiLocalFunAA &semi = getAnalysis<SemiLocalFunAA>();
-      pure.enableQueryAnswers();
-      semi.enableQueryAnswers();
-    }
 
     if( UseOracle )
     {
@@ -271,11 +267,14 @@ private:
       callsite_aware->setLoopOfInterest(ctrlspec, loop);
     }
 
-    if ((UsePointsTo || UseRO || UseLocal) && !UseCAF) {
+    //if ((UsePointsTo || UseRO || UseLocal) && !UseCAF) {
+    if (!UseCAF) {
       PureFunAA &pure = getAnalysis<PureFunAA>();
       SemiLocalFunAA &semi = getAnalysis<SemiLocalFunAA>();
+      KillFlow &kill = getAnalysis<KillFlow>();
       pure.disableQueryAnswers();
       semi.disableQueryAnswers();
+      kill.disableQueryAnswers();
     }
 
     LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
@@ -366,6 +365,15 @@ private:
 
     if ( UseLocal )
       delete localaa;
+
+    if (!UseCAF) {
+      PureFunAA &pure = getAnalysis<PureFunAA>();
+      SemiLocalFunAA &semi = getAnalysis<SemiLocalFunAA>();
+      KillFlow &kill = getAnalysis<KillFlow>();
+      pure.enableQueryAnswers();
+      semi.enableQueryAnswers();
+      kill.enableQueryAnswers();
+    }
   }
 
   void computeBackedgeDensity(const Exp_PDG_NoTiming &pdg, const Exp_SCCs_NoTiming &sccs, unsigned &numEdges, unsigned &numMemEdges, unsigned &numPositions) const

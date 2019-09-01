@@ -835,7 +835,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
   KillFlow::KillFlow()
       : ModulePass(ID), fcnKills(), bbKills(), noStoresBetween(), mloops(0),
-        effectiveNextAA(0), effectiveTopAA(0) {}
+        effectiveNextAA(0), effectiveTopAA(0), queryAnswersEnabled(true) {}
 
   KillFlow::~KillFlow() {}
 
@@ -843,6 +843,10 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
                                         LoopAA::TemporalRelation Rel,
                                         const Instruction *i2, const Loop *L,
                                         Remedies &R) {
+
+    if (!queryAnswersEnabled)
+      return ModRef;
+
     INTROSPECT(ENTER(i1,Rel,i2,L));
     ++numQueriesReceived;
 

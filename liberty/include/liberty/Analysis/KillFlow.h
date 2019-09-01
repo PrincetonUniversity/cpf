@@ -46,6 +46,8 @@ namespace liberty
     LoopAA *effectiveNextAA;
     LoopAA *effectiveTopAA;
 
+    bool queryAnswersEnabled;
+
     bool mustAlias(const Value *storeptr, const Value *loadptr);
     bool mustAliasFast(const Value *, const Value *, const DataLayout &DL);
 
@@ -203,8 +205,15 @@ namespace liberty
     const DominatorTree *getDT(const Function *cf);
     ScalarEvolution *getSE(const Function *cf);
     LoopInfo *getLI(const Function *cf);
-  };
 
+    void enableQueryAnswers() {
+      queryAnswersEnabled = true;
+    }
+    void disableQueryAnswers() {
+      queryAnswersEnabled = false;
+    }
+
+  };
 }
 
 #endif // LLVM_LIBERTY_KILL_FLOW_H
