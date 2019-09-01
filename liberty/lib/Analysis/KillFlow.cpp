@@ -844,9 +844,6 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
                                         const Instruction *i2, const Loop *L,
                                         Remedies &R) {
 
-    if (!queryAnswersEnabled)
-      return ModRef;
-
     INTROSPECT(ENTER(i1,Rel,i2,L));
     ++numQueriesReceived;
 
@@ -865,6 +862,12 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       return res;
     }
     */
+
+    if (!queryAnswersEnabled) {
+      res = getEffectiveNextAA()->modref(i1,Rel,i2,L, R);
+      INTROSPECT(EXIT(i1,Rel,i2,L,res));
+      return res;
+    }
 
     /* TODO: For using ModuleLoops, convert the L here to the ModuleLoops L */
     // Since we are now using ModuleLoops and we could have potentially been
