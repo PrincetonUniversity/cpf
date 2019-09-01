@@ -159,7 +159,7 @@ using namespace llvm;
     return false;
   }
 
-  SemiLocalFunAA::SemiLocalFunAA() : ModulePass(ID) {
+  SemiLocalFunAA::SemiLocalFunAA() : ModulePass(ID), queryAnswersEnabled(true) {
     if(!semiLocalFunSet.size()) {
 
       for(int i = 0; !PureFunAA::pureFunNames[i].empty(); ++i) {
