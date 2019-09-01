@@ -262,6 +262,9 @@ using namespace llvm;
 
     Remedies tmpR;
 
+    if (!queryAnswersEnabled)
+      return ModRef;
+
     // If one is local, the other semi-local and if their args do not alias,
 
     // then these two CallSites NoModRef.
@@ -331,6 +334,9 @@ using namespace llvm;
   LoopAA::ModRefResult
   SemiLocalFunAA::getModRefInfo(CallSite CS, TemporalRelation Rel,
                                 const Pointer &P, const Loop *L, Remedies &R) {
+
+    if (!queryAnswersEnabled)
+      return ModRef;
 
     const Value *V = P.ptr;
     const unsigned Size = P.size;

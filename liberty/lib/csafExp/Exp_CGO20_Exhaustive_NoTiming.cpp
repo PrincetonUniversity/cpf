@@ -6,6 +6,8 @@
 
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Analysis/PureFunAA.h"
+#include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
@@ -67,6 +69,11 @@ struct Exp_CGO20_Exhaustive : public ModulePass
       au.addRequired<KillFlow_CtrlSpecAware>();
       au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
     }
+    if (((UsePointsTo || UseRO || UseLocal) && !UseCAF) || UseCAF) {
+      au.addRequired<PureFunAA>();
+      au.addRequired<SemiLocalFunAA>();
+    }
+
     au.setPreservesAll();
   }
 
@@ -110,6 +117,13 @@ struct Exp_CGO20_Exhaustive : public ModulePass
     //CommutativeGuess commguessaa;
 
     const DataLayout& DL = mod.getDataLayout();
+
+    if (UseCAF) {
+      PureFunAA &pure = getAnalysis<PureFunAA>();
+      SemiLocalFunAA &semi = getAnalysis<SemiLocalFunAA>();
+      pure.enableQueryAnswers();
+      semi.enableQueryAnswers();
+    }
 
     if( UseOracle )
     {
@@ -232,6 +246,14 @@ private:
     if (UseRO || UseLocal) {
       const HeapAssignment &asgn = classify->getAssignmentFor(loop);
       // maybe need to check asgn.isValidFor(loop)
+      /*
+      if (!asgn.isValidFor(loop))
+      {
+        errs() << "ASSIGNMENT INVALID FOR LOOP: " << name << " in benchmark: " << BenchName  << "\n";
+        return;
+      }
+      */
+
       const Ctx *ctx = spresults->getCtx(loop);
 
       if (UseRO) {
@@ -247,6 +269,13 @@ private:
     if (UseCntrSpec && UseCAF) {
       killflow_aware->setLoopOfInterest(ctrlspec, loop);
       callsite_aware->setLoopOfInterest(ctrlspec, loop);
+    }
+
+    if ((UsePointsTo || UseRO || UseLocal) && !UseCAF) {
+      PureFunAA &pure = getAnalysis<PureFunAA>();
+      SemiLocalFunAA &semi = getAnalysis<SemiLocalFunAA>();
+      pure.disableQueryAnswers();
+      semi.disableQueryAnswers();
     }
 
     LoopAA *aa = getAnalysis< LoopAA >().getTopAA();

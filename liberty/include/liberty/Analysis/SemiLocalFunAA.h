@@ -49,6 +49,8 @@ class SemiLocalFunAA : public ModulePass, public liberty::ClassicLoopAA {
   PureFunAA::SCCNumSet semiLocalSet;
   PureFunAA::SCCNumSet globalSet;
 
+  bool queryAnswersEnabled;
+
   static StringRef  const semiLocalFunNames[];
   static PureFunAA::StringSet semiLocalFunSet;
 
@@ -120,6 +122,13 @@ public:
     if (PI == &LoopAA::ID)
       return (LoopAA*)this;
     return this;
+  }
+
+  void enableQueryAnswers() {
+    queryAnswersEnabled = true;
+  }
+  void disableQueryAnswers() {
+    queryAnswersEnabled = false;
   }
 };
 

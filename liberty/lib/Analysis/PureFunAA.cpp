@@ -235,7 +235,7 @@ bool PureFunAA::argumentsAlias(const ImmutableCallSite CS, const Value *P,
   return false;
 }
 
-PureFunAA::PureFunAA() : ModulePass(ID), sccCount(0) {
+PureFunAA::PureFunAA() : ModulePass(ID), sccCount(0), queryAnswersEnabled(true) {
   if(!pureFunSet.size()) {
     for(int i = 0; !pureFunNames[i].empty(); ++i) {
       pureFunSet.insert(pureFunNames[i]);
@@ -292,6 +292,8 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
                                                  TemporalRelation Rel,
                                                  CallSite CS2, const Loop *L,
                                                  Remedies &R) {
+  if (!queryAnswersEnabled)
+    return ModRef;
 
   const Function *fun1 = getCalledFunction(CS1);
   const Function *fun2 = getCalledFunction(CS2);
@@ -336,6 +338,9 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
                                                  TemporalRelation Rel,
                                                  const Pointer &P,
                                                  const Loop *L, Remedies &R) {
+
+  if (!queryAnswersEnabled)
+    return ModRef;
 
   const Value *Ptr = P.ptr;
   const unsigned Size = P.size;

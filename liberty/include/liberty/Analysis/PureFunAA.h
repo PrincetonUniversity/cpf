@@ -52,6 +52,8 @@ class PureFunAA : public llvm::ModulePass, public liberty::ClassicLoopAA {
   SCCNumSet localSet;
   SCCNumSet globalSet;
 
+  bool queryAnswersEnabled;
+
  public:
   static StringRef  const pureFunNames[];
   static StringRef  const localFunNames[];
@@ -114,6 +116,14 @@ public:
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
 
   virtual void *getAdjustedAnalysisPointer(llvm::AnalysisID PI);
+
+  void enableQueryAnswers() {
+    queryAnswersEnabled = true;
+  }
+  void disableQueryAnswers() {
+    queryAnswersEnabled = false;
+  }
+
 };
 
 }
