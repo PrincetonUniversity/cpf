@@ -104,6 +104,11 @@ namespace liberty
     }
     */
 
+    void setDL(const DataLayout *d)
+    {
+      DL = d;
+    }
+
     StringRef getLoopAAName() const { return "kill-flow-aa"; }
 
     void getAnalysisUsage(AnalysisUsage &AU) const

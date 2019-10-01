@@ -111,6 +111,11 @@ using namespace SpecPriv;
     }
     */
 
+    void setDL(const DataLayout *d)
+    {
+      DL = d;
+    }
+
     void setLoopOfInterest(ControlSpeculation *cs, Loop *L) {
       cs->setLoopOfInterest(L->getHeader());
       specDT = std::make_unique<LoopDom>(*cs, L);

@@ -46,6 +46,7 @@ namespace liberty
       killflow->setEffectiveNextAA( getNextAA() );
       killflow->setEffectiveTopAA( getTopAA() );
       killflow->setModuleLoops( & getAnalysis< ModuleLoops >() );
+      killflow->setDL(&DL);
       //killflow->setProxy(this);
     }
 

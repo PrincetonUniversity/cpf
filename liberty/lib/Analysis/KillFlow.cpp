@@ -834,7 +834,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L);
     INTROSPECT(errs() << "lower in the stack reports res=" << res << '\n');
-    if( res == Ref || res == NoModRef )
+    //if( res == Ref || res == NoModRef )
+    if( res == NoModRef )
     {
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
       return res;
