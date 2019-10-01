@@ -94,7 +94,8 @@ ReadOnlyAA::check_modref(const Value *ptrA, const Value *ptrB, const Loop *L) {
 
   if (t1 == HeapAssignment::ReadOnly || t2 == HeapAssignment::ReadOnly) {
     ++numNoRead;
-    return ModRefResult(~Mod);
+    //return ModRefResult(~Mod);
+    return Ref;
   }
 
   return ModRef;
