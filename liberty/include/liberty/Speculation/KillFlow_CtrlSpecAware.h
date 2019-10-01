@@ -77,8 +77,9 @@ using namespace SpecPriv;
 
     const DataLayout *DL;
 
-    std::unique_ptr<LoopDom> specDT;
-    std::unique_ptr<LoopPostDom> specPDT;
+    LoopDom *specDT;
+    LoopPostDom *specPDT;
+    Loop *tgtLoop;
 
   protected:
     virtual void uponStackChange();
@@ -117,9 +118,15 @@ using namespace SpecPriv;
     }
 
     void setLoopOfInterest(ControlSpeculation *cs, Loop *L) {
+      //if (specDT)
+      //  delete specDT;
+      //if (specPDT)
+      //  delete specPDT;
+
       cs->setLoopOfInterest(L->getHeader());
-      specDT = std::make_unique<LoopDom>(*cs, L);
-      specPDT = std::make_unique<LoopPostDom>(*cs, L);
+      specDT = new LoopDom(*cs, L);
+      specPDT = new LoopPostDom(*cs, L);
+      tgtLoop = L;
     }
 
     StringRef getLoopAAName() const { return "kill-flow-aa"; }

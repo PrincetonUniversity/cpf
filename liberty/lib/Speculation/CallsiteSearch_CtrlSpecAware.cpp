@@ -2,14 +2,13 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Analysis/CallsiteSearch_CtrlSpecAware.h"
+#include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/Introspection.h"
-#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
+#include "liberty/Speculation/CallsiteSearch_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Utilities/CallSiteFactory.h"
-
-#include "AnalysisTimeout.h"
 
 namespace liberty
 {
@@ -812,5 +811,3 @@ namespace liberty
     expandPredecessors(root,ctx);
   }
 }
-
-

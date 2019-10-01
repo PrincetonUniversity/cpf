@@ -3,12 +3,11 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 
-#include "liberty/Analysis/CallsiteDepthCombinator_CtrlSpecAware.h"
-#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
+#include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/Introspection.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Utilities/CallSiteFactory.h"
-
-#include "AnalysisTimeout.h"
 
 #include <ctime>
 
@@ -381,7 +380,7 @@ namespace liberty
     const Instruction *dst,
     const Loop *L,
     KillFlow_CtrlSpecAware &kill,
-    CCPairs *allFlowsOut,
+    CIPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout)
   {
 
@@ -409,7 +408,7 @@ namespace liberty
     const Loop *L,
     InstSearch_CtrlSpecAware &writes,
     KillFlow_CtrlSpecAware &kill,
-    CCPairs *allFlowsOut,
+    CIPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout)
   {
     ForwardLoadSearch_CtrlSpecAware reads(dst,kill,queryStart,Timeout);
@@ -435,7 +434,7 @@ namespace liberty
     InstSearch_CtrlSpecAware &writes,
     InstSearch_CtrlSpecAware &reads,
     KillFlow_CtrlSpecAware &kill,
-    CCPairs *allFlowsOut,
+    CIPairs *allFlowsOut,
     time_t queryStart,
     unsigned Timeout)
   {
@@ -485,7 +484,7 @@ namespace liberty
                  << "\t  to: " << read  << '\n');
 
         if( allFlowsOut )
-          allFlowsOut->push_back( CCPair(write,read) );
+          allFlowsOut->push_back( CIPair(write,read) );
         isFlow = true;
 
         if( stopAfterFirst && isFlow )
@@ -646,4 +645,3 @@ namespace liberty
 
 
 }
-
