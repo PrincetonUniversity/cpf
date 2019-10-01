@@ -1,5 +1,6 @@
 #define DEBUG_TYPE "unique-access-paths-aa"
 
+#include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/GetCallers.h"
@@ -23,8 +24,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
-
-#include "AnalysisTimeout.h"
 
 #include <set>
 #include <ctime>

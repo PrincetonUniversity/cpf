@@ -6,8 +6,9 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/ADT/Statistic.h"
 
+#include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/Introspection.h"
-#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 #include "liberty/Utilities/GepRange.h"
@@ -16,7 +17,6 @@
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/ReachabilityUtil.h"
 
-#include "AnalysisTimeout.h"
 #include <ctime>
 #include <cmath>
 #include <unordered_set>
@@ -820,7 +820,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
   KillFlow_CtrlSpecAware::KillFlow_CtrlSpecAware()
       : ModulePass(ID), fcnKills(), bbKills(), noStoresBetween(), mloops(0),
-        effectiveNextAA(0), effectiveTopAA(0) {}
+        effectiveNextAA(0), effectiveTopAA(0), specDT{nullptr}, specPDT{nullptr}, tgtLoop{nullptr} {}
 
   KillFlow_CtrlSpecAware::~KillFlow_CtrlSpecAware() {}
 
@@ -1196,6 +1196,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   /// Determine if there is an operation in <L> which must execute before <before> which kills <ptr>
   bool KillFlow_CtrlSpecAware::pointerKilledBefore(const Loop *L, const Value *ptr, const Instruction *before, bool alsoCheckAggregate, time_t queryStart, unsigned Timeout)
   {
+    if (!L || !specDT || !specPDT || tgtLoop != L)
+      return false;
+
 //    INTROSPECT(errs() << "KillFlow_CtrlSpecAware: pointerKilledBefore(" << *before << "):\n");
 
     // Find those blocks which dominate the load and which
@@ -1224,11 +1227,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       // and needs to check for visited (dijistra was one of the benchmarks that
       // had this problem)
       // need to check LoopDominators for any potential bug
+      if (!bb)
+        break;
       if (visited.count(bb))
         break;
       visited.insert(bb);
-      if (!bb)
-        break;
       if (!L->contains(bb))
         break;
 
@@ -1302,6 +1305,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   /// after <after> and before <before> which kills <ptr>
   bool KillFlow_CtrlSpecAware::pointerKilledBetween(const Loop *L, const Value *ptr, const Instruction *after, const Instruction *before, bool alsoCheckAggregate, time_t queryStart, unsigned Timeout)
   {
+    if (!L || !specDT || !specPDT || tgtLoop != L)
+      return false;
+
     // Find those blocks which dominate the load and which
     // are contained within the loop.
     const BasicBlock *beforebb = before->getParent();
@@ -1330,16 +1336,21 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       // and needs to check for visited (dijistra was one of the benchmarks that
       // had this problem)
       // need to check LoopDominators for any potential bug
+      if (!bb)
+        break;
       if (visited.count(bb))
         break;
       visited.insert(bb);
-      if (!bb)
-        break;
       if (!L->contains(bb))
         break;
 
-      if (!specPDT->pdom(const_cast<BasicBlock *>(bb),
-                         const_cast<BasicBlock *>(afterbb)))
+      ControlSpeculation::LoopBlock lbBB =
+          ControlSpeculation::LoopBlock(const_cast<BasicBlock *>(bb));
+
+      ControlSpeculation::LoopBlock lbAfterBB =
+          ControlSpeculation::LoopBlock(const_cast<BasicBlock *>(afterbb));
+
+      if (!specPDT->pdom(lbBB, lbAfterBB))
         continue;
 
       if( blockMustKill(bb, ptr, after, before, queryStart, Timeout, L) )
@@ -1413,6 +1424,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   /// Determine if there is an operation in <L> which must execute before <before> which kills the aggregate
   bool KillFlow_CtrlSpecAware::aggregateKilledBefore(const Loop *L, const Value *obj, const Instruction *before, time_t queryStart, unsigned Timeout)
   {
+    if (!L || !specDT || !specPDT || tgtLoop != L)
+      return false;
+
     // Find those blocks which dominate the load and which
     // are contained within the loop.
     const BasicBlock *beforebb = before->getParent();
@@ -1438,11 +1452,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       // and needs to check for visited (dijistra was one of the benchmarks that
       // had this problem)
       // need to check LoopDominators for any potential bug
+      if (!bb)
+        break;
       if (visited.count(bb))
         break;
       visited.insert(bb);
-      if (!bb)
-        break;
       if (!L->contains(bb))
         break;
 
@@ -1503,6 +1517,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
  /// Determine if there is an operation in <L> which must execute after <after> which kills <ptr>
   bool KillFlow_CtrlSpecAware::pointerKilledAfter(const Loop *L, const Value *ptr, const Instruction *after, bool alsoCheckAggregate, time_t queryStart, unsigned Timeout)
   {
+    if (!L || !specDT || !specPDT || tgtLoop != L)
+      return false;
+
     // Find those blocks which post-dominate the store and which
     // are contained within the loop.
     const BasicBlock *afterbb = after->getParent();
@@ -1528,11 +1545,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       // and needs to check for visited (dijistra was one of the benchmarks that
       // had this problem)
       // need to check LoopDominators for any potential bug
+      if (!bb)
+        break;
       if (visited.count(bb))
         break;
       visited.insert(bb);
-      if (!bb)
-        break;
       if (!L->contains(bb))
         break;
 
@@ -1602,6 +1619,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   /// Determine if there is an operation in <L> which must execute after <after> which kills the aggregate
   bool KillFlow_CtrlSpecAware::aggregateKilledAfter(const Loop *L, const Value *obj, const Instruction *after, time_t queryStart, unsigned Timeout)
   {
+    if (!L || !specDT || !specPDT || tgtLoop != L)
+      return false;
+
     // Find those blocks which post-dominate the store and which
     // are contained within the loop.
     const BasicBlock *afterbb = after->getParent();
@@ -1627,11 +1647,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       // and needs to check for visited (dijistra was one of the benchmarks that
       // had this problem)
       // need to check LoopDominators for any potential bug
+      if (!bb)
+        break;
       if (visited.count(bb))
         break;
       visited.insert(bb);
-      if (!bb)
-        break;
       if (!L->contains(bb))
         break;
 
@@ -1692,6 +1712,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   /// and before <before> which kills the aggregate
   bool KillFlow_CtrlSpecAware::aggregateKilledBetween(const Loop *L, const Value *obj, const Instruction *after, const Instruction *before, time_t queryStart, unsigned Timeout)
   {
+    if (!L || !specDT || !specPDT || tgtLoop != L)
+      return false;
+
     // Find those blocks which post-dominate the store and which
     // are contained within the loop.
     const BasicBlock *afterbb = after->getParent();
@@ -1719,11 +1742,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       // and needs to check for visited (dijistra was one of the benchmarks that
       // had this problem)
       // need to check LoopDominators for any potential bug
+      if (!bb)
+        break;
       if (visited.count(bb))
         break;
       visited.insert(bb);
-      if (!bb)
-        break;
       if (!L->contains(bb))
         break;
 
@@ -1800,4 +1823,3 @@ static RegisterAnalysisGroup<liberty::LoopAA> Y(X);
 char KillFlow_CtrlSpecAware::ID = 0;
 
 }
-

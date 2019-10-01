@@ -6,6 +6,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/ADT/Statistic.h"
 
+#include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/Utilities/CallSiteFactory.h"
@@ -16,7 +17,6 @@
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/ReachabilityUtil.h"
 
-#include "AnalysisTimeout.h"
 #include <ctime>
 #include <cmath>
 #include <unordered_set>

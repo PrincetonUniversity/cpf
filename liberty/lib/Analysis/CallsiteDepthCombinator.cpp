@@ -3,12 +3,11 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 
+#include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/CallsiteDepthCombinator.h"
-#include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/Introspection.h"
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/Utilities/CallSiteFactory.h"
-
-#include "AnalysisTimeout.h"
 
 #include <ctime>
 
