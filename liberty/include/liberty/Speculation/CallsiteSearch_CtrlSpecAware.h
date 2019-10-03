@@ -19,8 +19,8 @@
  *  However, the contexts produced by different
  *  instruction search objects are not folded.
  */
-#ifndef LLVM_LIBERTY_CALLSITE_SEARCH_H
-#define LLVM_LIBERTY_CALLSITE_SEARCH_H
+#ifndef LLVM_LIBERTY_CALLSITE_SEARCH_CTRL_SPEC_H
+#define LLVM_LIBERTY_CALLSITE_SEARCH_CTRL_SPEC_H
 
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/CallSite.h"
@@ -195,9 +195,9 @@ namespace liberty
 
   raw_ostream &operator<<(raw_ostream &out, const CtxInst_CtrlSpecAware &ci);
 
-  typedef std::vector<CtxInst_CtrlSpecAware> CIList;
-  typedef std::pair<CtxInst_CtrlSpecAware, CtxInst_CtrlSpecAware> CCPair;
-  typedef std::vector< CCPair > CCPairs;
+  typedef std::vector<CtxInst_CtrlSpecAware> CtxIList;
+  typedef std::pair<CtxInst_CtrlSpecAware, CtxInst_CtrlSpecAware> CIPair;
+  typedef std::vector< CIPair > CIPairs;
 
   /// Iterator abstraction over the search
   struct InstSearch_CtrlSpecAware;
@@ -224,7 +224,7 @@ namespace liberty
   /// search over instructions.
   struct InstSearch_CtrlSpecAware
   {
-    typedef CIList Fringe;
+    typedef CtxIList Fringe;
     typedef std::set<const Instruction *> Visited;
     typedef InstSearch_CtrlSpecAwareIterator iterator;
 
@@ -324,4 +324,3 @@ namespace liberty
 }
 
 #endif //LLVM_LIBERTY_CALLSITE_SEARCH_H
-
