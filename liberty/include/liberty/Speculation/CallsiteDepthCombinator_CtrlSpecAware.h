@@ -1,5 +1,4 @@
 /* CallSiteDepthCombinator
-
    This is a refinement on the CallSiteCombinator based on a few observations:
     (1) The CallSiteCombinator would generate new queries, but those queries
         would lose their calling context.
@@ -8,24 +7,22 @@
     (3) I'm much more concern with flow memory deps than anti or output deps.
         This ONLY worries about flow deps, and declines to answer for anti
         or output deps.
-
    What does it do?
-
    It repeatedly expands callsites to sets of memory operations whose effect on
    memory may escape the calling context.  It maintains a context (nest of
    callsites) for each operation.  It features a lazy iterator so that it
    may efficiently explore all operations within a subtree of the callgraph.
  */
-#ifndef LLVM_LIBERTY_CALLSITE_DEPTH_COMBINATOR_AA_H
-#define LLVM_LIBERTY_CALLSITE_DEPTH_COMBINATOR_AA_H
+#ifndef LLVM_LIBERTY_CALLSITE_DEPTH_COMBINATOR_CTRL_SPEC_AA_H
+#define LLVM_LIBERTY_CALLSITE_DEPTH_COMBINATOR_CTRL_SPEC_AA_H
 
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Analysis/CallsiteSearch_CtrlSpecAware.h"
 #include "liberty/Analysis/ControlSpeculation.h"
-#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
 #include "liberty/Analysis/QueryCacheing.h"
+#include "liberty/Speculation/CallsiteSearch_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 
 namespace liberty
 {
@@ -99,7 +96,7 @@ namespace liberty
     /// a flow is possible, or false otherwise.
     static bool doFlowSearchCrossIter(
       const Instruction *src, const Instruction *dst, const Loop *L,
-      KillFlow_CtrlSpecAware &kill, CCPairs *allFlowsOut = 0,
+      KillFlow_CtrlSpecAware &kill, CIPairs *allFlowsOut = 0,
       time_t queryStart=0, unsigned Timeout=0);
 
     /// Like the previous, but accepts a pre-computed
@@ -107,7 +104,7 @@ namespace liberty
     static bool doFlowSearchCrossIter(
       const Instruction *src, const Instruction *dst, const Loop *L,
       InstSearch_CtrlSpecAware &writes,
-      KillFlow_CtrlSpecAware &kill, CCPairs *allFlowsOut = 0,
+      KillFlow_CtrlSpecAware &kill, CIPairs *allFlowsOut = 0,
       time_t queryStart=0, unsigned Timeout=0);
 
     /// Like the previous, but accepts pre-computed
@@ -115,7 +112,7 @@ namespace liberty
     static bool doFlowSearchCrossIter(
       const Instruction *src, const Instruction *dst, const Loop *L,
       InstSearch_CtrlSpecAware &writes, InstSearch_CtrlSpecAware &reads,
-      KillFlow_CtrlSpecAware &kill, CCPairs *allFlowsOut = 0,
+      KillFlow_CtrlSpecAware &kill, CIPairs *allFlowsOut = 0,
       time_t queryStart=0, unsigned Timeout=0);
 
 
