@@ -128,7 +128,7 @@ using namespace llvm;
       if(arg->getType()->isPointerTy()) {
 
         const int argSize = liberty::getTargetSize(arg, TD);
-        if(!fcn->getArg(i)->hasNoAliasAttr() &&
+        if(!fun->getArg(i)->hasNoAliasAttr() &&
            aa->alias(P, Size, Same, arg, argSize, NULL)) {
           result =  ModRefResult(result | getModRefInfo(CS, i));
         }
@@ -151,8 +151,7 @@ using namespace llvm;
     for(GlobalSetIt global = globals.begin(); global != globals.end(); ++global) {
 
       const int globalSize = liberty::getTargetSize(*global, TD);
-      if(!fcn->getArg(i)->hasNoAliasAttr() &&
-         aa->alias(P, Size, Same, *global, globalSize, NULL)) {
+      if(aa->alias(P, Size, Same, *global, globalSize, NULL)) {
         return true;
       }
     }
