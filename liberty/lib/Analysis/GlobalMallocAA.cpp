@@ -103,6 +103,31 @@ private:
     return false;
   }
 
+  bool nonCaptureFunCall(User *use, GlobalVariable *global) const {
+    bool nocaptureF = false;
+    if (CallInst *call = dyn_cast<CallInst>(use)) {
+      const Function *fcn = call->getCalledFunction();
+      if (!fcn)
+        return false;
+      for (unsigned i = 0; i < call->getNumArgOperands(); ++i) {
+        const Value *arg = call->getArgOperand(i);
+        if (GlobalVariable *gvC = dyn_cast<GlobalVariable>(arg)) {
+          if (gvC != global)
+            continue;
+
+          if (fcn->getArg(i)->hasNoCaptureAttr())
+            nocaptureF = true;
+          else
+            return false;
+        }
+      }
+    }
+    else
+      return false;
+
+    return nocaptureF;
+  }
+
 public:
   static char ID;
   GlobalMallocAA() : ModulePass(ID) {}
@@ -152,11 +177,11 @@ public:
                   nonMalloc.insert(&*global);
                   nonMallocSrcs[&*global].insert(bStore);
                 }
-              } else if (!isa<LoadInst>(*bUse)) {
+              } else if (!isa<LoadInst>(*bUse) && !nonCaptureFunCall(*use, &*global)) {
                 nonMalloc.insert(&*global);
               }
             }
-          } else if (!isa<LoadInst>(*use)) {
+          } else if (!isa<LoadInst>(*use) && !nonCaptureFunCall(*use, &*global)) {
             nonMalloc.insert(&*global);
           }
         }
