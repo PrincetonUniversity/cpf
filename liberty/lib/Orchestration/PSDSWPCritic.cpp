@@ -1,5 +1,5 @@
 #define DEBUG_TYPE "ps-dswp-critic"
-#define AVOID_DSWP
+//#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
 
@@ -607,6 +607,9 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   }
   optimisticPDG = pdg->createSubgraphFromValues(loopInternals, false);
 
+  BasicBlock *header = loop->getHeader();
+  Function *fcn = header->getParent();
+
   unsigned long lcDepTotal = 0;
   unsigned long lcDepNotCovered = 0;
   unsigned long lcRAWMemDepTotal = 0;
@@ -683,9 +686,6 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
       optimisticPDG->removeEdge(edge);
     }
   }
-
-  BasicBlock *header = loop->getHeader();
-  Function *fcn = header->getParent();
 
   DEBUG(errs() << "\nRAW Memory Loop-Carried Deps Count: " << lcRAWMemDepTotal
                << "\nWAW Memory Loop-Carried Deps Count: " << lcWAWMemDepTotal
@@ -1510,6 +1510,7 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
 
   // Jul 22, ZY: avoid DSWP
   // Check if there is a sequential stage
+  /*
 #ifdef AVOID_DSWP
   bool is_DSWP = 0;
   for (PipelineStrategy::Stages::const_iterator i = ps->stages.begin(), e = ps->stages.end(); i != e;
@@ -1527,6 +1528,7 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
     return res;
   }
 #endif
+  */
 
   Criticisms tmpCriticisms;
   populateCriticisms(*ps, tmpCriticisms, pdg);
