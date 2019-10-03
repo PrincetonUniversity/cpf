@@ -103,19 +103,19 @@ private:
     return false;
   }
 
-  bool nonCaptureFunCall(User *use, GlobalVariable *global) const {
+  bool nonCaptureFunCall(const User *use, const GlobalVariable *global) const {
     bool nocaptureF = false;
-    if (CallInst *call = dyn_cast<CallInst>(use)) {
+    if (const CallInst *call = dyn_cast<CallInst>(use)) {
       const Function *fcn = call->getCalledFunction();
       if (!fcn)
         return false;
       for (unsigned i = 0; i < call->getNumArgOperands(); ++i) {
         const Value *arg = call->getArgOperand(i);
-        if (GlobalVariable *gvC = dyn_cast<GlobalVariable>(arg)) {
+        if (const GlobalVariable *gvC = dyn_cast<GlobalVariable>(arg)) {
           if (gvC != global)
             continue;
 
-          if (fcn->getArg(i)->hasNoCaptureAttr())
+          if (fcn->hasParamAttribute(i, Attribute::NoCapture))
             nocaptureF = true;
           else
             return false;
