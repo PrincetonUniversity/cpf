@@ -96,6 +96,11 @@ using namespace llvm;
       if(readOnlyFormalSet.count(F))
         return Ref;
 
+      if (fcn->hasParamAttribute(argno, Attribute::ReadOnly) ||
+          fcn->hasParamAttribute(argno, Attribute::ReadNone) ||
+          fcn->getArg(argno)->hasByValAttr())
+        return Ref;
+
       if( writeOnlyFormalSet.count(F))
         return Mod;
     }
@@ -123,7 +128,8 @@ using namespace llvm;
       if(arg->getType()->isPointerTy()) {
 
         const int argSize = liberty::getTargetSize(arg, TD);
-        if(aa->alias(P, Size, Same, arg, argSize, NULL)) {
+        if(!fcn->getArg(i)->hasNoAliasAttr() &&
+           aa->alias(P, Size, Same, arg, argSize, NULL)) {
           result =  ModRefResult(result | getModRefInfo(CS, i));
         }
       }
@@ -145,7 +151,8 @@ using namespace llvm;
     for(GlobalSetIt global = globals.begin(); global != globals.end(); ++global) {
 
       const int globalSize = liberty::getTargetSize(*global, TD);
-      if(aa->alias(P, Size, Same, *global, globalSize, NULL)) {
+      if(!fcn->getArg(i)->hasNoAliasAttr() &&
+         aa->alias(P, Size, Same, *global, globalSize, NULL)) {
         return true;
       }
     }
@@ -235,6 +242,10 @@ using namespace llvm;
   }
 
   bool SemiLocalFunAA::readOnlyFormalArg(const Function *fcn, unsigned argno) {
+    if (fcn->hasParamAttribute(argno, Attribute::ReadOnly) ||
+        fcn->hasParamAttribute(argno, Attribute::ReadNone) ||
+        fcn->getArg(argno)->hasByValAttr())
+      return true;
     StringRef  name = fcn->getName();
     Formal f = {name,argno};
     return readOnlyFormalArg(f);
