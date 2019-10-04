@@ -73,12 +73,11 @@ class SemiLocalFunAA : public ModulePass, public liberty::ClassicLoopAA {
   static ModRefResult getModRefInfo(const ImmutableCallSite CS, const unsigned argNo);
 
   ModRefResult aliasedArgumentsModRef(const ImmutableCallSite CS,
-                                      const Value *P,
-                                      const unsigned Size) const;
+                                      const Value *P, const unsigned Size,
+                                      Remedies &R) const;
 
-  bool globalsAlias(const GlobalSet globals,
-                    const Value *P,
-                    const unsigned Size) const;
+  bool globalsAlias(const GlobalSet globals, const Value *P,
+                    const unsigned Size, Remedies &R) const;
 
 public:
 
@@ -103,15 +102,11 @@ public:
 
   static bool writeOnlyFormalArg(const Function *fcn, unsigned argno);
 
-  ModRefResult getModRefInfo(CallSite CS1,
-                             TemporalRelation Rel,
-                             CallSite CS2,
-                             const Loop *L);
+  ModRefResult getModRefInfo(CallSite CS1, TemporalRelation Rel, CallSite CS2,
+                             const Loop *L, Remedies &R);
 
-  ModRefResult getModRefInfo(CallSite CS,
-                             TemporalRelation Rel,
-                             const Pointer &P,
-                             const Loop *L);
+  ModRefResult getModRefInfo(CallSite CS, TemporalRelation Rel,
+                             const Pointer &P, const Loop *L, Remedies &R);
 
   StringRef getLoopAAName() const {
     return "semi-local-fun-aa";

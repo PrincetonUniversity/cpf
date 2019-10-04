@@ -83,7 +83,8 @@ LoopAA::AliasResult StdInOutErr::aliasCheck(
   const Pointer &P1,
   TemporalRelation Rel,
   const Pointer &P2,
-  const Loop *L)
+  const Loop *L,
+  Remedies &R)
 {
   //sot
   const DataLayout &DL = Mod->getDataLayout();
@@ -105,7 +106,8 @@ LoopAA::ModRefResult StdInOutErr::getModRefInfo(
   CallSite CS1,
   TemporalRelation Rel,
   CallSite CS2,
-  const Loop *L)
+  const Loop *L,
+  Remedies &R)
 {
   return ModRef;
 }
@@ -115,7 +117,8 @@ LoopAA::ModRefResult StdInOutErr::getModRefInfo(
   CallSite CS1,
   TemporalRelation Rel,
   const Pointer &P,
-  const Loop *L)
+  const Loop *L,
+  Remedies &R)
 {
   //sot
   const DataLayout *DL;

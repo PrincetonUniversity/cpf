@@ -65,18 +65,18 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
     return n;
   }
 
-  ModRefResult recur(const Instruction *op, TemporalRelation Rel, const Value *p2, unsigned s2, const Loop *L)
-  {
-    return getTopAA()->modref(op,Rel,p2,s2,L);
+  ModRefResult recur(const Instruction *op, TemporalRelation Rel,
+                     const Value *p2, unsigned s2, const Loop *L, Remedies &R) {
+    return getTopAA()->modref(op, Rel, p2, s2, L, R);
   }
 
-  ModRefResult recur(const Instruction *i1, TemporalRelation Rel, const Instruction *i2, const Loop *L)
-  {
-    return getTopAA()->modref(i1,Rel,i2,L);
+  ModRefResult recur(const Instruction *i1, TemporalRelation Rel,
+                     const Instruction *i2, const Loop *L, Remedies &R) {
+    return getTopAA()->modref(i1, Rel, i2, L, R);
   }
 
-  ModRefResult recurLeft(const Function *fcn, TemporalRelation Rel, const Instruction *i2, const Loop *L)
-  {
+  ModRefResult recurLeft(const Function *fcn, TemporalRelation Rel,
+                         const Instruction *i2, const Loop *L, Remedies &R) {
     FcnInstKey key(fcn,Rel,i2,L);
     if( fcnInstCache.count(key) )
     {
@@ -128,7 +128,7 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
       }
 
       ModRefResult old = result;
-      result = ModRefResult(result | recur(instFromCallee,Rel,i2,L) );
+      result = ModRefResult(result | recur(instFromCallee,Rel,i2,L,R) );
 
       INTROSPECT(
         if( result != old )
@@ -157,7 +157,7 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
       ++numOps;
 
       ModRefResult old = result;
-      result = ModRefResult(result | recur(instFromCallee,Rel,i2,L) );
+      result = ModRefResult(result | recur(instFromCallee,Rel,i2,L,R) );
 
       INTROSPECT(
         if( result != old )
@@ -172,9 +172,9 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
     return fcnInstCache[key] = result;
   }
 
-
-  ModRefResult recurLeft(const Function *fcn, TemporalRelation Rel, const Value *p2, unsigned s2, const Loop *L)
-  {
+  ModRefResult recurLeft(const Function *fcn, TemporalRelation Rel,
+                         const Value *p2, unsigned s2, const Loop *L,
+                         Remedies &R) {
     FcnPtrKey key(fcn, Rel, p2,s2, L);
     if( fcnPtrCache.count(key) )
     {
@@ -227,7 +227,7 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
       }
 
       ModRefResult old = result;
-      result = ModRefResult(result | recur(instFromCallee,Rel,p2,s2,L) );
+      result = ModRefResult(result | recur(instFromCallee,Rel,p2,s2,L,R) );
 
       INTROSPECT(
         if( result != old )
@@ -256,7 +256,7 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
       ++numOps;
 
       ModRefResult old = result;
-      result = ModRefResult(result | recur(instFromCallee,Rel,p2,s2,L) );
+      result = ModRefResult(result | recur(instFromCallee,Rel,p2,s2,L,R) );
 
       INTROSPECT(
         if( result != old )
@@ -271,8 +271,8 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
     return fcnPtrCache[key] = result;
   }
 
-  ModRefResult recurRight(const Instruction *i1, TemporalRelation Rel, const Function *fcn, const Loop *L)
-  {
+  ModRefResult recurRight(const Instruction *i1, TemporalRelation Rel,
+                          const Function *fcn, const Loop *L, Remedies &R) {
     InstFcnKey key(i1,Rel,fcn,L);
     if( instFcnCache.count(key) )
     {
@@ -332,7 +332,7 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
 
       // Inst is a memory operation.
       ModRefResult old = result;
-      result = ModRefResult(result | recur(i1,Rel,instFromCallee,L) );
+      result = ModRefResult(result | recur(i1,Rel,instFromCallee,L,R) );
 
       INTROSPECT(
         if( result != old )
@@ -361,7 +361,7 @@ class CallsiteBreadthCombinator : public ModulePass, public liberty::LoopAA
       // top-query
       ++numOps;
       ModRefResult old = result;
-      result = ModRefResult(result | recur(i1,Rel,instFromCallee,L) );
+      result = ModRefResult(result | recur(i1,Rel,instFromCallee,L,R) );
 
       INTROSPECT(
         if( result != old )
@@ -433,11 +433,8 @@ public:
     AU.setPreservesAll();        // Does not transform code
   }
 
-  ModRefResult modref(const Instruction *i1,
-                      TemporalRelation Rel,
-                      const Instruction *i2,
-                      const Loop *L)
-  {
+  ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
+                      const Instruction *i2, const Loop *L, Remedies &R) {
     const Function *f1 = getEligibleFunction(i1),
                    *f2 = getEligibleFunction(i2);
 
@@ -473,7 +470,7 @@ public:
 
     INTROSPECT(ENTER(i1,Rel,i2,L));
 
-    ModRefResult result = LoopAA::modref(i1,Rel,i2,L);
+    ModRefResult result = LoopAA::modref(i1,Rel,i2,L,R);
     if( result == NoModRef )
     {
       INTROSPECT(EXIT(i1,Rel,i2,L,result));
@@ -491,23 +488,23 @@ public:
       // fewer pointer operands.
       if( countPtrArgs(i1) < countPtrArgs(i2) )
         // We prefer to inline CS1
-        result = ModRefResult(result & recurLeft(f1,Rel,i2,L) );
+        result = ModRefResult(result & recurLeft(f1,Rel,i2,L,R) );
 
       else
         // We prefer to inline CS2
-        result = ModRefResult(result & recurRight(i1,Rel,f2,L) );
+        result = ModRefResult(result & recurRight(i1,Rel,f2,L,R) );
     }
 
     else if( f1 )
     {
       // We can only inline CS1.
-      result = ModRefResult(result & recurLeft(f1,Rel,i2,L) );
+      result = ModRefResult(result & recurLeft(f1,Rel,i2,L,R) );
     }
 
     else if( f2 )
     {
       // We can only inline CS2.
-      result = ModRefResult(result & recurRight(i1,Rel,f2,L) );
+      result = ModRefResult(result & recurRight(i1,Rel,f2,L,R) );
     }
 
     INTROSPECT(EXIT(i1,Rel,i2,L,result));
@@ -517,18 +514,15 @@ public:
     return result;
   }
 
-  ModRefResult modref(const Instruction *i1,
-                      TemporalRelation Rel,
-                      const Value *p2,
-                      unsigned s2,
-                      const Loop *L)
-  {
+  ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
+                      const Value *p2, unsigned s2, const Loop *L,
+                      Remedies &R) {
     INTROSPECT( ENTER(i1,Rel,p2,s2,L) );
-    ModRefResult result = LoopAA::modref(i1,Rel,p2,s2,L);
+    ModRefResult result = LoopAA::modref(i1,Rel,p2,s2,L, R);
 
     if( result != NoModRef )
       if( const Function *fcn = getEligibleFunction(i1) )
-        result = ModRefResult(result & recurLeft(fcn,Rel,p2,s2,L) );
+        result = ModRefResult(result & recurLeft(fcn,Rel,p2,s2,L,R) );
 
     INTROSPECT( EXIT(i1,Rel,p2,s2,L,result) );
     return result;

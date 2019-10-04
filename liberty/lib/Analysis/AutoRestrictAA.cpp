@@ -17,6 +17,7 @@
 #include "liberty/Utilities/CallSiteFactory.h"
 
 using namespace llvm;
+using namespace liberty;
 
 static const Function *getParentFunction(const Value *v) {
 
@@ -60,7 +61,7 @@ private:
   }
 
   AliasResult aliasCheck(const Argument *arg1, unsigned V1Size,
-                         const Argument *arg2, unsigned V2Size) {
+                         const Argument *arg2, unsigned V2Size, Remedies &R) {
 
     if(arg1 == arg2) {
       return MayAlias;
@@ -96,7 +97,7 @@ private:
       AliasResult AR = aa->alias(callerArg1, V1Size,
                                  Same,
                                  callerArg2, V2Size,
-                                 NULL);
+                                 NULL, R);
       if(AR != NoAlias) {
         return MayAlias;
       }
@@ -105,8 +106,8 @@ private:
     return NoAlias;
   }
 
-  AliasResult aliasCheck(const Argument *arg, unsigned V1Size,
-                         const Value *V, unsigned V2Size) {
+  AliasResult aliasCheck(const Argument *arg, unsigned V1Size, const Value *V,
+                         unsigned V2Size, Remedies &R) {
 
     const Function *fun = getParentFunction(arg);
     if(tainted.count(fun))
@@ -126,7 +127,7 @@ private:
       AliasResult AR = aa->alias(callerArg, V1Size,
                                  Same,
                                  V, V2Size,
-                                 NULL);
+                                 NULL, R);
       if(AR != NoAlias)
         return MayAlias;
     }
@@ -205,10 +206,9 @@ private:
     return false;
   }
 
-  virtual AliasResult aliasCheck(const Pointer &P1,
-                                 TemporalRelation Rel,
-                                 const Pointer &P2,
-                                 const Loop *L) {
+  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                                 const Pointer &P2, const Loop *L,
+                                 Remedies &R) {
 
     const Value *V1 = P1.ptr, *V2 = P2.ptr;
     const unsigned V1Size = P1.size, V2Size = P2.size;
@@ -216,15 +216,15 @@ private:
     const Argument *arg1 = liberty::findArgumentSource(V1);
     const Argument *arg2 = liberty::findArgumentSource(V2);
 
-    if(arg1 && arg2 && aliasCheck(arg1, V1Size, arg2, V2Size) == NoAlias) {
+    if(arg1 && arg2 && aliasCheck(arg1, V1Size, arg2, V2Size, R) == NoAlias) {
       return NoAlias;
     }
 
-    if(arg1 && !arg2 && aliasCheck(arg1, V1Size, V2, V2Size) == NoAlias) {
+    if(arg1 && !arg2 && aliasCheck(arg1, V1Size, V2, V2Size, R) == NoAlias) {
       return NoAlias;
     }
 
-    if(!arg1 && arg2 && aliasCheck(arg2, V2Size, V1, V1Size) == NoAlias) {
+    if(!arg1 && arg2 && aliasCheck(arg2, V2Size, V1, V1Size, R) == NoAlias) {
       return NoAlias;
     }
 

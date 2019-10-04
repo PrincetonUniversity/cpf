@@ -122,10 +122,9 @@ public:
     }
   }
 
-  AliasResult aliasCheck(const Pointer &P1,
-                         TemporalRelation rel,
-                         const Pointer &P2,
-                         const Loop *L) {
+  AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
+                         const Pointer &P2, const Loop *L,
+                         liberty::Remedies &R) {
 
     const Value *O1 = GetUnderlyingObject(P1.ptr, *DL);
     const Value *O2 = GetUnderlyingObject(P2.ptr, *DL);
@@ -151,10 +150,8 @@ public:
 
     if(badFieldTypes.count(Ty1) || badFieldTypes.count(Ty2)) return MayAlias;
 
-    return getTopAA()->alias(GEP1->getPointerOperand(), 1,
-                             rel,
-                             GEP2->getPointerOperand(), 1,
-                             L);
+    return getTopAA()->alias(GEP1->getPointerOperand(), 1, rel,
+                             GEP2->getPointerOperand(), 1, L, R);
   }
 
   StringRef getLoopAAName() const {

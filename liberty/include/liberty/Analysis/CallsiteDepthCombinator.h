@@ -59,9 +59,9 @@ namespace liberty
     /// Determine if it is possible for a store
     /// 'src' to flow to a load 'dst' across
     /// the backedge of L.
-    static bool mayFlowCrossIter(
-      const CtxInst &src, const CtxInst &dst, const Loop *L, KillFlow &kill,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool mayFlowCrossIter(const CtxInst &src, const CtxInst &dst,
+                                 const Loop *L, KillFlow &kill, Remedies &R,
+                                 time_t queryStart = 0, unsigned Timeout = 0);
 
     /// Determine if it is possible for a store
     /// in write to flow to a load in read.
@@ -69,7 +69,7 @@ namespace liberty
     static bool mayFlowCrossIter(
       KillFlow &kill,
       const Instruction *src, const Instruction *dst, const Loop *L,
-      const CtxInst &write, const CtxInst &read,
+      const CtxInst &write, const CtxInst &read, Remedies &R,
       time_t queryStart=0, unsigned Timeout=0);
 
     /// Determine if it is possible for a store
@@ -81,7 +81,8 @@ namespace liberty
       const Instruction *dst,
       const Loop *L,
       const CtxInst &write,
-      const CtxInst &read);
+      const CtxInst &read,
+      Remedies &R);
 
 
     /// Determine if any flow is possible from
@@ -93,7 +94,7 @@ namespace liberty
     /// a flow is possible, or false otherwise.
     static bool doFlowSearchCrossIter(
       const Instruction *src, const Instruction *dst, const Loop *L,
-      KillFlow &kill, CCPairs *allFlowsOut = 0,
+      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
       time_t queryStart=0, unsigned Timeout=0);
 
     /// Like the previous, but accepts a pre-computed
@@ -101,7 +102,7 @@ namespace liberty
     static bool doFlowSearchCrossIter(
       const Instruction *src, const Instruction *dst, const Loop *L,
       InstSearch &writes,
-      KillFlow &kill, CCPairs *allFlowsOut = 0,
+      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
       time_t queryStart=0, unsigned Timeout=0);
 
     /// Like the previous, but accepts pre-computed
@@ -109,20 +110,15 @@ namespace liberty
     static bool doFlowSearchCrossIter(
       const Instruction *src, const Instruction *dst, const Loop *L,
       InstSearch &writes, InstSearch &reads,
-      KillFlow &kill, CCPairs *allFlowsOut = 0,
+      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
       time_t queryStart=0, unsigned Timeout=0);
 
+    ModRefResult modref(const Instruction *inst1, TemporalRelation Rel,
+                        const Instruction *inst2, const Loop *L, Remedies &R);
 
-    ModRefResult modref(const Instruction *inst1,
-                        TemporalRelation Rel,
-                        const Instruction *inst2,
-                        const Loop *L);
-
-    ModRefResult modref(const Instruction *i1,
-                        TemporalRelation Rel,
-                        const Value *p2,
-                        unsigned s2,
-                        const Loop *L);
+    ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
+                        const Value *p2, unsigned s2, const Loop *L,
+                        Remedies &R);
 
     /// getAdjustedAnalysisPointer - This method is used when a pass implements
     /// an analysis interface through multiple inheritance.  If needed, it

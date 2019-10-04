@@ -34,48 +34,38 @@ bool TXIOAA::isTXIOFcn(const Instruction *inst) {
   return false;
 }
 
-LoopAA::AliasResult TXIOAA::alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L)
-{
-  return LoopAA::alias(ptrA,sizeA,rel,ptrB,sizeB,L);
+LoopAA::AliasResult TXIOAA::alias(const Value *ptrA, unsigned sizeA,
+                                  TemporalRelation rel, const Value *ptrB,
+                                  unsigned sizeB, const Loop *L, Remedies &R) {
+  return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 }
 
+LoopAA::ModRefResult TXIOAA::modref(const Instruction *A, TemporalRelation rel,
+                                    const Value *ptrB, unsigned sizeB,
+                                    const Loop *L, Remedies &R) {
+  if (rel == LoopAA::Same)
+    return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
 
-LoopAA::ModRefResult TXIOAA::modref(
-    const Instruction *A,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L) {
-  if(rel == LoopAA::Same)
-    return LoopAA::modref(A,rel,ptrB,sizeB,L);
-
-  if(isTXIOFcn(A)) {
+  if (isTXIOFcn(A)) {
     ++numTXIO;
     return Ref;
   }
 
-  return LoopAA::modref(A,rel,ptrB,sizeB,L);
+  return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
 }
 
-LoopAA::ModRefResult TXIOAA::modref(
-    const Instruction *A,
-    TemporalRelation rel,
-    const Instruction *B,
-    const Loop *L) {
-  if(rel == LoopAA::Same)
-    return LoopAA::modref(A,rel,B,L);
+LoopAA::ModRefResult TXIOAA::modref(const Instruction *A, TemporalRelation rel,
+                                    const Instruction *B, const Loop *L,
+                                    Remedies &R) {
+  if (rel == LoopAA::Same)
+    return LoopAA::modref(A, rel, B, L, R);
 
-  if(isTXIOFcn(A)) {
+  if (isTXIOFcn(A)) {
     ++numTXIO;
     return Ref;
   }
 
-  return LoopAA::modref(A,rel,B,L);
+  return LoopAA::modref(A, rel, B, L, R);
 }
-
-
 }
 

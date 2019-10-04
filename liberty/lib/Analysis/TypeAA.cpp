@@ -73,7 +73,8 @@ namespace liberty
       const Pointer &P1,
       TemporalRelation rel,
       const Pointer &P2,
-      const Loop *L);
+      const Loop *L,
+      Remedies &R);
   };
 
   char TypeAA::ID = 0;
@@ -670,7 +671,8 @@ namespace liberty
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     DEBUG_WITH_TYPE("loopaa", errs() << "TypeAA\n");
     ++numQueries;
@@ -802,7 +804,7 @@ namespace liberty
               return MayAlias;
 
 
-            if( top->alias(parent_i, sz_i, rel, parent_j, sz_j, L) == NoAlias )
+            if( top->alias(parent_i, sz_i, rel, parent_j, sz_j, L, R) == NoAlias )
             {
               DEBUG_WITH_TYPE("loopaa", errs() << "(end recur)\n");
               // Good.

@@ -48,21 +48,15 @@ struct PredictionAA : public LoopAA // Not a pass!
 
   void setLoopOfInterest(Loop *L);
 
-  virtual ModRefResult modref(
-    const Instruction *i1,
-    TemporalRelation rel,
-    const Instruction *i2,
-    const Loop *L);
-  virtual ModRefResult modref(
-    const Instruction *i1,
-    TemporalRelation rel,
-    const Value *P2,
-    unsigned S2,
-    const Loop *L);
+  virtual ModRefResult modref(const Instruction *i1, TemporalRelation rel,
+                              const Instruction *i2, const Loop *L,
+                              Remedies &R);
+  virtual ModRefResult modref(const Instruction *i1, TemporalRelation rel,
+                              const Value *P2, unsigned S2, const Loop *L,
+                              Remedies &R);
 
-    LoopAA::SchedulingPreference getSchedulingPreference() const
-    {
-      return SchedulingPreference(Low - 3);
+  LoopAA::SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Low - 3);
     }
 
 private:

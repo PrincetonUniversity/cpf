@@ -40,6 +40,7 @@
 
 #include <algorithm>
 using namespace llvm;
+using namespace liberty;
 
 //===----------------------------------------------------------------------===//
 // Useful predicates
@@ -440,27 +441,23 @@ namespace {
       return false;
     }
 
-    virtual ModRefResult getModRefInfo(CallSite CS1,
-                                       TemporalRelation Rel,
-                                       CallSite CS2,
-                                       const Loop *L) {
+    virtual ModRefResult getModRefInfo(CallSite CS1, TemporalRelation Rel,
+                                       CallSite CS2, const Loop *L,
+                                       Remedies &R) {
       return ModRef;
     }
 
-    virtual ModRefResult getModRefInfo(CallSite CS,
-                                       TemporalRelation Rel,
-                                       const Pointer &P2,
-                                       const Loop *L);
+    virtual ModRefResult getModRefInfo(CallSite CS, TemporalRelation Rel,
+                                       const Pointer &P2, const Loop *L,
+                                       Remedies &R);
 
-    virtual AliasResult aliasCheck(const Pointer &P1,
-                                   TemporalRelation Rel,
-                                   const Pointer &P2,
-                                   const Loop *L);
+    virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                                   const Pointer &P2, const Loop *L,
+                                   Remedies &R);
 
     AliasResult aliasCommon(const Value *V1, unsigned V1Size,
-                            TemporalRelation Rel,
-                            const Value *V2, unsigned V2Size,
-                            const Loop *L);
+                            TemporalRelation Rel, const Value *V2,
+                            unsigned V2Size, const Loop *L, Remedies &R);
 
     /// pointsToConstantMemory - Chase pointers until we find a (constant
     /// global) or not.
@@ -496,23 +493,20 @@ namespace {
     // aliasGEP - Provide a bunch of ad-hoc rules to disambiguate a GEP
     // instruction against another.
     AliasResult aliasGEP(const GEPOperator *V1, unsigned V1Size,
-                         TemporalRelation Rel,
-                         const Value *V2, unsigned V2Size,
-                         const Loop *L,
-                         const Value *UnderlyingV1, const Value *UnderlyingV2);
+                         TemporalRelation Rel, const Value *V2, unsigned V2Size,
+                         const Loop *L, const Value *UnderlyingV1,
+                         const Value *UnderlyingV2, Remedies &R);
 
     // aliasPHI - Provide a bunch of ad-hoc rules to disambiguate a PHI
     // instruction against another.
     AliasResult aliasPHI(const PHINode *PN, unsigned PNSize,
-                         TemporalRelation Rel,
-                         const Value *V2, unsigned V2Size,
-                         const Loop *L);
+                         TemporalRelation Rel, const Value *V2, unsigned V2Size,
+                         const Loop *L, Remedies &R);
 
     /// aliasSelect - Disambiguate a Select instruction against another value.
     AliasResult aliasSelect(const SelectInst *SI, unsigned SISize,
-                            TemporalRelation Rel,
-                            const Value *V2, unsigned V2Size,
-                            const Loop *L);
+                            TemporalRelation Rel, const Value *V2,
+                            unsigned V2Size, const Loop *L, Remedies &R);
   };
 }  // End of anonymous namespace
 
@@ -543,10 +537,8 @@ bool BasicLoopAA::pointsToConstantMemory(const Value *P, const Loop *L) {
 /// really can't say much about this query.  We do, however, use simple "address
 /// taken" analysis on local objects.
 liberty::LoopAA::ModRefResult
-BasicLoopAA::getModRefInfo(CallSite CS,
-                           TemporalRelation Rel,
-                           const Pointer &P2,
-                           const Loop *L) {
+BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
+                           const Loop *L, Remedies &R) {
 
   const Value *V = P2.ptr;
   const unsigned Size = P2.size;
@@ -584,7 +576,7 @@ BasicLoopAA::getModRefInfo(CallSite CS,
       // impossible to alias the pointer we're checking.  If not, we have to
       // assume that the call could touch the pointer, even though it doesn't
       // escape.
-      if (!isNoAlias(cast<Value>(CI), UnknownSize, Rel, V, UnknownSize, L)) {
+      if (!isNoAlias(cast<Value>(CI), UnknownSize, Rel, V, UnknownSize, L, R)) {
         PassedAsArg = true;
         break;
       }
@@ -606,8 +598,8 @@ BasicLoopAA::getModRefInfo(CallSite CS,
         Len = LenCI->getZExtValue();
       Value *Dest = II->getArgOperand(0);
       Value *Src = II->getArgOperand(1);
-      if (isNoAlias(Dest, Len, Rel, V, Size, L)) {
-        if (isNoAlias(Src, Len, Rel, V, Size, L))
+      if (isNoAlias(Dest, Len, Rel, V, Size, L, R)) {
+        if (isNoAlias(Src, Len, Rel, V, Size, L, R))
           return NoModRef;
         return Ref;
       }
@@ -619,7 +611,7 @@ BasicLoopAA::getModRefInfo(CallSite CS,
       if (ConstantInt *LenCI = dyn_cast<ConstantInt>(II->getArgOperand(2))) {
         unsigned Len = LenCI->getZExtValue();
         Value *Dest = II->getArgOperand(0);
-        if (isNoAlias(Dest, Len, Rel, V, Size, L))
+        if (isNoAlias(Dest, Len, Rel, V, Size, L, R))
           return NoModRef;
       }
       break;
@@ -628,14 +620,14 @@ BasicLoopAA::getModRefInfo(CallSite CS,
     case Intrinsic::invariant_start: {
       unsigned PtrSize =
         cast<ConstantInt>(II->getArgOperand(0))->getZExtValue();
-      if (isNoAlias(II->getArgOperand(1), PtrSize, Rel, V, Size, L))
+      if (isNoAlias(II->getArgOperand(1), PtrSize, Rel, V, Size, L, R))
         return NoModRef;
       break;
     }
     case Intrinsic::invariant_end: {
       unsigned PtrSize =
         cast<ConstantInt>(II->getArgOperand(1))->getZExtValue();
-      if (isNoAlias(II->getArgOperand(2), PtrSize, Rel, V, Size, L))
+      if (isNoAlias(II->getArgOperand(2), PtrSize, Rel, V, Size, L, R))
         return NoModRef;
       break;
     }
@@ -657,11 +649,9 @@ BasicLoopAA::getModRefInfo(CallSite CS,
 ///
 liberty::LoopAA::AliasResult
 BasicLoopAA::aliasGEP(const GEPOperator *GEP1, unsigned V1Size,
-                      TemporalRelation Rel,
-                      const Value *V2, unsigned V2Size,
-                      const Loop *L,
-                      const Value *UnderlyingV1,
-                      const Value *UnderlyingV2) {
+                      TemporalRelation Rel, const Value *V2, unsigned V2Size,
+                      const Loop *L, const Value *UnderlyingV1,
+                      const Value *UnderlyingV2, Remedies &R) {
 
   // If this GEP has been visited before, we're on a use-def cycle.  Such cycles
   // are only valid when PHI nodes are involved or in unreachable code. The
@@ -680,7 +670,7 @@ BasicLoopAA::aliasGEP(const GEPOperator *GEP1, unsigned V1Size,
     AliasResult BaseAlias = aliasCommon(UnderlyingV1, UnknownSize,
                                         Rel,
                                         UnderlyingV2, UnknownSize,
-                                        L);
+                                        L, R);
 
     // If we get a No or May, then return it immediately, no amount of analysis
     // will improve this situation.
@@ -731,14 +721,14 @@ BasicLoopAA::aliasGEP(const GEPOperator *GEP1, unsigned V1Size,
     if (V1Size == UnknownSize && V2Size == UnknownSize)
       return MayAlias;
 
-    AliasResult R = aliasCommon(UnderlyingV1, UnknownSize, Rel, V2, V2Size, L);
-    if (R != MustAlias)
+    AliasResult Res = aliasCommon(UnderlyingV1, UnknownSize, Rel, V2, V2Size, L, R);
+    if (Res != MustAlias)
       // If V2 may alias GEP base pointer, conservatively returns MayAlias.  If
       // V2 is known not to alias GEP base pointer, then the two values cannot
       // alias per GEP semantics: "A pointer value formed from a getelementptr
       // instruction is associated with the addresses associated with the first
       // operand of the getelementptr".
-      return R;
+      return Res;
 
     const DataLayout *TD = getDataLayout();
     const Value *GEP1BasePtr =
@@ -794,9 +784,8 @@ BasicLoopAA::aliasGEP(const GEPOperator *GEP1, unsigned V1Size,
 /// instruction against another.
 liberty::LoopAA::AliasResult
 BasicLoopAA::aliasSelect(const SelectInst *SI, unsigned SISize,
-                         TemporalRelation Rel,
-                         const Value *V2, unsigned V2Size,
-                         const Loop *L) {
+                         TemporalRelation Rel, const Value *V2, unsigned V2Size,
+                         const Loop *L, Remedies &R) {
   // If this select has been visited before, we're on a use-def cycle.  Such
   // cycles are only valid when PHI nodes are involved or in unreachable
   // code. The visitPHI function catches cycles containing PHIs, but there could
@@ -813,14 +802,14 @@ BasicLoopAA::aliasSelect(const SelectInst *SI, unsigned SISize,
           aliasCommon(SI->getTrueValue(), SISize,
                       Rel,
                       SI2->getTrueValue(), V2Size,
-                      L);
+                      L, R);
         if (Alias == MayAlias)
           return MayAlias;
         AliasResult ThisAlias =
           aliasCommon(SI->getFalseValue(), SISize,
                       Rel,
                       SI2->getFalseValue(), V2Size,
-                      L);
+                      L, R);
         if (ThisAlias != Alias)
           return MayAlias;
         return Alias;
@@ -831,7 +820,7 @@ BasicLoopAA::aliasSelect(const SelectInst *SI, unsigned SISize,
   // If both arms of the Select node NoAlias or MustAlias V2, then returns
   // NoAlias / MustAlias. Otherwise, returns MayAlias.
   AliasResult Alias =
-    aliasCommon(V2, V2Size, Rel, SI->getTrueValue(), SISize, L);
+    aliasCommon(V2, V2Size, Rel, SI->getTrueValue(), SISize, L, R);
   if (Alias == MayAlias)
     return MayAlias;
 
@@ -841,7 +830,7 @@ BasicLoopAA::aliasSelect(const SelectInst *SI, unsigned SISize,
   Visited.erase(V2);
 
   AliasResult ThisAlias =
-    aliasCommon(V2, V2Size, Rel, SI->getFalseValue(), SISize, L);
+    aliasCommon(V2, V2Size, Rel, SI->getFalseValue(), SISize, L, R);
   if (ThisAlias != Alias)
     return MayAlias;
   return Alias;
@@ -850,10 +839,9 @@ BasicLoopAA::aliasSelect(const SelectInst *SI, unsigned SISize,
 // aliasPHI - Provide a bunch of ad-hoc rules to disambiguate a PHI instruction
 // against another.
 liberty::LoopAA::AliasResult
-BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize,
-                      TemporalRelation Rel,
-                      const Value *V2, unsigned V2Size,
-                      const Loop *L) {
+BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize, TemporalRelation Rel,
+                      const Value *V2, unsigned V2Size, const Loop *L,
+                      Remedies &R) {
   // The PHI node has already been visited, avoid recursion any further.
   if (!Visited.insert(PN).second)
     return MayAlias;
@@ -869,7 +857,7 @@ BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize,
                       Rel,
                       PN2->getIncomingValueForBlock(PN->getIncomingBlock(0)),
                       V2Size,
-                      L);
+                      L, R);
         if (Alias == MayAlias)
           return MayAlias;
         for (unsigned i = 1, e = PN->getNumIncomingValues(); i != e; ++i) {
@@ -878,7 +866,7 @@ BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize,
                         Rel,
                         PN2->getIncomingValueForBlock(PN->getIncomingBlock(i)),
                         V2Size,
-                        L);
+                        L, R);
           if (ThisAlias != Alias)
             return MayAlias;
         }
@@ -901,7 +889,7 @@ BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize,
       V1Srcs.push_back(PV1);
   }
 
-  AliasResult Alias = aliasCommon(V2, V2Size, Rel, V1Srcs[0], PNSize, L);
+  AliasResult Alias = aliasCommon(V2, V2Size, Rel, V1Srcs[0], PNSize, L, R);
   // Early exit if the check of the first PHI source against V2 is MayAlias.
   // Other results are not possible.
   if (Alias == MayAlias)
@@ -917,7 +905,7 @@ BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize,
     // assume that V2 is being visited recursively.
     Visited.erase(V2);
 
-    AliasResult ThisAlias = aliasCommon(V2, V2Size, Rel, V, PNSize, L);
+    AliasResult ThisAlias = aliasCommon(V2, V2Size, Rel, V, PNSize, L, R);
     if (ThisAlias != Alias || ThisAlias == MayAlias)
       return MayAlias;
   }
@@ -929,16 +917,14 @@ BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize,
 // such as array references.
 //
 liberty::LoopAA::AliasResult
-BasicLoopAA::aliasCheck(const Pointer &P1,
-                        TemporalRelation Rel,
-                        const Pointer &P2,
-                        const Loop *L) {
+BasicLoopAA::aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                        const Pointer &P2, const Loop *L, Remedies &R) {
 
   const Value *V1 = P1.ptr, *V2 = P2.ptr;
   const unsigned V1Size = P1.size, V2Size = P2.size;
 
   assert(Visited.empty() && "Visited must be cleared after use!");
-  AliasResult AR = aliasCommon(V1, V1Size, Rel, V2, V2Size, L);
+  AliasResult AR = aliasCommon(V1, V1Size, Rel, V2, V2Size, L, R);
   Visited.clear();
   return AR;
 }
@@ -948,7 +934,7 @@ liberty::LoopAA::AliasResult
 BasicLoopAA::aliasCommon(const Value *V1, unsigned V1Size,
                          TemporalRelation Rel,
                          const Value *V2, unsigned V2Size,
-                         const Loop *L) {
+                         const Loop *L, Remedies &R) {
 
   // This file is setup for intra-procedural analysis, if these two values
   // are from different functions we just give up right away
@@ -1037,21 +1023,21 @@ BasicLoopAA::aliasCommon(const Value *V1, unsigned V1Size,
   }
 
   if (const GEPOperator *GV1 = dyn_cast<GEPOperator>(V1))
-    return aliasGEP(GV1, V1Size, Rel, V2, V2Size, L, O1, O2);
+    return aliasGEP(GV1, V1Size, Rel, V2, V2Size, L, O1, O2, R);
 
   if (isa<PHINode>(V2) && !isa<PHINode>(V1)) {
     std::swap(V1, V2);
     std::swap(V1Size, V2Size);
   }
   if (const PHINode *PN = dyn_cast<PHINode>(V1))
-    return aliasPHI(PN, V1Size, Rel, V2, V2Size, L);
+    return aliasPHI(PN, V1Size, Rel, V2, V2Size, L, R);
 
   if (isa<SelectInst>(V2) && !isa<SelectInst>(V1)) {
     std::swap(V1, V2);
     std::swap(V1Size, V2Size);
   }
   if (const SelectInst *S1 = dyn_cast<SelectInst>(V1))
-    return aliasSelect(S1, V1Size, Rel, V2, V2Size, L);
+    return aliasSelect(S1, V1Size, Rel, V2, V2Size, L, R);
 
   return MayAlias;
 }

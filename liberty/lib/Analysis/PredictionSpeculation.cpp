@@ -57,7 +57,11 @@ bool PredictionAA::mustAlias(const Value *ptr1, const Value *ptr2) {
 
   LoopAA *top = getTopAA();
   ++numSubQueries;
-  return top->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0) == MustAlias;
+
+  // no remedies needed for mustAlias queries. No spec returns must alias for
+  // now
+  Remedies R;
+  return top->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R) == MustAlias;
 }
 
 bool PredictionAA::isPredictablePtr(const Value *ptr, const DataLayout &DL) {
@@ -86,25 +90,21 @@ bool PredictionAA::isPredictablePtr(const Value *ptr, const DataLayout &DL) {
   return isPredPtr;
 }
 
-
-LoopAA::ModRefResult PredictionAA::modref(
-    const Instruction *I1,
-    TemporalRelation rel,
-    const Value *P2,
-    unsigned S2,
-    const Loop *L)
-{
+LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
+                                          TemporalRelation rel, const Value *P2,
+                                          unsigned S2, const Loop *L,
+                                          Remedies &R) {
   if (predspec->isPredictable(I1, L)) {
     ++numNoAlias;
     return NoModRef;
   }
 
   if (rel == LoopAA::Same)
-    return LoopAA::modref(I1, rel, P2, S2, L);
+    return LoopAA::modref(I1, rel, P2, S2, L, R);
 
   const Value *ptrA = liberty::getMemOper(I1);
   if (!ptrA)
-    return LoopAA::modref(I1, rel, P2, S2, L);
+    return LoopAA::modref(I1, rel, P2, S2, L, R);
 
   const Module *M = I1->getModule();
   const DataLayout &DL = M->getDataLayout();
@@ -117,15 +117,13 @@ LoopAA::ModRefResult PredictionAA::modref(
     return NoModRef;
   }
 
-  return LoopAA::modref(I1,rel,P2,S2,L);
+  return LoopAA::modref(I1,rel,P2,S2,L,R);
 }
 
-LoopAA::ModRefResult PredictionAA::modref(
-    const Instruction *I1,
-    TemporalRelation rel,
-    const Instruction *I2,
-    const Loop *L)
-{
+LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
+                                          TemporalRelation rel,
+                                          const Instruction *I2, const Loop *L,
+                                          Remedies &R) {
   if (predspec->isPredictable(I2, L) || predspec->isPredictable(I1, L)) {
     ++numNoAlias;
     return NoModRef;
@@ -145,13 +143,13 @@ LoopAA::ModRefResult PredictionAA::modref(
   */
 
   if (rel == LoopAA::Same)
-    return LoopAA::modref(I1, rel, I2, L);
+    return LoopAA::modref(I1, rel, I2, L, R);
 
   const Value *ptrA = liberty::getMemOper(I1);
   const Value *ptrB = liberty::getMemOper(I2);
 
   if (!ptrA || !ptrB)
-    return LoopAA::modref(I1, rel, I2, L);
+    return LoopAA::modref(I1, rel, I2, L, R);
 
   const Module *M = I1->getModule();
   const DataLayout &DL = M->getDataLayout();
@@ -164,7 +162,7 @@ LoopAA::ModRefResult PredictionAA::modref(
     return NoModRef;
   }
 
-  return LoopAA::modref(I1, rel, I2, L);
+  return LoopAA::modref(I1, rel, I2, L, R);
 }
 
 }

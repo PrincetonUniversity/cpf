@@ -102,7 +102,8 @@ namespace liberty {
       CallSite cs,
       const Pointer &p2,
       StructType *struct2,
-      const ConstantInt *field2);
+      const ConstantInt *field2,
+      Remedies &R);
 
   public:
 
@@ -135,19 +136,22 @@ namespace liberty {
       const Pointer &P1,
       TemporalRelation rel,
       const Pointer &P2,
-      const Loop *L);
+      const Loop *L,
+      Remedies &R);
 
     ModRefResult getModRefInfo(
       CallSite cs,
       TemporalRelation rel,
       const Pointer &p2,
-      const Loop *L);
+      const Loop *L,
+      Remedies &R);
 
     ModRefResult getModRefInfo(
       CallSite cs,
       TemporalRelation rel,
       CallSite cs2,
-      const Loop *L);
+      const Loop *L,
+      Remedies &R);
   };
 }
 
