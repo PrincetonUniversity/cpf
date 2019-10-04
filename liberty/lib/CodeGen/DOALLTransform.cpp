@@ -62,8 +62,10 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
       nonSpecPrivRedux = false;
     }
 
+    /*
     remed->read = read;
     remed->asgn = asgn;
+    */
     remed->alreadyInstrumented = &alreadyInstrumented;
     remed->u8 = int8;
     remed->u32 = int32;

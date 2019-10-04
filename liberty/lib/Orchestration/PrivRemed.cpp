@@ -26,8 +26,8 @@ STATISTIC(numPrivNoMemDep,
           "Number of false mem deps removed by privitization");
 
 void PrivRemedy::apply(Task *task) {
-  this->task = task;
-  replacePrivateLoadsStore((Instruction*)this->storeI);
+  //this->task = task;
+  //replacePrivateLoadsStore((Instruction*)this->storeI);
 }
 
 bool PrivRemedy::compare(const Remedy_ptr rhs) const {

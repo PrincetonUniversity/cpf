@@ -24,8 +24,9 @@ STATISTIC(numLocalityAA2,     "Num removed via LocalityAA (non-removable by Loca
 STATISTIC(numSubSep,          "Num separated via subheaps");
 //STATISTIC(numStaticReloc, "Static allocations relocated");
 //STATISTIC(numDynReloc,    "Dynamic allocations relocated");
-STATISTIC(numUOTests,     "UO tests inserted");
+//STATISTIC(numUOTests,     "UO tests inserted");
 
+/*
 //bool LocalityRemedy::addUOChecks(const HeapAssignment &asgn, Loop *loop, BasicBlock *bb, VSet &alreadyInstrumented)
 bool LocalityRemedy::addUOCheck(Value *ptr)
 {
@@ -129,9 +130,11 @@ void LocalityRemedy::insertUOCheck(Value *obj, HeapAssignment::Type heap)
   ++numUOTests;
   DEBUG(errs() << "Instrumented indet obj: " << *obj << '\n');
 }
+*/
 
 // change to bool eventually
 void LocalityRemedy::apply(Task *task) {
+  /*
   bool modified = false;
   this->task = task;
   if (privateI)
@@ -146,6 +149,7 @@ void LocalityRemedy::apply(Task *task) {
   if (ptr2)
     modified |= addUOCheck(ptr2);
   //return modified;
+  */
 }
 
 bool LocalityRemedy::compare(const Remedy_ptr rhs) const {

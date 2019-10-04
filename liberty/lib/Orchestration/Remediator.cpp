@@ -158,6 +158,7 @@ namespace liberty
     return false;
   }
 
+/*
 HeapAssignment::Type Remedy::selectHeap(const Value *ptr, const Loop *loop) const
 {
   const Ctx *ctx = read->getCtx(loop);
@@ -178,12 +179,10 @@ bool Remedy::isPrivate(Value *ptr)
   return selectHeap(ptr,loop) == HeapAssignment::Private;
 }
 
-/*
-bool Remedy::isRedux(Value *ptr)
-{
-  return selectHeap(ptr,loop) == HeapAssignment::Redux;
-}
-*/
+//bool Remedy::isRedux(Value *ptr)
+//{
+//  return selectHeap(ptr,loop) == HeapAssignment::Redux;
+//}
 
 void Remedy::insertPrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
 {
@@ -377,5 +376,6 @@ bool Remedy::replaceReduxStore(StoreInst *origSt) {
   insertReduxWrite(store, InstInsertPt::Before(store), ptr, sz);
   return true;
 }
+*/
 
 } // namespace liberty

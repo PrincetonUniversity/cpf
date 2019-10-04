@@ -101,6 +101,8 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 
+#include "liberty/Analysis/Assumptions.h"
+
 namespace liberty
 {
   using namespace llvm;
@@ -137,14 +139,24 @@ namespace liberty
       Mod       = 2,
       ModRef    = 3
     };
+
+    struct AliasResultFull {
+      AliasResult modrefRes;
+      Remedies assumptions;
+    };
+
+    struct ModRefResultFull {
+      ModRefResult modrefRes;
+      Remedies assumptions;
+    };
+
     /// The temporal relationship between two pointer
     /// accesses or two operations.  Time is measured
     /// in terms of iterations of the provided loop.
-    enum TemporalRelation
-    {
-      Before    = 0,  // Strictly before; I(A) < I(B) and I(A) != I(B)
-      Same      = 1,  // Equal; I(A) == I(B)
-      After     = 2   // Strictly after; I(A) > I(B) and I(A) != I(B).
+    enum TemporalRelation {
+      Before = 0, // Strictly before; I(A) < I(B) and I(A) != I(B)
+      Same = 1,   // Equal; I(A) == I(B)
+      After = 2   // Strictly after; I(A) > I(B) and I(A) != I(B).
     };
 
     /// How should we schedule this LoopAA?
