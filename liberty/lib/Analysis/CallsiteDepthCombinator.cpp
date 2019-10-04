@@ -92,14 +92,15 @@ namespace liberty
   /// Determine if it is possible for a store
   /// 'src' to flow to a load 'dst' across
   /// the backedge of L.
-  bool CallsiteDepthCombinator::mayFlowCrossIter(
-    const CtxInst &write, const CtxInst &read, const Loop *L, KillFlow &kill,
-    time_t queryStart, unsigned Timeout)
-  {
+  bool CallsiteDepthCombinator::mayFlowCrossIter(const CtxInst &write,
+                                                 const CtxInst &read,
+                                                 const Loop *L, KillFlow &kill,
+                                                 Remedies &R, time_t queryStart,
+                                                 unsigned Timeout) {
     const Instruction *src = getToplevelInst(write),
                       *dst = getToplevelInst(read);
 
-    return mayFlowCrossIter(kill,src,dst,L,write,read,queryStart,Timeout);
+    return mayFlowCrossIter(kill,src,dst,L,write,read,R,queryStart,Timeout);
   }
 
   bool CallsiteDepthCombinator::mayFlowCrossIter(
@@ -108,7 +109,7 @@ namespace liberty
     const Instruction *dst,
     const Loop *L,
     const CtxInst &write,
-    const CtxInst &read,
+    const CtxInst &read, Remedies &R,
     time_t queryStart,unsigned Timeout)
   {
     ++numFlowTests;
@@ -116,7 +117,7 @@ namespace liberty
     LoopAA *top = kill.getTopAA();
     INTROSPECT(errs() << "Test flow from " << write << " to " << read << " {\n");
 //      enterIntrospectionRegion(false);
-    ModRefResult q = top->modref(write.getInst(), Before, read.getInst(), L);
+    ModRefResult q = top->modref(write.getInst(), Before, read.getInst(), L, R);
 //      exitIntrospectionRegion();
     INTROSPECT(errs() << "} Exit test flow +--> " << q << '\n');
     if( q == NoModRef || q == Ref )
@@ -255,14 +256,15 @@ namespace liberty
     const Instruction *dst,
     const Loop *L,
     const CtxInst &write,
-    const CtxInst &read)
+    const CtxInst &read,
+    Remedies &R)
   {
     ++numFlowTests;
 
     LoopAA *top = kill.getTopAA();
     INTROSPECT(errs() << "Test flow from " << write << " to " << read << " {\n");
 //      enterIntrospectionRegion(false);
-    ModRefResult q = top->modref(write.getInst(), Same, read.getInst(), L);
+    ModRefResult q = top->modref(write.getInst(), Same, read.getInst(), L, R);
 //      exitIntrospectionRegion();
     INTROSPECT(errs() << "} Exit test flow +--> " << q << '\n');
     if( q == NoModRef || q == Ref )
@@ -380,6 +382,7 @@ namespace liberty
     const Instruction *dst,
     const Loop *L,
     KillFlow &kill,
+    Remedies &R,
     CCPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout)
   {
@@ -399,7 +402,7 @@ namespace liberty
       errs() << "}\n";
     );
 
-    return doFlowSearchCrossIter(src,dst,L, writes,kill,allFlowsOut,queryStart, Timeout);
+    return doFlowSearchCrossIter(src,dst,L, writes,kill,R,allFlowsOut,queryStart, Timeout);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
@@ -408,6 +411,7 @@ namespace liberty
     const Loop *L,
     InstSearch &writes,
     KillFlow &kill,
+    Remedies &R,
     CCPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout)
   {
@@ -424,7 +428,8 @@ namespace liberty
       errs() << "}\n";
     );
 
-    return doFlowSearchCrossIter(src,dst,L, writes,reads, kill,allFlowsOut,queryStart, Timeout);
+    return doFlowSearchCrossIter(src, dst, L, writes, reads, kill, R,
+                                 allFlowsOut, queryStart, Timeout);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
@@ -434,6 +439,7 @@ namespace liberty
     InstSearch &writes,
     InstSearch &reads,
     KillFlow &kill,
+    Remedies &R,
     CCPairs *allFlowsOut,
     time_t queryStart,
     unsigned Timeout)
@@ -463,7 +469,7 @@ namespace liberty
           }
         }
 
-        if( !mayFlowCrossIter(kill, src,dst,L, write,read, queryStart, Timeout) )
+        if( !mayFlowCrossIter(kill, src,dst,L, write,read, R, queryStart, Timeout) )
           continue;
 
         // TODO
@@ -502,9 +508,10 @@ namespace liberty
     const Instruction *inst1,
     TemporalRelation Rel,
     const Instruction *inst2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
-    ModRefResult result = LoopAA::modref(inst1,Rel,inst2,L);
+    ModRefResult result = LoopAA::modref(inst1,Rel,inst2,L, R);
     if( result == NoModRef || result == Ref )
       return result;
     if( Rel == Same )
@@ -591,7 +598,7 @@ namespace liberty
       time_t queryStart=0;
       if( AnalysisTimeout > 0 )
         time(&queryStart);
-      isFlow = iiCache[key] = doFlowSearchCrossIter(src,dst, L,*killflow, 0,queryStart, AnalysisTimeout);
+      isFlow = iiCache[key] = doFlowSearchCrossIter(src,dst, L,*killflow, R, 0,queryStart, AnalysisTimeout);
       queryStart = 0;
     }
 
@@ -618,9 +625,10 @@ namespace liberty
     TemporalRelation Rel,
     const Value *p2,
     unsigned s2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
-    ModRefResult result = LoopAA::modref(i1,Rel,p2,s2,L);
+    ModRefResult result = LoopAA::modref(i1,Rel,p2,s2,L,R);
     if( result == NoModRef || result == Ref )
       return result;
     if( Rel == Same )

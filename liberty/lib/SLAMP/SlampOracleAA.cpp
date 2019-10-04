@@ -24,20 +24,20 @@ LoopAA::AliasResult SlampOracle::alias(
     const Value *ptrA, unsigned sizeA,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
 {
-  return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+  return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L, R);
 }
 
 LoopAA::ModRefResult SlampOracle::modref(
   const Instruction *A,
   TemporalRelation rel,
   const Value *ptrB, unsigned sizeB,
-  const Loop *L)
+  const Loop *L, Remedies &R)
 {
   //std::string space(getDepth()+1, ' ');
   //errs() << space << "si\n";
-  return LoopAA::modref(A,rel,ptrB,sizeB,L);
+  return LoopAA::modref(A,rel,ptrB,sizeB,L,R);
 }
 
 bool isMemIntrinsic(const Instruction *inst)
@@ -60,7 +60,7 @@ LoopAA::ModRefResult SlampOracle::modref(
   const Instruction *A,
   TemporalRelation rel,
   const Instruction *B,
-  const Loop *L)
+  const Loop *L, Remedies &R)
 {
   ++numQueries;
 
@@ -70,7 +70,7 @@ LoopAA::ModRefResult SlampOracle::modref(
     // Inapplicable
     //std::string space(getDepth()+1, ' ');
     //errs() << space << "si\n";
-    return LoopAA::modref(A,rel,B,L);
+    return LoopAA::modref(A,rel,B,L,R);
   }
 
   // both instructions should be included in the target loop
@@ -90,7 +90,7 @@ LoopAA::ModRefResult SlampOracle::modref(
     // Inapplicable
     //std::string space(getDepth()+1, ' ');
     //errs() << space << "si\n";
-    return LoopAA::modref(A,rel,B,L);
+    return LoopAA::modref(A,rel,B,L,R);
   }
 
   ModRefResult result = ModRef;
@@ -125,7 +125,7 @@ LoopAA::ModRefResult SlampOracle::modref(
       // inapplicable
       //std::string space(getDepth()+1, ' ');
       //errs() << space << "si\n";
-      result = LoopAA::modref(A,rel,B,L);
+      result = LoopAA::modref(A,rel,B,L,R);
       return result;
     }
 
@@ -146,7 +146,7 @@ LoopAA::ModRefResult SlampOracle::modref(
       // inapplicable, as Slamp does not collect output dependence
       //std::string space(getDepth()+1, ' ');
       //errs() << space << "si\n";
-      result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+      result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
       return result;
     }
 
@@ -205,7 +205,7 @@ LoopAA::ModRefResult SlampOracle::modref(
       // inapplicable
       //std::string space(getDepth()+1, ' ');
       //errs() << space << "si\n";
-      result = LoopAA::modref(A,rel,B,L);
+      result = LoopAA::modref(A,rel,B,L,R);
       return result;
     }
 
@@ -227,7 +227,7 @@ LoopAA::ModRefResult SlampOracle::modref(
       // inapplicable
       //std::string space(getDepth()+1, ' ');
       //errs() << space << "si\n";
-      result = ModRefResult(result & LoopAA::modref(A,rel,B,L));
+      result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R));
       return result;
     }
 
@@ -245,7 +245,7 @@ LoopAA::ModRefResult SlampOracle::modref(
     //std::string space(getDepth()+1, ' ');
     //errs() << space << "sr " << result << "\n";
     // Chain.
-    LoopAA::ModRefResult chainresult = LoopAA::modref(A,rel,B,L);
+    LoopAA::ModRefResult chainresult = LoopAA::modref(A,rel,B,L,R);
 
     if ( result > ( result & chainresult ) )
     {
@@ -258,7 +258,7 @@ LoopAA::ModRefResult SlampOracle::modref(
       errs() << "rel: " << rel << "\n";
       assert( false );
     }
-    result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+    result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
   }
 
   return result;

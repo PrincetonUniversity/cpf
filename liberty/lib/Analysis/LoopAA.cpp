@@ -173,10 +173,10 @@ namespace liberty
     const Value *ptrA, unsigned sizeA,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     assert(nextAA && "Failure in chaining to next LoopAA; did you remember to add -no-loop-aa?");
-    return nextAA->alias(ptrA,sizeA,rel,ptrB,sizeB,L);
+    return nextAA->alias(ptrA,sizeA,rel,ptrB,sizeB,L, R);
   }
 
 
@@ -184,10 +184,10 @@ namespace liberty
     const Instruction *A,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     assert(nextAA && "Failure in chaining to next LoopAA; did you remember to add -no-loop-aa?");
-    return nextAA->modref(A,rel,ptrB,sizeB,L);
+    return nextAA->modref(A,rel,ptrB,sizeB,L,R);
   }
 
 
@@ -195,10 +195,10 @@ namespace liberty
     const Instruction *A,
     TemporalRelation rel,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     assert(nextAA && "Failure in chaining to next LoopAA; did you remember to add -no-loop-aa?");
-    return nextAA->modref(A,rel,B,L);
+    return nextAA->modref(A,rel,B,L,R);
   }
 
   bool LoopAA::pointsToConstantMemory(const Value *P, const Loop *L) {
@@ -206,20 +206,18 @@ namespace liberty
     return nextAA->pointsToConstantMemory(P, L);
   }
 
-  bool LoopAA::canBasicBlockModify(const BasicBlock &BB,
-                                   TemporalRelation Rel,
-                                   const Value *Ptr,
-                                   unsigned Size,
-                                   const Loop *L) {
-    return canInstructionRangeModify(BB.front(), Rel, BB.back(), Ptr, Size, L);
+  bool LoopAA::canBasicBlockModify(const BasicBlock &BB, TemporalRelation Rel,
+                                   const Value *Ptr, unsigned Size,
+                                   const Loop *L, Remedies &R) {
+    return canInstructionRangeModify(BB.front(), Rel, BB.back(), Ptr, Size, L,
+                                     R);
   }
 
   bool LoopAA::canInstructionRangeModify(const Instruction &I1,
                                          TemporalRelation Rel,
                                          const Instruction &I2,
-                                         const Value *Ptr,
-                                         unsigned Size,
-                                         const Loop *L) {
+                                         const Value *Ptr, unsigned Size,
+                                         const Loop *L, Remedies &R) {
     assert(I1.getParent() == I2.getParent() &&
            "Instructions not in same basic block!");
     BasicBlock::const_iterator I(I1);
@@ -229,24 +227,23 @@ namespace liberty
     for (; I != E; ++I) // Check every instruction in range
     {
       const Instruction *Inst = &*I;
-      if (modref(Inst, Rel, Ptr, Size, L) & Mod)
+      if (modref(Inst, Rel, Ptr, Size, L, R) & Mod)
         return true;
     }
     return false;
   }
 
-  bool LoopAA::mayModInterIteration(const Instruction *A,
-                                    const Instruction *B,
-                                    const Loop *L) {
+  bool LoopAA::mayModInterIteration(const Instruction *A, const Instruction *B,
+                                    const Loop *L, Remedies &R) {
 
-    if(A->mayWriteToMemory()) {
-      ModRefResult a2b = modref(A, Before, B, L);
-      if(a2b & LoopAA::Mod)
+    if (A->mayWriteToMemory()) {
+      ModRefResult a2b = modref(A, Before, B, L, R);
+      if (a2b & LoopAA::Mod)
         return true;
     }
 
-    if(B->mayWriteToMemory()) {
-      ModRefResult b2a = modref(B, After, A, L);
+    if (B->mayWriteToMemory()) {
+      ModRefResult b2a = modref(B, After, A, L, R);
       if(b2a & Mod)
         return true;
     }
@@ -327,7 +324,7 @@ namespace liberty
     const Value *ptrA, unsigned sizeA,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     DEBUG(errs() << "NoLoopAA\n");
     return MayAlias;
@@ -338,7 +335,7 @@ namespace liberty
     const Instruction *A,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     DEBUG(errs() << "NoLoopAA\n");
     if( ! A->mayReadOrWriteMemory() )
@@ -356,7 +353,7 @@ namespace liberty
     const Instruction *A,
     TemporalRelation rel,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     DEBUG(errs() << "NoLoopAA\n");
 
@@ -468,7 +465,7 @@ namespace liberty
     const Value *ptrA, unsigned sizeA,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     DEBUG(errs() << "AAToLoopAA\n");
     if( rel == Same && isValid(L, ptrA) && isValid(L, ptrB) )
@@ -478,14 +475,14 @@ namespace liberty
         return r;
     }
 
-    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L, R);
   }
 
   LoopAA::ModRefResult AAToLoopAA::modref(
     const Instruction *A,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     DEBUG(errs() << "AAToLoopAA\n");
     // llvm::AliasAnalysis is only valid for innermost
@@ -496,18 +493,19 @@ namespace liberty
       if( r == NoModRef )
         return r;
       else
-        return ModRefResult( r & LoopAA::modref(A,rel,ptrB,sizeB,L) );
+        return ModRefResult( r & LoopAA::modref(A,rel,ptrB,sizeB,L,R) );
     }
 
     // Couldn't say anything specific; chain to lower analyses.
-    return LoopAA::modref(A,rel,ptrB,sizeB,L);
+    return LoopAA::modref(A,rel,ptrB,sizeB,L,R);
   }
 
   LoopAA::ModRefResult AAToLoopAA::modref(
     const Instruction *A,
     TemporalRelation rel,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     // Why do we sometimes reverse queries:
     //
@@ -541,7 +539,7 @@ namespace liberty
             return NoModRef;
 
           else
-            return ModRefResult( r & LoopAA::modref(A,rel,B,L) );
+            return ModRefResult( r & LoopAA::modref(A,rel,B,L,R) );
         }
         else if( csB.getInstruction() )
         {
@@ -555,7 +553,7 @@ namespace liberty
             return r;
 
           else
-            return LoopAA::modref(A,rel,B,L);
+            return LoopAA::modref(A,rel,B,L,R);
 
         }
         else if( const Value *ptrB = getMemOper(B) )
@@ -567,13 +565,13 @@ namespace liberty
           if( r == NoModRef )
             return r;
           else
-            return ModRefResult( r & LoopAA::modref(A,rel,B,L) );
+            return ModRefResult( r & LoopAA::modref(A,rel,B,L,R) );
         }
       }
     }
 
     // Couldn't say anything specific; chain to lower analyses.
-    return LoopAA::modref(A,rel,B,L);
+    return LoopAA::modref(A,rel,B,L,R);
   }
 
 //------------------------------------------------------------------------
@@ -659,6 +657,8 @@ namespace liberty
     loopTotals[0][0] = loopTotals[0][1] = loopTotals[0][2] = loopTotals[0][3] = 0;
     loopTotals[1][0] = loopTotals[1][1] = loopTotals[1][2] = loopTotals[1][3] = 0;
 
+    Remedies R;
+
     // For every pair of instructions in this loop;
     for(Loop::block_iterator i=L->block_begin(), e=L->block_end(); i!=e; ++i)
     {
@@ -686,7 +686,7 @@ namespace liberty
             // don't ask reflexive, intra-iteration queries.
             if( i1 != i2 )
             {
-              switch( loopaa->modref(i1,LoopAA::Same,i2,L) )
+              switch( loopaa->modref(i1,LoopAA::Same,i2,L,R) )
               {
                 case LoopAA::NoModRef:
                   DEBUG(errs() << "\tIntra: NoModRef\n");
@@ -715,7 +715,7 @@ namespace liberty
               }
             }
 
-            switch( loopaa->modref(i1,LoopAA::Before,i2,L) )
+            switch( loopaa->modref(i1,LoopAA::Before,i2,L,R) )
             {
               case LoopAA::NoModRef:
                 DEBUG(errs() << "\tInter: NoModRef\n");

@@ -25,7 +25,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   const Instruction *A,
   TemporalRelation rel,
   const Value *ptrB, unsigned sizeB,
-  const Loop *L)
+  const Loop *L, Remedies &R)
 {
   ++numQueries;
 
@@ -41,7 +41,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
 
   if( result != NoModRef )
     // Chain.
-    result = ModRefResult(result & LoopAA::modref(A,rel,ptrB,sizeB,L) );
+    result = ModRefResult(result & LoopAA::modref(A,rel,ptrB,sizeB,L,R) );
 
   INTROSPECT(EXIT(A,rel,ptrB,sizeB,L));
   return result;
@@ -52,7 +52,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   const Instruction *A,
   TemporalRelation rel,
   const Instruction *B,
-  const Loop *L)
+  const Loop *L, Remedies &R)
 {
   ++numQueries;
 
@@ -75,7 +75,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   }
 
   // Chain.
-  result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+  result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
 
   INTROSPECT(EXIT(A,rel,B,L,result));
   return result;

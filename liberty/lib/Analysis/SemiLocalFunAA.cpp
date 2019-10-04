@@ -108,9 +108,10 @@ using namespace llvm;
     return ModRef;
   }
 
-  LoopAA::ModRefResult SemiLocalFunAA::aliasedArgumentsModRef(const ImmutableCallSite CS,
-                                      const Value *P,
-                                      const unsigned Size) const {
+  LoopAA::ModRefResult
+  SemiLocalFunAA::aliasedArgumentsModRef(const ImmutableCallSite CS,
+                                         const Value *P, const unsigned Size,
+                                         Remedies &R) const {
 
     LoopAA *aa = getTopAA();
     assert(aa && "Cogito ergo sum.");
@@ -129,7 +130,7 @@ using namespace llvm;
 
         const int argSize = liberty::getTargetSize(arg, TD);
         if(!fun->hasParamAttribute(i, Attribute::NoAlias) &&
-           aa->alias(P, Size, Same, arg, argSize, NULL)) {
+           aa->alias(P, Size, Same, arg, argSize, NULL, R)) {
           result =  ModRefResult(result | getModRefInfo(CS, i));
         }
       }
@@ -138,9 +139,8 @@ using namespace llvm;
     return result;
   }
 
-  bool SemiLocalFunAA::globalsAlias(const GlobalSet globals,
-                    const Value *P,
-                    const unsigned Size) const {
+  bool SemiLocalFunAA::globalsAlias(const GlobalSet globals, const Value *P,
+                                    const unsigned Size, Remedies &R) const {
 
     LoopAA *aa = getTopAA();
     assert(aa && "Cogito ergo sum.");
@@ -151,7 +151,7 @@ using namespace llvm;
     for(GlobalSetIt global = globals.begin(); global != globals.end(); ++global) {
 
       const int globalSize = liberty::getTargetSize(*global, TD);
-      if(aa->alias(P, Size, Same, *global, globalSize, NULL)) {
+      if(aa->alias(P, Size, Same, *global, globalSize, NULL, R)) {
         return true;
       }
     }
@@ -256,10 +256,9 @@ using namespace llvm;
     return writeOnlyFormalArg(f);
   }
 
-  LoopAA::ModRefResult SemiLocalFunAA::getModRefInfo(CallSite CS1,
-                             TemporalRelation Rel,
-                             CallSite CS2,
-                             const Loop *L) {
+  LoopAA::ModRefResult
+  SemiLocalFunAA::getModRefInfo(CallSite CS1, TemporalRelation Rel,
+                                CallSite CS2, const Loop *L, Remedies &R) {
 
     // If one is local, the other semi-local and if their args do not alias,
 
@@ -296,7 +295,7 @@ using namespace llvm;
             const unsigned s2 = liberty::getTargetSize(arg2,TD);
 
             // Do these pointers alias?
-            if( aa->alias(arg1,s1, Rel, arg2,s2, L) ) {
+            if( aa->alias(arg1,s1, Rel, arg2,s2, L, R) ) {
               // Yes.  What does this mean?
               Formal formal1 = { CS1.getCalledFunction()->getName(), arg1no };
 
@@ -323,10 +322,9 @@ using namespace llvm;
     return ModRef;
   }
 
-  LoopAA::ModRefResult SemiLocalFunAA::getModRefInfo(CallSite CS,
-                             TemporalRelation Rel,
-                             const Pointer &P,
-                             const Loop *L) {
+  LoopAA::ModRefResult
+  SemiLocalFunAA::getModRefInfo(CallSite CS, TemporalRelation Rel,
+                                const Pointer &P, const Loop *L, Remedies &R) {
 
     const Value *V = P.ptr;
     const unsigned Size = P.size;
@@ -339,18 +337,18 @@ using namespace llvm;
     if(!isSemiLocal(fun, pureFun))
       return ModRef;
 
-    ModRefResult result = aliasedArgumentsModRef(CS, V, Size);
+    ModRefResult result = aliasedArgumentsModRef(CS, V, Size, R);
     if(result == ModRef)
       return ModRef;
 
-    if(globalsAlias(globalMod[fun], V, Size))
+    if(globalsAlias(globalMod[fun], V, Size, R))
       return ModRef;
-    else if( globalsAlias(globalRef[fun], V, Size))
+    else if( globalsAlias(globalRef[fun], V, Size, R))
       return Ref;
 
     if( !CS.getInstruction()->getType()->isVoidTy() ) {
       LoopAA *AA = getTopAA();
-      if(AA->alias(CS.getInstruction(), Size, Rel, V, Size, L) != NoAlias)
+      if (AA->alias(CS.getInstruction(), Size, Rel, V, Size, L, R) != NoAlias)
         return ModRef;
     }
 

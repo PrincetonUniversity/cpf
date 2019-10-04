@@ -85,7 +85,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     LoopAA *top = getEffectiveTopAA();
     ++numSubQueries;
-    return top->alias(storeptr,1, Same, loadptr,1, 0) == LoopAA::MustAlias;
+
+    // for now no spec provides must alias answer, no the remedies argument does
+    // not matter (it will always be an empty set)
+    Remedies R;
+    return top->alias(storeptr,1, Same, loadptr,1, 0, R) == LoopAA::MustAlias;
   }
 
   /// Non-topping case of pointer comparison.
@@ -825,14 +829,13 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   KillFlow::~KillFlow() {}
 
   LoopAA::ModRefResult KillFlow::modref(const Instruction *i1,
-                      LoopAA::TemporalRelation Rel,
-                      const Instruction *i2,
-                      const Loop *L)
-  {
+                                        LoopAA::TemporalRelation Rel,
+                                        const Instruction *i2, const Loop *L,
+                                        Remedies &R) {
     INTROSPECT(ENTER(i1,Rel,i2,L));
     ++numQueriesReceived;
 
-    ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L);
+    ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L, R);
     INTROSPECT(errs() << "lower in the stack reports res=" << res << '\n');
     //if( res == Ref || res == NoModRef )
     if( res == NoModRef )

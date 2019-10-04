@@ -124,11 +124,9 @@ public:
     return false;
   }
 
-
-  virtual AliasResult aliasCheck(const Pointer &P1,
-                                 TemporalRelation Rel,
-                                 const Pointer &P2,
-                                 const Loop *L) {
+  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                                 const Pointer &P2, const Loop *L,
+                                 Remedies &R) {
 
     // We are looking for this pattern:
     //  0.  Two GEPs which MUST alias
@@ -208,7 +206,8 @@ public:
       if (staticallyDiffIndexFound) {
         // 0. Check if the base pointers must alias.
         if (getTopAA()->alias(gep1->getPointerOperand(), 1, Same,
-                              gep2->getPointerOperand(), 1, 0) == MustAlias) {
+                              gep2->getPointerOperand(), 1, 0,
+                              R) == MustAlias) {
           ++numNoAlias;
           return NoAlias;
         }
@@ -307,8 +306,8 @@ public:
       return MayAlias;
 
     // 0. Check if the base pointers must alias.
-    if( getTopAA()->alias(gep1->getPointerOperand(),1, Same, gep2->getPointerOperand(),1, 0) == MustAlias )
-    {
+    if (getTopAA()->alias(gep1->getPointerOperand(), 1, Same,
+                          gep2->getPointerOperand(), 1, 0, R) == MustAlias) {
       ++numNoAlias;
       return NoAlias;
     }

@@ -486,7 +486,8 @@ namespace liberty
     CallSite cs,
     const Pointer &p2,
     StructType *struct2,
-    const ConstantInt *field2)
+    const ConstantInt *field2,
+    Remedies &R)
   {
     LoopAA *top = getTopAA();
     NonCapturedFieldsAnalysis &ncfa = getAnalysis< NonCapturedFieldsAnalysis >();
@@ -536,7 +537,7 @@ namespace liberty
 
     if( callee->isDeclaration() )
     {
-      lowerBound = top->modref(cs.getInstruction(), Same, p2.ptr, p2.size, 0);
+      lowerBound = top->modref(cs.getInstruction(), Same, p2.ptr, p2.size, 0, R);
     }
 
     else
@@ -559,7 +560,7 @@ namespace liberty
         if( cs3.getInstruction() )
         {
           // recur.
-          ModRefResult r = callsiteTouchesNonEscapingField(cs3,p2,struct2,field2);
+          ModRefResult r = callsiteTouchesNonEscapingField(cs3,p2,struct2,field2,R);
           lowerBound = ModRefResult(lowerBound | r);
         }
 
@@ -582,7 +583,7 @@ namespace liberty
             for(std::vector<Argument*>::iterator k=aliasArgs.begin(),g=aliasArgs.end(); k!=g; ++k)
             {
               unsigned size = liberty::getTargetSize(*k,getDataLayout());
-              ModRefResult r = top->modref(inst, Same, *k, size, 0);
+              ModRefResult r = top->modref(inst, Same, *k, size, 0, R);
               lowerBound = ModRefResult(lowerBound | r);
 
               if( lowerBound == ModRef )
@@ -623,7 +624,8 @@ namespace liberty
     CallSite cs,
     TemporalRelation rel,
     CallSite cs2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     // I don't handle this case.
     return ModRef;
@@ -633,7 +635,8 @@ namespace liberty
     CallSite cs,
     TemporalRelation rel,
     const Pointer &p2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     DEBUG_WITH_TYPE("loopaa", errs() << "NoEscapeFieldsAA\n");
 
@@ -654,7 +657,7 @@ namespace liberty
       // transitive callees touch this field
       // of this type.
 
-      return callsiteTouchesNonEscapingField(cs,p2,struct2,field2);
+      return callsiteTouchesNonEscapingField(cs,p2,struct2,field2,R);
     }
 
     return ModRef;
@@ -664,7 +667,8 @@ namespace liberty
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     DEBUG_WITH_TYPE("loopaa", errs() << "NoEscapeFieldsAA\n");
 
@@ -707,7 +711,7 @@ namespace liberty
           // alias analysis to answer this question.
           LoopAA *top = getTopAA();
           DEBUG_WITH_TYPE("loopaa", errs() << "(recur)\n");
-          if( top->alias(parent1,s1, rel, parent2,s2, L) == NoAlias )
+          if( top->alias(parent1,s1, rel, parent2,s2, L, R) == NoAlias )
           {
             DEBUG_WITH_TYPE("loopaa", errs() << "(end recur)\n");
             return NoAlias;

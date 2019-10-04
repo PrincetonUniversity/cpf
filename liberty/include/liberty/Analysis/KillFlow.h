@@ -158,20 +158,14 @@ namespace liberty
       return this;
     }
 
-    ModRefResult modref(const Instruction *i1,
-                        TemporalRelation Rel,
-                        const Value *p2,
-                        unsigned sz2,
-                        const Loop *L)
-    {
-      return LoopAA::modref(i1,Rel,p2,sz2,L);
+    ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
+                        const Value *p2, unsigned sz2, const Loop *L,
+                        Remedies &R) {
+      return LoopAA::modref(i1, Rel, p2, sz2, L, R);
     }
 
-
-    ModRefResult modref(const Instruction *i1,
-                        TemporalRelation Rel,
-                        const Instruction *i2,
-                        const Loop *L);
+    ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
+                        const Instruction *i2, const Loop *L, Remedies &R);
 
     /// Determine if there is an operation in <L> which must execute before <before> which kills <ptr>
     bool pointerKilledBefore(const Loop *L, const Value *ptr, const Instruction *before, bool alsoCheckAggregate=true, time_t queryStart=0, unsigned Timeout=0);

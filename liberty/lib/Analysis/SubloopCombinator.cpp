@@ -58,23 +58,23 @@ struct SubloopCombinatorAA : public ModulePass, public LoopAA
 
   virtual ModRefResult modref(
     const Instruction *A,
-    TemporalRelation R,
+    TemporalRelation T,
     const Value *P2, unsigned S2,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
-    return LoopAA::modref(A,R,P2,S2,L); //chain
+    return LoopAA::modref(A,T,P2,S2,L,R); //chain
   }
 
   virtual ModRefResult modref(
     const Instruction *A,
-    TemporalRelation R,
+    TemporalRelation T,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
     ++numQueries;
 
-    if( !L || R != Same)
-      return LoopAA::modref(A,R,B,L); //chain
+    if( !L || T != Same)
+      return LoopAA::modref(A,T,B,L,R); //chain
 
     // Only care about queries where both
     // instructions are located within an
@@ -83,19 +83,20 @@ struct SubloopCombinatorAA : public ModulePass, public LoopAA
     {
       Loop *subloop = *i;
       if( subloop->contains(A) && subloop->contains(B) )
-        return subloop_modref(A,R,B,L,subloop);
+        return subloop_modref(A,T,B,L,subloop,R);
     }
 
-    return LoopAA::modref(A,R,B,L); //chain
+    return LoopAA::modref(A,T,B,L,R); //chain
   }
 
 private:
   ModRefResult subloop_modref(
     const Instruction *A,
-    TemporalRelation R,
+    TemporalRelation T,
     const Instruction *B,
     const Loop *L,
-    const Loop *subloop)
+    const Loop *subloop,
+    Remedies &R)
   {
     ++numEligible;
 
@@ -106,16 +107,16 @@ private:
     else if( !A->mayReadFromMemory() )
       worst_case = Mod;
 
-    const ModRefResult before = top(A,Before,B,subloop);
+    const ModRefResult before = top(A,Before,B,subloop,R);
     if( before == worst_case ) // bail-out
-      return ModRefResult( worst_case & LoopAA::modref(A,R,B,L) );
+      return ModRefResult( worst_case & LoopAA::modref(A,T,B,L,R) );
 
-    const ModRefResult after = top(A,After,B,subloop);
+    const ModRefResult after = top(A,After,B,subloop,R);
     ModRefResult join = ModRefResult( before | after );
     if( join == worst_case ) // bail-out
-      return ModRefResult( worst_case & LoopAA::modref(A,R,B,L) );
+      return ModRefResult( worst_case & LoopAA::modref(A,T,B,L,R) );
 
-    const ModRefResult same = top(A,Same,B,subloop);
+    const ModRefResult same = top(A,Same,B,subloop,R);
     join = ModRefResult( before | same | after );
 
     if( join == NoModRef )
@@ -125,7 +126,7 @@ private:
       return NoModRef;
     }
 
-    const ModRefResult chain = LoopAA::modref(A,R,B,L);
+    const ModRefResult chain = LoopAA::modref(A,T,B,L,R);
     const ModRefResult meet = ModRefResult( join & chain );
     if( meet != chain )
       ++numBenefit;
@@ -135,12 +136,12 @@ private:
 
   ModRefResult top(
     const Instruction *A,
-    TemporalRelation R,
+    TemporalRelation T,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L,Remedies &R)
   {
     ++numTops;
-    return getTopAA()->modref(A,R,B,L);
+    return getTopAA()->modref(A,T,B,L,R);
   }
 };
 

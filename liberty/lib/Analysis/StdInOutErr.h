@@ -25,24 +25,18 @@ public:
 
   virtual bool runOnModule(llvm::Module &M);
 
-  virtual AliasResult aliasCheck(const Pointer &P1,
-                                 TemporalRelation Rel,
-                                 const Pointer &P2,
-                                 const Loop *L);
+  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                                 const Pointer &P2, const Loop *L, Remedies &R);
 
   /// May not call down the LoopAA stack, but may top
-  virtual ModRefResult getModRefInfo(CallSite CS1,
-                                     TemporalRelation Rel,
-                                     CallSite CS2,
-                                     const Loop *L);
+  virtual ModRefResult getModRefInfo(CallSite CS1, TemporalRelation Rel,
+                                     CallSite CS2, const Loop *L, Remedies &R);
 
   /// V is never a CallSite
   /// May not call down the LoopAA stack, but may top
-  virtual ModRefResult getModRefInfo(CallSite CS,
-                                     TemporalRelation Rel,
-                                     const Pointer &P,
-                                     const Loop *L);
-
+  virtual ModRefResult getModRefInfo(CallSite CS, TemporalRelation Rel,
+                                     const Pointer &P, const Loop *L,
+                                     Remedies &R);
 
   virtual bool pointsToConstantMemory(const Value *v, const Loop *L);
 

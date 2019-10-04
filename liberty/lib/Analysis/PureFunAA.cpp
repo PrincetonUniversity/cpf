@@ -196,12 +196,14 @@ void PureFunAA::runOnSCC(const SCC &scc) {
 bool PureFunAA::argumentsAlias(const ImmutableCallSite CS1,
                                const ImmutableCallSite CS2,
                                LoopAA *aa,
-                               const DataLayout *TD) {
+                               const DataLayout *TD,
+                               Remedies &R) {
 
   typedef ImmutableCallSite::arg_iterator ArgIt;
   for(ArgIt arg = CS1.arg_begin(); arg != CS1.arg_end(); ++arg) {
     if((*arg)->getType()->isPointerTy()) {
-      if(argumentsAlias(CS2, *arg, liberty::getTargetSize(*arg, TD), aa, TD)) {
+      if (argumentsAlias(CS2, *arg, liberty::getTargetSize(*arg, TD), aa, TD,
+                         R)) {
         return true;
       }
     }
@@ -210,11 +212,9 @@ bool PureFunAA::argumentsAlias(const ImmutableCallSite CS1,
   return false;
 }
 
-bool PureFunAA::argumentsAlias(const ImmutableCallSite CS,
-                               const Value *P,
-                               const unsigned Size,
-                               LoopAA *aa,
-                               const DataLayout *TD) {
+bool PureFunAA::argumentsAlias(const ImmutableCallSite CS, const Value *P,
+                               const unsigned Size, LoopAA *aa,
+                               const DataLayout *TD, Remedies &R) {
 
   for(unsigned i = 0; i < CS.arg_size(); ++i) {
     const Value *arg = CS.getArgument(i);
@@ -224,7 +224,7 @@ bool PureFunAA::argumentsAlias(const ImmutableCallSite CS,
   //add check here for argument attribute
 
       const int argSize = liberty::getTargetSize(arg, TD);
-      if(aa->alias(P, Size, Same, arg, argSize, NULL)) {
+      if(aa->alias(P, Size, Same, arg, argSize, NULL, R)) {
         return true;
       }
     }
@@ -288,8 +288,8 @@ static Function *getCalledFunction(CallSite CS) {
 
 PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
                                                  TemporalRelation Rel,
-                                                 CallSite CS2,
-                                                 const Loop *L) {
+                                                 CallSite CS2, const Loop *L,
+                                                 Remedies &R) {
 
   const Function *fun1 = getCalledFunction(CS1);
   const Function *fun2 = getCalledFunction(CS2);
@@ -306,8 +306,8 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
   //if(isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD) &&
   //   !argumentsAlias(CS1, CS2.getInstruction(), aa, TD) &&
   //   !argumentsAlias(CS2, CS1.getInstruction(), aa, TD)) {
-  if(isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD) &&
-      !argumentsAlias(CS2, CS1, aa, TD)) {
+  if (isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD, R) &&
+      !argumentsAlias(CS2, CS1, aa, TD, R)) {
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 1\n");
     return NoModRef;
   }
@@ -330,7 +330,7 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
 PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
                                                  TemporalRelation Rel,
                                                  const Pointer &P,
-                                                 const Loop *L) {
+                                                 const Loop *L, Remedies &R) {
 
   const Value *Ptr = P.ptr;
   const unsigned Size = P.size;
@@ -344,10 +344,12 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
 
   LoopAA *AA = getTopAA();
   const DataLayout *TD = getDataLayout();
-  if(isLocal(fun) && !argumentsAlias(CS, Ptr, Size, AA, TD) &&
-     !AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L)) {
+  if(isLocal(fun) && !argumentsAlias(CS, Ptr, Size, AA, TD, R) &&
+     !AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, R)) {
 
-    DEBUG(errs() << "\t    result of query " << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L) << "\n");
+    DEBUG(errs() << "\t    result of query "
+                 << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, R)
+                 << "\n");
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 2\n");
     return NoModRef;
   }

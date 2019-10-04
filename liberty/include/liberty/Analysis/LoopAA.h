@@ -140,15 +140,8 @@ namespace liberty
       ModRef    = 3
     };
 
-    struct AliasResultFull {
-      AliasResult modrefRes;
-      Remedies assumptions;
-    };
-
-    struct ModRefResultFull {
-      ModRefResult modrefRes;
-      Remedies assumptions;
-    };
+    //typedef std::pair<AliasResult, Remedies> AliasResultFull;
+    //typedef std::pair<ModRefResult, Remedies> ModRefResultFull;
 
     /// The temporal relationship between two pointer
     /// accesses or two operations.  Time is measured
@@ -215,7 +208,8 @@ namespace liberty
       const Value *ptrA, unsigned sizeA,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     /// This is the method that consumers of
     /// dependence analysis will call.  It means:
@@ -244,7 +238,8 @@ namespace liberty
       const Instruction *A,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
 
     /// This is the method that consumers of
@@ -273,7 +268,8 @@ namespace liberty
       const Instruction *A,
       TemporalRelation rel,
       const Instruction *B,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     virtual bool pointsToConstantMemory(const Value *P, const Loop *L);
 
@@ -283,7 +279,8 @@ namespace liberty
                              TemporalRelation Rel,
                              const Value *Ptr,
                              unsigned Size,
-                             const Loop *L);
+                             const Loop *L,
+                             Remedies &R);
 
     /// canInstructionRangeModify - Return true if it is possible for the
     /// execution of the specified instructions to modify the value pointed to
@@ -294,11 +291,13 @@ namespace liberty
                                    const Instruction &I2,
                                    const Value *Ptr,
                                    unsigned Size,
-                                   const Loop *L);
+                                   const Loop *L,
+                                   Remedies &R);
 
     bool mayModInterIteration(const llvm::Instruction *A,
                               const llvm::Instruction *B,
-                              const llvm::Loop *L);
+                              const llvm::Loop *L,
+                              Remedies &R);
 
     /// Get the name of this AA
     virtual StringRef getLoopAAName() const = 0;
@@ -308,8 +307,8 @@ namespace liberty
     bool isNoAlias(const Value *V1, unsigned V1Size,
                    TemporalRelation Rel,
                    const Value *V2, unsigned V2Size,
-                   const Loop *L) {
-      return alias(V1, V1Size, Rel, V2, V2Size, L) == NoAlias;
+                   const Loop *L, Remedies &R) {
+      return alias(V1, V1Size, Rel, V2, V2Size, L, R) == NoAlias;
     }
 
 
@@ -468,19 +467,22 @@ namespace liberty
       const Value *ptrA, unsigned sizeA,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     virtual ModRefResult modref(
       const Instruction *A,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     virtual ModRefResult modref(
       const Instruction *A,
       TemporalRelation rel,
       const Instruction *B,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     virtual bool pointsToConstantMemory(const Value *P, const Loop *L);
   };
@@ -510,19 +512,22 @@ namespace liberty
       const Value *ptrA, unsigned sizeA,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     virtual ModRefResult modref(
       const Instruction *A,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     virtual ModRefResult modref(
       const Instruction *A,
       TemporalRelation rel,
       const Instruction *B,
-      const Loop *L);
+      const Loop *L,
+      Remedies &remeds);
 
     /// Conservatively raise an llvm::AliasAnalysis::AliasResult
     /// to a liberty::LoopAA::AliasResult.

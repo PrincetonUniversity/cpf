@@ -566,8 +566,10 @@ public:
     }
   }
 
-  AliasResult uapAlias(const Pointer &P1, const Value *obj1, TemporalRelation Rel, const Pointer &P2, const Value *obj2, const Loop *L, time_t queryStart, unsigned Timeout)
-  {
+  AliasResult uapAlias(const Pointer &P1, const Value *obj1,
+                       TemporalRelation Rel, const Pointer &P2,
+                       const Value *obj2, const Loop *L, Remedies &R,
+                       time_t queryStart, unsigned Timeout) {
     LoopAA *top = getTopAA();
 
     AccessPath *ap1 = findPathForLoad(obj1);
@@ -646,7 +648,7 @@ public:
           }
 
           ++numSubQueries;
-          const AliasResult myresult = top->alias(def1, size1, Rel, def2, size2, L);
+          const AliasResult myresult = top->alias(def1, size1, Rel, def2, size2, L, R);
 
           if( myresult != NoAlias )
           {
@@ -711,7 +713,7 @@ public:
         }
 
         ++numSubQueries;
-        const AliasResult myresult = top->alias(def1,size1,Rel,P2.ptr,P2.size,L);
+        const AliasResult myresult = top->alias(def1,size1,Rel,P2.ptr,P2.size,L,R);
 
         if( myresult != NoAlias )
         {
@@ -767,7 +769,7 @@ public:
         }
 
         ++numSubQueries;
-        const AliasResult myresult = top->alias(P1.ptr,P1.size,Rel,def2,size2,L);
+        const AliasResult myresult = top->alias(P1.ptr,P1.size,Rel,def2,size2,L,R);
 
         if( myresult != NoAlias )
         {
@@ -805,7 +807,8 @@ public:
   virtual AliasResult aliasCheck(const Pointer &P1,
                                  TemporalRelation Rel,
                                  const Pointer &P2,
-                                 const Loop *L)
+                                 const Loop *L,
+                                 Remedies &R)
   {
     INTROSPECT(ENTER(P1,Rel,P2,L));
     ++numQueries;
@@ -857,7 +860,7 @@ public:
 
         const Value *obj2 = *j;
 
-        result = join(result, uapAlias(P1,obj1,Rel,P2,obj2,L,queryStart,AnalysisTimeout));
+        result = join(result, uapAlias(P1,obj1,Rel,P2,obj2,L,R,queryStart,AnalysisTimeout));
 
         if(AnalysisTimeout > 0 && queryStart > 0)
         {
@@ -870,7 +873,6 @@ public:
             break;
           }
         }
-
       }
     }
 
