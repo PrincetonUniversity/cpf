@@ -19,7 +19,8 @@ LoopAA::AliasResult LocalityAA::aliasCheck(
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
 {
   ++numQueries;
 

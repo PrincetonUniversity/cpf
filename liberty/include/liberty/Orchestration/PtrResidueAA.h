@@ -34,19 +34,19 @@ struct PtrResidueAA : public LoopAA // Not a pass!
     const Value *P1, unsigned S1,
     TemporalRelation rel,
     const Value *P2, unsigned S2,
-    const Loop *L);
+    const Loop *L, Remedies &R);
 
   virtual ModRefResult modref(
     const Instruction *A,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L);
+    const Loop *L, Remedies &R);
 
   virtual ModRefResult modref(
     const Instruction *A,
     TemporalRelation rel,
     const Instruction *B,
-    const Loop *L);
+    const Loop *L, Remedies &R);
 
 private:
   const DataLayout &td;

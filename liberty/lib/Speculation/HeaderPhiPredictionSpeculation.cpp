@@ -299,8 +299,10 @@ bool HeaderPhiPredictionSpeculation::queryMemoryDep(Instruction *sop, Instructio
   if( ! sop->mayWriteToMemory() && ! dop->mayWriteToMemory() )
     return false;
 
+  Remedies R;
+
   // forward dep test
-  const LoopAA::ModRefResult forward = query(sop, FW, dop, loop);
+  const LoopAA::ModRefResult forward = query(sop, FW, dop, loop, R);
   if( LoopAA::NoModRef == forward )
   {
     return false;
@@ -312,7 +314,7 @@ bool HeaderPhiPredictionSpeculation::queryMemoryDep(Instruction *sop, Instructio
   if( FW != RV || sop != dop )
   {
     // reverse dep test
-    reverse = query(dop, RV, sop, loop);
+    reverse = query(dop, RV, sop, loop, R);
 
     if( LoopAA::NoModRef == reverse )
     {
@@ -349,9 +351,9 @@ bool HeaderPhiPredictionSpeculation::queryMemoryDep(Instruction *sop, Instructio
 LoopAA::ModRefResult HeaderPhiPredictionSpeculation::query(Instruction *sop,
     LoopAA::TemporalRelation rel,
     Instruction *dop,
-    Loop *loop)
+    Loop *loop, Remedies &R)
 {
-  const LoopAA::ModRefResult res = this->aa->modref(sop,rel,dop,loop);
+  const LoopAA::ModRefResult res = this->aa->modref(sop,rel,dop,loop,R);
   return res;
 }
 

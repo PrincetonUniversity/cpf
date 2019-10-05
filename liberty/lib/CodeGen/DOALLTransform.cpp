@@ -66,12 +66,14 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
     remed->read = read;
     remed->asgn = asgn;
     */
+    /*
     remed->alreadyInstrumented = &alreadyInstrumented;
     remed->u8 = int8;
     remed->u32 = int32;
     remed->voidptr = voidptr;
     remed->voidty = voidty;
     remed->mod = mod;
+    */
 
     nonSpecPrivRedux |=
         (remed->getRemedyName().equals("priv-remedy") & !localityRemedUsed);
@@ -126,7 +128,7 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
 
     if (remed->getRemedyName().equals("locality-remedy")) {
       //modified |= remed->apply(LDI);
-      remed->apply(task);
+      //remed->apply(task);
       modified = true;
     } else if (remed->getRemedyName().equals("priv-remedy")) {
       if (!nonSpecPrivRedux)
@@ -143,7 +145,7 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
       for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i)
         nonSpecPrivAUs.insert(i->au);
 
-      remed->apply(task);
+      //remed->apply(task);
       modified = true;
     }
 

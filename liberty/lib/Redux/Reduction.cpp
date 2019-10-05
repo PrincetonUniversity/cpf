@@ -947,6 +947,8 @@ bool Reduction::allOtherAccessesAreReduction(Loop *loop, Reduction::Type ty, Val
   PointerType *pty = cast< PointerType >( accumulator->getType() );
   unsigned size_acc = td.getTypeStoreSize( pty->getElementType() );
 
+  Remedies R;
+
   // Foreach operation in this loop which may access memory
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
@@ -988,11 +990,14 @@ bool Reduction::allOtherAccessesAreReduction(Loop *loop, Reduction::Type ty, Val
       // Condition b: the operation does not access this accumulator.
       PointerType *pty2 = cast< PointerType >( target->getType() );
       unsigned size_target = td.getTypeStoreSize( pty2->getElementType() );
-      if( loopaa->alias(accumulator, size_acc, LoopAA::Same, target, size_target, loop) != LoopAA::NoAlias )
+      if (loopaa->alias(accumulator, size_acc, LoopAA::Same, target,
+                        size_target, loop, R) != LoopAA::NoAlias)
         return false;
-      if( loopaa->alias(accumulator, size_acc, LoopAA::Before, target, size_target, loop) != LoopAA::NoAlias )
+      if (loopaa->alias(accumulator, size_acc, LoopAA::Before, target,
+                        size_target, loop, R) != LoopAA::NoAlias)
         return false;
-      if( loopaa->alias(accumulator, size_acc, LoopAA::After, target, size_target, loop) != LoopAA::NoAlias )
+      if (loopaa->alias(accumulator, size_acc, LoopAA::After, target,
+                        size_target, loop, R) != LoopAA::NoAlias)
         return false;
     }
   }

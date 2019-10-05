@@ -27,7 +27,8 @@ struct LocalityAA : public ClassicLoopAA // Not a pass!
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L);
+    const Loop *L,
+    Remedies &R);
 
 private:
   const Read &read;

@@ -722,6 +722,7 @@ private:
     }
 
     LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+    Remedies R;
 
     // For each write from A
     for(CallsByBlock::iterator k=writes.lower_bound(A); k!=writes.upper_bound(A); ++k)
@@ -772,7 +773,7 @@ private:
             continue;
 
           // Overlap?
-          LoopAA::AliasResult res = aa->alias(wobj,size1-size2+1,LoopAA::Same,robj,1,loop);
+          LoopAA::AliasResult res = aa->alias(wobj,size1-size2+1,LoopAA::Same,robj,1,loop,R);
           DEBUG(errs() << "    result => " << res << '\n');
           if( res == LoopAA::MustAlias )
           {
@@ -1424,6 +1425,7 @@ private:
   bool promoteNonInterfering(CallsByBlock &GroupA, CallsByBlock &GroupB, Loop *loop, ScalarEvolution &scev, bool isWrite, bool AllowSparse)
   {
     LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+    Remedies R;
 
     // For each write operation...
     for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
@@ -1467,19 +1469,19 @@ private:
             const uint64_t wsize = wsz->getLimitedValue();
 
             // Are they disjoint in the same iteration of this loop?
-            if( aa->alias(wptr,wsize, LoopAA::Same, rptr,rsize, loop) != LoopAA::NoAlias )
+            if( aa->alias(wptr,wsize, LoopAA::Same, rptr,rsize, loop, R) != LoopAA::NoAlias )
             {
               disjointFromAll = false;
               break;
             }
             // Are they disjoint when the write occurs in an earlier iteration than the read?
-            if( aa->alias(wptr,wsize, LoopAA::Before, rptr,rsize, loop) != LoopAA::NoAlias )
+            if( aa->alias(wptr,wsize, LoopAA::Before, rptr,rsize, loop, R) != LoopAA::NoAlias )
             {
               disjointFromAll = false;
               break;
             }
             // Are they disjoint when the write offurs in a later iteration than the read?
-            if( aa->alias(wptr,wsize, LoopAA::After, rptr,rsize, loop) != LoopAA::NoAlias )
+            if( aa->alias(wptr,wsize, LoopAA::After, rptr,rsize, loop, R) != LoopAA::NoAlias )
             {
               disjointFromAll = false;
               break;

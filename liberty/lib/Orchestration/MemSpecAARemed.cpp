@@ -96,9 +96,10 @@ Remediator::RemedResp MemSpecAARemediator::memdep(const Instruction *A,
   // locality, value prediction and control speculation.
   LoopAA *aa = predaa->getTopAA();
   //aa->dump();
+  Remedies R;
 
   bool RAW = dataDepTy == DataDepType::RAW;
-  bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW);
+  bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R);
   if (noDep) {
     ++numNoFlow;
     remedResp.depRes = DepResult::NoDep;

@@ -98,6 +98,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
   // This AA stack includes static analysis and memory speculation
   LoopAA *aa = smtxaa->getTopAA();
   // aa->dump();
+  Remedies R;
 
   // Lamp profile data is only collected for
   // loads and stores; not callsites.
@@ -112,8 +113,8 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
 
     bool noDep =
         (LoopCarried)
-            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
-            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
+            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
     if (noDep) {
       ++numSmtxAA;
       remedResp.depRes = DepResult::NoDep;
@@ -173,8 +174,8 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
   // check if collaboration of AA and SmtxAA achieves better accuracy
   bool noDep =
       (LoopCarried)
-          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
-          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
+          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
   if (noDep) {
     ++numSmtxAA;
     remedResp.depRes = DepResult::NoDep;

@@ -218,9 +218,11 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   // This AA stack includes static analysis and separation speculation
   LoopAA *aa = localityaa->getTopAA();
   //aa->dump();
+  Remedies R;
 
-  remedy->DL = &DL;
-  remedy->loop = const_cast<Loop*>(L);
+
+  //remedy->DL = &DL;
+  //remedy->loop = const_cast<Loop*>(L);
 
   bool RAW = dataDepTy == DataDepType::RAW;
   const Value *ptr1 = liberty::getMemOper(A);
@@ -247,8 +249,8 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   if (!ptr1 || !ptr2) {
     bool noDep =
         (LoopCarried)
-            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
-            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
+            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
     if (noDep) {
       ++numLocalityAA;
       remedResp.depRes = DepResult::NoDep;
@@ -407,8 +409,8 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   // check if collaboration of AA and LocalityAA achieves better accuracy
   bool noDep =
       (LoopCarried)
-          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW)
-          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW);
+          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
+          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
   if (noDep) {
     ++numLocalityAA2;
     remedResp.depRes = DepResult::NoDep;

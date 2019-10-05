@@ -261,8 +261,9 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src, Inst
 {
   KillFlow &kill = getAnalysis< KillFlow >();
 
+  Remedies R;
   CCPairs flows;
-  CallsiteDepthCombinator::doFlowSearchCrossIter(src, dst, loop, search_src, kill, &flows);
+  CallsiteDepthCombinator::doFlowSearchCrossIter(src, dst, loop, search_src, kill, R, &flows);
   if( flows.empty() )
     return true;
 

@@ -83,9 +83,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     if( storeptr == loadptr && isa< GlobalValue >(storeptr) )
       return true;
 
+    Remedies R;
+
     LoopAA *top = getEffectiveTopAA();
     ++numSubQueries;
-    return top->alias(storeptr,1, Same, loadptr,1, 0) == LoopAA::MustAlias;
+    return top->alias(storeptr,1, Same, loadptr,1, 0, R) == LoopAA::MustAlias;
   }
 
   /// Non-topping case of pointer comparison.
@@ -827,12 +829,12 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   LoopAA::ModRefResult KillFlow_CtrlSpecAware::modref(const Instruction *i1,
                       LoopAA::TemporalRelation Rel,
                       const Instruction *i2,
-                      const Loop *L)
+                      const Loop *L, Remedies &R)
   {
     INTROSPECT(ENTER(i1,Rel,i2,L));
     ++numQueriesReceived;
 
-    ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L);
+    ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L,R);
     INTROSPECT(errs() << "lower in the stack reports res=" << res << '\n');
     if( res == Ref || res == NoModRef )
     {

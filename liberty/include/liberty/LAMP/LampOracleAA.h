@@ -21,19 +21,20 @@ class LampOracle : public LoopAA // Not a pass!
       const Value *ptrA, unsigned sizeA,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L, Remedies &R);
 
     ModRefResult modref(
       const Instruction *A,
       TemporalRelation rel,
       const Value *ptrB, unsigned sizeB,
-      const Loop *L);
+      const Loop *L, Remedies &R);
 
     ModRefResult modref(
       const Instruction *A,
       TemporalRelation rel,
       const Instruction *B,
-      const Loop *L);
+      const Loop *L,
+      Remedies &R);
 };
 
 }

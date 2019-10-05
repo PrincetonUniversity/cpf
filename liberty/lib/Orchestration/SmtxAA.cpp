@@ -28,18 +28,19 @@ namespace SpecPriv
     const Value *ptrA, unsigned sizeA,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
-    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
   }
 
   LoopAA::ModRefResult SmtxAA::modref(
     const Instruction *A,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
-    return LoopAA::modref(A,rel,ptrB,sizeB,L);
+    return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
   }
 
   static bool isMemIntrinsic(const Instruction *inst)
@@ -62,14 +63,15 @@ namespace SpecPriv
     const Instruction *A,
     TemporalRelation rel,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     ++numQueries;
 
     // Lamp profile data is loop sensitive.
     if( !L )
       // Inapplicable
-      return LoopAA::modref(A,rel,B,L);
+      return LoopAA::modref(A,rel,B,L,R);
 
     ModRefResult result = ModRef;
 
@@ -101,7 +103,7 @@ namespace SpecPriv
       else
       {
         // Callsites, etc: inapplicable
-        result = LoopAA::modref(A,rel,B,L);
+        result = LoopAA::modref(A,rel,B,L,R);
         return result;
       }
 
@@ -119,7 +121,7 @@ namespace SpecPriv
         if( ! (LAMP_COLLECTS_OUTPUT_DEPENDENCES && isa<StoreInst>(B)) )
         {
           // inapplicable
-          result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+          result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
           return result;
         }
       }
@@ -184,7 +186,7 @@ namespace SpecPriv
       else
       {
         // Callsites, etc: inapplicable
-        result = LoopAA::modref(A,rel,B,L);
+        result = LoopAA::modref(A,rel,B,L,R);
         return result;
       }
 
@@ -201,7 +203,7 @@ namespace SpecPriv
       else
       {
         // inapplicable
-        result = ModRefResult(result & LoopAA::modref(A,rel,B,L));
+        result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R));
         return result;
       }
 
@@ -227,7 +229,7 @@ namespace SpecPriv
 
     if( result != NoModRef )
       // Chain.
-      result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+      result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
 
     return result;
   }

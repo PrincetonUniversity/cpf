@@ -63,7 +63,7 @@ private:
   LoopAA::ModRefResult query(Instruction *sop,
       LoopAA::TemporalRelation rel,
       Instruction *dop,
-      Loop *loop);
+      Loop *loop, Remedies &R);
 
   const DataLayout*                     td;
   ProfileGuidedControlSpeculator* ctrlspec;
