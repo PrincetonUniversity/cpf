@@ -6,10 +6,22 @@
 #include "llvm/IR/Module.h"
 
 #include "PDG.hpp"
-#include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
+#include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/EdgeCountOracleAA.h"
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/PtrResidueAA.h"
+#include "liberty/Orchestration/ReadOnlyAA.h"
+#include "liberty/Orchestration/ShortLivedAA.h"
+#include "liberty/Orchestration/SmtxAA.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/LoopDominators.h"
+#include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Speculation/Read.h"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -22,7 +34,15 @@ struct PDGBuilder : public ModulePass {
 public:
   static char ID;
   PDGBuilder() : ModulePass(ID) {}
-  virtual ~PDGBuilder() {}
+  virtual ~PDGBuilder() {
+    delete smtxaa;
+    delete edgeaa;
+    delete predaa;
+    delete ptrresaa;
+    delete pointstoaa;
+    delete roaa;
+    delete localaa;
+  }
 
   // bool doInitialization (Module &M) override ;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
@@ -31,8 +51,24 @@ public:
   std::unique_ptr<PDG> getLoopPDG(Loop *loop);
 
 private:
+  const DataLayout *DL;
   NoControlSpeculation noctrlspec;
+  SmtxAA *smtxaa = 0;
+  EdgeCountOracle *edgeaa = 0;
+  PredictionAA *predaa = 0;
+  ControlSpeculation *ctrlspec;
+  PredictionSpeculation *predspec;
+  PtrResidueAA *ptrresaa = 0;
+  PointsToAA *pointstoaa = 0;
+  ReadOnlyAA *roaa = 0;
+  ShortLivedAA *localaa = 0;
+  Read *spresults;
+  Classify *classify;
+  KillFlow_CtrlSpecAware *killflow_aware;
+  CallsiteDepthCombinator_CtrlSpecAware *callsite_aware;
 
+  void addSpecModulesToLoopAA();
+  void specModulesLoopSetup(Loop *loop);
   void constructEdgesFromUseDefs(PDG &pdg, Loop *loop);
   void constructEdgesFromMemory(PDG &pdg, Loop *loop, LoopAA *aa);
   void constructEdgesFromControl(PDG &pdg, Loop *loop);
