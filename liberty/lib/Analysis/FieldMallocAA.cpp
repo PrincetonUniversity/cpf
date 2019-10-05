@@ -124,7 +124,7 @@ public:
 
   AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
                          const Pointer &P2, const Loop *L,
-                         liberty::Remedies &R) {
+                         Remedies &R) {
 
     const Value *O1 = GetUnderlyingObject(P1.ptr, *DL);
     const Value *O2 = GetUnderlyingObject(P2.ptr, *DL);

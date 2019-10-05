@@ -119,9 +119,9 @@ namespace liberty
   bool Remediator::noMemoryDep(const Instruction *src, const Instruction *dst,
                                LoopAA::TemporalRelation FW,
                                LoopAA::TemporalRelation RV, const Loop *loop,
-                               LoopAA *aa, bool rawDep) {
+                               LoopAA *aa, bool rawDep, Remedies &R) {
     // forward dep test
-    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
+    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, R);
     if (LoopAA::NoModRef == forward)
       return true;
 
@@ -131,7 +131,7 @@ namespace liberty
     LoopAA::ModRefResult reverse = forward;
 
     if (src != dst)
-      reverse = aa->modref(dst, RV, src, loop);
+      reverse = aa->modref(dst, RV, src, loop, R);
 
     if (LoopAA::NoModRef == reverse)
       return true;

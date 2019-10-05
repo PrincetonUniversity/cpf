@@ -101,7 +101,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 
-#include "liberty/Analysis/Assumptions.h"
+#include "Assumptions.h"
 
 namespace liberty
 {

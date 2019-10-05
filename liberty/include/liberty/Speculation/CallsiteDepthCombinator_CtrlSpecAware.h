@@ -62,30 +62,31 @@ namespace liberty
     /// Determine if it is possible for a store
     /// 'src' to flow to a load 'dst' across
     /// the backedge of L.
-    static bool mayFlowCrossIter(
-      const CtxInst_CtrlSpecAware &src, const CtxInst_CtrlSpecAware &dst, const Loop *L, KillFlow_CtrlSpecAware &kill,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool mayFlowCrossIter(const CtxInst_CtrlSpecAware &src,
+                                 const CtxInst_CtrlSpecAware &dst,
+                                 const Loop *L, KillFlow_CtrlSpecAware &kill,
+                                 Remedies &R, time_t queryStart = 0,
+                                 unsigned Timeout = 0);
 
     /// Determine if it is possible for a store
     /// in write to flow to a load in read.
     /// across the backedge of L.
-    static bool mayFlowCrossIter(
-      KillFlow_CtrlSpecAware &kill,
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      const CtxInst_CtrlSpecAware &write, const CtxInst_CtrlSpecAware &read,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool mayFlowCrossIter(KillFlow_CtrlSpecAware &kill,
+                                 const Instruction *src, const Instruction *dst,
+                                 const Loop *L,
+                                 const CtxInst_CtrlSpecAware &write,
+                                 const CtxInst_CtrlSpecAware &read, Remedies &R,
+                                 time_t queryStart = 0, unsigned Timeout = 0);
 
     /// Determine if it is possible for a store
     /// in write to flow to a load in read.
     /// within the SAME iteration of L.
-    static bool mayFlowIntraIter(
-      KillFlow_CtrlSpecAware &kill,
-      const Instruction *src,
-      const Instruction *dst,
-      const Loop *L,
-      const CtxInst_CtrlSpecAware &write,
-      const CtxInst_CtrlSpecAware &read);
-
+    static bool mayFlowIntraIter(KillFlow_CtrlSpecAware &kill,
+                                 const Instruction *src, const Instruction *dst,
+                                 const Loop *L,
+                                 const CtxInst_CtrlSpecAware &write,
+                                 const CtxInst_CtrlSpecAware &read,
+                                 Remedies &R);
 
     /// Determine if any flow is possible from
     /// any store in src to any load in dst
@@ -94,38 +95,37 @@ namespace liberty
     /// If not null, collect all such flows into
     /// that output parameter.  Returns true if
     /// a flow is possible, or false otherwise.
-    static bool doFlowSearchCrossIter(
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      KillFlow_CtrlSpecAware &kill, CIPairs *allFlowsOut = 0,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool doFlowSearchCrossIter(const Instruction *src,
+                                      const Instruction *dst, const Loop *L,
+                                      KillFlow_CtrlSpecAware &kill, Remedies &R,
+                                      CIPairs *allFlowsOut = 0,
+                                      time_t queryStart = 0,
+                                      unsigned Timeout = 0);
 
     /// Like the previous, but accepts a pre-computed
     /// inst-search object over src.
-    static bool doFlowSearchCrossIter(
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      InstSearch_CtrlSpecAware &writes,
-      KillFlow_CtrlSpecAware &kill, CIPairs *allFlowsOut = 0,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool doFlowSearchCrossIter(const Instruction *src,
+                                      const Instruction *dst, const Loop *L,
+                                      InstSearch_CtrlSpecAware &writes,
+                                      KillFlow_CtrlSpecAware &kill, Remedies &R,
+                                      CIPairs *allFlowsOut = 0,
+                                      time_t queryStart = 0,
+                                      unsigned Timeout = 0);
 
     /// Like the previous, but accepts pre-computed
     /// inst-search objects over src,dst.
     static bool doFlowSearchCrossIter(
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      InstSearch_CtrlSpecAware &writes, InstSearch_CtrlSpecAware &reads,
-      KillFlow_CtrlSpecAware &kill, CIPairs *allFlowsOut = 0,
-      time_t queryStart=0, unsigned Timeout=0);
+        const Instruction *src, const Instruction *dst, const Loop *L,
+        InstSearch_CtrlSpecAware &writes, InstSearch_CtrlSpecAware &reads,
+        KillFlow_CtrlSpecAware &kill, Remedies &R, CIPairs *allFlowsOut = 0,
+        time_t queryStart = 0, unsigned Timeout = 0);
 
+    ModRefResult modref(const Instruction *inst1, TemporalRelation Rel,
+                        const Instruction *inst2, const Loop *L, Remedies &R);
 
-    ModRefResult modref(const Instruction *inst1,
-                        TemporalRelation Rel,
-                        const Instruction *inst2,
-                        const Loop *L);
-
-    ModRefResult modref(const Instruction *i1,
-                        TemporalRelation Rel,
-                        const Value *p2,
-                        unsigned s2,
-                        const Loop *L);
+    ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
+                        const Value *p2, unsigned s2, const Loop *L,
+                        Remedies &R);
 
     /// getAdjustedAnalysisPointer - This method is used when a pass implements
     /// an analysis interface through multiple inheritance.  If needed, it

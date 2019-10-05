@@ -8,6 +8,7 @@
 #include "SCC.hpp"
 #include "SCCDAG.hpp"
 
+#include "Assumptions.h"
 #include "LoopDependenceInfo.hpp"
 
 #include <set>
@@ -18,12 +19,6 @@
 namespace liberty {
 using namespace llvm;
 using namespace SpecPriv;
-
-// Criticism is a PDG edge with a boolean value to differentiate loop-carried
-// from intra-iteration edges. Also specify type of dep (mem/reg/ctrl)
-typedef DGEdge<Value> Criticism;
-
-typedef std::set<Criticism *> Criticisms;
 
 typedef PipelineStrategy ParallelizationPlan;
 

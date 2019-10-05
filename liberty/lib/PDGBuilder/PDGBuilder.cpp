@@ -1,22 +1,24 @@
 #define DEBUG_TYPE "pdgbuilder"
 
-#include "llvm/Pass.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Pass.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #include "llvm/ADT/iterator_range.h"
 
-#include "liberty/PDGBuilder/PDGBuilder.hpp"
 #include "liberty/Analysis/LLVMAAResults.h"
+#include "liberty/PDGBuilder/PDGBuilder.hpp"
+
+#include "Assumptions.h"
 
 using namespace llvm;
 using namespace liberty;
@@ -339,9 +341,10 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
     return;
 
   bool loopCarried = FW != RV;
+  Remedies R;
 
   // forward dep test
-  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop);
+  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, R);
   if (LoopAA::NoModRef == forward)
     return;
 
@@ -381,7 +384,7 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   // just check aliasing) instead of performance we call reverse and use
   // assertions to identify accuracy bugs of AA stack
   if (loopCarried || src != dst)
-    reverse = aa->modref(dst, RV, src, loop);
+    reverse = aa->modref(dst, RV, src, loop, R);
 
   if ((reverse == LoopAA::Mod || reverse == LoopAA::ModRef) &&
       !dst->mayWriteToMemory()) {
@@ -425,16 +428,19 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_RAW);
     edge->setLoopCarried(loopCarried);
+    edge->setRemedies(R);
   }
   if (WAR) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_WAR);
     edge->setLoopCarried(loopCarried);
+    edge->setRemedies(R);
   }
   if (WAW) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_WAW);
     edge->setLoopCarried(loopCarried);
+    edge->setRemedies(R);
   }
 }
 

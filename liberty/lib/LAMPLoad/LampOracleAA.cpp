@@ -26,18 +26,18 @@ namespace liberty
     const Value *ptrA, unsigned sizeA,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
-    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L,R);
   }
 
   LoopAA::ModRefResult LampOracle::modref(
     const Instruction *A,
     TemporalRelation rel,
     const Value *ptrB, unsigned sizeB,
-    const Loop *L)
+    const Loop *L, Remedies &R)
   {
-    return LoopAA::modref(A,rel,ptrB,sizeB,L);
+    return LoopAA::modref(A,rel,ptrB,sizeB,L,R);
   }
 
   bool isMemIntrinsic(const Instruction *inst)
@@ -60,14 +60,15 @@ namespace liberty
     const Instruction *A,
     TemporalRelation rel,
     const Instruction *B,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     ++numQueries;
 
     // Lamp profile data is loop sensitive.
     if( !L )
       // Inapplicable
-      return LoopAA::modref(A,rel,B,L);
+      return LoopAA::modref(A,rel,B,L,R);
 
     INTROSPECT(ENTER(A,rel,B,L));
 
@@ -98,7 +99,7 @@ namespace liberty
       else
       {
         // Callsites, etc: inapplicable
-        result = LoopAA::modref(A,rel,B,L);
+        result = LoopAA::modref(A,rel,B,L,R);
         INTROSPECT(EXIT(A,rel,B,L,result));
         return result;
       }
@@ -117,7 +118,7 @@ namespace liberty
         if( ! (LAMP_COLLECTS_OUTPUT_DEPENDENCES && isa<StoreInst>(B)) )
         {
           // inapplicable
-          result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+          result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
           INTROSPECT(EXIT(A,rel,B,L,result));
           return result;
         }
@@ -171,7 +172,7 @@ namespace liberty
       else
       {
         // Callsites, etc: inapplicable
-        result = LoopAA::modref(A,rel,B,L);
+        result = LoopAA::modref(A,rel,B,L,R);
         INTROSPECT(EXIT(A,rel,B,L,result));
         return result;
       }
@@ -189,7 +190,7 @@ namespace liberty
       else
       {
         // inapplicable
-        result = ModRefResult(result & LoopAA::modref(A,rel,B,L));
+        result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R));
         INTROSPECT(EXIT(A,rel,B,L,result));
         return result;
       }
@@ -211,7 +212,7 @@ namespace liberty
 
     if( result != NoModRef )
       // Chain.
-      result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+      result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
 
     INTROSPECT(EXIT(A,rel,B,L,result));
     return result;

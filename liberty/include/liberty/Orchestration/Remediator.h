@@ -10,11 +10,11 @@
 #include "llvm/Analysis/LoopPass.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/Assumptions.h"
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/InsertPrintf.h"
 #include "liberty/Speculation/Api.h"
+#include "Assumptions.h"
 #include "PDG.hpp"
 #include "LoopDependenceInfo.hpp"
 #include "TaskExecution.hpp"
@@ -178,7 +178,7 @@ public:
 
   bool noMemoryDep(const Instruction *src, const Instruction *dst,
                    LoopAA::TemporalRelation FW, LoopAA::TemporalRelation RV,
-                   const Loop *loop, LoopAA *aa, bool rawDep);
+                   const Loop *loop, LoopAA *aa, bool rawDep, Remedies &R);
 };
 
 } // namespace liberty

@@ -16,11 +16,10 @@ STATISTIC(numPrivatized, "Num privatized");
 STATISTIC(numSeparated,  "Num separated");
 STATISTIC(numNoRead,     "Num no-read");
 
-LoopAA::AliasResult ReadOnlyAA::alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L) {
+LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
+                                      TemporalRelation rel, const Value *ptrB,
+                                      unsigned sizeB, const Loop *L,
+                                      Remedies &R) {
 
   ++numQueries;
 
@@ -28,9 +27,9 @@ LoopAA::AliasResult ReadOnlyAA::alias(
 //    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
 
   if( !isa<PointerType>( ptrA->getType() ) )
-    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L,R);
   if( !isa<PointerType>( ptrB->getType() ) )
-    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L,R);
 
   //const Ctx *ctx = read.getCtx(L);
 
@@ -53,7 +52,7 @@ LoopAA::AliasResult ReadOnlyAA::alias(
     return NoAlias;
   }
 
-  return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+  return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L, R);
 
 }
 
@@ -101,12 +100,10 @@ ReadOnlyAA::check_modref(const Value *ptrA, const Value *ptrB, const Loop *L) {
   return ModRef;
 }
 
-LoopAA::ModRefResult ReadOnlyAA::modref(
-  const Instruction *A,
-  TemporalRelation rel,
-  const Value *ptrB, unsigned sizeB,
-  const Loop *L)
-{
+LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
+                                        TemporalRelation rel, const Value *ptrB,
+                                        unsigned sizeB, const Loop *L,
+                                        Remedies &R) {
 
   ++numQueries;
 
@@ -116,17 +113,15 @@ LoopAA::ModRefResult ReadOnlyAA::modref(
 
   if( result != NoModRef )
     // Chain.
-    result = ModRefResult(result & LoopAA::modref(A,rel,ptrB,sizeB,L) );
+    result = ModRefResult(result & LoopAA::modref(A,rel,ptrB,sizeB,L,R) );
 
   return result;
 }
 
-LoopAA::ModRefResult ReadOnlyAA::modref(
-  const Instruction *A,
-  TemporalRelation rel,
-  const Instruction *B,
-  const Loop *L)
-{
+LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
+                                        TemporalRelation rel,
+                                        const Instruction *B, const Loop *L,
+                                        Remedies &R) {
 
   ++numQueries;
 
@@ -137,7 +132,7 @@ LoopAA::ModRefResult ReadOnlyAA::modref(
 
   if( result != NoModRef )
     // Chain.
-    result = ModRefResult(result & LoopAA::modref(A,rel,B,L) );
+    result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
 
   return result;
 }

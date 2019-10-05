@@ -191,13 +191,13 @@ LoopAA::AliasResult PtrResidueAA::alias(
   const Value *P1, unsigned S1,
   TemporalRelation rel,
   const Value *P2, unsigned S2,
-  const Loop *L)
+  const Loop *L, Remedies &R)
 {
   ++numQueries;
 
   PtrResidueSpeculationManager::Assumption a1,a2;
   if( may_alias(P1,S1,rel,P2,S2,L,a1,a2) )
-    return LoopAA::alias(P1,S1,rel,P2,S2,L); // no help
+    return LoopAA::alias(P1,S1,rel,P2,S2,L,R); // no help
 
   // We can report no-alias.
 
@@ -206,7 +206,7 @@ LoopAA::AliasResult PtrResidueAA::alias(
   if( !manager.isAssumed(a1) || !manager.isAssumed(a2) )
   {
     ++numBeneChecks;
-    if( NoAlias == LoopAA::alias(P1,S1,rel,P2,S2,L) )
+    if( NoAlias == LoopAA::alias(P1,S1,rel,P2,S2,L,R) )
       return NoAlias; // speculation was not necessary.
   }
 
@@ -222,13 +222,13 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   const Instruction *A,
   TemporalRelation rel,
   const Value *P2, unsigned S2,
-  const Loop *L)
+  const Loop *L, Remedies &R)
 {
   ++numQueries;
 
   PtrResidueSpeculationManager::Assumption a1,a2;
   if( may_modref(A,rel,P2,S2,L,a1,a2) )
-    return LoopAA::modref(A,rel,P2,S2,L); // no help
+    return LoopAA::modref(A,rel,P2,S2,L,R); // no help
 
   // We can report no-mod-ref.
 
@@ -237,7 +237,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   if( !manager.isAssumed(a1) || !manager.isAssumed(a2) )
   {
     ++numBeneChecks;
-    if( NoModRef == LoopAA::modref(A,rel,P2,S2,L) )
+    if( NoModRef == LoopAA::modref(A,rel,P2,S2,L,R) )
       return NoModRef; // speculation was not necessary.
   }
 
@@ -253,7 +253,8 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   const Instruction *A,
   TemporalRelation rel,
   const Instruction *B,
-  const Loop *L)
+  const Loop *L,
+  Remedies &R)
 {
   ++numQueries;
 
@@ -275,7 +276,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   if( P2 )
   {
     if( may_modref(A,rel,P2,S2,L,a1,a2) )
-      return LoopAA::modref(A,rel,B,L); // no help
+      return LoopAA::modref(A,rel,B,L,R); // no help
 
     // We can report no-mod-ref.
 
@@ -284,7 +285,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
     if( !manager.isAssumed(a1) || !manager.isAssumed(a2) )
     {
       ++numBeneChecks;
-      if( NoModRef == LoopAA::modref(A,rel,B,L) )
+      if( NoModRef == LoopAA::modref(A,rel,B,L,R) )
         return NoModRef; // speculation was not necessary.
     }
 
@@ -297,7 +298,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   }
 
   // All other cases.
-  return LoopAA::modref(A,rel,B,L);
+  return LoopAA::modref(A,rel,B,L,R);
 }
 
 }
