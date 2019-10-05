@@ -30,10 +30,20 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<PostDominatorTreeWrapperPass>();
   //AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<LLVMAAResults>();
+  AU.addRequired<ProfileGuidedControlSpeculator>();
+  AU.addRequired<ProfileGuidedPredictionSpeculator>();
+  AU.addRequired<SmtxSpeculationManager>();
+  AU.addRequired<PtrResidueSpeculationManager>();
+  AU.addRequired<ReadPass>();
+  AU.addRequired<Classify>();
+  AU.addRequired<KillFlow_CtrlSpecAware>();
+  AU.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   AU.setPreservesAll();
 }
 
 bool llvm::PDGBuilder::runOnModule (Module &M){
+  DL = &M.getDataLayout();
+  addSpecModulesToLoopAA();
   return false;
 }
 
@@ -43,6 +53,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 
   DEBUG(errs() << "constructEdgesFromMemory ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
+  specModulesLoopSetup(loop);
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
@@ -61,6 +72,59 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   DEBUG(errs() << "PDG construction completed\n");
 
   return pdg;
+}
+
+void llvm::PDGBuilder::addSpecModulesToLoopAA() {
+  SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
+  smtxaa = new SmtxAA(&smtxMan);
+  smtxaa->InitializeLoopAA(this, *DL);
+
+  ctrlspec = getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+  edgeaa = new EdgeCountOracle(ctrlspec);
+  edgeaa->InitializeLoopAA(this, *DL);
+
+  predspec =
+      getAnalysis<ProfileGuidedPredictionSpeculator>().getPredictionSpecPtr();
+  predaa = new PredictionAA(predspec);
+  predaa->InitializeLoopAA(this, *DL);
+
+  PtrResidueSpeculationManager &ptrresMan =
+      getAnalysis<PtrResidueSpeculationManager>();
+  ptrresaa = new PtrResidueAA(*DL, ptrresMan);
+  ptrresaa->InitializeLoopAA(this, *DL);
+
+  spresults = &getAnalysis<ReadPass>().getProfileInfo();
+  pointstoaa = new PointsToAA(*spresults);
+  pointstoaa->InitializeLoopAA(this, *DL);
+
+  classify = &getAnalysis<Classify>();
+
+  killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>();
+  callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+
+  //commlibsaa.InitializeLoopAA(this, *DL);
+}
+
+void llvm::PDGBuilder::specModulesLoopSetup(Loop *loop) {
+  ctrlspec->setLoopOfInterest(loop->getHeader());
+  predaa->setLoopOfInterest(loop);
+
+  const HeapAssignment &asgn = classify->getAssignmentFor(loop);
+  if (!asgn.isValidFor(loop)) {
+    errs() << "ASSIGNMENT INVALID FOR LOOP: "
+           << loop->getHeader()->getParent()->getName()
+           << "::" << loop->getHeader()->getName() << '\n';
+  }
+
+  const Ctx *ctx = spresults->getCtx(loop);
+  roaa = new ReadOnlyAA(*spresults, asgn, ctx);
+  roaa->InitializeLoopAA(this, *DL);
+
+  localaa = new ShortLivedAA(*spresults, asgn, ctx);
+  localaa->InitializeLoopAA(this, *DL);
+
+  killflow_aware->setLoopOfInterest(ctrlspec, loop);
+  callsite_aware->setLoopOfInterest(ctrlspec, loop);
 }
 
 void llvm::PDGBuilder::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {

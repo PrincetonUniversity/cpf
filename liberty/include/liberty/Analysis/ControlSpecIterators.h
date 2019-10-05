@@ -16,6 +16,8 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
 
+#include "liberty/Speculation/LoopDominators.h"
+
 #include <set>
 
 namespace liberty
