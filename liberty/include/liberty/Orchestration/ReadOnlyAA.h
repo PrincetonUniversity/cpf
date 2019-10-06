@@ -54,7 +54,7 @@ private:
   const Ctx *ctx;
 
   LoopAA::ModRefResult check_modref(const Value *ptrA, const Value *ptrB,
-                                    const Loop *L);
+                                    const Loop *L, Remedies &R);
 };
 
 }

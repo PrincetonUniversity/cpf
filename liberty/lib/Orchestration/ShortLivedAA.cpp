@@ -3,7 +3,16 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/Statistic.h"
 
+#include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/ShortLivedAA.h"
+
+#ifndef DEFAULT_LOCALITY_REMED_COST
+#define DEFAULT_LOCALITY_REMED_COST 50
+#endif
+
+#ifndef LOCAL_ACCESS_COST
+#define LOCAL_ACCESS_COST 1
+#endif
 
 namespace liberty
 {
@@ -18,7 +27,8 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
 {
   ++numQueries;
 
@@ -33,6 +43,18 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(
   //const Ctx *ctx = read.getCtx(L);
 
   ++numEligible;
+
+  std::shared_ptr<LocalityRemedy> remedy =
+      std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+  remedy->cost = DEFAULT_LOCALITY_REMED_COST + LOCAL_ACCESS_COST;
+  remedy->type = LocalityRemedy::Local;
+
+  remedy->privateI = nullptr;
+  remedy->privateLoad = nullptr;
+  remedy->reduxS = nullptr;
+  remedy->ptr1 = nullptr;
+  remedy->ptr2 = nullptr;
+  remedy->ptr = nullptr;
 
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
@@ -52,12 +74,16 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(
     if( t1 == HeapAssignment::Local )
     {
       ++numPrivatized;
+      remedy->ptr = const_cast<Value *>(P1.ptr);
+      R.insert(remedy);
       return NoAlias;
     }
 
     if( t2 == HeapAssignment::Local )
     {
       ++numPrivatized;
+      remedy->ptr = const_cast<Value *>(P2.ptr);
+      R.insert(remedy);
       return NoAlias;
     }
   }
@@ -67,6 +93,10 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(
       t1 != t2 && t1 != HeapAssignment::Unclassified &&
       t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
+    remedy->ptr1 = const_cast<Value *>(P1.ptr);
+    remedy->ptr2 = const_cast<Value *>(P2.ptr);
+    remedy->type = LocalityRemedy::Separated;
+    R.insert(remedy);
     return NoAlias;
   }
 

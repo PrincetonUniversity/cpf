@@ -3,8 +3,13 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/Statistic.h"
 
+#include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Utilities/GetMemOper.h"
+
+#ifndef DEFAULT_LOCALITY_REMED_COST
+#define DEFAULT_LOCALITY_REMED_COST 50
+#endif
 
 namespace liberty
 {
@@ -35,6 +40,18 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
 
   ++numEligible;
 
+  std::shared_ptr<LocalityRemedy> remedy =
+      std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+  remedy->cost = DEFAULT_LOCALITY_REMED_COST;
+  remedy->type = LocalityRemedy::ReadOnly;
+
+  remedy->privateI = nullptr;
+  remedy->privateLoad = nullptr;
+  remedy->reduxS = nullptr;
+  remedy->ptr1 = nullptr;
+  remedy->ptr2 = nullptr;
+  remedy->ptr = nullptr;
+
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
   if( read.getUnderlyingAUs(ptrA,ctx,aus1) )
@@ -49,6 +66,10 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
       t1 != t2 && t1 != HeapAssignment::Unclassified &&
       t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
+    remedy->ptr1 = const_cast<Value *>(ptrA);
+    remedy->ptr2 = const_cast<Value *>(ptrB);
+    remedy->type = LocalityRemedy::Separated;
+    R.insert(remedy);
     return NoAlias;
   }
 
@@ -56,8 +77,9 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
 
 }
 
-LoopAA::ModRefResult
-ReadOnlyAA::check_modref(const Value *ptrA, const Value *ptrB, const Loop *L) {
+LoopAA::ModRefResult ReadOnlyAA::check_modref(const Value *ptrA,
+                                              const Value *ptrB, const Loop *L,
+                                              Remedies &R) {
 
   if (!ptrA || !ptrB)
     return ModRef;
@@ -74,6 +96,18 @@ ReadOnlyAA::check_modref(const Value *ptrA, const Value *ptrB, const Loop *L) {
 
   ++numEligible;
 
+  std::shared_ptr<LocalityRemedy> remedy =
+      std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+  remedy->cost = DEFAULT_LOCALITY_REMED_COST;
+  remedy->type = LocalityRemedy::ReadOnly;
+
+  remedy->privateI = nullptr;
+  remedy->privateLoad = nullptr;
+  remedy->reduxS = nullptr;
+  remedy->ptr1 = nullptr;
+  remedy->ptr2 = nullptr;
+  remedy->ptr = nullptr;
+
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
   if( read.getUnderlyingAUs(ptrA,ctx,aus1) )
@@ -88,11 +122,18 @@ ReadOnlyAA::check_modref(const Value *ptrA, const Value *ptrB, const Loop *L) {
       t1 != t2 && t1 != HeapAssignment::Unclassified &&
       t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
+    remedy->ptr1 = const_cast<Value *>(ptrA);
+    remedy->ptr2 = const_cast<Value *>(ptrB);
+    remedy->type = LocalityRemedy::Separated;
+    R.insert(remedy);
     return NoModRef;
   }
 
   if (t1 == HeapAssignment::ReadOnly || t2 == HeapAssignment::ReadOnly) {
     ++numNoRead;
+      remedy->ptr = (t1 == HeapAssignment::ReadOnly) ? const_cast<Value *>(ptrA)
+                                                   : const_cast<Value *>(ptrB);
+    R.insert(remedy);
     //return ModRefResult(~Mod);
     return Ref;
   }
@@ -109,7 +150,7 @@ LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
 
   const Value *ptrA = liberty::getMemOper(A);
 
-  ModRefResult result = check_modref(ptrA, ptrB, L);
+  ModRefResult result = check_modref(ptrA, ptrB, L, R);
 
   if( result != NoModRef )
     // Chain.
@@ -128,7 +169,7 @@ LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
   const Value *ptrA = liberty::getMemOper(A);
   const Value *ptrB = liberty::getMemOper(B);
 
-  ModRefResult result = check_modref(ptrA, ptrB, L);
+  ModRefResult result = check_modref(ptrA, ptrB, L, R);
 
   if( result != NoModRef )
     // Chain.
