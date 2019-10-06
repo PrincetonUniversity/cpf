@@ -34,15 +34,7 @@ struct PDGBuilder : public ModulePass {
 public:
   static char ID;
   PDGBuilder() : ModulePass(ID) {}
-  virtual ~PDGBuilder() {
-    delete smtxaa;
-    delete edgeaa;
-    delete predaa;
-    delete ptrresaa;
-    delete pointstoaa;
-    delete roaa;
-    delete localaa;
-  }
+  virtual ~PDGBuilder() {}
 
   // bool doInitialization (Module &M) override ;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
@@ -53,15 +45,15 @@ public:
 private:
   const DataLayout *DL;
   NoControlSpeculation noctrlspec;
-  SmtxAA *smtxaa = 0;
-  EdgeCountOracle *edgeaa = 0;
-  PredictionAA *predaa = 0;
+  SmtxAA *smtxaa;
+  EdgeCountOracle *edgeaa;
+  PredictionAA *predaa;
   ControlSpeculation *ctrlspec;
   PredictionSpeculation *predspec;
-  PtrResidueAA *ptrresaa = 0;
-  PointsToAA *pointstoaa = 0;
-  ReadOnlyAA *roaa = 0;
-  ShortLivedAA *localaa = 0;
+  PtrResidueAA *ptrresaa;
+  PointsToAA *pointstoaa;
+  ReadOnlyAA *roaa;
+  ShortLivedAA *localaa;
   Read *spresults;
   Classify *classify;
   KillFlow_CtrlSpecAware *killflow_aware;
@@ -69,6 +61,7 @@ private:
 
   void addSpecModulesToLoopAA();
   void specModulesLoopSetup(Loop *loop);
+  void removeSpecModulesFromLoopAA();
   void constructEdgesFromUseDefs(PDG &pdg, Loop *loop);
   void constructEdgesFromMemory(PDG &pdg, Loop *loop, LoopAA *aa);
   void constructEdgesFromControl(PDG &pdg, Loop *loop);
