@@ -123,6 +123,13 @@ using namespace SpecPriv;
       //if (specPDT)
       //  delete specPDT;
 
+      if (!L) {
+        specDT = nullptr;
+        specPDT = nullptr;
+        tgtLoop = nullptr;
+        return;
+      }
+
       cs->setLoopOfInterest(L->getHeader());
       specDT = new LoopDom(*cs, L);
       specPDT = new LoopPostDom(*cs, L);
