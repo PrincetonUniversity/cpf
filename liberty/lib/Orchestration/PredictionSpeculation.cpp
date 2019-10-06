@@ -1,12 +1,16 @@
 #define DEBUG_TYPE "prediction-aa"
 
 #include "llvm/ADT/Statistic.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Utilities/GetMemOper.h"
 #include "llvm/Analysis/ValueTracking.h"
 
-
 #include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "liberty/Orchestration/LoadedValuePredRemed.h"
+
+#ifndef DEFAULT_LOADED_VALUE_PRED_REMED_COST
+#define DEFAULT_LOADED_VALUE_PRED_REMED_COST 58
+#endif
 
 namespace liberty
 {
@@ -94,15 +98,22 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
                                           TemporalRelation rel, const Value *P2,
                                           unsigned S2, const Loop *L,
                                           Remedies &R) {
+
+  std::shared_ptr<LoadedValuePredRemedy> remedy =
+      std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
+  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+
+  const Value *ptrA = liberty::getMemOper(I1);
   if (predspec->isPredictable(I1, L)) {
     ++numNoAlias;
+    remedy->ptr = ptrA;
+    R.insert(remedy);
     return NoModRef;
   }
 
   if (rel == LoopAA::Same)
     return LoopAA::modref(I1, rel, P2, S2, L, R);
 
-  const Value *ptrA = liberty::getMemOper(I1);
   if (!ptrA)
     return LoopAA::modref(I1, rel, P2, S2, L, R);
 
@@ -114,6 +125,16 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
 
   if (predPtrA || predPtrB) {
     ++numNoAlias;
+    if (predPtrA) {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrA];
+      if (I1->mayWriteToMemory())
+        remedy->write = true;
+    } else {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[P2];
+      //if (I2->mayWriteToMemory())
+      //  remedy->write = true;
+    }
+    R.insert(remedy);
     return NoModRef;
   }
 
@@ -124,8 +145,19 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
                                           TemporalRelation rel,
                                           const Instruction *I2, const Loop *L,
                                           Remedies &R) {
-  if (predspec->isPredictable(I2, L) || predspec->isPredictable(I1, L)) {
+
+  std::shared_ptr<LoadedValuePredRemedy> remedy =
+      std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
+  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+
+  const Value *ptrA = liberty::getMemOper(I1);
+  const Value *ptrB = liberty::getMemOper(I2);
+  bool predA = predspec->isPredictable(I1, L);
+  bool predB = predspec->isPredictable(I2, L);
+  if (predA || predB) {
     ++numNoAlias;
+    remedy->ptr = (predA) ? ptrA : ptrB;
+    R.insert(remedy);
     return NoModRef;
   }
 
@@ -145,9 +177,6 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
   if (rel == LoopAA::Same)
     return LoopAA::modref(I1, rel, I2, L, R);
 
-  const Value *ptrA = liberty::getMemOper(I1);
-  const Value *ptrB = liberty::getMemOper(I2);
-
   if (!ptrA || !ptrB)
     return LoopAA::modref(I1, rel, I2, L, R);
 
@@ -159,6 +188,16 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
 
   if (predPtrA || predPtrB) {
     ++numNoAlias;
+    if (predPtrA) {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrA];
+      if (I1->mayWriteToMemory())
+        remedy->write = true;
+    } else {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrB];
+      if (I2->mayWriteToMemory())
+        remedy->write = true;
+    }
+    R.insert(remedy);
     return NoModRef;
   }
 

@@ -5,7 +5,7 @@
 
 #include "PDG.hpp"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/Remediator.h"
 
 #include <unordered_set>

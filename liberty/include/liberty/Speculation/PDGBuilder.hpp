@@ -10,7 +10,7 @@
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
