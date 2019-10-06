@@ -86,6 +86,9 @@ namespace SpecPriv
         std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
     remedy->cost = DEFAULT_LAMP_REMED_COST;
 
+    remedy->writeI = A;
+    remedy->readI = B;
+
     // Loop carried forward queries, or
     // Same queries.
     if( rel == Before || rel == Same )
