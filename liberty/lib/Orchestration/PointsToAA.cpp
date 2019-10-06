@@ -2,8 +2,11 @@
 
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Utilities/FindUnderlyingObjects.h"
 #include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/SmtxLampRemed.h"
+#include "liberty/Utilities/FindUnderlyingObjects.h"
+
+#define DEFAULT_POINTS_TO_REMED_COST 1001
 
 namespace liberty
 {
@@ -18,7 +21,8 @@ LoopAA::AliasResult PointsToAA::aliasCheck(
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
 {
   if( !L )
     return MayAlias;
@@ -53,6 +57,11 @@ LoopAA::AliasResult PointsToAA::aliasCheck(
         return MayAlias;
     }
   }
+
+  std::shared_ptr<SmtxLampRemedy> remedy =
+      std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
+  remedy->cost = DEFAULT_POINTS_TO_REMED_COST;
+  R.insert(remedy);
 
   ++numNoAlias;
   return NoAlias;
