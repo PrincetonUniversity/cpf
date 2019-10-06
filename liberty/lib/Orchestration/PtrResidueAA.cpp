@@ -4,6 +4,11 @@
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 
 #include "liberty/Orchestration/PtrResidueAA.h"
+#include "liberty/Orchestration/PtrResidueRemed.h"
+
+#ifndef DEFAULT_PTR_RESIDUE_REMED_COST
+#define DEFAULT_PTR_RESIDUE_REMED_COST 60
+#endif
 
 namespace liberty
 {
@@ -203,18 +208,30 @@ LoopAA::AliasResult PtrResidueAA::alias(
 
   // Before adding assumptions, check if the rest of the stack would have
   // reported no-alias without this speculation.
+  /*
   if( !manager.isAssumed(a1) || !manager.isAssumed(a2) )
   {
     ++numBeneChecks;
     if( NoAlias == LoopAA::alias(P1,S1,rel,P2,S2,L,R) )
       return NoAlias; // speculation was not necessary.
   }
+  */
 
   // Speculation is required to report no-alias.
   // Record this requirement.
   manager.setAssumed(a1);
   manager.setAssumed(a2);
   ++numBenefit;
+
+  std::shared_ptr<PtrResidueRemedy> remedy =
+      std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
+  remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy->ptr1 = a1.first;
+  remedy->ctx1 = a1.second;
+  remedy->ptr2 = a2.first;
+  remedy->ctx2 = a2.second;
+  R.insert(remedy);
+
   return NoAlias;
 }
 
@@ -232,6 +249,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
 
   // We can report no-mod-ref.
 
+  /*
   // Before adding assumptions, check if the rest of the stack would have
   // reported no-mod-ref without this speculation.
   if( !manager.isAssumed(a1) || !manager.isAssumed(a2) )
@@ -240,12 +258,23 @@ LoopAA::ModRefResult PtrResidueAA::modref(
     if( NoModRef == LoopAA::modref(A,rel,P2,S2,L,R) )
       return NoModRef; // speculation was not necessary.
   }
+  */
 
   // Speculation is required to report no-mod-ref.
   // Record this requirement.
   manager.setAssumed(a1);
   manager.setAssumed(a2);
   ++numBenefit;
+
+  std::shared_ptr<PtrResidueRemedy> remedy =
+      std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
+  remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy->ptr1 = a1.first;
+  remedy->ctx1 = a1.second;
+  remedy->ptr2 = a2.first;
+  remedy->ctx2 = a2.second;
+  R.insert(remedy);
+
   return NoModRef;
 }
 
@@ -280,6 +309,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
 
     // We can report no-mod-ref.
 
+    /*
     // Before adding assumptions, check if the rest of the stack would have
     // reported no-mod-ref without this speculation.
     if( !manager.isAssumed(a1) || !manager.isAssumed(a2) )
@@ -288,12 +318,23 @@ LoopAA::ModRefResult PtrResidueAA::modref(
       if( NoModRef == LoopAA::modref(A,rel,B,L,R) )
         return NoModRef; // speculation was not necessary.
     }
+    */
 
     // Speculation is required to report no-mod-ref.
     // Record this requirement.
     manager.setAssumed(a1);
     manager.setAssumed(a2);
     ++numBenefit;
+
+    std::shared_ptr<PtrResidueRemedy> remedy =
+        std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
+    remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+    remedy->ptr1 = a1.first;
+    remedy->ctx1 = a1.second;
+    remedy->ptr2 = a2.first;
+    remedy->ctx2 = a2.second;
+    R.insert(remedy);
+
     return NoModRef;
   }
 
