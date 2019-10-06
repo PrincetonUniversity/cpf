@@ -3,9 +3,14 @@
 #define LAMP_COLLECTS_OUTPUT_DEPENDENCES  (0)
 
 #include "liberty/Orchestration/SmtxAA.h"
+#include "liberty/Orchestration/SmtxLampRemed.h"
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/IntrinsicInst.h"
+
+#ifndef DEFAULT_LAMP_REMED_COST
+#define DEFAULT_LAMP_REMED_COST 999
+#endif
 
 namespace liberty
 {
@@ -77,6 +82,9 @@ namespace SpecPriv
 
     LAMPLoadProfile &lamp = smtxMan->getLampResult();
 
+    std::shared_ptr<SmtxLampRemedy> remedy =
+        std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
+    remedy->cost = DEFAULT_LAMP_REMED_COST;
 
     // Loop carried forward queries, or
     // Same queries.
@@ -139,6 +147,8 @@ namespace SpecPriv
           result = ModRefResult(result & ~Mod);
           ++numNoForwardFlow;
 
+          R.insert(remedy);
+
           // Keep track of this
           smtxMan->setAssumedLC(L,A,B);
         }
@@ -156,6 +166,8 @@ namespace SpecPriv
           // No flow
           result = ModRefResult(result & ~Mod);
           ++numNoForwardFlow;
+
+          R.insert(remedy);
 
           // Keep track of this
           smtxMan->setAssumedII(L,A,B);
@@ -221,6 +233,8 @@ namespace SpecPriv
           result = ModRefResult(result & ~Mod);
 
         ++numNoReverseFlow;
+
+        R.insert(remedy);
 
         // Keep track of this
         smtxMan->setAssumedLC(L,B,A);
