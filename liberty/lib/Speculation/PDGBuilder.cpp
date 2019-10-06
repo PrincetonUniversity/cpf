@@ -16,7 +16,7 @@
 #include "llvm/ADT/iterator_range.h"
 
 #include "liberty/Analysis/LLVMAAResults.h"
-#include "liberty/PDGBuilder/PDGBuilder.hpp"
+#include "liberty/Speculation/PDGBuilder.hpp"
 
 #include "Assumptions.h"
 
@@ -24,6 +24,7 @@ using namespace llvm;
 using namespace liberty;
 
 void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<TargetLibraryInfoWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired< LoopAA >();
   //AU.addRequired<DominatorTreeWrapperPass>();
