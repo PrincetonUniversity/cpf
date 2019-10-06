@@ -10,7 +10,7 @@
 #include <map>
 
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Orchestration/TXIORemed.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"

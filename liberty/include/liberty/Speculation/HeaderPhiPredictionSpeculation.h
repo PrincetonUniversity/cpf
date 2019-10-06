@@ -3,7 +3,7 @@
 
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/SLAMP/SlampOracleAA.h"
 #include "liberty/Utilities/ModuleLoops.h"

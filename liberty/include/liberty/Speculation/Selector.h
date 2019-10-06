@@ -21,7 +21,7 @@
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Analysis/ControlSpeculation.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Orchestration/Remediator.h"
 

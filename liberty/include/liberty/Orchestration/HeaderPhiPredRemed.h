@@ -4,7 +4,7 @@
 #include "llvm/IR/Instructions.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "PDG.hpp"
 
