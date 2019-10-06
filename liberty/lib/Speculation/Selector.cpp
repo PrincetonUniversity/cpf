@@ -18,7 +18,7 @@
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/PDGBuilder/PDGBuilder.hpp"
+#include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Selector.h"
