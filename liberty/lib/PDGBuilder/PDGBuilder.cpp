@@ -43,7 +43,6 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
 
 bool llvm::PDGBuilder::runOnModule (Module &M){
   DL = &M.getDataLayout();
-  addSpecModulesToLoopAA();
   return false;
 }
 
@@ -51,12 +50,20 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>();
   pdg->populateNodesOf(loop);
 
-  DEBUG(errs() << "constructEdgesFromMemory ...\n");
+  DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
-  specModulesLoopSetup(loop);
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
+
+  addSpecModulesToLoopAA();
+  specModulesLoopSetup(loop);
+  DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
+  aa->dump();
+  constructEdgesFromMemory(*pdg, loop, aa);
+  removeSpecModulesFromLoopAA();
+  DEBUG(errs() << "revert stack to CAF ...\n");
+  aa->dump();
 
   DEBUG(errs() << "constructEdgesFromControl ...\n");
 
@@ -94,6 +101,7 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   ptrresaa->InitializeLoopAA(this, *DL);
 
   spresults = &getAnalysis<ReadPass>().getProfileInfo();
+
   pointstoaa = new PointsToAA(*spresults);
   pointstoaa->InitializeLoopAA(this, *DL);
 
@@ -125,6 +133,17 @@ void llvm::PDGBuilder::specModulesLoopSetup(Loop *loop) {
 
   killflow_aware->setLoopOfInterest(ctrlspec, loop);
   callsite_aware->setLoopOfInterest(ctrlspec, loop);
+}
+
+void llvm::PDGBuilder::removeSpecModulesFromLoopAA() {
+    delete smtxaa;
+    delete edgeaa;
+    delete predaa;
+    delete ptrresaa;
+    delete pointstoaa;
+    delete roaa;
+    delete localaa;
+    killflow_aware->setLoopOfInterest(nullptr, nullptr);
 }
 
 void llvm::PDGBuilder::constructEdgesFromUseDefs(PDG &pdg, Loop *loop) {
@@ -488,23 +507,68 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
              (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
 
-  if (RAW) {
+  // check if there was a dep before and now it is gone. Save
+  // assumptions/remedies that made that possible
+
+  bool alreadyRAW = false;
+  bool alreadyWAR = false;
+  bool alreadyWAW = false;
+  DGEdge<Value> *rawE;
+  DGEdge<Value> *warE;
+  DGEdge<Value> *wawE;
+  auto srcNode = pdg.fetchNode(src);
+  for (auto edge : srcNode->getOutgoingEdges()) {
+    Instruction *dstI = dyn_cast<Instruction>(edge->getIncomingT());
+    if (dstI == dst && edge->isMemoryDependence() &&
+        edge->isLoopCarriedDependence() == loopCarried) {
+      if (edge->isRAWDependence()) {
+        alreadyRAW = true;
+        rawE = edge;
+      } else if (edge->isWARDependence()) {
+        alreadyWAR = true;
+        warE = edge;
+      } else if (edge->isWAWDependence()) {
+        alreadyWAW = true;
+        wawE = edge;
+      }
+    }
+  }
+
+  long totalRemedCost = 0;
+  for (Remedy_ptr r : R) {
+    totalRemedCost += r->cost;
+  }
+
+  if (!RAW && alreadyRAW) {
+    rawE->setRemedies(R);
+    rawE->setRemovable(true);
+    rawE->processNewRemovalCost(totalRemedCost);
+  }
+  if (!WAR && alreadyWAR) {
+    warE->setRemedies(R);
+    warE->setRemovable(true);
+    warE->processNewRemovalCost(totalRemedCost);
+  }
+  if (!WAW && alreadyWAW) {
+    wawE->setRemedies(R);
+    wawE->setRemovable(true);
+    wawE->processNewRemovalCost(totalRemedCost);
+  }
+
+  if (RAW && !alreadyRAW) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_RAW);
     edge->setLoopCarried(loopCarried);
-    edge->setRemedies(R);
   }
-  if (WAR) {
+  if (WAR && !alreadyWAR) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_WAR);
     edge->setLoopCarried(loopCarried);
-    edge->setRemedies(R);
   }
-  if (WAW) {
+  if (WAW && !alreadyWAW) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_WAW);
     edge->setLoopCarried(loopCarried);
-    edge->setRemedies(R);
   }
 }
 
