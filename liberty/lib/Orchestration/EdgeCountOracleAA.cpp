@@ -4,15 +4,18 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
-#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Utilities/Timer.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
 
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-
+#ifndef DEFAULT_CTRL_REMED_COST
+#define DEFAULT_CTRL_REMED_COST 45
+#endif
 
 namespace liberty
 {
@@ -33,9 +36,15 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
 
   ModRefResult result = ModRef;
 
+  std::shared_ptr<ControlSpecRemedy> remedy =
+      std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
+  remedy->cost = DEFAULT_CTRL_REMED_COST;
+  //remedy->brI = nullptr;
+
   if( speculator->isSpeculativelyDead( A ) )
   {
     ++numNoModRef;
+    R.insert(remedy);
     result = NoModRef;
   }
 
@@ -60,10 +69,16 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
 
   ModRefResult result = ModRef;
 
+  std::shared_ptr<ControlSpecRemedy> remedy =
+      std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
+  remedy->cost = DEFAULT_CTRL_REMED_COST;
+  //remedy->brI = nullptr;
+
   if( speculator->isSpeculativelyDead( A ) )
   {
     ++numNoModRef;
     INTROSPECT(EXIT(A,rel,B,L,NoModRef));
+    R.insert(remedy);
     return NoModRef;
   }
 
@@ -71,6 +86,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   {
     ++numNoModRef;
     INTROSPECT(EXIT(A,rel,B,L,NoModRef));
+    R.insert(remedy);
     return NoModRef;
   }
 

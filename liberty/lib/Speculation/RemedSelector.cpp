@@ -4,7 +4,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/SLAMP/SLAMPLoad.h"
 #include "liberty/LoopProf/Targets.h"

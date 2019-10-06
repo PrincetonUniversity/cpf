@@ -4,7 +4,7 @@
 #include "llvm/IR/DataLayout.h"
 
 #include "liberty/Analysis/PredictionSpeculation.h"
-#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/SLAMP/SlampOracleAA.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Speculation/ControlSpeculator.h"
