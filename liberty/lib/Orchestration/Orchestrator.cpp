@@ -73,13 +73,13 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
 
   // pointer-residue remediator (Nick Johnson's thesis)
-  remeds.push_back(std::make_unique<PtrResidueRemediator>(&ptrResMan));
+  //remeds.push_back(std::make_unique<PtrResidueRemediator>(&ptrResMan));
 
-  // memory specualation remediator (with SLAMP)
-  //remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
+  //// memory specualation remediator (with SLAMP)
+  ////remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
 
   // memory speculation remediator 2 (with LAMP)
-  remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
+  //remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
 
   // header phi value prediction
   //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
@@ -163,7 +163,7 @@ void Orchestrator::printRemedies(Remedies &rs, bool selected) {
   DEBUG(errs() << " )");
 }
 
-void Orchestrator::printSelected(SetOfRemedies &sors,
+void Orchestrator::printSelected(const SetOfRemedies &sors,
                                  const Remedies_ptr &selected, Criticism &cr) {
   DEBUG(errs() << "----------------------------------------------------\n");
   printRemedies(*selected, true);
@@ -210,7 +210,7 @@ void Orchestrator::printSelected(SetOfRemedies &sors,
   DEBUG(errs() << "------------------------------------------------------\n\n");
 }
 
-void Orchestrator::printAllRemedies(SetOfRemedies &sors, Criticism &cr) {
+void Orchestrator::printAllRemedies(const SetOfRemedies &sors, Criticism &cr) {
   if (sors.empty())
     return;
   DEBUG(errs() << "\nRemedies ");
@@ -256,8 +256,9 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   DEBUG(errs() << "\n-====================================================-\n");
   DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
-    SetOfRemedies &sors = mapCriticismsToRemeds[cr];
-    Remedies_ptr cheapestR = *(sors.begin());
+    //SetOfRemedies &sors = mapCriticismsToRemeds[cr];
+    const SetOfRemedies &sors = cr->getRemedies();
+    const Remedies_ptr cheapestR = *(sors.begin());
     for (auto &r : *cheapestR) {
       if (!selectedRemedies.count(r)) {
         selectedRemediesCost += r->cost;
@@ -320,8 +321,12 @@ bool Orchestrator::findBestStrategy(
         // one single remedy resolves this criticism
         Remedies_ptr remedSet = std::make_shared<Remedies>();
         remedSet->insert(r);
-        mapCriticismsToRemeds[c].insert(remedSet);
+        // now remedies are added to the edges.
+        // for now keeping only the cheapest one but could keep all the
+        // available options
+        // mapCriticismsToRemeds[c].insert(remedSet);
         c->setRemovable(true);
+        c->addRemedies(remedSet);
         c->processNewRemovalCost(r->cost);
       }
     }

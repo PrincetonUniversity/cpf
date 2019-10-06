@@ -73,7 +73,7 @@ public:
       bool abortIfNoParallelStage = true);
 
 private:
-  std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
+  //std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
 
   std::vector<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
@@ -95,9 +95,9 @@ private:
 
   void printRemediatorSelectionCnt();
   void printRemedies(Remedies &rs, bool selected);
-  void printSelected(SetOfRemedies &sors, const Remedies_ptr &selected,
+  void printSelected(const SetOfRemedies &sors, const Remedies_ptr &selected,
                      Criticism &cr);
-  void printAllRemedies(SetOfRemedies &sors, Criticism &cr);
+  void printAllRemedies(const SetOfRemedies &sors, Criticism &cr);
 
   unordered_map<std::string, unsigned> remediatorSelectionCnt;
 

@@ -63,8 +63,8 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
   removeSpecModulesFromLoopAA();
-  DEBUG(errs() << "revert stack to CAF ...\n");
-  aa->dump();
+  //DEBUG(errs() << "revert stack to CAF ...\n");
+  //aa->dump();
 
   DEBUG(errs() << "constructEdgesFromControl ...\n");
 
@@ -425,10 +425,10 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
     return;
 
   bool loopCarried = FW != RV;
-  Remedies R;
+  Remedies_ptr R = std::make_shared<Remedies>();
 
   // forward dep test
-  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, R);
+  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, *R);
   if (LoopAA::NoModRef == forward)
     return;
 
@@ -468,7 +468,7 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   // just check aliasing) instead of performance we call reverse and use
   // assertions to identify accuracy bugs of AA stack
   if (loopCarried || src != dst)
-    reverse = aa->modref(dst, RV, src, loop, R);
+    reverse = aa->modref(dst, RV, src, loop, *R);
 
   if ((reverse == LoopAA::Mod || reverse == LoopAA::ModRef) &&
       !dst->mayWriteToMemory()) {
@@ -536,22 +536,22 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   }
 
   long totalRemedCost = 0;
-  for (Remedy_ptr r : R) {
+  for (Remedy_ptr r : *R) {
     totalRemedCost += r->cost;
   }
 
   if (!RAW && alreadyRAW) {
-    rawE->setRemedies(R);
+    rawE->addRemedies(R);
     rawE->setRemovable(true);
     rawE->processNewRemovalCost(totalRemedCost);
   }
   if (!WAR && alreadyWAR) {
-    warE->setRemedies(R);
+    warE->addRemedies(R);
     warE->setRemovable(true);
     warE->processNewRemovalCost(totalRemedCost);
   }
   if (!WAW && alreadyWAW) {
-    wawE->setRemedies(R);
+    wawE->addRemedies(R);
     wawE->setRemovable(true);
     wawE->processNewRemovalCost(totalRemedCost);
   }
