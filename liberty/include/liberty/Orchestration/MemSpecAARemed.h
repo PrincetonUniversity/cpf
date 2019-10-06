@@ -7,7 +7,7 @@
 #include "liberty/Analysis/QueryCacheing.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
-#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Orchestration/LocalityAA.h"

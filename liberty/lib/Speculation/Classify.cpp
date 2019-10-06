@@ -5,7 +5,7 @@
 
 #include "liberty/Analysis/CallsiteDepthCombinator.h"
 #include "liberty/Analysis/CallsiteSearch.h"
-#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"

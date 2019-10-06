@@ -9,7 +9,7 @@
 #include <set>
 #include <map>
 
-#include "liberty/Analysis/EdgeCountOracleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Analysis/PredictionSpeculation.h"
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Orchestration/TXIORemed.h"
