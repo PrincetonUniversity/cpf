@@ -18,6 +18,10 @@
   "rewind",
   "vfprintf",
 
+  "getc",
+  "getchar",
+  "_IO_getc",
+
 // stdlib.h
   "abort",
   "exit",
