@@ -109,6 +109,10 @@ namespace liberty
       DL = d;
     }
 
+    virtual SchedulingPreference getSchedulingPreference() const {
+      return SchedulingPreference(Normal - 7);
+    }
+
     StringRef getLoopAAName() const { return "kill-flow-aa"; }
 
     void getAnalysisUsage(AnalysisUsage &AU) const
