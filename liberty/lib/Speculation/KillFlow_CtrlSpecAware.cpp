@@ -8,6 +8,7 @@
 
 #include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/Introspection.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
@@ -20,6 +21,10 @@
 #include <ctime>
 #include <cmath>
 #include <unordered_set>
+
+#ifndef DEFAULT_CTRL_REMED_COST
+#define DEFAULT_CTRL_REMED_COST 45
+#endif
 
 namespace liberty
 {
@@ -852,12 +857,16 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       L = LI.getLoopFor(L->getHeader());
     }
 
-
     if( !L )
     {
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
       return res;
     }
+
+    std::shared_ptr<ControlSpecRemedy> remedy =
+        std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
+    remedy->cost = DEFAULT_CTRL_REMED_COST;
+    remedy->brI = nullptr;
 
     // use ptr1 & ptr2 for load/store cases
     const Value *ptr1 = liberty::getMemOper(i1);
@@ -894,6 +903,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             {
               ++numKilledForwardStoreFlows;
               //res = ModRefResult(res & ~Mod);
+              R.insert(remedy);
               res = NoModRef;
             }
           }
@@ -905,6 +915,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             {
               ++numKilledBackwardLoadFlows;
               //res = ModRefResult(res & ~Mod);
+              R.insert(remedy);
               res = NoModRef;
             }
           }
@@ -916,6 +927,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             if( pointerKilledBetween(L,ptr1,i1,i2) )
             {
               ++numKilledForwardLoad;
+              R.insert(remedy);
               res = NoModRef;
             }
           }
@@ -927,6 +939,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             if( pointerKilledBetween(L,ptr2,i1,i2) )
             {
               ++numKilledBackwardStore;
+              R.insert(remedy);
               res = NoModRef;
             }
           }
@@ -961,7 +974,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         {
           ++numKilledBackwardLoadFlows;
           DEBUG(errs() << "Removed the mod bit at AAA\n");
-          //res = ModRefResult(res & ~Mod);
+          // res = ModRefResult(res & ~Mod);
+          R.insert(remedy);
           res = NoModRef;
         }
 
@@ -973,6 +987,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           ++numKilledBackwardLoadFlows;
           DEBUG(errs() << "Removed the mod bit at AAA\n");
           // res = ModRefResult(res & ~Mod);
+          R.insert(remedy);
           res = NoModRef;
         }
       }
@@ -1010,6 +1025,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         {
           ++numKilledBackwardStore;
           // no dependence between this store and insts from previous iteration possible
+          R.insert(remedy);
           res = NoModRef;
         }
 
@@ -1019,6 +1035,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
                  pointerKilledBefore(L, earlierPtr, store, queryStart,
                                      AnalysisTimeout)) {
           ++numKilledBackwardStore;
+          R.insert(remedy);
           res = NoModRef;
         }
 
@@ -1048,6 +1065,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         {
           ++numKilledForwardStoreFlows;
           //res = ModRefResult(res & ~Mod);
+          R.insert(remedy);
           res = NoModRef;
           return res;
         }
@@ -1081,6 +1099,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         {
           DEBUG(errs() << "Killed dep: load inst as earlier : " << *load << "\n later is "  << *later << "\n");
           ++numKilledForwardLoad;
+          R.insert(remedy);
           res = NoModRef;
           return res;
         }

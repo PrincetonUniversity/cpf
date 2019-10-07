@@ -39,7 +39,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
   remedy->cost = DEFAULT_CTRL_REMED_COST;
-  //remedy->brI = nullptr;
+  remedy->brI = nullptr;
 
   if( speculator->isSpeculativelyDead( A ) )
   {
@@ -72,7 +72,7 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
   remedy->cost = DEFAULT_CTRL_REMED_COST;
-  //remedy->brI = nullptr;
+  remedy->brI = nullptr;
 
   if( speculator->isSpeculativelyDead( A ) )
   {
