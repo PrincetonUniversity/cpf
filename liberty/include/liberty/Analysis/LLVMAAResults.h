@@ -36,7 +36,7 @@ namespace liberty
     StringRef getLoopAAName() const { return "llvm-results-aa"; }
 
     virtual SchedulingPreference getSchedulingPreference() const {
-      return SchedulingPreference(Low + 5);
+      return SchedulingPreference(Normal - 5);
     }
 
     void getAnalysisUsage(AnalysisUsage &AU) const
