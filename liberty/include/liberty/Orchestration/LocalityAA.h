@@ -30,10 +30,16 @@ struct LocalityAA : public ClassicLoopAA // Not a pass!
     const Loop *L,
     Remedies &R);
 
+  virtual ModRefResult modref(const Instruction *I1, TemporalRelation Rel,
+                              const Instruction *I2, const Loop *L,
+                              Remedies &remeds);
+
 private:
   const Read &read;
   const HeapAssignment &asgn;
   const Ctx *ctx;
+
+  unordered_set<const Value*> privateInsts;
 };
 
 }
