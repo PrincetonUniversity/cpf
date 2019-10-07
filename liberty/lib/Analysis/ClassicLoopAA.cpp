@@ -201,6 +201,6 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const Instruction *I,
   case Instruction::Invoke:
     assert(false && "Calls and invokes aren't simple");
   default:
-    NoModRef;
+    return NoModRef;
   }
 }
