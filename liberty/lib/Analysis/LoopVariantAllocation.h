@@ -28,17 +28,20 @@ public:
   virtual ModRefResult getModRefInfo(llvm::CallSite CS1,
                                      TemporalRelation Rel,
                                      llvm::CallSite CS2,
-                                     const llvm::Loop *L);
+                                     const llvm::Loop *L,
+                                     Remedies &R);
 
   virtual ModRefResult getModRefInfo(llvm::CallSite CS,
                                      TemporalRelation Rel,
                                      const Pointer &P,
-                                     const llvm::Loop *L);
+                                     const llvm::Loop *L,
+                                     Remedies &R);
 
   virtual AliasResult aliasCheck(const Pointer &P1,
                                  TemporalRelation Rel,
                                  const Pointer &P2,
-                                 const Loop *L);
+                                 const Loop *L,
+                                 Remedies &R);
 
   StringRef getLoopAAName() const { return "loop-variant-allocation-aa"; }
 

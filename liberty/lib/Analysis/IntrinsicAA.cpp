@@ -34,7 +34,8 @@ public:
   virtual ModRefResult getModRefInfo(CallSite CS1,
                                      TemporalRelation Rel,
                                      CallSite CS2,
-                                     const Loop *L) {
+                                     const Loop *L,
+                                     Remedies &R) {
     if(isRedCall(CS1))
       return NoModRef;
 
@@ -47,7 +48,8 @@ public:
   virtual ModRefResult getModRefInfo(CallSite CS,
                                      TemporalRelation Rel,
                                      const Pointer &P,
-                                     const Loop *L) {
+                                     const Loop *L,
+                                     Remedies &R) {
     if(isRedCall(CS))
       return NoModRef;
 

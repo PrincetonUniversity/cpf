@@ -32,7 +32,8 @@ bool LoopVariantAllocation::runOnModule(Module &M) {
 LoopAA::ModRefResult LoopVariantAllocation::getModRefInfo(llvm::CallSite CS1,
                                    TemporalRelation Rel,
                                    llvm::CallSite CS2,
-                                   const llvm::Loop *L)
+                                   const llvm::Loop *L,
+                                   Remedies &R)
 {
   return ModRef;
 }
@@ -40,7 +41,8 @@ LoopAA::ModRefResult LoopVariantAllocation::getModRefInfo(llvm::CallSite CS1,
 LoopAA::ModRefResult LoopVariantAllocation::getModRefInfo(llvm::CallSite CS,
                                    TemporalRelation Rel,
                                    const Pointer &P,
-                                   const llvm::Loop *L)
+                                   const llvm::Loop *L,
+                                   Remedies &R)
 {
   return ModRef;
 }
@@ -71,7 +73,8 @@ LoopAA::AliasResult LoopVariantAllocation::aliasCheck(
   const Pointer &P1,
   TemporalRelation Rel,
   const Pointer &P2,
-  const Loop *L)
+  const Loop *L,
+  Remedies &R)
 {
   if( Rel == Same || L == 0 )
     return MayAlias;

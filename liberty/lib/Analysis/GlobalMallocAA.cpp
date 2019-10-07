@@ -204,7 +204,8 @@ public:
   virtual AliasResult aliasCheck(const Pointer &P1,
                                  TemporalRelation Rel,
                                  const Pointer &P2,
-                                 const Loop *L) {
+                                 const Loop *L,
+                                 Remedies &R) {
 
     const Value *V1 = P1.ptr, *V2 = P2.ptr;
 

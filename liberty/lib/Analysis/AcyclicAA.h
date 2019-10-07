@@ -52,7 +52,8 @@ namespace liberty {
       const Pointer &P1,
       TemporalRelation rel,
       const Pointer &P2,
-      const Loop *L);
+      const Loop *L,
+      Remedies &R);
 
     /// getAdjustedAnalysisPointer - This method is used when a pass implements
     /// an analysis interface through multiple inheritance.  If needed, it

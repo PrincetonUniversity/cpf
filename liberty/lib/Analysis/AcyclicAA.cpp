@@ -548,7 +548,8 @@ namespace liberty
     const Pointer &P1,
     TemporalRelation rel,
     const Pointer &P2,
-    const Loop *L)
+    const Loop *L,
+    Remedies &R)
   {
     DEBUG(errs() << "AcyclicAA\n" << " - " << *P1.ptr << "\n - " << *P2.ptr << '\n');
     ++numQueries;
