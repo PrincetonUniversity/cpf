@@ -839,6 +839,11 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     INTROSPECT(ENTER(i1,Rel,i2,L));
     ++numQueriesReceived;
 
+    ModRefResult res = ModRef;
+
+    // Do not want to pollute remedies with more expensive-to-validate modules
+    // chain after trying to respond
+    /*
     ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L,R);
     INTROSPECT(errs() << "lower in the stack reports res=" << res << '\n');
     if( res == Ref || res == NoModRef )
@@ -846,6 +851,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
       return res;
     }
+    */
 
     /* TODO: For using ModuleLoops, convert the L here to the ModuleLoops L */
     // Since we are now using ModuleLoops and we could have potentially been
@@ -860,7 +866,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     if( !L )
     {
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
-      return res;
+      return getEffectiveNextAA()->modref(i1,Rel,i2,L,R);
     }
 
     std::shared_ptr<ControlSpecRemedy> remedy =
@@ -946,6 +952,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         }
       }
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
+      if (res != NoModRef)
+        return ModRefResult(res &
+                            getEffectiveNextAA()->modref(i1, Rel, i2, L, R));
       return res;
     }
 
@@ -1110,6 +1119,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     DEBUG(errs() << "Can't say jack about " << *i2 << " at "
       << i2->getParent()->getParent()->getName() << ':' << i2->getParent()->getName() << '\n');
     INTROSPECT(EXIT(i1,Rel,i2,L,res));
+    if (res != NoModRef)
+      return ModRefResult(res &
+                          getEffectiveNextAA()->modref(i1, Rel, i2, L, R));
     return res;
   }
 
