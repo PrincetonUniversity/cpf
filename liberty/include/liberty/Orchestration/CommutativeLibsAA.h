@@ -12,8 +12,12 @@ struct CommutativeLibsAA: public LoopAA // Not a pass!
 
   StringRef getLoopAAName() const { return "comm-libs-aa"; }
 
-  ModRefResult modref(const Instruction *A, TemporalRelation rel,
-                      const Instruction *B, const Loop *L, Remedies &R);
+  LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Value *ptrB, unsigned sizeB, const Loop *L,
+                              Remedies &R);
+
+  LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Instruction *B, const Loop *L, Remedies &R);
 
   LoopAA::SchedulingPreference getSchedulingPreference() const
   {

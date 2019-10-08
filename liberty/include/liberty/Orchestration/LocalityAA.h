@@ -16,21 +16,23 @@ using namespace llvm;
 using namespace SpecPriv;
 
 /// Adapts separation speculation to LoopAA.
-struct LocalityAA : public ClassicLoopAA // Not a pass!
+struct LocalityAA : public LoopAA // Not a pass!
 {
   LocalityAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
-      : ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
+      : LoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
   StringRef getLoopAAName() const { return "spec-priv-locality-oracle-aa"; }
 
-  virtual AliasResult aliasCheck(
-    const Pointer &P1,
-    TemporalRelation rel,
-    const Pointer &P2,
-    const Loop *L,
-    Remedies &R);
+  LoopAA::AliasResult alias(const Value *P1, unsigned S1, TemporalRelation rel,
+                            const Value *P2, unsigned S2, const Loop *L,
+                            Remedies &R);
 
-  virtual ModRefResult modref(const Instruction *I1, TemporalRelation Rel,
+  LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Value *ptrB, unsigned sizeB, const Loop *L,
+                              Remedies &R);
+
+
+  LoopAA::ModRefResult modref(const Instruction *I1, TemporalRelation Rel,
                               const Instruction *I2, const Loop *L,
                               Remedies &remeds);
 
