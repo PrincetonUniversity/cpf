@@ -4,11 +4,13 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
-#include "liberty/SLAMP/SLAMPLoad.h"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
+#include "liberty/SLAMP/SLAMPLoad.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/ControlSpeculator.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 //#include "liberty/Speculation/Read.h"
@@ -45,6 +47,8 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired<LoopAA>();
   au.addRequired<ReadPass>();
   au.addRequired<Classify>();
+  au.addRequired<KillFlow_CtrlSpecAware>();
+  au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   au.addRequired<CallGraphWrapperPass>();
 }
 

@@ -61,7 +61,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    KillFlow &kill) {
+    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+    CallsiteDepthCombinator_CtrlSpecAware *callsiteA) {
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
@@ -70,7 +71,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(reduxRemed));
 
   // separation logic remediator (Privateer PLDI '12)
-  remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
+  //remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
 
   // pointer-residue remediator (Nick Johnson's thesis)
   //remeds.push_back(std::make_unique<PtrResidueRemediator>(&ptrResMan));
@@ -85,8 +86,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // Loop-Invariant Loaded-Value Prediction
-  remeds.push_back(
-      std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
+  //remeds.push_back(
+  //    std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
@@ -95,16 +96,16 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
-      ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
-  remeds.push_back(std::move(privRemed));
+  //auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
+  //    ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
+  //remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage
   //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
   // TXIO remediator
-  remeds.push_back(std::make_unique<TXIORemediator>());
+  //remeds.push_back(std::make_unique<TXIORemediator>());
 
   // memory versioning remediator
   remeds.push_back(std::make_unique<MemVerRemediator>());
@@ -113,9 +114,12 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::make_unique<CommutativeLibsRemediator>());
 
   // mem speculation combining lamp, ctrl spec, value prediction, points-to
-  // spec, separation logic spec, and static analysis
+  // spec, separation logic spec, txio, commlibsaa, ptr-residue and static
+  // analysis. both SCAF and transformation analysis.
+  // all flow deps are remediated via this remediator stack
   remeds.push_back(std::make_unique<MemSpecAARemediator>(
-      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred));
+      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
+      &ptrResMan, killflowA, callsiteA));
 
   return remeds;
 }
@@ -281,7 +285,9 @@ bool Orchestrator::findBestStrategy(
     SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    KillFlow &kill, LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
+    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+    CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
+    std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -310,9 +316,10 @@ bool Orchestrator::findBestStrategy(
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
   // address all possible criticisms
-  std::vector<Remediator_ptr> remeds = getRemediators(
-      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, tli, ldi,
-      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill);
+  std::vector<Remediator_ptr> remeds =
+      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred,
+                     mloops, tli, ldi, smtxMan, smtxLampMan, ptrResMan, lamp,
+                     rd, asgn, proxy, loopAA, kill, killflowA, callsiteA);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
