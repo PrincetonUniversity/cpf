@@ -84,7 +84,7 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   killflow_aware->setLoopOfInterest(ctrlspec, loop);
   callsite_aware->setLoopOfInterest(ctrlspec, loop);
 
-  //killflow_aware->getTopAA()->dump();
+  killflow_aware->getTopAA()->dump();
 
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
 

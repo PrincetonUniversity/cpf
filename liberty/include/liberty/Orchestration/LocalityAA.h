@@ -34,6 +34,10 @@ struct LocalityAA : public ClassicLoopAA // Not a pass!
                               const Instruction *I2, const Loop *L,
                               Remedies &remeds);
 
+  LoopAA::SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Bottom + 4);
+  }
+
 private:
   const Read &read;
   const HeapAssignment &asgn;
