@@ -25,11 +25,9 @@ struct TXIOAA: public LoopAA // Not a pass!
 
   bool isTXIOFcn(const Instruction *inst);
 
-  LoopAA::SchedulingPreference getSchedulingPreference() const
-  {
-    return SchedulingPreference(Low - 10);
+  LoopAA::SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Low - 9);
   }
-
 };
 
 }
