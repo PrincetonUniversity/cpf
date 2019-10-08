@@ -38,8 +38,10 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   edgeaa->InitializeLoopAA(&proxy, DL);
 
   // LAMP
-  lampaa = new LampOracle(lamp);
-  lampaa->InitializeLoopAA(&proxy, DL);
+  //lampaa = new LampOracle(lamp);
+  //lampaa->InitializeLoopAA(&proxy, DL);
+  smtxaa = new SmtxAA(smtxMan);
+  smtxaa->InitializeLoopAA(&proxy, DL);
 
   // Points-to
   pointstoaa = new PointsToAA(spresults);
@@ -54,14 +56,46 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   predaa = new PredictionAA(predspec);
   predaa->InitializeLoopAA(&proxy, DL);
 
+  // Ptr-residue
+  ptrresaa = new PtrResidueAA(DL, *ptrresMan);
+  ptrresaa->InitializeLoopAA(&proxy, DL);
+
+  // read-only aa
+  roaa = new ReadOnlyAA(spresults, asgn, ctx);
+  roaa->InitializeLoopAA(&proxy, DL);
+
+  // short-lived aa
+  localaa = new ShortLivedAA(spresults, asgn, ctx);
+  localaa->InitializeLoopAA(&proxy, DL);
+
+  // short-lived aa
+  txioaa = new TXIOAA();
+  txioaa->InitializeLoopAA(&proxy, DL);
+
+  commlibsaa = new CommutativeLibsAA();
+  commlibsaa->InitializeLoopAA(&proxy, DL);
+
+  ctrlspec->setLoopOfInterest(loop->getHeader());
+  predaa->setLoopOfInterest(loop);
+
+  killflow_aware->setLoopOfInterest(ctrlspec, loop);
+  callsite_aware->setLoopOfInterest(ctrlspec, loop);
+
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
 
-  // remove these four AAs from the stack by destroying them
+  // remove these AAs from the stack by destroying them
   delete edgeaa;
-  delete lampaa;
+  //delete lampaa;
+  delete smtxaa;
   delete pointstoaa;
   delete localityaa;
   delete predaa;
+  delete ptrresaa;
+  delete roaa;
+  delete localaa;
+  delete txioaa;
+  delete commlibsaa;
+  killflow_aware->setLoopOfInterest(nullptr, nullptr);
 
   return remedies;
 }
