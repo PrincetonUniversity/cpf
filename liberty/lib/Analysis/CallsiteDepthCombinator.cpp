@@ -646,6 +646,10 @@ namespace liberty
           }
         }
         result = ModRefResult(result & ~Mod);
+      } else {
+        for (auto remed : tmpR) {
+          R.insert(remed);
+        }
       }
     }
 

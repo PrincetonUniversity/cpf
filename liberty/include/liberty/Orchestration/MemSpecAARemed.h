@@ -5,6 +5,7 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/QueryCacheing.h"
+#include "liberty/Analysis/SimpleAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/Orchestration/CommutativeLibsAA.h"
@@ -77,6 +78,7 @@ private:
   ShortLivedAA *localaa;
   TXIOAA *txioaa;
   CommutativeLibsAA *commlibsaa;
+  SimpleAA *simpleaa;
   KillFlow_CtrlSpecAware *killflow_aware;
   CallsiteDepthCombinator_CtrlSpecAware *callsite_aware;
 };
