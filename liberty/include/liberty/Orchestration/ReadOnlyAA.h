@@ -33,12 +33,12 @@ struct ReadOnlyAA : public LoopAA // Not a pass!
                             TemporalRelation rel, const Value *ptrB,
                             unsigned sizeB, const Loop *L, Remedies &R);
 
-  ModRefResult modref(const Instruction *A, TemporalRelation rel,
-                      const Value *ptrB, unsigned sizeB, const Loop *L,
-                      Remedies &R);
+  LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Value *ptrB, unsigned sizeB, const Loop *L,
+                              Remedies &R);
 
-  ModRefResult modref(const Instruction *A, TemporalRelation rel,
-                      const Instruction *B, const Loop *L, Remedies &R);
+  LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Instruction *B, const Loop *L, Remedies &R);
 
   /*
   virtual AliasResult aliasCheck(

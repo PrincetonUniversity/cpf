@@ -54,6 +54,15 @@ Function *CommutativeLibsAA::getCalledFun(const Instruction *A) {
 
 LoopAA::ModRefResult CommutativeLibsAA::modref(const Instruction *A,
                                                TemporalRelation rel,
+                                               const Value *ptrB,
+                                               unsigned sizeB, const Loop *L,
+                                               Remedies &R) {
+
+  return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
+}
+
+LoopAA::ModRefResult CommutativeLibsAA::modref(const Instruction *A,
+                                               TemporalRelation rel,
                                                const Instruction *B,
                                                const Loop *L, Remedies &R) {
 

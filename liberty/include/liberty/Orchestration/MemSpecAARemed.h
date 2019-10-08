@@ -62,15 +62,15 @@ private:
   Pass &proxy;
   ControlSpeculation *ctrlspec;
   EdgeCountOracle *edgeaa;
-   LAMPLoadProfile *lamp;
+  LAMPLoadProfile *lamp;
   //LampOracle *lampaa;
   SmtxAA *smtxaa;
-  SpecPriv::SmtxSpeculationManager *smtxMan;
   const Read &spresults;
   PointsToAA *pointstoaa;
   const HeapAssignment &asgn;
   LocalityAA *localityaa;
   PredictionSpeculation *predspec;
+  SpecPriv::SmtxSpeculationManager *smtxMan;
   PredictionAA *predaa;
   PtrResidueAA *ptrresaa;
   PtrResidueSpeculationManager *ptrresMan;
