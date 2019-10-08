@@ -20,6 +20,8 @@
 #include "liberty/Orchestration/SmtxLampRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
 #include "liberty/Orchestration/TXIORemed.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Utilities/PrintDebugInfo.h"
 //#include "liberty/Orchestration/MemAllocRemed.h"
@@ -63,7 +65,8 @@ public:
       SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-      KillFlow &kill, LoopProfLoad &lpl,
+      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+      CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -75,16 +78,16 @@ public:
 private:
   //std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
 
-  std::vector<Remediator_ptr>
-  getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-                 PredictionSpeculation *loadedValuePred,
-                 PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
-                 TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
-                 SmtxSlampSpeculationManager &smtxMan,
-                 SmtxSpeculationManager &smtxLampMan,
-                 PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-                 const Read &rd, const HeapAssignment &asgn, Pass &proxy,
-                 LoopAA *loopAA, KillFlow &kill);
+  std::vector<Remediator_ptr> getRemediators(
+      Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+      PredictionSpeculation *loadedValuePred,
+      PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+      TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+      SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+      CallsiteDepthCombinator_CtrlSpecAware *callsiteA);
 
   std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                      unsigned threadBudget, LoopProfLoad *lpl);
