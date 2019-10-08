@@ -492,20 +492,22 @@ namespace liberty
     const Loop *L,
     Remedies &R)
   {
-    ModRefResult result = LoopAA::modref(inst1,Rel,inst2,L,R);
-    if( result == NoModRef || result == Ref )
-      return result;
+    //ModRefResult result = LoopAA::modref(inst1,Rel,inst2,L,R);
+    //if( result == NoModRef || result == Ref )
+    //  return result;
     if( Rel == Same )
-      return result;
+      return LoopAA::modref(inst1,Rel,inst2,L, R);
     if( !L->contains(inst1) || !L->contains(inst2) )
-      return result;
+      return LoopAA::modref(inst1,Rel,inst2,L, R);
     if( !isEligible(inst1) && !isEligible(inst2) )
-      return result;
+      return LoopAA::modref(inst1,Rel,inst2,L, R);
 
+    /*
     if( !inst1->mayReadFromMemory() )
       result = ModRefResult(result & ~Ref);
     if( !inst1->mayWriteToMemory() )
       return ModRefResult(result & ~Mod);
+    */
 
     const Instruction *src=inst1, *dst=inst2;
     if( Rel == After )
@@ -513,7 +515,7 @@ namespace liberty
 
     if( !src->mayWriteToMemory()
     ||  !dst->mayReadFromMemory() )
-      return result;
+      return LoopAA::modref(inst1,Rel,inst2,L, R);
 
     // Maybe turn-on introspection
     bool introspect = false;
@@ -557,7 +559,7 @@ namespace liberty
       enterIntrospectionRegion();
 
     INTROSPECT(ENTER(inst1,Rel,inst2,L));
-    INTROSPECT(errs() << "Starting with " << result << '\n');
+    //INTROSPECT(errs() << "Starting with " << result << '\n');
 
     ++numEligible;
 
@@ -583,16 +585,53 @@ namespace liberty
       queryStart = 0;
     }
 
+    Remedies tmpR;
+    ModRefResult result = LoopAA::modref(inst1, Rel, inst2, L, tmpR);
     // Interpret the isFlow result w.r.t. LoopAA Before/After query semantics.
     if( !isFlow )
     {
       DEBUG(errs() << "No flow from " << *src << " to " << *dst << '\n');
 
-      if( Rel == Before )
-        result = ModRefResult(result & ~Mod);
 
-      else if( Rel == After )
+      if (Rel == Before) {
+        if (result == NoModRef || result == Mod) {
+          for (auto remed : tmpR) {
+            R.insert(remed);
+          }
+        }
+        result = ModRefResult(result & ~Mod);
+      }
+
+      else if (Rel == After) {
+        if (result == NoModRef || result == Ref) {
+          for (auto remed : tmpR) {
+            R.insert(remed);
+          }
+        }
         result = ModRefResult(result & ~Ref);
+      }
+    } else {
+      if (!inst1->mayReadOrWriteMemory()) {
+        result = NoModRef;
+      } else if (!inst1->mayReadFromMemory()) {
+        if (result == NoModRef || result == Ref) {
+          for (auto remed : tmpR) {
+            R.insert(remed);
+          }
+        }
+        result = ModRefResult(result & ~Ref);
+      } else if (!inst1->mayWriteToMemory()) {
+        if (result == NoModRef || result == Mod) {
+          for (auto remed : tmpR) {
+            R.insert(remed);
+          }
+        }
+        result = ModRefResult(result & ~Mod);
+      } else {
+        for (auto remed : tmpR) {
+          R.insert(remed);
+        }
+      }
     }
 
     INTROSPECT(EXIT(inst1,Rel,inst2,L,result));
