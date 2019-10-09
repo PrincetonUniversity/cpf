@@ -5,6 +5,7 @@
 
 #include "liberty/Analysis/AnalysisTimeout.h"
 #include "liberty/Analysis/Introspection.h"
+#include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Utilities/CallSiteFactory.h"
@@ -123,6 +124,11 @@ namespace liberty
     if( q == NoModRef || q == Ref )
       return false;
 
+    std::shared_ptr<ControlSpecRemedy> remedy =
+        std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
+    remedy->cost = DEFAULT_CTRL_REMED_COST;
+    remedy->brI = nullptr;
+
     // May have been a flow.
     // Try to prove that the flow was killed.
     INTROSPECT(errs() << "CallsiteDepthIterator: Maybe flow\n"
@@ -138,6 +144,7 @@ namespace liberty
       if( kill.pointerKilledAfter(L, ptr, src, true, queryStart, Timeout) )
       {
         ++numKillScalarStoreAfterSrc;
+        R.insert(remedy);
         return false;
       }
 
@@ -146,6 +153,7 @@ namespace liberty
       if( kill.pointerKilledBefore(L, ptr, dst, true, queryStart, Timeout) )
       {
         ++numKillScalarStoreBeforeDst;
+        R.insert(remedy);
         return false;
       }
 
@@ -154,6 +162,7 @@ namespace liberty
       if( read.getContext().kills(kill, ptr, read.getInst(), true, false, queryStart, Timeout) )
       {
         ++numKillScalarStoreInLoadCtx;
+        R.insert(remedy);
         return false;
       }
     }
@@ -167,6 +176,7 @@ namespace liberty
       if( kill.pointerKilledBefore(L, ptr, dst, true, queryStart, Timeout) )
       {
         ++numKillScalarLoadBeforeDst;
+        R.insert(remedy);
         return false;
       }
 
@@ -175,6 +185,7 @@ namespace liberty
       if( kill.pointerKilledAfter(L, ptr, src, true, queryStart, Timeout) )
       {
         ++numKillScalarLoadAfterSrc;
+        R.insert(remedy);
         return false;
       }
 
@@ -183,6 +194,7 @@ namespace liberty
       if( write.getContext().kills(kill, ptr, write.getInst(), false, false, queryStart, Timeout) )
       {
         ++numKillScalarLoadInStoreCtx;
+        R.insert(remedy);
         return false;
       }
     }
@@ -212,6 +224,7 @@ namespace liberty
       if( allObjectsKilled )
       {
         ++numKillAggregateStore;
+        R.insert(remedy);
         return false;
       }
     }
@@ -241,6 +254,7 @@ namespace liberty
       if( allObjectsKilled )
       {
         ++numKillAggregateLoad;
+        R.insert(remedy);
         return false;
       }
     }
@@ -270,6 +284,11 @@ namespace liberty
     if( q == NoModRef || q == Ref )
       return false;
 
+    std::shared_ptr<ControlSpecRemedy> remedy =
+        std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
+    remedy->cost = DEFAULT_CTRL_REMED_COST;
+    remedy->brI = nullptr;
+
     // May have been a flow.
     // Try to prove that the flow was killed.
     INTROSPECT(errs() << "CallsiteDepthIterator: Maybe flow\n"
@@ -285,6 +304,7 @@ namespace liberty
       if( kill.pointerKilledBetween(L, ptr, src, dst) )
       {
         ++numKillScalarStoreBetween;
+        R.insert(remedy);
         return false;
       }
 
@@ -293,6 +313,7 @@ namespace liberty
       if( read.getContext().kills(kill, ptr, read.getInst(), true) )
       {
         ++numKillScalarStoreInLoadCtx;
+        R.insert(remedy);
         return false;
       }
     }
@@ -306,6 +327,7 @@ namespace liberty
       if( kill.pointerKilledBetween(L, ptr, src,dst) )
       {
         ++numKillScalarLoadBetween;
+        R.insert(remedy);
         return false;
       }
 
@@ -314,6 +336,7 @@ namespace liberty
       if( write.getContext().kills(kill, ptr, write.getInst(), false) )
       {
         ++numKillScalarLoadInStoreCtx;
+        R.insert(remedy);
         return false;
       }
     }
@@ -341,6 +364,7 @@ namespace liberty
       if( allObjectsKilled )
       {
         ++numKillAggregateStore;
+        R.insert(remedy);
         return false;
       }
     }
@@ -368,6 +392,7 @@ namespace liberty
       if( allObjectsKilled )
       {
         ++numKillAggregateLoad;
+        R.insert(remedy);
         return false;
       }
     }
