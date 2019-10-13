@@ -150,7 +150,7 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
 
   const Value *ptrA = liberty::getMemOper(A);
 
-  if (!ptrA && !ptrB)
+  if (!ptrA || !ptrB)
     return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
 
   if( !isa<PointerType>( ptrA->getType() ) )
@@ -283,7 +283,7 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   const Value *ptrA = liberty::getMemOper(A);
   const Value *ptrB = liberty::getMemOper(B);
 
-  if (!ptrA && !ptrB)
+  if (!ptrA || !ptrB)
     return LoopAA::modref(A, rel, B, L, R);
 
   if( !isa<PointerType>( ptrA->getType() ) )
