@@ -163,6 +163,7 @@ namespace liberty {
 
 	Value* Namer::getInstrIdValue(Instruction *I) {
 		char name[]="namer";
+    if (I==NULL) return NULL;
 		MDNode* md = I->getMetadata((const char*)name);
 		if(md==NULL) return NULL;
 
