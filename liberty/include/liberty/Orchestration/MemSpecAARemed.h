@@ -33,9 +33,14 @@ public:
   const Instruction *srcI;
   const Instruction *dstI;
 
+  Remedies subR;
+
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "mem-spec-aa-remedy"; };
+
+  bool hasSubRemedies() { return true; }
+  Remedies *getSubRemedies() { return &subR; }
 };
 
 class MemSpecAARemediator : public Remediator {
