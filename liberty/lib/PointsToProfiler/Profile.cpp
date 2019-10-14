@@ -1866,8 +1866,8 @@ private:
   Value * getGlobalName(GlobalVariable *gv) const
   {
     Module *mod = gv->getParent();
-    Twine name = "global " + gv->getName();
-    return getStringLiteralExpression( *mod, name.str());
+    std::string name = "global " + gv->getName().str();
+    return getStringLiteralExpression( *mod, name);
   }
 
   Value *getArgName(Argument *arg) const
