@@ -68,7 +68,6 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   localaa = new ShortLivedAA(spresults, asgn, ctx);
   localaa->InitializeLoopAA(&proxy, DL);
 
-  // short-lived aa
   txioaa = new TXIOAA();
   txioaa->InitializeLoopAA(&proxy, DL);
 
@@ -143,6 +142,7 @@ Remediator::RemedResp MemSpecAARemediator::memdep(const Instruction *A,
   bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R);
   if (noDep) {
     ++numNoFlow;
+    remedy->subR = R;
     remedResp.depRes = DepResult::NoDep;
   }
 
