@@ -39,6 +39,7 @@
 // string.h
   "strtok",
   "strtod",
+  "strtol",
 
 // cuda.h
   "cuCtxSynchronize",
