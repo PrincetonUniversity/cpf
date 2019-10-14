@@ -64,14 +64,15 @@ namespace liberty {
 		typedef FunList::iterator FunListIt;
 
 		FunList &funcs = M.getFunctionList();
+    bool modified = false;
 
 		for(FunListIt func = funcs.begin(); func != funcs.end(); func++){
 			Function *f = (Function*) &*func;
-			runOnFunction(*f);
+			modified |= runOnFunction(*f);
 			funcId++;
 		}
 
-		return false;
+		return modified;
 	}
 
   const int PACKING_FACTOR = 16;
@@ -80,7 +81,14 @@ namespace liberty {
 		DEBUG(errs() << "function:" << F.getName() << "\n");
 		LLVMContext &context = F.getContext();
 
+    bool modified = false;
+
 		for (Function::iterator bb = F.begin(), bbe = F.end(); bb != bbe; ++bb) {
+
+      if (bb->getName().empty()) {
+        bb->setName("bbName");
+        modified = true;
+      }
 
 			for (BasicBlock::iterator I = bb->begin(), E = bb->end(); I != E; ++I) {
 				Instruction *inst = &*I;
@@ -118,7 +126,7 @@ namespace liberty {
 		}
 		DEBUG(errs() << "function:" << F.getName() << " func: " << funcId << " blkId: " << blkId << " instrId: " << instrId << "\n");
 
-		return false;
+		return modified;
 	}
 
 	Value* Namer::getFuncIdValue(Instruction *I) {
