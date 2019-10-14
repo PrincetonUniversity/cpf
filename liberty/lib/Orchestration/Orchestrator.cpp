@@ -325,9 +325,14 @@ bool Orchestrator::findBestStrategy(
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
     for (Remedy_ptr r : remedies) {
       for (Criticism *c : r->resolvedC) {
-        // one single remedy resolves this criticism
         Remedies_ptr remedSet = std::make_shared<Remedies>();
-        remedSet->insert(r);
+        if (r->hasSubRemedies()) {
+          for (Remedy_ptr subr : *(r->getSubRemedies())) {
+            remedSet->insert(subr);
+          }
+        } else {
+          remedSet->insert(r);
+        }
         // now remedies are added to the edges.
         // for now keeping only the cheapest one but could keep all the
         // available options
