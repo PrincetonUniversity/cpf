@@ -430,39 +430,21 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
 
   bool loopCarried = FW != RV;
   Remedies_ptr R = std::make_shared<Remedies>();
+  Remedies_ptr reverseR = std::make_shared<Remedies>();
 
   // forward dep test
   LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, *R);
-  if (LoopAA::NoModRef == forward)
-    return;
+
+  // do not return immediately, if second pass with SCAF need to make existing
+  // edge removable
+  // if (LoopAA::NoModRef == forward)
+  //  return;
 
   // forward is Mod, ModRef, or Ref
-
-  if ((forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
-      !src->mayWriteToMemory()) {
-    DEBUG(errs() << "forward modref result is mod or modref but src "
-                    "instruction does not "
-                    "write to memory");
-    if (forward == LoopAA::ModRef)
-      forward = LoopAA::Ref;
-    else {
-      forward = LoopAA::NoModRef;
-      return;
-    }
-  }
-
-  if ((forward == LoopAA::Ref || forward == LoopAA::ModRef) &&
-      !src->mayReadFromMemory()) {
-    DEBUG(errs() << "forward modref result is ref or modref but src "
-                    "instruction does not "
-                    "read from memory");
-    if (forward == LoopAA::ModRef)
-      forward = LoopAA::Mod;
-    else {
-      forward = LoopAA::NoModRef;
-      return;
-    }
-  }
+  if (!src->mayWriteToMemory())
+    forward = LoopAA::ModRefResult(forward & (~LoopAA::Mod));
+  if (!src->mayReadFromMemory())
+    forward = LoopAA::ModRefResult(forward & (~LoopAA::Ref));
 
   // reverse dep test
   LoopAA::ModRefResult reverse = forward;
@@ -471,36 +453,26 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   // or/and reads to/from memory but in favor of correctness (AA stack does not
   // just check aliasing) instead of performance we call reverse and use
   // assertions to identify accuracy bugs of AA stack
-  if (loopCarried || src != dst)
-    reverse = aa->modref(dst, RV, src, loop, *R);
+  if ((loopCarried || src != dst) && forward != LoopAA::NoModRef)
+    reverse = aa->modref(dst, RV, src, loop, *reverseR);
 
-  if ((reverse == LoopAA::Mod || reverse == LoopAA::ModRef) &&
-      !dst->mayWriteToMemory()) {
-    DEBUG(errs() << "reverse modref result is mod or modref but dst "
-                    "instruction does not "
-                    "write to memory");
-    if (reverse == LoopAA::ModRef)
-      reverse = LoopAA::Ref;
-    else
-      reverse = LoopAA::NoModRef;
+  if (!dst->mayWriteToMemory())
+    reverse = LoopAA::ModRefResult(reverse & (~LoopAA::Mod));
+  if (!dst->mayReadFromMemory())
+    reverse = LoopAA::ModRefResult(reverse & (~LoopAA::Ref));
+
+  if (LoopAA::NoModRef == reverse && forward != LoopAA::NoModRef) {
+    R = reverseR;
+    // return;
+  } else {
+    for (auto remed : *reverseR)
+      R->insert(remed);
   }
 
-  if ((reverse == LoopAA::Ref || reverse == LoopAA::ModRef) &&
-      !dst->mayReadFromMemory()) {
-    DEBUG(errs() << "reverse modref result is ref or modref but src "
-                    "instruction does not "
-                    "read from memory");
-    if (reverse == LoopAA::ModRef)
-      reverse = LoopAA::Mod;
-    else
-      reverse = LoopAA::NoModRef;
-  }
-
-  if (LoopAA::NoModRef == reverse)
-    return;
-
+  /*
   if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
     return; // RaR dep; who cares.
+  */
 
   // At this point, we know there is one or more of
   // a flow-, anti-, or output-dependence.
