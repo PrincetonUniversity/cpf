@@ -106,6 +106,9 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   pointstoaa = new PointsToAA(*spresults);
   pointstoaa->InitializeLoopAA(this, *DL);
 
+  simpleaa = new SimpleAA();
+  simpleaa->InitializeLoopAA(this, *DL);
+
   classify = &getAnalysis<Classify>();
 
   killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>();
@@ -144,6 +147,7 @@ void llvm::PDGBuilder::removeSpecModulesFromLoopAA() {
     delete pointstoaa;
     delete roaa;
     delete localaa;
+    delete simpleaa;
     killflow_aware->setLoopOfInterest(nullptr, nullptr);
 }
 
