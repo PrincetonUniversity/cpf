@@ -3,7 +3,6 @@
 #include "llvm/ADT/Statistic.h"
 
 #include "liberty/Orchestration/PointsToAA.h"
-#include "liberty/Orchestration/SmtxLampRemed.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 
 #define DEFAULT_POINTS_TO_REMED_COST 1001
@@ -16,6 +15,13 @@ using namespace llvm;
 
 STATISTIC(numNoAlias, "Num no-alias / no-modref");
 
+bool PointsToRemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<PointsToRemedy> pointstoRhs =
+      std::static_pointer_cast<PointsToRemedy>(rhs);
+  if (this->ptr1 == pointstoRhs->ptr1)
+    return this->ptr2 < pointstoRhs->ptr2;
+  return this->ptr1 < pointstoRhs->ptr1;
+}
 
 LoopAA::AliasResult PointsToAA::aliasCheck(
     const Pointer &P1,
@@ -58,9 +64,11 @@ LoopAA::AliasResult PointsToAA::aliasCheck(
     }
   }
 
-  std::shared_ptr<SmtxLampRemedy> remedy =
-      std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
+  std::shared_ptr<PointsToRemedy> remedy =
+      std::shared_ptr<PointsToRemedy>(new PointsToRemedy());
   remedy->cost = DEFAULT_POINTS_TO_REMED_COST;
+  remedy->ptr1 = P1.ptr;
+  remedy->ptr2 = P2.ptr;
   R.insert(remedy);
 
   ++numNoAlias;
