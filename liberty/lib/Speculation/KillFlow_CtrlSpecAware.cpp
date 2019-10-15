@@ -952,9 +952,16 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         }
       }
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
-      if (res != NoModRef)
-        return ModRefResult(res &
-                            getEffectiveNextAA()->modref(i1, Rel, i2, L, R));
+      if (res != NoModRef) {
+        Remedies tmpR;
+        ModRefResult nextRes =
+            getEffectiveNextAA()->modref(i1, Rel, i2, L, tmpR);
+        if (ModRefResult(res & nextRes) != res) {
+          for (auto remed : tmpR)
+            R.insert(remed);
+          res = ModRefResult(res & nextRes);
+        }
+      }
       return res;
     }
 
@@ -1119,9 +1126,15 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     DEBUG(errs() << "Can't say jack about " << *i2 << " at "
       << i2->getParent()->getParent()->getName() << ':' << i2->getParent()->getName() << '\n');
     INTROSPECT(EXIT(i1,Rel,i2,L,res));
-    if (res != NoModRef)
-      return ModRefResult(res &
-                          getEffectiveNextAA()->modref(i1, Rel, i2, L, R));
+    if (res != NoModRef) {
+      Remedies tmpR;
+      ModRefResult nextRes = getEffectiveNextAA()->modref(i1, Rel, i2, L, tmpR);
+      if (ModRefResult(res & nextRes) != res) {
+        for (auto remed : tmpR)
+          R.insert(remed);
+        res = ModRefResult(res & nextRes);
+      }
+    }
     return res;
   }
 
