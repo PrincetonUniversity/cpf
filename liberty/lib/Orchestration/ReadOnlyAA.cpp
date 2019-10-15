@@ -159,23 +159,26 @@ LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
   return result;
 }
 
+LoopAA::ModRefResult
+ReadOnlyAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
+                             TemporalRelation rel, const Instruction *B,
+                             const Value *ptrB, const Loop *L, Remedies &R) {
+
+  ModRefResult result = check_modref(ptrA, ptrB, L, R);
+
+  if (result != NoModRef)
+    // Chain.
+    result = ModRefResult(result & LoopAA::modref(A, rel, B, L, R));
+
+  return result;
+}
+
 LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
                                         TemporalRelation rel,
                                         const Instruction *B, const Loop *L,
                                         Remedies &R) {
-
   ++numQueries;
-
-  const Value *ptrA = liberty::getMemOper(A);
-  const Value *ptrB = liberty::getMemOper(B);
-
-  ModRefResult result = check_modref(ptrA, ptrB, L, R);
-
-  if( result != NoModRef )
-    // Chain.
-    result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
-
-  return result;
+  return modref_many(A, rel, B, L, R);
 }
 
 /*
