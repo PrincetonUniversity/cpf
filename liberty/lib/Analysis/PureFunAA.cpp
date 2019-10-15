@@ -300,6 +300,12 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
     return ModRef;
   }
 
+  // sot
+  if (noMemFunSet.count(fun1->getName().str().c_str()) ||
+      fun1->hasFnAttribute(Attribute::ReadNone)) {
+    return NoModRef;
+  }
+
   Remedies tmpR;
 
   LoopAA *aa = getTopAA();
@@ -313,12 +319,6 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 1\n");
     for (auto remed : tmpR)
       R.insert(remed);
-    return NoModRef;
-  }
-
-  // sot
-  if (noMemFunSet.count(fun1->getName().str().c_str()) ||
-      fun1->hasFnAttribute(Attribute::ReadNone)) {
     return NoModRef;
   }
 
@@ -343,6 +343,12 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
     return ModRef;
   }
 
+  // sot
+  if (noMemFunSet.count(fun->getName().str().c_str()) ||
+      fun->hasFnAttribute(Attribute::ReadNone)) {
+    return NoModRef;
+  }
+
   Remedies tmpR;
 
   DEBUG(errs() << "\tpure-fun-aa looking at " << *(CS.getInstruction()) << " to " << *Ptr << "\n");
@@ -353,17 +359,11 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
      !AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, tmpR)) {
 
     DEBUG(errs() << "\t    result of query "
-                 << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, R)
+                 << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, tmpR)
                  << "\n");
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 2\n");
     for (auto remed : tmpR)
       R.insert(remed);
-    return NoModRef;
-  }
-
-  // sot
-  if (noMemFunSet.count(fun->getName().str().c_str()) ||
-      fun->hasFnAttribute(Attribute::ReadNone)) {
     return NoModRef;
   }
 
