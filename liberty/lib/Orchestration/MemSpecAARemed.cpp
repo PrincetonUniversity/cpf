@@ -99,6 +99,7 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   delete localaa;
   delete txioaa;
   delete commlibsaa;
+  delete simpleaa;
   killflow_aware->setLoopOfInterest(nullptr, nullptr);
 
   //killflow_aware->getTopAA()->dump();
