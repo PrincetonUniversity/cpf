@@ -25,7 +25,7 @@ struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
       //: ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
-    return SchedulingPreference(Bottom + 6);
+    return SchedulingPreference(Bottom + 9);
   }
 
   StringRef getLoopAAName() const { return "spec-priv-read-only-aa"; }
