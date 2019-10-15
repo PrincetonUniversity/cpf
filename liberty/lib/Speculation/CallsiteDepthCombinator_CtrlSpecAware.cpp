@@ -600,6 +600,8 @@ namespace liberty
       // Use result from cache.
       ++numHits;
       isFlow = iiCache[key];
+      for (auto remed : iiCacheR[key])
+        isFlowTmpR.insert(remed);
     }
 
     else
@@ -609,6 +611,7 @@ namespace liberty
         time(&queryStart);
       isFlow = iiCache[key] = doFlowSearchCrossIter(
           src, dst, L, *killflow, isFlowTmpR, 0, queryStart, AnalysisTimeout);
+      iiCacheR[key] = isFlowTmpR;
       queryStart = 0;
     }
 
