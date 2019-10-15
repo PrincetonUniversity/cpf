@@ -591,6 +591,7 @@ namespace liberty
     // This analysis is trying to find
     // a flow of values through memory.
     bool isFlow = false;
+    Remedies isFlowTmpR;
 
     // Cached result?
     IIKey key(src,Before,dst,L);
@@ -606,7 +607,8 @@ namespace liberty
       time_t queryStart=0;
       if( AnalysisTimeout > 0 )
         time(&queryStart);
-      isFlow = iiCache[key] = doFlowSearchCrossIter(src,dst, L,*killflow, R, 0,queryStart, AnalysisTimeout);
+      isFlow = iiCache[key] = doFlowSearchCrossIter(
+          src, dst, L, *killflow, isFlowTmpR, 0, queryStart, AnalysisTimeout);
       queryStart = 0;
     }
 
@@ -617,6 +619,8 @@ namespace liberty
     {
       DEBUG(errs() << "No flow from " << *src << " to " << *dst << '\n');
 
+      for (auto remed : isFlowTmpR)
+        R.insert(remed);
 
       if (Rel == Before) {
         if (result == NoModRef || result == Mod) {
