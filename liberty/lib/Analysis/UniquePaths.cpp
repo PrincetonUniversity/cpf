@@ -813,6 +813,8 @@ public:
     INTROSPECT(ENTER(P1,Rel,P2,L));
     ++numQueries;
 
+    Remedies tmpR;
+
     PtrPtrKey key(P1,Rel,P2,L);
     if( Rel == After )
       key = PtrPtrKey(P2,Before,P1,L);
@@ -860,7 +862,8 @@ public:
 
         const Value *obj2 = *j;
 
-        result = join(result, uapAlias(P1,obj1,Rel,P2,obj2,L,R,queryStart,AnalysisTimeout));
+        result = join(result, uapAlias(P1, obj1, Rel, P2, obj2, L, tmpR,
+                                       queryStart, AnalysisTimeout));
 
         if(AnalysisTimeout > 0 && queryStart > 0)
         {
@@ -893,6 +896,12 @@ public:
 
     INTROSPECT(EXIT(P1,Rel,P2,L, result));
     cache[key] = result; // fix the cache.
+
+    if (result == NoAlias || result == MustAlias) {
+      for (auto remed : tmpR)
+        R.insert(remed);
+    }
+
     queryStart = 0;
     return result;
   }

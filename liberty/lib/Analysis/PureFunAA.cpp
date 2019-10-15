@@ -300,15 +300,19 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
     return ModRef;
   }
 
+  Remedies tmpR;
+
   LoopAA *aa = getTopAA();
   const DataLayout *TD = getDataLayout();
 
   //if(isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD) &&
   //   !argumentsAlias(CS1, CS2.getInstruction(), aa, TD) &&
   //   !argumentsAlias(CS2, CS1.getInstruction(), aa, TD)) {
-  if (isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD, R) &&
-      !argumentsAlias(CS2, CS1, aa, TD, R)) {
+  if (isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD, tmpR) &&
+      !argumentsAlias(CS2, CS1, aa, TD, tmpR)) {
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 1\n");
+    for (auto remed : tmpR)
+      R.insert(remed);
     return NoModRef;
   }
 
@@ -322,7 +326,6 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
   if(isReadOnly(fun1)) {
     return Ref;
   }
-
 
   return ModRef;
 }
@@ -340,17 +343,21 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
     return ModRef;
   }
 
+  Remedies tmpR;
+
   DEBUG(errs() << "\tpure-fun-aa looking at " << *(CS.getInstruction()) << " to " << *Ptr << "\n");
 
   LoopAA *AA = getTopAA();
   const DataLayout *TD = getDataLayout();
-  if(isLocal(fun) && !argumentsAlias(CS, Ptr, Size, AA, TD, R) &&
-     !AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, R)) {
+  if(isLocal(fun) && !argumentsAlias(CS, Ptr, Size, AA, TD, tmpR) &&
+     !AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, tmpR)) {
 
     DEBUG(errs() << "\t    result of query "
                  << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, R)
                  << "\n");
     DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 2\n");
+    for (auto remed : tmpR)
+      R.insert(remed);
     return NoModRef;
   }
 

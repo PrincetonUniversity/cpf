@@ -260,6 +260,8 @@ using namespace llvm;
   SemiLocalFunAA::getModRefInfo(CallSite CS1, TemporalRelation Rel,
                                 CallSite CS2, const Loop *L, Remedies &R) {
 
+    Remedies tmpR;
+
     // If one is local, the other semi-local and if their args do not alias,
 
     // then these two CallSites NoModRef.
@@ -295,7 +297,7 @@ using namespace llvm;
             const unsigned s2 = liberty::getTargetSize(arg2,TD);
 
             // Do these pointers alias?
-            if( aa->alias(arg1,s1, Rel, arg2,s2, L, R) ) {
+            if( aa->alias(arg1,s1, Rel, arg2,s2, L, tmpR) ) {
               // Yes.  What does this mean?
               Formal formal1 = { CS1.getCalledFunction()->getName(), arg1no };
 
@@ -315,6 +317,10 @@ using namespace llvm;
           }
         }
 
+        if (join != NoModRef) {
+          for (auto remed : tmpR)
+            R.insert(remed);
+        }
         return join;
       }
     }
@@ -337,19 +343,29 @@ using namespace llvm;
     if(!isSemiLocal(fun, pureFun))
       return ModRef;
 
-    ModRefResult result = aliasedArgumentsModRef(CS, V, Size, R);
+    Remedies tmpR;
+
+    ModRefResult result = aliasedArgumentsModRef(CS, V, Size, tmpR);
     if(result == ModRef)
       return ModRef;
 
-    if(globalsAlias(globalMod[fun], V, Size, R))
+    if(globalsAlias(globalMod[fun], V, Size, tmpR))
       return ModRef;
-    else if( globalsAlias(globalRef[fun], V, Size, R))
+    else if( globalsAlias(globalRef[fun], V, Size, tmpR)) {
+      for (auto remed : tmpR)
+        R.insert(remed);
       return Ref;
+    }
 
     if( !CS.getInstruction()->getType()->isVoidTy() ) {
       LoopAA *AA = getTopAA();
-      if (AA->alias(CS.getInstruction(), Size, Rel, V, Size, L, R) != NoAlias)
+      if (AA->alias(CS.getInstruction(), Size, Rel, V, Size, L, tmpR) != NoAlias)
         return ModRef;
+    }
+
+    if (result != NoModRef) {
+      for (auto remed : tmpR)
+        R.insert(remed);
     }
 
     return result;

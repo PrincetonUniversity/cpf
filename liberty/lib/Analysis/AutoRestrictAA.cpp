@@ -67,6 +67,8 @@ private:
       return MayAlias;
     }
 
+    Remedies tmpR;
+
     const Function *fun   = getParentFunction(arg1);
     const Function *fun2  = getParentFunction(arg2);
 
@@ -103,6 +105,9 @@ private:
       }
     }
 
+    for (auto remed : tmpR)
+      R.insert(remed);
+
     return NoAlias;
   }
 
@@ -112,6 +117,8 @@ private:
     const Function *fun = getParentFunction(arg);
     if(tainted.count(fun))
       return MayAlias;
+
+    Remedies tmpR;
 
     LoopAA *aa = getTopAA();
     assert(aa && "Cogito ergo sum.");
@@ -131,6 +138,9 @@ private:
       if(AR != NoAlias)
         return MayAlias;
     }
+
+    for (auto remed : tmpR)
+      R.insert(remed);
 
     return NoAlias;
   }

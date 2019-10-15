@@ -677,6 +677,8 @@ namespace liberty
     DEBUG_WITH_TYPE("loopaa", errs() << "TypeAA\n");
     ++numQueries;
 
+    Remedies tmpR;
+
     const Value *V1 = P1.ptr,
                 *V2 = P2.ptr;
 
@@ -804,7 +806,7 @@ namespace liberty
               return MayAlias;
 
 
-            if( top->alias(parent_i, sz_i, rel, parent_j, sz_j, L, R) == NoAlias )
+            if( top->alias(parent_i, sz_i, rel, parent_j, sz_j, L, tmpR) == NoAlias )
             {
               DEBUG_WITH_TYPE("loopaa", errs() << "(end recur)\n");
               // Good.
@@ -842,6 +844,9 @@ namespace liberty
         return MayAlias;
       }
     }
+
+    for (auto remed : tmpR)
+      R.insert(remed);
 
     return NoAlias;
   }
