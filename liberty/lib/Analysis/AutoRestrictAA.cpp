@@ -99,7 +99,7 @@ private:
       AliasResult AR = aa->alias(callerArg1, V1Size,
                                  Same,
                                  callerArg2, V2Size,
-                                 NULL, R);
+                                 NULL, tmpR);
       if(AR != NoAlias) {
         return MayAlias;
       }
@@ -134,7 +134,7 @@ private:
       AliasResult AR = aa->alias(callerArg, V1Size,
                                  Same,
                                  V, V2Size,
-                                 NULL, R);
+                                 NULL, tmpR);
       if(AR != NoAlias)
         return MayAlias;
     }
