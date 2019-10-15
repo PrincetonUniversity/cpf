@@ -7,8 +7,9 @@
 #define LIBERTY_SPEC_PRIV_LOCALITY_ORACLE_AA_H
 
 #include "liberty/Analysis/ClassicLoopAA.h"
-#include "liberty/Speculation/Read.h"
+#include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/Read.h"
 
 namespace liberty
 {
@@ -16,12 +17,14 @@ using namespace llvm;
 using namespace SpecPriv;
 
 /// Adapts separation speculation to LoopAA.
-struct LocalityAA : public LoopAA // Not a pass!
+struct LocalityAA : public LoopAA, Remediator // Not a pass!
 {
   LocalityAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
       : LoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
   StringRef getLoopAAName() const { return "spec-priv-locality-oracle-aa"; }
+
+  StringRef getRemediatorName() const { return "spec-priv-locality-oracle-remed"; }
 
   LoopAA::AliasResult alias(const Value *P1, unsigned S1, TemporalRelation rel,
                             const Value *P2, unsigned S2, const Loop *L,
