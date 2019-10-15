@@ -275,23 +275,20 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
 }
 
-LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
-                                        TemporalRelation rel,
-                                        const Instruction *B, const Loop *L,
-                                        Remedies &R) {
-
-  const Value *ptrA = liberty::getMemOper(A);
-  const Value *ptrB = liberty::getMemOper(B);
+LoopAA::ModRefResult
+LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
+                             TemporalRelation rel, const Instruction *B,
+                             const Value *ptrB, const Loop *L, Remedies &R) {
 
   if (!ptrA || !ptrB)
     return LoopAA::modref(A, rel, B, L, R);
 
-  if( !isa<PointerType>( ptrA->getType() ) )
+  if (!isa<PointerType>(ptrA->getType()))
     return LoopAA::modref(A, rel, B, L, R);
-  if( !isa<PointerType>( ptrB->getType() ) )
+  if (!isa<PointerType>(ptrB->getType()))
     return LoopAA::modref(A, rel, B, L, R);
 
-  //const Ctx *ctx = read.getCtx(L);
+  // const Ctx *ctx = read.getCtx(L);
 
   ++numEligible;
 
@@ -309,17 +306,16 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
 
-  if( read.getUnderlyingAUs(ptrA,ctx,aus1) )
+  if (read.getUnderlyingAUs(ptrA, ctx, aus1))
     t1 = asgn.classify(aus1);
 
   Ptrs aus2;
   HeapAssignment::Type t2 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(ptrB,ctx,aus2) )
+  if (read.getUnderlyingAUs(ptrB, ctx, aus2))
     t2 = asgn.classify(aus2);
 
   // Loop-carried queries:
-  if( rel != LoopAA::Same )
-  {
+  if (rel != LoopAA::Same) {
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
     if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local) {
@@ -327,7 +323,7 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
-        //remedy->localI = A;
+        // remedy->localI = A;
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -356,9 +352,10 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
     }
   }
 
-  // Both loop-carried and intra-iteration queries: are they assigned to different heaps?
-  if( t1 != t2 && t1 != HeapAssignment::Unclassified && t2 != HeapAssignment::Unclassified )
-  {
+  // Both loop-carried and intra-iteration queries: are they assigned to
+  // different heaps?
+  if (t1 != t2 && t1 != HeapAssignment::Unclassified &&
+      t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
     remedy->ptr1 = const_cast<Value *>(ptrA);
     remedy->ptr2 = const_cast<Value *>(ptrB);
@@ -369,15 +366,12 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
 
   // They are assigned to the same heap.
   // Are they assigned to different sub-heaps?
-  if( t1 == t2 && t1 != HeapAssignment::Unclassified )
-  {
-    //sdflsdakjfjsdlkjfl
+  if (t1 == t2 && t1 != HeapAssignment::Unclassified) {
+    // sdflsdakjfjsdlkjfl
     const int subheap1 = asgn.getSubHeap(aus1);
-    if( subheap1 > 0 )
-    {
+    if (subheap1 > 0) {
       const int subheap2 = asgn.getSubHeap(aus2);
-      if( subheap2 > 0 && subheap1 != subheap2 )
-      {
+      if (subheap2 > 0 && subheap1 != subheap2) {
         ++numSubSep;
         remedy->ptr1 = const_cast<Value *>(ptrA);
         remedy->ptr2 = const_cast<Value *>(ptrB);
@@ -391,7 +385,7 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   // if one of the memory accesses is private, then there is no loop-carried.
   // Validation for private accesses is more expensive than read-only and local
   // and thus private accesses are checked last
-  if ( rel != LoopAA::Same ) {
+  if (rel != LoopAA::Same) {
     // if memory access in instruction B was already identified as private,
     // re-use it instead of introducing another private inst.
     if (t1 == HeapAssignment::Private && !privateInsts.count(B)) {
@@ -427,4 +421,58 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   return LoopAA::modref(A, rel, B, L, R);
 }
 
+LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
+                                        TemporalRelation rel,
+                                        const Instruction *B, const Loop *L,
+                                        Remedies &R) {
+
+  const Value *ptrA = liberty::getMemOper(A);
+  const Value *ptrA2 = nullptr;
+  const Value *ptrB = liberty::getMemOper(B);
+  const Value *ptrB2 = nullptr;
+
+  bool dstA = !ptrA;
+  if (!ptrA) {
+    if (const MemSetInst *msi = dyn_cast<MemSetInst>(A)) {
+      ptrA = msi->getDest();
+    } else if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(A)) {
+      ptrA = mti->getDest();
+      ptrA2 = mti->getSource();
+    }
+  }
+
+  if (!ptrB) {
+    if (const MemSetInst *msi = dyn_cast<MemSetInst>(B)) {
+      ptrB = msi->getDest();
+    } else if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(B)) {
+      ptrB = mti->getDest();
+      ptrB2 = mti->getSource();
+    }
+  }
+
+  if (!ptrA || !ptrB)
+    return LoopAA::modref(A, rel, B, L, R);
+
+  LoopAA::ModRefResult result = modref_with_ptrs(A, ptrA, rel, B, ptrB, L, R);
+  if (dstA)
+    result = ModRefResult(~Ref & result);
+  if (ptrA2)
+    result = ModRefResult(
+        result |
+        ModRefResult(~Mod & modref_with_ptrs(A, ptrA2, rel, B, ptrB, L, R)));
+  if (ptrB2)
+    result =
+        (!dstA)
+            ? ModRefResult(result |
+                           modref_with_ptrs(A, ptrA, rel, B, ptrB2, L, R))
+            : ModRefResult(result |
+                           ModRefResult(~Ref & modref_with_ptrs(A, ptrA, rel, B,
+                                                                ptrB2, L, R)));
+  if (ptrA2 && ptrB2)
+    result = ModRefResult(
+        result |
+        ModRefResult(~Mod & modref_with_ptrs(A, ptrA2, rel, B, ptrB2, L, R)));
+  return result;
 }
+
+} // namespace liberty

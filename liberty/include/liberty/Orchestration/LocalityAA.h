@@ -36,6 +36,11 @@ struct LocalityAA : public LoopAA // Not a pass!
                               const Instruction *I2, const Loop *L,
                               Remedies &remeds);
 
+  LoopAA::ModRefResult modref_with_ptrs(const Instruction *A, const Value *ptrA,
+                                        TemporalRelation rel,
+                                        const Instruction *B, const Value *ptrB,
+                                        const Loop *L, Remedies &R);
+
   LoopAA::SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Bottom + 4);
   }
