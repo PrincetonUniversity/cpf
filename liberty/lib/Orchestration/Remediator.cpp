@@ -120,10 +120,16 @@ namespace liberty
                                LoopAA::TemporalRelation FW,
                                LoopAA::TemporalRelation RV, const Loop *loop,
                                LoopAA *aa, bool rawDep, Remedies &R) {
+    Remedies tmpR1;
+    Remedies tmpR2;
+
     // forward dep test
-    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, R);
-    if (LoopAA::NoModRef == forward)
+    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, tmpR1);
+    if (LoopAA::NoModRef == forward) {
+      for (auto remed : tmpR1)
+        R.insert(remed);
       return true;
+    }
 
     // forward is Mod, ModRef, or Ref
 
@@ -131,13 +137,21 @@ namespace liberty
     LoopAA::ModRefResult reverse = forward;
 
     if (src != dst)
-      reverse = aa->modref(dst, RV, src, loop, R);
+      reverse = aa->modref(dst, RV, src, loop, tmpR2);
 
-    if (LoopAA::NoModRef == reverse)
+    if (LoopAA::NoModRef == reverse) {
+      for (auto remed : tmpR2)
+        R.insert(remed);
       return true;
+    }
 
-    if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
+    if (LoopAA::Ref == forward && LoopAA::Ref == reverse) {
+      for (auto remed : tmpR1)
+        R.insert(remed);
+      for (auto remed : tmpR2)
+        R.insert(remed);
       return true; // RaR dep; who cares.
+    }
 
     // At this point, we know there is one or more of
     // a flow-, anti-, or output-dependence.
@@ -149,11 +163,21 @@ namespace liberty
     bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
                (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
 
-    if (rawDep && !RAW)
+    if (rawDep && !RAW) {
+      for (auto remed : tmpR1)
+        R.insert(remed);
+      for (auto remed : tmpR2)
+        R.insert(remed);
       return true;
+    }
 
-    if (!rawDep && !WAR && !WAW)
+    if (!rawDep && !WAR && !WAW) {
+      for (auto remed : tmpR1)
+        R.insert(remed);
+      for (auto remed : tmpR2)
+        R.insert(remed);
       return true;
+    }
 
     return false;
   }
