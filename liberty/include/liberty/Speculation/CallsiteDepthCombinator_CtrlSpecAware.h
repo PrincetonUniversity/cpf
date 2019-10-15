@@ -33,8 +33,10 @@ namespace liberty
   class CallsiteDepthCombinator_CtrlSpecAware : public ModulePass, public liberty::LoopAA
   {
     typedef DenseMap< IIKey, bool > IICache;
+    typedef DenseMap< IIKey, Remedies > IICacheR;
 
     IICache iiCache;
+    IICacheR iiCacheR;
 
     bool isEligible(const Instruction *i) const;
 
