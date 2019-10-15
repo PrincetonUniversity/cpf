@@ -8,8 +8,9 @@
 
 //#include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Speculation/Read.h"
+#include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/Read.h"
 
 namespace liberty
 {
@@ -17,7 +18,7 @@ using namespace llvm;
 using namespace SpecPriv;
 
 //struct ReadOnlyAA : public ClassicLoopAA // Not a pass!
-struct ReadOnlyAA : public LoopAA // Not a pass!
+struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
 {
   ReadOnlyAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
       : LoopAA(), read(rd), asgn(ha), ctx(cx) {}
@@ -28,6 +29,8 @@ struct ReadOnlyAA : public LoopAA // Not a pass!
   }
 
   StringRef getLoopAAName() const { return "spec-priv-read-only-aa"; }
+
+  StringRef getRemediatorName() const { return "spec-priv-read-only-remed"; }
 
   LoopAA::AliasResult alias(const Value *ptrA, unsigned sizeA,
                             TemporalRelation rel, const Value *ptrB,
@@ -47,6 +50,11 @@ struct ReadOnlyAA : public LoopAA // Not a pass!
     const Pointer &P2,
     const Loop *L);
   */
+
+  LoopAA::ModRefResult modref_with_ptrs(const Instruction *A, const Value *ptrA,
+                                        TemporalRelation rel,
+                                        const Instruction *B, const Value *ptrB,
+                                        const Loop *L, Remedies &R);
 
 private:
   const Read &read;
