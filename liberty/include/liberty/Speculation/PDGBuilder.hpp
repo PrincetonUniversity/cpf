@@ -8,10 +8,11 @@
 #include "PDG.hpp"
 #include "liberty/Analysis/ControlSpecIterators.h"
 #include "liberty/Analysis/ControlSpeculation.h"
-#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Orchestration/PredictionSpeculation.h"
+#include "liberty/Analysis/SimpleAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Orchestration/ShortLivedAA.h"
@@ -54,6 +55,7 @@ private:
   PointsToAA *pointstoaa;
   ReadOnlyAA *roaa;
   ShortLivedAA *localaa;
+  SimpleAA *simpleaa;
   Read *spresults;
   Classify *classify;
   KillFlow_CtrlSpecAware *killflow_aware;
