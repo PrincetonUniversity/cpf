@@ -426,53 +426,7 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
                                         const Instruction *B, const Loop *L,
                                         Remedies &R) {
 
-  const Value *ptrA = liberty::getMemOper(A);
-  const Value *ptrA2 = nullptr;
-  const Value *ptrB = liberty::getMemOper(B);
-  const Value *ptrB2 = nullptr;
-
-  bool dstA = !ptrA;
-  if (!ptrA) {
-    if (const MemSetInst *msi = dyn_cast<MemSetInst>(A)) {
-      ptrA = msi->getDest();
-    } else if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(A)) {
-      ptrA = mti->getDest();
-      ptrA2 = mti->getSource();
-    }
-  }
-
-  if (!ptrB) {
-    if (const MemSetInst *msi = dyn_cast<MemSetInst>(B)) {
-      ptrB = msi->getDest();
-    } else if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(B)) {
-      ptrB = mti->getDest();
-      ptrB2 = mti->getSource();
-    }
-  }
-
-  if (!ptrA || !ptrB)
-    return LoopAA::modref(A, rel, B, L, R);
-
-  LoopAA::ModRefResult result = modref_with_ptrs(A, ptrA, rel, B, ptrB, L, R);
-  if (dstA)
-    result = ModRefResult(~Ref & result);
-  if (ptrA2)
-    result = ModRefResult(
-        result |
-        ModRefResult(~Mod & modref_with_ptrs(A, ptrA2, rel, B, ptrB, L, R)));
-  if (ptrB2)
-    result =
-        (!dstA)
-            ? ModRefResult(result |
-                           modref_with_ptrs(A, ptrA, rel, B, ptrB2, L, R))
-            : ModRefResult(result |
-                           ModRefResult(~Ref & modref_with_ptrs(A, ptrA, rel, B,
-                                                                ptrB2, L, R)));
-  if (ptrA2 && ptrB2)
-    result = ModRefResult(
-        result |
-        ModRefResult(~Mod & modref_with_ptrs(A, ptrA2, rel, B, ptrB2, L, R)));
-  return result;
+  return modref_many(A, rel, B, L, R);
 }
 
 } // namespace liberty

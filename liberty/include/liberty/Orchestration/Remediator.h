@@ -179,6 +179,18 @@ public:
   bool noMemoryDep(const Instruction *src, const Instruction *dst,
                    LoopAA::TemporalRelation FW, LoopAA::TemporalRelation RV,
                    const Loop *loop, LoopAA *aa, bool rawDep, Remedies &R);
+
+  virtual LoopAA::ModRefResult modref_many(const Instruction *A,
+                                           LoopAA::TemporalRelation rel,
+                                           const Instruction *B, const Loop *L,
+                                           Remedies &R);
+
+  virtual LoopAA::ModRefResult
+  modref_with_ptrs(const Instruction *A, const Value *ptrA,
+                   LoopAA::TemporalRelation rel, const Instruction *B,
+                   const Value *ptrB, const Loop *L, Remedies &R) {
+    return LoopAA::ModRef;
+  }
 };
 
 } // namespace liberty
