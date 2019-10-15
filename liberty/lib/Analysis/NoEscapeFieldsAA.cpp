@@ -657,7 +657,14 @@ namespace liberty
       // transitive callees touch this field
       // of this type.
 
-      return callsiteTouchesNonEscapingField(cs,p2,struct2,field2,R);
+      Remedies tmpR;
+      LoopAA::ModRefResult result =
+          callsiteTouchesNonEscapingField(cs, p2, struct2, field2, tmpR);
+      if (result != ModRef) {
+        for (auto remed : tmpR)
+          R.insert(remed);
+      }
+      return result;
     }
 
     return ModRef;
