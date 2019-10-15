@@ -7,11 +7,23 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Speculation/Read.h"
 
+#include "Assumptions.h"
+
 namespace liberty
 {
 namespace SpecPriv
 {
 using namespace llvm;
+
+class PointsToRemedy : public Remedy {
+public:
+  const Value *ptr1;
+  const Value *ptr2;
+
+  //void apply(Task *task) {};
+  bool compare(const Remedy_ptr rhs) const;
+  StringRef getRemedyName() const { return "points-to-remedy"; };
+};
 
 // You can use it as a LoopAA too!
 struct PointsToAA : public ClassicLoopAA // Not a pass!
