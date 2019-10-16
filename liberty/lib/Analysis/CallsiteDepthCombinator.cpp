@@ -384,10 +384,11 @@ namespace liberty
     KillFlow &kill,
     Remedies &R,
     CCPairs *allFlowsOut,
-    time_t queryStart, unsigned Timeout)
+    time_t queryStart, unsigned Timeout,
+    CCPairs *expRemedNoFlows)
   {
 
-    ReverseStoreSearch writes(src,kill,queryStart,Timeout);
+    ReverseStoreSearch writes(src, kill, queryStart, Timeout);
     INTROSPECT(
       errs() << "LiveOuts {\n";
       // List all live-outs and live-ins.
@@ -402,7 +403,8 @@ namespace liberty
       errs() << "}\n";
     );
 
-    return doFlowSearchCrossIter(src,dst,L, writes,kill,R,allFlowsOut,queryStart, Timeout);
+    return doFlowSearchCrossIter(src, dst, L, writes, kill, R, allFlowsOut,
+                                 queryStart, Timeout, expRemedNoFlows);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
@@ -413,7 +415,8 @@ namespace liberty
     KillFlow &kill,
     Remedies &R,
     CCPairs *allFlowsOut,
-    time_t queryStart, unsigned Timeout)
+    time_t queryStart, unsigned Timeout,
+    CCPairs *expRemedNoFlows)
   {
     ForwardLoadSearch reads(dst,kill,queryStart,Timeout);
     INTROSPECT(
@@ -429,7 +432,8 @@ namespace liberty
     );
 
     return doFlowSearchCrossIter(src, dst, L, writes, reads, kill, R,
-                                 allFlowsOut, queryStart, Timeout);
+                                 allFlowsOut, queryStart, Timeout,
+                                 expRemedNoFlows);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
@@ -442,7 +446,8 @@ namespace liberty
     Remedies &R,
     CCPairs *allFlowsOut,
     time_t queryStart,
-    unsigned Timeout)
+    unsigned Timeout,
+    CCPairs *expRemedNoFlows)
   {
     const bool stopAfterFirst = (allFlowsOut == 0);
     bool isFlow = false;
@@ -469,7 +474,17 @@ namespace liberty
           }
         }
 
-        if( !mayFlowCrossIter(kill, src,dst,L, write,read, R, queryStart, Timeout) )
+        Remedies tmpR;
+        bool flow = mayFlowCrossIter(kill, src, dst, L, write, read, tmpR,
+                                     queryStart, Timeout);
+
+        if (expRemedNoFlows && ClassicLoopAA::containsExpensiveRemeds(tmpR))
+          expRemedNoFlows->push_back(CCPair(write, read));
+
+        for (auto remed : tmpR)
+          R.insert(remed);
+
+        if (!flow)
           continue;
 
         // TODO

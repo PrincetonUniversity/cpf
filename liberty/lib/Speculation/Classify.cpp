@@ -209,9 +209,8 @@ static void strip_undefined_objects(HeapAssignment::ReduxAUSet &out)
   }
 }
 
-
-bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus) const
-{
+bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
+                                 AUs &expNoFlowAUs) const {
   KillFlow &kill = getAnalysis< KillFlow >();
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop->getHeader());
@@ -244,7 +243,8 @@ bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus) const
             continue;
 
           // There may be a cross-iteration flow from src to dst.
-          if( !getUnderlyingAUs(loop, search_src,src,ctx, dst,ctx, aus) )
+          if (!getUnderlyingAUs(loop, search_src, src, ctx, dst, ctx, aus,
+                                expNoFlowAUs))
             return false;
         }
       }
@@ -257,21 +257,26 @@ bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus) const
 // several operations.  In this case, we want to know specifically
 // which instructions caused the dependence, not assume that
 // all did.
-bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src, Instruction *src, const Ctx *src_ctx, Instruction *dst, const Ctx *dst_ctx, AUs &aus) const
-{
+bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src,
+                                Instruction *src, const Ctx *src_ctx,
+                                Instruction *dst, const Ctx *dst_ctx, AUs &aus,
+                                AUs &expNoFlowAUs) const {
   KillFlow &kill = getAnalysis< KillFlow >();
 
   Remedies R;
   CCPairs flows;
-  CallsiteDepthCombinator::doFlowSearchCrossIter(src, dst, loop, search_src, kill, R, &flows);
-  if( flows.empty() )
-    return true;
+  CCPairs expRemedNoFlows;
+  CallsiteDepthCombinator::doFlowSearchCrossIter(
+      src, dst, loop, search_src, kill, R, &flows, 0, 0, &expRemedNoFlows);
+
+  //if( flows.empty() )
+  //  return true;
 
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop->getHeader());
 
-  for(CCPairs::const_iterator i=flows.begin(), e=flows.end(); i!=e; ++i)
-  {
+  for (CCPairs::const_iterator i = flows.begin(), e = flows.end(); i != e;
+       ++i) {
     const CtxInst srcp = i->first;
     const CtxInst dstp = i->second;
 
@@ -283,11 +288,28 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src, Inst
     if( !getUnderlyingAUs(srcp,src_ctx, dstp,dst_ctx, aus) )
       return false;
   }
+
+  for (CCPairs::const_iterator i = expRemedNoFlows.begin(),
+                               e = expRemedNoFlows.end();
+       i != e; ++i) {
+    const CtxInst srcp = i->first;
+    const CtxInst dstp = i->second;
+
+    if( ctrlspec->isSpeculativelyDead(srcp) )
+      continue;
+    if( ctrlspec->isSpeculativelyDead(dstp) )
+      continue;
+
+    if( !getUnderlyingAUs(srcp,src_ctx, dstp,dst_ctx, expNoFlowAUs, false) )
+      return false;
+  }
+
   return true;
 }
 
-bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx, const CtxInst &dst, const Ctx *dst_ctx, AUs &aus) const
-{
+bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx,
+                                const CtxInst &dst, const Ctx *dst_ctx,
+                                AUs &aus, bool printDbgFlows) const {
   const Read &spresults = getAnalysis< ReadPass >().getProfileInfo();
 
   const Ctx *src_cc = translateContexts(spresults, src_ctx, src.getContext());
@@ -338,15 +360,14 @@ bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx, const Ct
 
   // Print the new AUs.
   DEBUG(
+    if (printDbgFlows) {
     const unsigned N = aus.size();
-    if( N > size_before )
-    {
+    if (N > size_before) {
       bool first = true;
-      for(unsigned i=size_before; i<N; ++i)
-      {
+      for (unsigned i = size_before; i < N; ++i) {
         AU *au1 = aus[i];
 
-        if( first )
+        if (first)
           errs() << "( ";
         else
           errs() << ", ";
@@ -356,9 +377,11 @@ bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx, const Ct
       }
 
       errs() << " )\n"
-             << "There is a flow from:\n" << src << "\nto:\n" << dst << "\n\n";
+             << "There is a flow from:\n"
+             << src << "\nto:\n"
+             << dst << "\n\n";
     }
-  );
+  });
 
   return true;
 }
@@ -391,6 +414,7 @@ bool Classify::runOnLoop(Loop *loop)
         &sharedAUs = assignment.getSharedAUs(),
         &localAUs = assignment.getLocalAUs(),
         &privateAUs = assignment.getPrivateAUs(),
+        &cheapPrivAUs = assignment.getCheapPrivAUs(),
         &readOnlyAUs = assignment.getReadOnlyAUs();
   HeapAssignment::ReduxAUSet &reductionAUs = assignment.getReductionAUs();
 
@@ -511,7 +535,8 @@ bool Classify::runOnLoop(Loop *loop)
 
   // For each pair (write, read) in the loop.
   AUs loopCarried;
-  if( !getLoopCarriedAUs(loop, ctx, loopCarried) )
+  AUs expNoLCAus;
+  if( !getLoopCarriedAUs(loop, ctx, loopCarried, expNoLCAus) )
   {
     DEBUG(errs() << "Wild object spoiled classification.\n");
     return false;
@@ -538,6 +563,16 @@ bool Classify::runOnLoop(Loop *loop)
 
     // Otherwise, it is private.
     privateAUs.insert(au);
+    cheapPrivAUs.insert(au);
+  }
+
+  // remove the expensive to remedy private aus from the cheap set
+  for (AUs::const_iterator i = expNoLCAus.begin(), e = expNoLCAus.end(); i != e;
+       ++i) {
+    AU *au = *i;
+
+    if (cheapPrivAUs.count(au))
+      cheapPrivAUs.erase(au);
   }
 
   // AUs which are read, but which are not
@@ -1004,6 +1039,7 @@ HeapAssignment::AUSet &HeapAssignment::getSharedAUs() {  return shareds; }
 HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
 HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() { return privs; }
 HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() { return kill_privs; }
+HeapAssignment::AUSet &HeapAssignment::getCheapPrivAUs() { return cheap_privs; }
 HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() { return ros; }
 HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() { return reduxs; }
 HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() { return reduxdeps; }
@@ -1013,6 +1049,7 @@ const HeapAssignment::AUSet &HeapAssignment::getSharedAUs() const { return share
 const HeapAssignment::AUSet &HeapAssignment::getLocalAUs() const { return locals; }
 const HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() const { return privs; }
 const HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() const { return kill_privs; }
+const HeapAssignment::AUSet &HeapAssignment::getCheapPrivAUs() const { return cheap_privs; }
 const HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() const { return ros; }
 const HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() const { return reduxs; }
 const HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() const { return reduxdeps; }
