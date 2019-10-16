@@ -34,6 +34,16 @@ LoopAA::AliasResult ClassicLoopAA::aliasCheck(const Pointer &P1,
   return MayAlias;
 }
 
+bool ClassicLoopAA::containsExpensiveRemeds(const Remedies &R) {
+  for (auto remed : R) {
+    if (remed->getRemedyName().equals("smtx-lamp-remedy") ||
+        remed->getRemedyName().equals("points-to-remedy")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
                                            TemporalRelation Rel,
                                            const Instruction *I2, const Loop *L,
@@ -127,6 +137,16 @@ LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
   const AliasResult AR =
       aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2), L, tmpR);
   if (AR != MayAlias) {
+    if (containsExpensiveRemeds(tmpR)) {
+      Remedies chainRemeds;
+      LoopAA::AliasResult chainRes =
+          LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds);
+      if (chainRes != MayAlias && !containsExpensiveRemeds(chainRemeds)) {
+        for (auto remed : chainRemeds)
+          R.insert(remed);
+        return chainRes;
+      }
+    }
     for (auto remed : tmpR)
       R.insert(remed);
     return AR;
