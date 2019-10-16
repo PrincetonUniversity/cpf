@@ -5,16 +5,23 @@
 
 #include "liberty/Analysis/CallsiteDepthCombinator.h"
 #include "liberty/Analysis/CallsiteSearch.h"
-#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Analysis/KillFlow.h"
+#include "liberty/Analysis/SimpleAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/CommutativeLibsAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/PtrResidueAA.h"
+#include "liberty/Orchestration/TXIOAA.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/ControlSpeculator.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
+
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/StableHash.h"
@@ -57,10 +64,13 @@ void Classify::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< ModuleLoops >();
   au.addRequired< LAMPLoadProfile >();
   au.addRequired< ReadPass >();
+  au.addRequired< PtrResidueSpeculationManager >();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< LoopAA >();
   au.addRequired< KillFlow >();
+  au.addRequired<KillFlow_CtrlSpecAware>();
+  au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   au.addRequired< Targets >();
   au.setPreservesAll();
 }
@@ -94,13 +104,41 @@ bool Classify::runOnModule(Module &mod)
     PredictionAA predaa(&predspec);
     predaa.InitializeLoopAA(this, mod.getDataLayout());
 
-    // Run on each loop.
-    for(Targets::iterator i=targets.begin(mloops), e=targets.end(mloops); i!=e; ++i)
-      TIME("Classify loop", runOnLoop(*i));
+    // Ptr-residue
+    PtrResidueSpeculationManager &ptrResMan =
+        getAnalysis<PtrResidueSpeculationManager>();
+    PtrResidueAA ptrresaa(mod.getDataLayout(), ptrResMan);
+    ptrresaa.InitializeLoopAA(this, mod.getDataLayout());
 
-    // Those four AAs remove themselves from
+    TXIOAA txioaa;
+    txioaa.InitializeLoopAA(this, mod.getDataLayout());
+
+    CommutativeLibsAA commlibsaa;
+    commlibsaa.InitializeLoopAA(this, mod.getDataLayout());
+
+    SimpleAA simpleaa;
+    simpleaa.InitializeLoopAA(this, mod.getDataLayout());
+
+    KillFlow_CtrlSpecAware *killflow_aware =
+        &getAnalysis<KillFlow_CtrlSpecAware>();
+    CallsiteDepthCombinator_CtrlSpecAware *callsite_aware =
+        &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+
+    // Run on each loop.
+    for(Targets::iterator i=targets.begin(mloops), e=targets.end(mloops); i!=e; ++i) {
+      Loop *loop = *i;
+      ctrlspec->setLoopOfInterest(loop->getHeader());
+      predaa.setLoopOfInterest(loop);
+      killflow_aware->setLoopOfInterest(ctrlspec, loop);
+      callsite_aware->setLoopOfInterest(ctrlspec, loop);
+      TIME("Classify loop", runOnLoop(loop));
+    }
+
+    // All the added AAs remove themselves from
     // the stack automatically as they are
     // destructed HERE.
+
+    killflow_aware->setLoopOfInterest(nullptr, nullptr);
   }
 
   return false;
