@@ -65,6 +65,16 @@ public:
   virtual AliasResult alias(const Value *V1, unsigned Size1,
                             TemporalRelation Rel, const Value *V2,
                             unsigned Size2, const Loop *L, Remedies &remeds);
+
+  bool containsExpensiveRemeds(const Remedies &R);
+  LoopAA::AliasResult aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
+                                          TemporalRelation Rel, const Value *V2,
+                                          unsigned Size2, const Loop *L,
+                                          Remedies &R, LoopAA::AliasResult AR,
+                                          Remedies &tmpR);
+  LoopAA::ModRefResult
+  modrefAvoidExpRemeds(Remedies &R, LoopAA::ModRefResult MR, Remedies &tmpR,
+                       LoopAA::ModRefResult chainRes, Remedies &chainRemeds);
 };
 }
 

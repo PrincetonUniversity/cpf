@@ -44,6 +44,50 @@ bool ClassicLoopAA::containsExpensiveRemeds(const Remedies &R) {
   return false;
 }
 
+LoopAA::AliasResult
+ClassicLoopAA::aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
+                                   TemporalRelation Rel, const Value *V2,
+                                   unsigned Size2, const Loop *L, Remedies &R,
+                                   LoopAA::AliasResult AR, Remedies &tmpR) {
+  if (containsExpensiveRemeds(tmpR)) {
+    Remedies chainRemeds;
+    LoopAA::AliasResult chainRes =
+        LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds);
+    //if (chainRes == AR && !containsExpensiveRemeds(chainRemeds)) {
+    if (chainRes != MayAlias && !containsExpensiveRemeds(chainRemeds)) {
+      for (auto remed : chainRemeds)
+        R.insert(remed);
+      return chainRes;
+    }
+  }
+  for (auto remed : tmpR)
+    R.insert(remed);
+  return AR;
+}
+
+LoopAA::ModRefResult ClassicLoopAA::modrefAvoidExpRemeds(
+    Remedies &R, LoopAA::ModRefResult MR, Remedies &tmpR,
+    LoopAA::ModRefResult chainRes, Remedies &chainRemeds) {
+  if (containsExpensiveRemeds(tmpR)) {
+    if (chainRes <= MR && chainRes != LoopAA::ModRef &&
+        !containsExpensiveRemeds(chainRemeds)) {
+      for (auto remed : chainRemeds)
+        R.insert(remed);
+      return chainRes;
+    }
+  }
+  if (ModRefResult(MR & chainRes) != MR) {
+    MR = ModRefResult(MR & chainRes);
+    for (auto remed : chainRemeds)
+      R.insert(remed);
+  }
+
+  for (auto remed : tmpR)
+    R.insert(remed);
+  return MR;
+}
+
+
 LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
                                            TemporalRelation Rel,
                                            const Instruction *I2, const Loop *L,
@@ -60,46 +104,61 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
 
   ModRefResult MR = ModRef;
 
+  Remedies tmpR;
+  Remedies chainRemeds;
+
   if (!CS2.getInstruction() && !liberty::isVolatile(I2)) {
     const Value *V = liberty::getMemOper(I2);
     unsigned Size = liberty::getTargetSize(V, getDataLayout());
     const Pointer P(I2, V, Size);
     if (CS1.getInstruction())
-      MR = ModRefResult(MR & getModRefInfo(CS1, Rel, P, L, R));
+      MR = ModRefResult(MR & getModRefInfo(CS1, Rel, P, L, tmpR));
     else
-      MR = ModRefResult(MR & modrefSimple(I1, Rel, P, L, R));
+      MR = ModRefResult(MR & modrefSimple(I1, Rel, P, L, tmpR));
   }
 
-  if (MR == NoModRef)
+  if (MR == NoModRef) {
+    if (containsExpensiveRemeds(tmpR)) {
+      LoopAA::ModRefResult chainRes =
+          LoopAA::modref(I1, Rel, I2, L, chainRemeds);
+      return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    }
     return NoModRef;
+  }
 
   if (!CS1.getInstruction() && CS2.getInstruction()) {
     const Value *V = liberty::getMemOper(I1);
     unsigned Size = liberty::getTargetSize(V, getDataLayout());
     const Pointer P(I1, V, Size);
-    ModRefResult inverse = getModRefInfo(CS2, Rev(Rel), P, L, R);
+    ModRefResult inverse = getModRefInfo(CS2, Rev(Rel), P, L, tmpR);
     if (inverse == NoModRef)
       MR = NoModRef;
   }
 
-  if (MR == NoModRef)
+  if (MR == NoModRef) {
+    if (containsExpensiveRemeds(tmpR)) {
+      LoopAA::ModRefResult chainRes =
+          LoopAA::modref(I1, Rel, I2, L, chainRemeds);
+      return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    }
     return NoModRef;
+  }
 
   if (CS1.getInstruction() && CS2.getInstruction()) {
-    MR = ModRefResult(MR & getModRefInfo(CS1, Rel, CS2, L, R));
+    MR = ModRefResult(MR & getModRefInfo(CS1, Rel, CS2, L, tmpR));
   }
 
-  if (MR == NoModRef)
+  if (MR == NoModRef) {
+    if (containsExpensiveRemeds(tmpR)) {
+      LoopAA::ModRefResult chainRes =
+          LoopAA::modref(I1, Rel, I2, L, chainRemeds);
+      return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    }
     return NoModRef;
-
-  Remedies tmpR;
-  LoopAA::ModRefResult chainR = LoopAA::modref(I1, Rel, I2, L, tmpR);
-  if (ModRefResult(MR & chainR) != MR) {
-    MR = ModRefResult(MR & chainR);
-    for (auto remed : tmpR)
-      R.insert(remed);
   }
-  return MR;
+
+  LoopAA::ModRefResult chainRes = LoopAA::modref(I1, Rel, I2, L, chainRemeds);
+  return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
 }
 
 LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
@@ -109,23 +168,25 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
 
   CallSite CS = getCallSite(const_cast<Instruction *>(I));
   ModRefResult MR;
+  Remedies tmpR;
+  Remedies chainRemeds;
 
   if (CS.getInstruction())
-    MR = getModRefInfo(CS, Rel, Pointer(V, Size), L, R);
+    MR = getModRefInfo(CS, Rel, Pointer(V, Size), L, tmpR);
   else
-    MR = modrefSimple(I, Rel, Pointer(V, Size), L, R);
+    MR = modrefSimple(I, Rel, Pointer(V, Size), L, tmpR);
 
-  if (MR == NoModRef)
+  if (MR == NoModRef) {
+    if (containsExpensiveRemeds(tmpR)) {
+      LoopAA::ModRefResult chainRes =
+          LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
+      return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    }
     return NoModRef;
-
-  Remedies tmpR;
-  LoopAA::ModRefResult chainR = LoopAA::modref(I, Rel, V, Size, L, tmpR);
-  if (ModRefResult(MR & chainR) != MR) {
-    MR = ModRefResult(MR & chainR);
-    for (auto remed : tmpR)
-      R.insert(remed);
   }
-  return MR;
+
+  LoopAA::ModRefResult chainRes = LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
+  return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
 }
 
 LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
@@ -137,19 +198,7 @@ LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
   const AliasResult AR =
       aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2), L, tmpR);
   if (AR != MayAlias) {
-    if (containsExpensiveRemeds(tmpR)) {
-      Remedies chainRemeds;
-      LoopAA::AliasResult chainRes =
-          LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds);
-      if (chainRes != MayAlias && !containsExpensiveRemeds(chainRemeds)) {
-        for (auto remed : chainRemeds)
-          R.insert(remed);
-        return chainRes;
-      }
-    }
-    for (auto remed : tmpR)
-      R.insert(remed);
-    return AR;
+    return aliasAvoidExpRemeds(V1, Size1, Rel, V2, Size2, L, R, AR, tmpR);
   }
   return LoopAA::alias(V1, Size1, Rel, V2, Size2, L, R);
 }
@@ -169,9 +218,10 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const LoadInst *Load,
   const DataLayout *TD = getDataLayout();
   const Value *P1 = getMemOper(Load);
   unsigned Size1 = getSize(Load->getType(), TD);
-  if (aliasCheck(Pointer(Load, P1, Size1), Rel, P2, L, tmpR) == NoAlias) {
-    for (auto remed : tmpR)
-      R.insert(remed);
+  const AliasResult AR =
+      aliasCheck(Pointer(Load, P1, Size1), Rel, P2, L, tmpR);
+  if (AR == NoAlias) {
+    aliasAvoidExpRemeds(P1, Size1, Rel, P2.ptr, P2.size, L, R, AR, tmpR);
     return NoModRef;
   }
 
@@ -200,9 +250,10 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const StoreInst *Store,
   const DataLayout *TD = getDataLayout();
   const Value *P1 = getMemOper(Store);
   unsigned Size1 = getTargetSize(P1, TD);
-  if (aliasCheck(Pointer(Store, P1, Size1), Rel, P2, L, tmpR) == NoAlias) {
-    for (auto remed : tmpR)
-      R.insert(remed);
+  const AliasResult AR =
+      aliasCheck(Pointer(Store, P1, Size1), Rel, P2, L, tmpR);
+  if (AR == NoAlias) {
+    aliasAvoidExpRemeds(P1, Size1, Rel, P2.ptr, P2.size, L, R, AR, tmpR);
     return NoModRef;
   }
 
@@ -225,9 +276,10 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const VAArgInst *VAArg,
   // If the va_arg address cannot alias the pointer in question, then the
   // specified memory cannot be accessed by the va_arg.
   const Value *P1 = getMemOper(VAArg);
-  if (!aliasCheck(Pointer(VAArg, P1, UnknownSize), Rel, P2, L, tmpR)) {
-    for (auto remed : tmpR)
-      R.insert(remed);
+  const AliasResult AR =
+      aliasCheck(Pointer(VAArg, P1, UnknownSize), Rel, P2, L, tmpR);
+  if (!AR) {
+    aliasAvoidExpRemeds(P1, UnknownSize, Rel, P2.ptr, P2.size, L, R, AR, tmpR);
     return NoModRef;
   }
 
