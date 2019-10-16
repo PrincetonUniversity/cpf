@@ -95,26 +95,30 @@ namespace liberty
     /// If not null, collect all such flows into
     /// that output parameter.  Returns true if
     /// a flow is possible, or false otherwise.
-    static bool doFlowSearchCrossIter(
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool
+    doFlowSearchCrossIter(const Instruction *src, const Instruction *dst,
+                          const Loop *L, KillFlow &kill, Remedies &R,
+                          CCPairs *allFlowsOut = 0, time_t queryStart = 0,
+                          unsigned Timeout = 0, CCPairs *expRemedNoFlows = 0);
 
     /// Like the previous, but accepts a pre-computed
     /// inst-search object over src.
-    static bool doFlowSearchCrossIter(
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      InstSearch &writes,
-      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool doFlowSearchCrossIter(const Instruction *src,
+                                      const Instruction *dst, const Loop *L,
+                                      InstSearch &writes, KillFlow &kill,
+                                      Remedies &R, CCPairs *allFlowsOut = 0,
+                                      time_t queryStart = 0,
+                                      unsigned Timeout = 0,
+                                      CCPairs *expRemedNoFlows = 0);
 
     /// Like the previous, but accepts pre-computed
     /// inst-search objects over src,dst.
-    static bool doFlowSearchCrossIter(
-      const Instruction *src, const Instruction *dst, const Loop *L,
-      InstSearch &writes, InstSearch &reads,
-      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
-      time_t queryStart=0, unsigned Timeout=0);
+    static bool
+    doFlowSearchCrossIter(const Instruction *src, const Instruction *dst,
+                          const Loop *L, InstSearch &writes, InstSearch &reads,
+                          KillFlow &kill, Remedies &R, CCPairs *allFlowsOut = 0,
+                          time_t queryStart = 0, unsigned Timeout = 0,
+                          CCPairs *expRemedNoFlows = 0);
 
     ModRefResult modref(const Instruction *inst1, TemporalRelation Rel,
                         const Instruction *inst2, const Loop *L, Remedies &R);
