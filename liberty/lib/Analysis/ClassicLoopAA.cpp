@@ -82,7 +82,14 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
   if (MR == NoModRef)
     return NoModRef;
 
-  return ModRefResult(MR & LoopAA::modref(I1, Rel, I2, L, R));
+  Remedies tmpR;
+  LoopAA::ModRefResult chainR = LoopAA::modref(I1, Rel, I2, L, tmpR);
+  if (ModRefResult(MR & chainR) != MR) {
+    MR = ModRefResult(MR & chainR);
+    for (auto remed : tmpR)
+      R.insert(remed);
+  }
+  return MR;
 }
 
 LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
@@ -101,7 +108,14 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
   if (MR == NoModRef)
     return NoModRef;
 
-  return ModRefResult(MR & LoopAA::modref(I, Rel, V, Size, L, R));
+  Remedies tmpR;
+  LoopAA::ModRefResult chainR = LoopAA::modref(I, Rel, V, Size, L, tmpR);
+  if (ModRefResult(MR & chainR) != MR) {
+    MR = ModRefResult(MR & chainR);
+    for (auto remed : tmpR)
+      R.insert(remed);
+  }
+  return MR;
 }
 
 LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
@@ -109,11 +123,14 @@ LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
                                          unsigned Size2, const Loop *L,
                                          Remedies &R) {
 
+  Remedies tmpR;
   const AliasResult AR =
-      aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2), L, R);
-  if (AR != MayAlias)
+      aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2), L, tmpR);
+  if (AR != MayAlias) {
+    for (auto remed : tmpR)
+      R.insert(remed);
     return AR;
-
+  }
   return LoopAA::alias(V1, Size1, Rel, V2, Size2, L, R);
 }
 
@@ -121,6 +138,7 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const LoadInst *Load,
                                                  TemporalRelation Rel,
                                                  const Pointer &P2,
                                                  const Loop *L, Remedies &R) {
+  Remedies tmpR;
 
   // Be conservative in the face of volatile.
   if (Load->isVolatile())
@@ -131,8 +149,11 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const LoadInst *Load,
   const DataLayout *TD = getDataLayout();
   const Value *P1 = getMemOper(Load);
   unsigned Size1 = getSize(Load->getType(), TD);
-  if (aliasCheck(Pointer(Load, P1, Size1), Rel, P2, L, R) == NoAlias)
+  if (aliasCheck(Pointer(Load, P1, Size1), Rel, P2, L, tmpR) == NoAlias) {
+    for (auto remed : tmpR)
+      R.insert(remed);
     return NoModRef;
+  }
 
   // Otherwise, a load just reads.
   return Ref;
@@ -147,18 +168,23 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const StoreInst *Store,
   if (Store->isVolatile())
     return ModRef;
 
+  // If the pointer is a pointer to constant memory, then it could not have been
+  // modified by this store.
+  if (pointsToConstantMemory(P2.ptr, L))
+    return NoModRef;
+
+  Remedies tmpR;
+
   // If the store address cannot alias the pointer in question, then the
   // specified memory cannot be modified by the store.
   const DataLayout *TD = getDataLayout();
   const Value *P1 = getMemOper(Store);
   unsigned Size1 = getTargetSize(P1, TD);
-  if (aliasCheck(Pointer(Store, P1, Size1), Rel, P2, L, R) == NoAlias)
+  if (aliasCheck(Pointer(Store, P1, Size1), Rel, P2, L, tmpR) == NoAlias) {
+    for (auto remed : tmpR)
+      R.insert(remed);
     return NoModRef;
-
-  // If the pointer is a pointer to constant memory, then it could not have been
-  // modified by this store.
-  if (pointsToConstantMemory(P2.ptr, L))
-    return NoModRef;
+  }
 
   // Otherwise, a store just writes.
   return Mod;
@@ -169,17 +195,21 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const VAArgInst *VAArg,
                                                  const Pointer &P2,
                                                  const Loop *L, Remedies &R) {
 
-  Remedies remeds;
-  // If the va_arg address cannot alias the pointer in question, then the
-  // specified memory cannot be accessed by the va_arg.
-  const Value *P1 = getMemOper(VAArg);
-  if (!aliasCheck(Pointer(VAArg, P1, UnknownSize), Rel, P2, L, R))
-    return NoModRef;
-
   // If the pointer is a pointer to constant memory, then it could not have been
   // modified by this va_arg.
   if (pointsToConstantMemory(P2.ptr, L))
     return NoModRef;
+
+  Remedies tmpR;
+
+  // If the va_arg address cannot alias the pointer in question, then the
+  // specified memory cannot be accessed by the va_arg.
+  const Value *P1 = getMemOper(VAArg);
+  if (!aliasCheck(Pointer(VAArg, P1, UnknownSize), Rel, P2, L, tmpR)) {
+    for (auto remed : tmpR)
+      R.insert(remed);
+    return NoModRef;
+  }
 
   // Otherwise, a va_arg reads and writes.
   return ModRef;
