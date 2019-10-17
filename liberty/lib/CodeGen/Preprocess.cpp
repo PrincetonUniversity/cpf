@@ -432,9 +432,13 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
   HeapAssignment::AUSet exclusivelyLocalPrivAUs;
   for (auto au : privs) {
     // check if au was in localPrivs and in none of the other types of priv
-    if (localPrivAUs.count(au) && !privateerPrivAUs.count(au) &&
-        !normalPrivAUs.count(au) && !killPrivAUs.count(au) &&
-        !predPrivAUs.count(au))
+    // if (localPrivAUs.count(au) && !privateerPrivAUs.count(au) &&
+    //    !normalPrivAUs.count(au) && !killPrivAUs.count(au) &&
+    //    !predPrivAUs.count(au))
+    //
+    // sufficient to only check for localPrivAUs since they characterize the
+    // whole AU and are prioritized over killprivs
+    if (localPrivAUs.count(au))
       exclusivelyLocalPrivAUs.insert(au);
   }
 
@@ -457,12 +461,13 @@ void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
          !localPrivAUs.count(au))
        exclusivelyKillAUs1.insert(au);
 
-    //if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
+    // if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
     //     !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
     //     !localPrivAUs.count(au))
     //
-    // gets killed always
-    if (predPrivAUs.count(au))
+    // gets killed always (just avoid localPrivs that might be assigned to a
+    // different heap in the future (localPrivs))
+    if (predPrivAUs.count(au) && !localPrivAUs.count(au))
        exclusivelyKillAUs2.insert(au);
   }
 
