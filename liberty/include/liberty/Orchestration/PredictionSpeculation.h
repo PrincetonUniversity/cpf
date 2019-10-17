@@ -48,6 +48,10 @@ struct PredictionAA : public LoopAA // Not a pass!
 
   void setLoopOfInterest(Loop *L);
 
+  virtual LoopAA::AliasResult alias(const Value *ptrA, unsigned sizeA,
+                                    TemporalRelation rel, const Value *ptrB,
+                                    unsigned sizeB, const Loop *L, Remedies &R);
+
   virtual ModRefResult modref(const Instruction *i1, TemporalRelation rel,
                               const Instruction *i2, const Loop *L,
                               Remedies &R);
@@ -61,18 +65,18 @@ struct PredictionAA : public LoopAA // Not a pass!
 
 private:
   PredictionSpeculation *predspec;
+  const DataLayout *DL;
 
   std::unordered_set<const Value *> predictableMemLocs;
   std::unordered_set<const Value *> nonPredictableMemLocs;
   std::unordered_map<const Value *, const Value *>
       mustAliasWithPredictableMemLocMap;
 
-  bool mustAliasFast(const Value *ptr1, const Value *ptr2,
-                     const DataLayout &DL);
+  bool mustAliasFast(const Value *ptr1, const Value *ptr2);
 
   bool mustAlias(const Value *ptr1, const Value *ptr2);
 
-  bool isPredictablePtr(const Value *ptr, const DataLayout &DL);
+  bool isPredictablePtr(const Value *ptr);
 
 };
 

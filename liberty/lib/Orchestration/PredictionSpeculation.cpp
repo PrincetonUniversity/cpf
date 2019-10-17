@@ -41,16 +41,17 @@ void PredictionAA::setLoopOfInterest(Loop *loop) {
       }
     }
   }
+  DL = &loop->getHeader()->getModule()->getDataLayout();
 }
 
 /// No-topping case of pointer comparison.
-bool PredictionAA::mustAliasFast(const Value *ptr1, const Value *ptr2,
-                                 const DataLayout &DL) {
+bool PredictionAA::mustAliasFast(const Value *ptr1, const Value *ptr2) {
+  assert(DL && "forgot to call PredictionAA::setLoopOfInterest??");
   UO a, b;
-  GetUnderlyingObjects(ptr1, a, DL);
+  GetUnderlyingObjects(ptr1, a, *DL);
   if (a.size() != 1)
     return false;
-  GetUnderlyingObjects(ptr2, b, DL);
+  GetUnderlyingObjects(ptr2, b, *DL);
   return a == b;
 }
 
@@ -68,7 +69,7 @@ bool PredictionAA::mustAlias(const Value *ptr1, const Value *ptr2) {
   return top->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R) == MustAlias;
 }
 
-bool PredictionAA::isPredictablePtr(const Value *ptr, const DataLayout &DL) {
+bool PredictionAA::isPredictablePtr(const Value *ptr) {
   if (!ptr || nonPredictableMemLocs.count(ptr))
     return false;
 
@@ -81,7 +82,7 @@ bool PredictionAA::isPredictablePtr(const Value *ptr, const DataLayout &DL) {
   if (!isPredPtr) {
     // check if ptr must alias with any of the predictable pointers
     for (auto predPtr : predictableMemLocs) {
-      if (mustAliasFast(predPtr, ptr, DL) || mustAlias(predPtr, ptr)) {
+      if (mustAliasFast(predPtr, ptr) || mustAlias(predPtr, ptr)) {
         mustAliasWithPredictableMemLocMap[ptr] = predPtr;
         isPredPtr = true;
         break;
@@ -92,6 +93,41 @@ bool PredictionAA::isPredictablePtr(const Value *ptr, const DataLayout &DL) {
   if (!isPredPtr)
     nonPredictableMemLocs.insert(ptr);
   return isPredPtr;
+}
+
+LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
+                                        TemporalRelation rel, const Value *ptrB,
+                                        unsigned sizeB, const Loop *L,
+                                        Remedies &R) {
+  if (rel == LoopAA::Same)
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
+
+  if (!ptrA || !ptrB)
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
+
+  std::shared_ptr<LoadedValuePredRemedy> remedy =
+      std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
+  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+
+  bool predPtrA = isPredictablePtr(ptrA);
+  bool predPtrB = isPredictablePtr(ptrB);
+
+  if (predPtrA || predPtrB) {
+    ++numNoAlias;
+    if (predPtrA) {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrA];
+      //if (I1->mayWriteToMemory())
+      //  remedy->write = true;
+    } else {
+      remedy->ptr = mustAliasWithPredictableMemLocMap[ptrB];
+      // if (I2->mayWriteToMemory())
+      //  remedy->write = true;
+    }
+    R.insert(remedy);
+    return NoAlias;
+  }
+
+  return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 }
 
 LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
@@ -117,11 +153,8 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
   if (!ptrA)
     return LoopAA::modref(I1, rel, P2, S2, L, R);
 
-  const Module *M = I1->getModule();
-  const DataLayout &DL = M->getDataLayout();
-
-  bool predPtrA = isPredictablePtr(ptrA, DL);
-  bool predPtrB = isPredictablePtr(P2, DL);
+  bool predPtrA = isPredictablePtr(ptrA);
+  bool predPtrB = isPredictablePtr(P2);
 
   if (predPtrA || predPtrB) {
     ++numNoAlias;
@@ -152,6 +185,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
 
   const Value *ptrA = liberty::getMemOper(I1);
   const Value *ptrB = liberty::getMemOper(I2);
+
   bool predA = predspec->isPredictable(I1, L);
   bool predB = predspec->isPredictable(I2, L);
   if (predA || predB) {
@@ -180,11 +214,8 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
   if (!ptrA || !ptrB)
     return LoopAA::modref(I1, rel, I2, L, R);
 
-  const Module *M = I1->getModule();
-  const DataLayout &DL = M->getDataLayout();
-
-  bool predPtrA = isPredictablePtr(ptrA, DL);
-  bool predPtrB = isPredictablePtr(ptrB, DL);
+  bool predPtrA = isPredictablePtr(ptrA);
+  bool predPtrB = isPredictablePtr(ptrB);
 
   if (predPtrA || predPtrB) {
     ++numNoAlias;
