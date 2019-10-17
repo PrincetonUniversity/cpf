@@ -63,6 +63,8 @@ struct HeapAssignment : public UpdateOnClone
   /// Classify a pointer w.r.t. this loop
   Type classify(const Value *, const Loop *, const Read &) const;
 
+  static bool partOfSet(Ptrs &aus, const AUSet &auSet);
+
   const AUSet &getSharedAUs() const;
   const AUSet &getLocalAUs() const;
   const AUSet &getPrivateAUs() const;
