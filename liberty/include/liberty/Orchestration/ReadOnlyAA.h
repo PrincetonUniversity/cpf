@@ -21,8 +21,11 @@ using namespace SpecPriv;
 struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
 {
   ReadOnlyAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
-      : LoopAA(), read(rd), asgn(ha), ctx(cx) {}
-      //: ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
+      : LoopAA(), read(rd), asgn(&ha), readOnlyAUs(nullptr), ctx(cx) {}
+  //: ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
+
+  ReadOnlyAA(const Read &rd, const HeapAssignment::AUSet *roAUs, const Ctx *cx)
+      : LoopAA(), read(rd), asgn(nullptr), readOnlyAUs(roAUs), ctx(cx) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Bottom + 9);
@@ -58,7 +61,8 @@ struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
 
 private:
   const Read &read;
-  const HeapAssignment &asgn;
+  const HeapAssignment *asgn;
+  const HeapAssignment::AUSet *readOnlyAUs;
   const Ctx *ctx;
 
   LoopAA::ModRefResult check_modref(const Value *ptrA, const Value *ptrB,

@@ -1073,7 +1073,7 @@ HeapAssignment::Type HeapAssignment::classify(AU *au) const
   return Unclassified;
 }
 
-bool HeapAssignment::partOfSet(Ptrs &aus, const AUSet &auSet) {
+bool HeapAssignment::subOfAUSet(Ptrs &aus, const AUSet &auSet) {
   for (unsigned i = 0; i < aus.size(); ++i) {
     AU *au = aus[i].au;
     if (au->type == AU_Null)
