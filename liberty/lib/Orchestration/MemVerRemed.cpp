@@ -45,8 +45,12 @@ Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
   if (LoopCarried && !RAW) {
     ++numNoMemDep;
     remedResp.depRes = DepResult::NoDep;
-    if (WAW)
+    if (WAW) {
       remedy->waw = true;
+      // DISABLE WAW functionality for MemVer (Cannot handle
+      // last-liveout value in the codegen)
+      remedResp.depRes = DepResult::Dep;
+    }
     else {
       // with process-based parallelization, WAR are removed for free.
       // WAW dep removal is expensive since the last write to each mem
