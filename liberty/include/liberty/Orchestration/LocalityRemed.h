@@ -58,6 +58,7 @@ public:
     Redux,
     Local,
     Private,
+    KillPriv,
     Separated,
     Subheaps,
     LocalityAA
@@ -91,6 +92,9 @@ public:
       break;
     case Private:
       return "locality-private-remedy";
+      break;
+    case KillPriv:
+      return "locality-kill-priv-remedy";
       break;
     case Separated:
       return "locality-separated-remedy";
