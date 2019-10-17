@@ -457,9 +457,12 @@ void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
          !localPrivAUs.count(au))
        exclusivelyKillAUs1.insert(au);
 
-    if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
-         !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
-         !localPrivAUs.count(au))
+    //if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
+    //     !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
+    //     !localPrivAUs.count(au))
+    //
+    // gets killed always
+    if (predPrivAUs.count(au))
        exclusivelyKillAUs2.insert(au);
   }
 
@@ -571,8 +574,9 @@ void Preprocess::init(ModuleLoops &mloops)
         LoadedValuePredRemedy *loadedValuePredRemedy =
             (LoadedValuePredRemedy *)&*remed;
         selectedLoadedValuePreds[header].insert(loadedValuePredRemedy->ptr);
-        if (loadedValuePredRemedy->write)
-          collectRelevantAUs(loadedValuePredRemedy->ptr, spresults, loop_ctx,
+        // if in privs then this ptr UO is always killpriv
+        //if (loadedValuePredRemedy->write)
+        collectRelevantAUs(loadedValuePredRemedy->ptr, spresults, loop_ctx,
                              predPrivAUs);
       } else if (remed->getRemedyName().equals("smtx-remedy") ||
                  remed->getRemedyName().equals("smtx-lamp-remedy") ||
