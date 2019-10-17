@@ -23,8 +23,8 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
-
 #include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Utilities/GlobalMalloc.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/StableHash.h"
 #include "liberty/Utilities/Timer.h"
@@ -426,6 +426,53 @@ bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx,
   return true;
 }
 
+bool HeapAssignment::isLocalPrivateStackAU(const Value *V, const Loop *L) {
+  if (const AllocaInst *alloca = dyn_cast<AllocaInst>(V)) {
+    // find uses of alloca by @llvm.lifetime.start and lifetime.end
+    const IntrinsicInst *lifetimeStart = nullptr;
+    const IntrinsicInst *lifetimeEnd = nullptr;
+    for (auto j = alloca->user_begin(); j != alloca->user_end(); ++j) {
+      if (auto userI = dyn_cast<IntrinsicInst>(*j)) {
+        Intrinsic::ID ID = userI->getIntrinsicID();
+        if (ID == Intrinsic::lifetime_start)
+          lifetimeStart = userI;
+        else if (ID == Intrinsic::lifetime_end)
+          lifetimeEnd = userI;
+      } else if (auto userI = dyn_cast<BitCastInst>(*j)) {
+        for (auto k = userI->user_begin(); k != userI->user_end(); ++k) {
+          if (auto kI = dyn_cast<IntrinsicInst>(*k)) {
+            Intrinsic::ID ID = kI->getIntrinsicID();
+            if (ID == Intrinsic::lifetime_start)
+              lifetimeStart = kI;
+            else if (ID == Intrinsic::lifetime_end)
+              lifetimeEnd = kI;
+          }
+        }
+      }
+    }
+    if (!lifetimeStart || !lifetimeEnd)
+      return false;
+
+    // check that the lifetime.start and lifetime.end calls are within the loop
+    if (!L->contains(lifetimeStart) || !L->contains(lifetimeEnd))
+      return false;
+
+    DEBUG(errs() << "Alloca found to be local: " << *alloca << "\n");
+    return true;
+  }
+  return false;
+}
+
+bool HeapAssignment::isLocalPrivateGlobalAU(const Value *ptr, const Loop *L) {
+  if (const GlobalValue *gv = dyn_cast<GlobalValue>(ptr)) {
+    // if global variable is not used outside the loop then it is a local
+    if (isGlobalLocalToLoop(gv, L)) {
+      DEBUG(errs() << "Global found to be local: " << *gv << "\n");
+      return true;
+    }
+  }
+  return false;
+}
 
 bool Classify::runOnLoop(Loop *loop)
 {
@@ -455,6 +502,7 @@ bool Classify::runOnLoop(Loop *loop)
         &localAUs = assignment.getLocalAUs(),
         &privateAUs = assignment.getPrivateAUs(),
         &cheapPrivAUs = assignment.getCheapPrivAUs(),
+        &killPrivAUs = assignment.getKillPrivAUs(),
         &readOnlyAUs = assignment.getReadOnlyAUs();
   HeapAssignment::ReduxAUSet &reductionAUs = assignment.getReductionAUs();
 
@@ -642,6 +690,20 @@ bool Classify::runOnLoop(Loop *loop)
     cheapPrivAUs.insert(au);
   }
 
+  // TODO: create a separate heap for privLocals.
+  // Cannot be with regular locals (not freeing).
+  //
+  // detect stack locals
+  for (AU *au : privateAUs) {
+    if (!au->value)
+      continue;
+    if (HeapAssignment::isLocalPrivateStackAU(au->value, loop)) {
+      killPrivAUs.insert(au);
+      privateAUs.erase(au);
+      cheapPrivAUs.erase(au);
+    }
+  }
+
   // remove the expensive to remedy private aus from the cheap set
   for (AUs::const_iterator i = expNoLCAus.begin(), e = expNoLCAus.end(); i != e;
        ++i) {
@@ -649,6 +711,17 @@ bool Classify::runOnLoop(Loop *loop)
 
     if (cheapPrivAUs.count(au))
       cheapPrivAUs.erase(au);
+  }
+
+  // detect global local privates
+  for (AU *au : cheapPrivAUs) {
+    if (!au->value)
+      continue;
+    if (HeapAssignment::isLocalPrivateGlobalAU(au->value, loop)) {
+      killPrivAUs.insert(au);
+      privateAUs.erase(au);
+      cheapPrivAUs.erase(au);
+    }
   }
 
   /*
@@ -690,6 +763,7 @@ bool Classify::runOnLoop(Loop *loop)
   strip_undefined_objects( privateAUs );
   strip_undefined_objects( readOnlyAUs );
   strip_undefined_objects( reductionAUs );
+  strip_undefined_objects( killPrivAUs );
 
   assignment.assignSubHeaps();
 
@@ -1108,6 +1182,10 @@ HeapAssignment::Type HeapAssignment::classify(AU *au) const
   const AUSet &ro = getReadOnlyAUs();
   if( ro.count(au) )
     return ReadOnly;
+
+  const AUSet &killprivs = getKillPrivAUs();
+  if( killprivs.count(au) )
+    return KillPrivate;
 
 //  errs() << "AU not classified within loop: " << *au << '\n';
   return Unclassified;

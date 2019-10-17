@@ -111,6 +111,9 @@ struct HeapAssignment : public UpdateOnClone
   // this operator is associative and commutative.
   HeapAssignment operator&(const HeapAssignment &other) const;
 
+  static bool isLocalPrivateStackAU(const Value *V, const Loop *L);
+  static bool isLocalPrivateGlobalAU(const Value *ptr, const Loop *L);
+
   // Update on clone
   virtual void contextRenamedViaClone(
     const Ctx *changedContext,
