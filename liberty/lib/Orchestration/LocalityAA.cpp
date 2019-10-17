@@ -18,6 +18,10 @@
 #define LOCAL_ACCESS_COST 1
 #endif
 
+#ifndef KILLPRIV_ACCESS_COST
+#define KILLPRIV_ACCESS_COST 5
+#endif
+
 namespace liberty
 {
 using namespace llvm;
@@ -74,12 +78,16 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
   {
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
-    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local) {
+    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
+        t1 == HeapAssignment::KillPrivate) {
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
-        //remedy->localI = A;
+      } else if (t1 == HeapAssignment::KillPrivate) {
+        ++numPrivatizedShort;
+        remedy->cost += KILLPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::KillPriv;
       } else {
         ++numPrivatizedRedux;
         //if (auto sA = dyn_cast<StoreInst>(A))
@@ -91,11 +99,16 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
       return NoAlias;
     }
 
-    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local) {
+    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
+        t2 == HeapAssignment::KillPrivate) {
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
+      } else if (t2 == HeapAssignment::KillPrivate) {
+        ++numPrivatizedShort;
+        remedy->cost += KILLPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::KillPriv;
       } else {
         ++numPrivatizedRedux;
         //if (auto sB = dyn_cast<StoreInst>(B))
@@ -189,12 +202,17 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   {
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
-    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local) {
+    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
+        t1 == HeapAssignment::KillPrivate) {
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
         //remedy->localI = A;
+      } else if (t1 == HeapAssignment::KillPrivate) {
+        ++numPrivatizedShort;
+        remedy->cost += KILLPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::KillPriv;
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -206,11 +224,16 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
       return NoModRef;
     }
 
-    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local) {
+    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
+        t2 == HeapAssignment::KillPrivate) {
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
+      } else if (t2 == HeapAssignment::KillPrivate) {
+        ++numPrivatizedShort;
+        remedy->cost += KILLPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::KillPriv;
       } else {
         ++numPrivatizedRedux;
         //if (auto sB = dyn_cast<StoreInst>(B))
@@ -318,12 +341,17 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
   if (rel != LoopAA::Same) {
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
-    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local) {
+    if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
+        t1 == HeapAssignment::KillPrivate) {
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
         // remedy->localI = A;
+      } else if (t1 == HeapAssignment::KillPrivate) {
+        ++numPrivatizedShort;
+        remedy->cost += KILLPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::KillPriv;
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -335,11 +363,16 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
       return NoModRef;
     }
 
-    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local) {
+    if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
+        t2 == HeapAssignment::KillPrivate) {
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
         remedy->type = LocalityRemedy::Local;
+      } else if (t2 == HeapAssignment::KillPrivate) {
+        ++numPrivatizedShort;
+        remedy->cost += KILLPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::KillPriv;
       } else {
         ++numPrivatizedRedux;
         if (auto sB = dyn_cast<StoreInst>(B))
