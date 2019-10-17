@@ -1073,6 +1073,25 @@ HeapAssignment::Type HeapAssignment::classify(AU *au) const
   return Unclassified;
 }
 
+bool HeapAssignment::partOfSet(Ptrs &aus, const AUSet &auSet) {
+  for (unsigned i = 0; i < aus.size(); ++i) {
+    AU *au = aus[i].au;
+    if (au->type == AU_Null)
+      continue;
+
+    if (au->type == AU_Unknown)
+      return false;
+
+    if (au->type == AU_Undefined)
+      return false;
+
+    if (!auSet.count(au)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 HeapAssignment::AUSet &HeapAssignment::getSharedAUs() {  return shareds; }
 HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
 HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() { return privs; }
