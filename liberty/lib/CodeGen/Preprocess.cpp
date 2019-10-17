@@ -362,6 +362,7 @@ const RecoveryFunction &Preprocess::getRecoveryFunction(Loop *loop) const
   return recovery.getRecoveryFunction(loop);
 }
 
+/*
 bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
   if (const AllocaInst *alloca = dyn_cast<AllocaInst>(alloc)) {
     // find uses of alloca by @llvm.lifetime.start and lifetime.end
@@ -398,11 +399,15 @@ bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
   }
   return false;
 }
+*/
 
 // TODO: create new family for local-privates
 // temporarily move them to killPrivs (no need to memcpy to main memory though
 // and breaks the separation logic semantics, all objects of a family should
 // share the same property)
+
+// StackLocals and PrivLocals are assigned in killpriv heap during classification
+/*
 void Preprocess::moveStackLocals(HeapAssignment &asgn, const Loop *L) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
   //HeapAssignment::AUSet &locals = asgn.getLocalAUs();
@@ -449,6 +454,7 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
     localCount++;
   }
 }
+*/
 
 void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
@@ -465,9 +471,9 @@ void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
     //     !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
     //     !localPrivAUs.count(au))
     //
-    // gets killed always (just avoid localPrivs that might be assigned to a
-    // different heap in the future (localPrivs))
-    if (predPrivAUs.count(au) && !localPrivAUs.count(au))
+    // gets killed always
+    // localPrivs are now assigned to KillPrivate heap from classification
+    if (predPrivAUs.count(au))
        exclusivelyKillAUs2.insert(au);
   }
 
@@ -625,8 +631,9 @@ void Preprocess::init(ModuleLoops &mloops)
           collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
                              loop_ctx, normalPrivAUs);
         } else if (remed->getRemedyName().equals("priv-local-remedy")) {
-          collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
-                             loop_ctx, localPrivAUs);
+          assert(false && "priv-local should be generated during classification");
+          //collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
+          //                   loop_ctx, localPrivAUs);
         } else if (remed->getRemedyName().equals("priv-full-overlap-remedy")) {
           collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
                              loop_ctx, killPrivAUs);
@@ -641,10 +648,11 @@ void Preprocess::init(ModuleLoops &mloops)
       checkpointNeeded.insert(header);
 
     // move local-private stack objects from private to local heap
-    moveStackLocals(asgn, loop);
+    //moveStackLocals(asgn, loop);
   }
 
-  moveLocalPrivs(asgn);
+  // StackLocals and PrivLocals assigned in killpriv heap in Classify.cpp
+  // moveLocalPrivs(asgn);
   moveKillPrivs(asgn);
 
   // if no spec and no need for privitization (no WAW, but AU is written),
@@ -674,7 +682,7 @@ void Preprocess::init(ModuleLoops &mloops)
   }
 
   DEBUG(errs() << "normalPrivAUs: " << normalCount << '\n');
-  DEBUG(errs() << "localPrivAUs: " << localCount << '\n');
+  //DEBUG(errs() << "localPrivAUs: " << localCount << '\n');
   DEBUG(errs() << "killPrivAUs: " << killCount << '\n');
   DEBUG(errs() << "predPrivAUs: " << predCount << '\n');
   /* DEBUG(errs() << "privateerPrivAUs: " << privateerCount << '\n'); */
