@@ -28,7 +28,7 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
 
   ++numQueries;
 
-//  if( !L || !asgn.isValidFor(L) )
+//  if( !L || !asgn->isValidFor(L) )
 //    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
 
   if( !isa<PointerType>( ptrA->getType() ) )
@@ -54,13 +54,17 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
 
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(ptrA,ctx,aus1) )
-    t1 = asgn.classify(aus1);
+  if( read.getUnderlyingAUs(ptrA,ctx,aus1) ) {
+    if (asgn)
+      t1 = asgn->classify(aus1);
+  }
 
   Ptrs aus2;
   HeapAssignment::Type t2 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(ptrB,ctx,aus2) )
-    t2 = asgn.classify(aus2);
+  if( read.getUnderlyingAUs(ptrB,ctx,aus2) ) {
+    if (asgn)
+      t2 = asgn->classify(aus2);
+  }
 
   if ((t1 == HeapAssignment::ReadOnly || t2 == HeapAssignment::ReadOnly) &&
       t1 != t2 && t1 != HeapAssignment::Unclassified &&
@@ -84,7 +88,7 @@ LoopAA::ModRefResult ReadOnlyAA::check_modref(const Value *ptrA,
   if (!ptrA || !ptrB)
     return ModRef;
 
-  //  if( !L || !asgn.isValidFor(L) )
+  //  if( !L || !asgn->isValidFor(L) )
 //    return MayAlias;
 
   if( !isa<PointerType>( ptrA->getType() ) )
@@ -110,13 +114,21 @@ LoopAA::ModRefResult ReadOnlyAA::check_modref(const Value *ptrA,
 
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(ptrA,ctx,aus1) )
-    t1 = asgn.classify(aus1);
+  if( read.getUnderlyingAUs(ptrA,ctx,aus1) ) {
+    if (asgn)
+      t1 = asgn->classify(aus1);
+    else if (readOnlyAUs && HeapAssignment::subOfAUSet(aus1, *readOnlyAUs))
+      t1 = HeapAssignment::ReadOnly;
+  }
 
   Ptrs aus2;
   HeapAssignment::Type t2 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(ptrB,ctx,aus2) )
-    t2 = asgn.classify(aus2);
+  if( read.getUnderlyingAUs(ptrB,ctx,aus2) ) {
+    if (asgn)
+      t2 = asgn->classify(aus2);
+    else if (readOnlyAUs && HeapAssignment::subOfAUSet(aus2, *readOnlyAUs))
+      t2 = HeapAssignment::ReadOnly;
+  }
 
   if ((t1 == HeapAssignment::ReadOnly || t2 == HeapAssignment::ReadOnly) &&
       t1 != t2 && t1 != HeapAssignment::Unclassified &&
@@ -190,7 +202,7 @@ LoopAA::AliasResult ReadOnlyAA::aliasCheck(
 {
   ++numQueries;
 
-//  if( !L || !asgn.isValidFor(L) )
+//  if( !L || !asgn->isValidFor(L) )
 //    return MayAlias;
 
   if( !isa<PointerType>( P1.ptr->getType() ) )
@@ -205,12 +217,12 @@ LoopAA::AliasResult ReadOnlyAA::aliasCheck(
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
   if( read.getUnderlyingAUs(P1.ptr,ctx,aus1) )
-    t1 = asgn.classify(aus1);
+    t1 = asgn->classify(aus1);
 
   Ptrs aus2;
   HeapAssignment::Type t2 = HeapAssignment::Unclassified;
   if( read.getUnderlyingAUs(P2.ptr,ctx,aus2) )
-    t2 = asgn.classify(aus2);
+    t2 = asgn->classify(aus2);
 
   if ((t1 == HeapAssignment::ReadOnly || t2 == HeapAssignment::ReadOnly) &&
       t1 != t2 && t1 != HeapAssignment::Unclassified &&

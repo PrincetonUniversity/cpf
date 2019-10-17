@@ -58,13 +58,21 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(
 
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(P1.ptr,ctx,aus1) )
-    t1 = asgn.classify(aus1);
+  if( read.getUnderlyingAUs(P1.ptr,ctx,aus1) ) {
+    if (asgn)
+      t1 = asgn->classify(aus1);
+    else if (localAUs && HeapAssignment::subOfAUSet(aus1, *localAUs))
+      t1 = HeapAssignment::Local;
+  }
 
   Ptrs aus2;
   HeapAssignment::Type t2 = HeapAssignment::Unclassified;
-  if( read.getUnderlyingAUs(P2.ptr,ctx,aus2) )
-    t2 = asgn.classify(aus2);
+  if( read.getUnderlyingAUs(P2.ptr,ctx,aus2) ) {
+    if (asgn)
+      t2 = asgn->classify(aus2);
+    else if (localAUs && HeapAssignment::subOfAUSet(aus2, *localAUs))
+      t2 = HeapAssignment::Local;
+  }
 
   // Loop-carried queries:
   if( rel != LoopAA::Same )

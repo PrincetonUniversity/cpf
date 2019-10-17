@@ -18,7 +18,11 @@ using namespace SpecPriv;
 struct ShortLivedAA : public ClassicLoopAA // Not a pass!
 {
   ShortLivedAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
-      : ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
+      : ClassicLoopAA(), read(rd), asgn(&ha), localAUs(nullptr), ctx(cx) {}
+
+  ShortLivedAA(const Read &rd, const HeapAssignment::AUSet *slAUs,
+               const Ctx *cx)
+      : ClassicLoopAA(), read(rd), asgn(nullptr), localAUs(slAUs), ctx(cx) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Bottom + 10);
@@ -35,7 +39,8 @@ struct ShortLivedAA : public ClassicLoopAA // Not a pass!
 
 private:
   const Read &read;
-  const HeapAssignment &asgn;
+  const HeapAssignment *asgn;
+  const HeapAssignment::AUSet *localAUs;
   const Ctx *ctx;
 };
 
