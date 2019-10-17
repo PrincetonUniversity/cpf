@@ -14,6 +14,8 @@
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
+#include "liberty/Orchestration/ReadOnlyAA.h"
+#include "liberty/Orchestration/ShortLivedAA.h"
 #include "liberty/Orchestration/TXIOAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/Classify.h"
@@ -571,6 +573,42 @@ bool Classify::runOnLoop(Loop *loop)
     }
   }
 
+  HeapAssignment::AUSet writeSet(writes.begin(), writes.end());
+
+  // AUs which are read, but not written and not local
+  for(AUs::const_iterator i=reads.begin(), e=reads.end(); i!=e; ++i)
+  {
+    AU *au = *i;
+
+    if( localAUs.count(au) )
+      continue;
+    if( reductionAUs.count(au) )
+      continue;
+
+    // Is this AU local?
+    bool isLocal = false;
+    const Read::Ctx2Count &locals = spresults.find_locals(au);
+    for(Read::Ctx2Count::const_iterator j=locals.begin(), f=locals.end(); j!=f; ++j)
+      if( j->first->matches(ctx) )
+      {
+        isLocal = true;
+        break;
+      }
+
+    if( isLocal )
+      localAUs.insert(au);
+    else if (!writeSet.count(au))
+      readOnlyAUs.insert(au);
+  }
+
+  // read-only aa
+  ReadOnlyAA roaa(spresults, &readOnlyAUs , ctx);
+  roaa.InitializeLoopAA(this, fcn->getParent()->getDataLayout());
+
+  // short-lived aa
+  ShortLivedAA localaa(spresults, &localAUs, ctx);
+  localaa.InitializeLoopAA(this, fcn->getParent()->getDataLayout());
+
   // For each pair (write, read) in the loop.
   AUs loopCarried;
   AUs expNoLCAus;
@@ -613,6 +651,7 @@ bool Classify::runOnLoop(Loop *loop)
       cheapPrivAUs.erase(au);
   }
 
+  /*
   // AUs which are read, but which are not
   // local, shared, reduction are read-only.
   for(AUs::const_iterator i=reads.begin(), e=reads.end(); i!=e; ++i)
@@ -643,6 +682,7 @@ bool Classify::runOnLoop(Loop *loop)
     else
       readOnlyAUs.insert(au);
   }
+  */
 
   // Strip the undefined AU
   strip_undefined_objects( sharedAUs );
