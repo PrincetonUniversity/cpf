@@ -385,7 +385,7 @@ namespace liberty
     Remedies &R,
     CCPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout,
-    CCPairs *expRemedNoFlows)
+    CCPairsRemedsMap *remedNoFlows)
   {
 
     ReverseStoreSearch writes(src, kill, queryStart, Timeout);
@@ -404,7 +404,7 @@ namespace liberty
     );
 
     return doFlowSearchCrossIter(src, dst, L, writes, kill, R, allFlowsOut,
-                                 queryStart, Timeout, expRemedNoFlows);
+                                 queryStart, Timeout, remedNoFlows);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
@@ -416,7 +416,7 @@ namespace liberty
     Remedies &R,
     CCPairs *allFlowsOut,
     time_t queryStart, unsigned Timeout,
-    CCPairs *expRemedNoFlows)
+    CCPairsRemedsMap *remedNoFlows)
   {
     ForwardLoadSearch reads(dst,kill,queryStart,Timeout);
     INTROSPECT(
@@ -433,7 +433,7 @@ namespace liberty
 
     return doFlowSearchCrossIter(src, dst, L, writes, reads, kill, R,
                                  allFlowsOut, queryStart, Timeout,
-                                 expRemedNoFlows);
+                                 remedNoFlows);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
@@ -447,7 +447,7 @@ namespace liberty
     CCPairs *allFlowsOut,
     time_t queryStart,
     unsigned Timeout,
-    CCPairs *expRemedNoFlows)
+    CCPairsRemedsMap *remedNoFlows)
   {
     const bool stopAfterFirst = (allFlowsOut == 0);
     bool isFlow = false;
@@ -478,13 +478,13 @@ namespace liberty
         bool flow = mayFlowCrossIter(kill, src, dst, L, write, read, tmpR,
                                      queryStart, Timeout);
 
-        if (expRemedNoFlows && ClassicLoopAA::containsExpensiveRemeds(tmpR) &&
-            !flow)
-          expRemedNoFlows->push_back(CCPair(write, read));
-
-        if (!flow)
+        if (!flow) {
           for (auto remed : tmpR)
             R.insert(remed);
+          if (remedNoFlows) {
+            (*remedNoFlows)[CCPair(write, read)] = tmpR;
+          }
+        }
 
         if (!flow)
           continue;

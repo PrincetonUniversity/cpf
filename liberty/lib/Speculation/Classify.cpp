@@ -163,6 +163,7 @@ static const Ctx *translateContexts(const Read &spresults, const Ctx *root, cons
   return cc;
 }
 
+
 static bool intersect_into(const AUs &a, const AUs &b, AUs &out)
 {
   const unsigned size_in = out.size();
@@ -250,7 +251,7 @@ static void strip_undefined_objects(HeapAssignment::ReduxAUSet &out)
 }
 
 bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
-                                 AUs &expNoFlowAUs) const {
+                                 HeapAssignment::AUToRemeds &auToRemeds) const {
   KillFlow &kill = getAnalysis< KillFlow >();
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop->getHeader());
@@ -284,7 +285,7 @@ bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
 
           // There may be a cross-iteration flow from src to dst.
           if (!getUnderlyingAUs(loop, search_src, src, ctx, dst, ctx, aus,
-                                expNoFlowAUs))
+                                auToRemeds))
             return false;
         }
       }
@@ -300,14 +301,14 @@ bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
 bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src,
                                 Instruction *src, const Ctx *src_ctx,
                                 Instruction *dst, const Ctx *dst_ctx, AUs &aus,
-                                AUs &expNoFlowAUs) const {
+                                HeapAssignment::AUToRemeds &auToRemeds) const {
   KillFlow &kill = getAnalysis< KillFlow >();
 
   Remedies R;
   CCPairs flows;
-  CCPairs expRemedNoFlows;
+  CCPairsRemedsMap remedNoFlows;
   CallsiteDepthCombinator::doFlowSearchCrossIter(
-      src, dst, loop, search_src, kill, R, &flows, 0, 0, &expRemedNoFlows);
+      src, dst, loop, search_src, kill, R, &flows, 0, 0, &remedNoFlows);
 
   //if( flows.empty() )
   //  return true;
@@ -329,19 +330,22 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src,
       return false;
   }
 
-  for (CCPairs::const_iterator i = expRemedNoFlows.begin(),
-                               e = expRemedNoFlows.end();
-       i != e; ++i) {
-    const CtxInst srcp = i->first;
-    const CtxInst dstp = i->second;
+  for (auto i : remedNoFlows) {
+    const CtxInst srcp = i.first.first;
+    const CtxInst dstp = i.first.second;
 
-    if( ctrlspec->isSpeculativelyDead(srcp) )
-      continue;
-    if( ctrlspec->isSpeculativelyDead(dstp) )
-      continue;
+    // find underlying AUs and populate their needed remedies for no LC flows
 
-    if( !getUnderlyingAUs(srcp,src_ctx, dstp,dst_ctx, expNoFlowAUs, false) )
+    AUs relAUs;
+
+    if (!getUnderlyingAUs(srcp, src_ctx, dstp, dst_ctx, relAUs, false))
       return false;
+
+    for (auto relAU : relAUs) {
+      for (auto remed : i.second) {
+        auToRemeds[relAU].insert(remed);
+      }
+    }
   }
 
   return true;
@@ -501,9 +505,9 @@ bool Classify::runOnLoop(Loop *loop)
         &sharedAUs = assignment.getSharedAUs(),
         &localAUs = assignment.getLocalAUs(),
         &privateAUs = assignment.getPrivateAUs(),
-        &cheapPrivAUs = assignment.getCheapPrivAUs(),
         &killPrivAUs = assignment.getKillPrivAUs(),
         &readOnlyAUs = assignment.getReadOnlyAUs();
+  HeapAssignment::AUToRemeds &cheapPrivAUs = assignment.getCheapPrivAUs();
   HeapAssignment::ReduxAUSet &reductionAUs = assignment.getReductionAUs();
 
   const Ctx *ctx = spresults.getCtx(loop);
@@ -659,8 +663,8 @@ bool Classify::runOnLoop(Loop *loop)
 
   // For each pair (write, read) in the loop.
   AUs loopCarried;
-  AUs expNoLCAus;
-  if( !getLoopCarriedAUs(loop, ctx, loopCarried, expNoLCAus) )
+  HeapAssignment::AUToRemeds auToRemeds;
+  if( !getLoopCarriedAUs(loop, ctx, loopCarried, auToRemeds) )
   {
     DEBUG(errs() << "Wild object spoiled classification.\n");
     return false;
@@ -687,7 +691,8 @@ bool Classify::runOnLoop(Loop *loop)
 
     // Otherwise, it is private.
     privateAUs.insert(au);
-    cheapPrivAUs.insert(au);
+
+    cheapPrivAUs[au] = auToRemeds[au];
   }
 
   // TODO: create a separate heap for privLocals.
@@ -705,16 +710,14 @@ bool Classify::runOnLoop(Loop *loop)
   }
 
   // remove the expensive to remedy private aus from the cheap set
-  for (AUs::const_iterator i = expNoLCAus.begin(), e = expNoLCAus.end(); i != e;
-       ++i) {
-    AU *au = *i;
-
-    if (cheapPrivAUs.count(au))
-      cheapPrivAUs.erase(au);
+  for (auto i : cheapPrivAUs) {
+    if (ClassicLoopAA::containsExpensiveRemeds(i.second))
+      cheapPrivAUs.erase(i.first);
   }
 
   // detect global local privates
-  for (AU *au : cheapPrivAUs) {
+  for (auto i : cheapPrivAUs) {
+    AU *au = i.first;
     if (!au->value)
       continue;
     if (HeapAssignment::isLocalPrivateGlobalAU(au->value, loop)) {
@@ -1214,8 +1217,8 @@ HeapAssignment::AUSet &HeapAssignment::getSharedAUs() {  return shareds; }
 HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
 HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() { return privs; }
 HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() { return kill_privs; }
-HeapAssignment::AUSet &HeapAssignment::getCheapPrivAUs() { return cheap_privs; }
 HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() { return ros; }
+HeapAssignment::AUToRemeds &HeapAssignment::getCheapPrivAUs() { return cheap_privs; }
 HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() { return reduxs; }
 HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() { return reduxdeps; }
 HeapAssignment::ReduxRegAUSet &HeapAssignment::getReduxRegAUs() { return reduxregs; }
@@ -1224,8 +1227,8 @@ const HeapAssignment::AUSet &HeapAssignment::getSharedAUs() const { return share
 const HeapAssignment::AUSet &HeapAssignment::getLocalAUs() const { return locals; }
 const HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() const { return privs; }
 const HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() const { return kill_privs; }
-const HeapAssignment::AUSet &HeapAssignment::getCheapPrivAUs() const { return cheap_privs; }
 const HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() const { return ros; }
+const HeapAssignment::AUToRemeds &HeapAssignment::getCheapPrivAUs() const { return cheap_privs; }
 const HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() const { return reduxs; }
 const HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() const { return reduxdeps; }
 const HeapAssignment::ReduxRegAUSet &HeapAssignment::getReduxRegAUs() const { return reduxregs; }
