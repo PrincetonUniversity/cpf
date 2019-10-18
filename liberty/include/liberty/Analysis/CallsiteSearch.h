@@ -28,7 +28,10 @@
 
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 
+#include "Assumptions.h"
+
 #include <set>
+#include <map>
 
 namespace llvm
 {
@@ -60,6 +63,7 @@ namespace liberty
     void print(raw_ostream &out) const;
 
     bool operator==(const CallsiteContext &other) const;
+    bool operator<(const CallsiteContext &other) const;
 
   private:
     ~CallsiteContext();
@@ -116,6 +120,7 @@ namespace liberty
       bool Before) const;
 
     bool operator==(const Context &other) const;
+    bool operator<(const Context &other) const;
 
   private:
     CallsiteContext *first;
@@ -188,6 +193,8 @@ namespace liberty
 
     bool operator==(const CtxInst &other) const;
 
+    bool operator<(const CtxInst &other) const;
+
   private:
     const Instruction *inst;
     Context ctx;
@@ -198,6 +205,7 @@ namespace liberty
   typedef std::vector<CtxInst> CIList;
   typedef std::pair<CtxInst, CtxInst> CCPair;
   typedef std::vector< CCPair > CCPairs;
+  typedef std::map<CCPair, Remedies> CCPairsRemedsMap;
 
   /// Iterator abstraction over the search
   struct InstSearch;

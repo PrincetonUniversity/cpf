@@ -44,6 +44,23 @@ namespace liberty
     return *(this->parent) == *(other.parent);
   }
 
+  bool CallsiteContext::operator<(const CallsiteContext &other) const
+  {
+    if( this == &other )
+      return false;
+    if( 0 == this && &other != 0)
+      return true;
+    if( 0 == &other && this != 0)
+      return false;
+
+    if( this->cs.getInstruction() < other.cs.getInstruction() )
+      return true;
+    if( this->cs.getInstruction() > other.cs.getInstruction() )
+      return false;
+
+    return *(this->parent) < *(other.parent);
+  }
+
   Context::Context(CallsiteContext *csc)
     : first(csc) { INCREF(first); }
 
@@ -249,6 +266,11 @@ namespace liberty
     return *(this->first) == *(other.first);
   }
 
+  bool Context::operator<(const Context &other) const
+  {
+    return *(this->first) < *(other.first);
+  }
+
   raw_ostream &operator<<(raw_ostream &out, const Context &ctx)
   {
     ctx.print(out);
@@ -270,6 +292,13 @@ namespace liberty
     this->ctx = other.ctx;
 
     return *this;
+  }
+
+  bool CtxInst::operator<(const CtxInst &other) const
+  {
+    if (this->inst == other.inst)
+      return this->ctx < other.ctx;
+    return this->inst < other.inst;
   }
 
   void CtxInst::print(raw_ostream &out) const
