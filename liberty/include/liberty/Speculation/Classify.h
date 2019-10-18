@@ -41,6 +41,7 @@ struct HeapAssignment : public UpdateOnClone
   typedef std::map<const AU*,int> SubheapAssignment;
   typedef std::set<const BasicBlock *> LoopSet;
   typedef LoopSet::const_iterator loop_iterator;
+  typedef std::map<AU*,Remedies> AUToRemeds;
 
   loop_iterator loop_begin() const { return success.begin(); }
   loop_iterator loop_end() const { return success.end(); }
@@ -68,9 +69,9 @@ struct HeapAssignment : public UpdateOnClone
   const AUSet &getSharedAUs() const;
   const AUSet &getLocalAUs() const;
   const AUSet &getPrivateAUs() const;
-  const AUSet &getCheapPrivAUs() const;
   const AUSet &getKillPrivAUs() const;
   const AUSet &getReadOnlyAUs() const;
+  const AUToRemeds &getCheapPrivAUs() const;
   const ReduxAUSet &getReductionAUs() const;
   const ReduxDepAUSet &getReduxDepAUs() const;
   const ReduxRegAUSet &getReduxRegAUs() const;
@@ -88,9 +89,9 @@ struct HeapAssignment : public UpdateOnClone
   AUSet &getSharedAUs();
   AUSet &getLocalAUs();
   AUSet &getPrivateAUs();
-  AUSet &getCheapPrivAUs();
   AUSet &getKillPrivAUs();
   AUSet &getReadOnlyAUs();
+  AUToRemeds &getCheapPrivAUs();
   ReduxAUSet &getReductionAUs();
   ReduxDepAUSet &getReduxDepAUs();
   ReduxRegAUSet &getReduxRegAUs();
@@ -130,7 +131,8 @@ private:
 
   /// Sets of shared,local,private and read-only AUs
   /// indexed by loop within this function.
-  AUSet shareds, locals, kill_privs, privs, cheap_privs, ros;
+  AUSet shareds, locals, kill_privs, privs, ros;
+  AUToRemeds cheap_privs;
   ReduxAUSet reduxs;
   ReduxDepAUSet reduxdeps;
   ReduxRegAUSet reduxregs; // collects all the register reductions
@@ -191,19 +193,19 @@ private:
   // Return false only if the set of AUs cannot be determined
   // (it may successfully return an empty set).
   bool getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
-                         AUs &expNoFlowAUs) const;
+                         HeapAssignment::AUToRemeds &auToRemeds) const;
 
   // Look-up the AUs which carry flow dependences from src to dst ACROSS loop.
   // src,dst may be any operation, including callsites...
   bool getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src,
                         Instruction *src, const Ctx *src_ctx, Instruction *dst,
-                        const Ctx *dst_ctx, AUs &aus, AUs &expNoFlowAUs) const;
+                        const Ctx *dst_ctx, AUs &aus,
+                        HeapAssignment::AUToRemeds &auToRemeds) const;
 
   // Look-up the AUs which carry flow dependences from src to dst ACROSS loop.
-  bool getUnderlyingAUs(
-    const CtxInst &src, const Ctx *src_ctx,
-    const CtxInst &dst, const Ctx *dst_ctx,
-    AUs &aus, bool printDbgFlows = true) const;
+  bool getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx,
+                        const CtxInst &dst, const Ctx *dst_ctx, AUs &aus,
+                        bool printDbgFlows = true) const;
 };
 
 }
