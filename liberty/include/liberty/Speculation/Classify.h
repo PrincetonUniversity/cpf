@@ -65,6 +65,7 @@ struct HeapAssignment : public UpdateOnClone
   Type classify(const Value *, const Loop *, const Read &) const;
 
   static bool subOfAUSet(Ptrs &aus, const AUSet &auSet);
+  static bool subOfAUSet(Ptrs &aus, const AUToRemeds &ausR);
 
   const AUSet &getSharedAUs() const;
   const AUSet &getLocalAUs() const;
