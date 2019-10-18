@@ -478,11 +478,13 @@ namespace liberty
         bool flow = mayFlowCrossIter(kill, src, dst, L, write, read, tmpR,
                                      queryStart, Timeout);
 
-        if (expRemedNoFlows && ClassicLoopAA::containsExpensiveRemeds(tmpR))
+        if (expRemedNoFlows && ClassicLoopAA::containsExpensiveRemeds(tmpR) &&
+            !flow)
           expRemedNoFlows->push_back(CCPair(write, read));
 
-        for (auto remed : tmpR)
-          R.insert(remed);
+        if (!flow)
+          for (auto remed : tmpR)
+            R.insert(remed);
 
         if (!flow)
           continue;
