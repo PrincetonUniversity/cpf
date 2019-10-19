@@ -66,6 +66,7 @@ struct HeapAssignment : public UpdateOnClone
 
   static bool subOfAUSet(Ptrs &aus, const AUSet &auSet);
   static bool subOfAUSet(Ptrs &aus, const AUToRemeds &ausR);
+  Remedies getRemedForPrivAUs(Ptrs &aus) const;
 
   const AUSet &getSharedAUs() const;
   const AUSet &getLocalAUs() const;
