@@ -105,6 +105,8 @@ public:
     case LocalityAA:
       return "locality-aa-remedy";
       break;
+    default:
+      assert(false && "No locality-remedy type?");
     }
   };
 

@@ -51,6 +51,8 @@ public:
     case Local:
       return "priv-local-remedy";
       break;
+    default:
+      assert(false && "No priv-remedy type?");
     }
   }
 
