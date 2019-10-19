@@ -300,6 +300,9 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
       if (!L)
         return res;
 
+      if (!ptrA)
+        return res;
+
       const BasicBlock *bbA = A->getParent();
       const BasicBlock *bbB = B->getParent();
       // dominance info are intra-procedural
