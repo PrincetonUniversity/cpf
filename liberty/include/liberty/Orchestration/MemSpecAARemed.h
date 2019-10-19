@@ -3,6 +3,7 @@
 
 #include "llvm/IR/DataLayout.h"
 
+#include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/QueryCacheing.h"
 #include "liberty/Analysis/SimpleAA.h"
@@ -12,6 +13,7 @@
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/PrivAA.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Orchestration/Remediator.h"
@@ -51,10 +53,12 @@ public:
                       SpecPriv::SmtxSpeculationManager *sman,
                       PtrResidueSpeculationManager *pman,
                       KillFlow_CtrlSpecAware *killflowA,
-                      CallsiteDepthCombinator_CtrlSpecAware *callsiteA)
+                      CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+                      KillFlow &kill, ModuleLoops &ml)
       : Remediator(), proxy(p), ctrlspec(cs), lamp(lp), spresults(read),
         asgn(c), predspec(ps), smtxMan(sman), ptrresMan(pman),
-        killflow_aware(killflowA), callsite_aware(callsiteA) {}
+        killflow_aware(killflowA), callsite_aware(callsiteA), killFlow(kill),
+        mloops(ml) {}
 
   StringRef getRemediatorName() const { return "mem-spec-aa-remediator"; }
 
@@ -86,6 +90,9 @@ private:
   SimpleAA *simpleaa;
   KillFlow_CtrlSpecAware *killflow_aware;
   CallsiteDepthCombinator_CtrlSpecAware *callsite_aware;
+  KillFlow &killFlow;
+  ModuleLoops &mloops;
+  PrivAA *privaa;
 };
 
 } // namespace liberty

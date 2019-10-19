@@ -77,6 +77,10 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   simpleaa = new SimpleAA();
   simpleaa->InitializeLoopAA(&proxy, DL);
 
+  // cheap priv and full-overwrite
+  privaa = new PrivAA(spresults, asgn, ctx, killFlow, mloops, loop);
+  privaa->InitializeLoopAA(&proxy, DL);
+
   ctrlspec->setLoopOfInterest(loop->getHeader());
   predaa->setLoopOfInterest(loop);
 
@@ -100,6 +104,7 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   delete txioaa;
   delete commlibsaa;
   delete simpleaa;
+  delete privaa;
   killflow_aware->setLoopOfInterest(nullptr, nullptr);
 
   //killflow_aware->getTopAA()->dump();
