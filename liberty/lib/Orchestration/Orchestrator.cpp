@@ -119,7 +119,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   // all flow deps are remediated via this remediator stack
   remeds.push_back(std::make_unique<MemSpecAARemediator>(
       proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
-      &ptrResMan, killflowA, callsiteA));
+      &ptrResMan, killflowA, callsiteA, kill, mloops));
 
   return remeds;
 }
