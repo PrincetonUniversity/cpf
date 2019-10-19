@@ -33,8 +33,13 @@ void PrivRemedy::apply(Task *task) {
 bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<PrivRemedy> privRhs =
       std::static_pointer_cast<PrivRemedy>(rhs);
-  if (this->privPtr == privRhs->privPtr)
-    return this->localPtr < privRhs->localPtr;
+  if (this->privPtr == privRhs->privPtr) {
+    if (this->type == privRhs->type) {
+      return this->localPtr < privRhs->localPtr;
+    } else {
+      return this->type < privRhs->type;
+    }
+  }
   return this->privPtr < privRhs->privPtr;
 }
 
