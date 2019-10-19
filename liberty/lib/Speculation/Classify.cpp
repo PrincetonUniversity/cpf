@@ -1232,6 +1232,16 @@ bool HeapAssignment::subOfAUSet(Ptrs &aus, const AUToRemeds &ausR) {
   return true;
 }
 
+Remedies HeapAssignment::getRemedForPrivAUs(Ptrs &aus) const {
+  Remedies allR;
+  for (unsigned i = 0; i < aus.size(); ++i) {
+    AU *au = aus[i].au;
+    const Remedies &R = cheap_privs.at(au);
+    for (auto remed : R)
+      allR.insert(remed);
+  }
+  return allR;
+}
 
 HeapAssignment::AUSet &HeapAssignment::getSharedAUs() {  return shareds; }
 HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
