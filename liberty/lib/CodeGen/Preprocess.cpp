@@ -463,8 +463,8 @@ void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
   HeapAssignment::AUSet exclusivelyKillAUs2;
   for (auto au : privs) {
     if ((killPrivAUs.count(au) && !predPrivAUs.count(au)) &&
-         !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
-         !localPrivAUs.count(au))
+         !privateerPrivAUs.count(au) && !normalPrivAUs.count(au))
+         //!localPrivAUs.count(au))
        exclusivelyKillAUs1.insert(au);
 
     // if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
@@ -628,15 +628,15 @@ void Preprocess::init(ModuleLoops &mloops)
         specUsedFlag |= privRemed->ctrlSpecUsed;
         if (remed->getRemedyName().equals("priv-remedy")) {
           privUsed = true;
-          collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
-                             loop_ctx, normalPrivAUs);
+          collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
+                             normalPrivAUs);
         } else if (remed->getRemedyName().equals("priv-local-remedy")) {
           assert(false && "priv-local should be generated during classification");
           //collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
           //                   loop_ctx, localPrivAUs);
         } else if (remed->getRemedyName().equals("priv-full-overlap-remedy")) {
-          collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
-                             loop_ctx, killPrivAUs);
+          collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
+                             killPrivAUs);
         }
       }
     }
@@ -669,8 +669,8 @@ void Preprocess::init(ModuleLoops &mloops)
     HeapAssignment::AUSet &shared = asgn.getSharedAUs();
     HeapAssignment::AUSet nonPrivAUs;
     for (auto au : privs) {
-      if (!normalPrivAUs.count(au) && !localPrivAUs.count(au) &&
-          !killPrivAUs.count(au))
+      //if (!normalPrivAUs.count(au) && !localPrivAUs.count(au) &&
+      if (!normalPrivAUs.count(au) && !killPrivAUs.count(au))
         nonPrivAUs.insert(au);
     }
 

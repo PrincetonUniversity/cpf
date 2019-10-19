@@ -135,7 +135,7 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
         continue;
 
       PrivRemedy *privRemed = (PrivRemedy *)&*remed;
-      const Value *ptr = privRemed->storeI->getPointerOperand();
+      const Value *ptr = privRemed->privPtr;
 
       Ctx *fcn_ctx = read->getCtx(LDI->function);
       Ptrs aus;
