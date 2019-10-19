@@ -33,9 +33,9 @@ void PrivRemedy::apply(Task *task) {
 bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<PrivRemedy> privRhs =
       std::static_pointer_cast<PrivRemedy>(rhs);
-  if (this->storeI == privRhs->storeI)
+  if (this->privPtr == privRhs->privPtr)
     return this->localPtr < privRhs->localPtr;
-  return this->storeI < privRhs->storeI;
+  return this->privPtr < privRhs->privPtr;
 }
 
 Remedies PrivRemediator::satisfy(const PDG &pdg, Loop *loop,
@@ -409,7 +409,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
   std::shared_ptr<PrivRemedy> remedy =
       std::shared_ptr<PrivRemedy>(new PrivRemedy());
   remedy->cost = DEFAULT_PRIV_REMED_COST;
-  remedy->storeI = nullptr;
+  remedy->privPtr = nullptr;
   remedy->localPtr = nullptr;
   remedy->ctrlSpecUsed = false;
 
@@ -420,7 +420,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     if (isLocalPrivate(A, ptr1, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr1;
-      remedy->storeI = dyn_cast<StoreInst>(A);
+      remedy->privPtr = (dyn_cast<StoreInst>(A))->getPointerOperand();
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
@@ -434,7 +434,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     } else if (isLocalPrivate(B, ptr2, dataDepTy, L, remedy->ctrlSpecUsed)) {
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr2;
-      remedy->storeI = dyn_cast<StoreInst>(B);
+      remedy->privPtr = (dyn_cast<StoreInst>(B))->getPointerOperand();
       remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
@@ -464,9 +464,9 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     ++numPrivNoMemDep;
     remedResp.depRes = DepResult::NoDep;
     if (isa<StoreInst>(A) && privateA)
-      remedy->storeI = dyn_cast<StoreInst>(A);
+      remedy->privPtr = dyn_cast<StoreInst>(A)->getPointerOperand();
     else
-      remedy->storeI = dyn_cast<StoreInst>(B);
+      remedy->privPtr = (dyn_cast<StoreInst>(B))->getPointerOperand();
 
     remedy->type = PrivRemedy::Normal;
     remedResp.remedy = remedy;
@@ -485,10 +485,15 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       ((isa<StoreInst>(A) && privateA) || (isa<StoreInst>(B) && privateB))) {
     ++numPrivNoMemDep;
     remedResp.depRes = DepResult::NoDep;
-    if (isa<StoreInst>(A) && privateA)
-      remedy->storeI = dyn_cast<StoreInst>(A);
-    else
-      remedy->storeI = dyn_cast<StoreInst>(B);
+    const StoreInst *privStore = nullptr;
+    if (isa<StoreInst>(A) && privateA) {
+      privStore = dyn_cast<StoreInst>(A);
+      remedy->privPtr = privStore->getPointerOperand();
+    }
+    else {
+      privStore = dyn_cast<StoreInst>(B);
+      remedy->privPtr = privStore->getPointerOperand();
+    }
 
     remedy->type = PrivRemedy::Normal;
     remedResp.remedy = remedy;
@@ -592,8 +597,6 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedResp.remedy = remedy;
       return remedResp;
     }
-
-    const StoreInst *privStore = remedy->storeI;
 
     // evaluate if the private store overwrites the same memory locations and
     // executes the same number of times for every iteration of the loop of

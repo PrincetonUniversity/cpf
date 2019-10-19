@@ -24,7 +24,8 @@ using namespace llvm;
 
 class PrivRemedy : public Remedy {
 public:
-  const StoreInst *storeI;
+  //const StoreInst *storeI;
+  const Value *privPtr;
   const Value *localPtr;
   bool ctrlSpecUsed;
 
