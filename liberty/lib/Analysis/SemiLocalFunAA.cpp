@@ -317,7 +317,7 @@ using namespace llvm;
           }
         }
 
-        if (join != NoModRef) {
+        if (join != ModRef) {
           for (auto remed : tmpR)
             R.insert(remed);
         }
@@ -363,7 +363,7 @@ using namespace llvm;
         return ModRef;
     }
 
-    if (result != NoModRef) {
+    if (result != ModRef) {
       for (auto remed : tmpR)
         R.insert(remed);
     }
