@@ -49,7 +49,7 @@ private:
   LoopInfo *li;
   ScalarEvolution *se;
 
-  bool isCheapPrivate(const Instruction *I, const Value *ptr, const Loop *L,
+  bool isCheapPrivate(const Instruction *I, const Value **ptr, const Loop *L,
                       Remedies &R);
 
   BasicBlock *getLoopEntryBB(const Loop *loop);
