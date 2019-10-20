@@ -112,6 +112,13 @@ public:
 
   bool addUOCheck(Value *ptr);
   void insertUOCheck(Value *obj, HeapAssignment::Type heap);
+
+  bool isExpensive() {
+    if (type == Private)
+      return true;
+    else
+      return false;
+  }
 };
 
 class LocalityRemediator : public Remediator {

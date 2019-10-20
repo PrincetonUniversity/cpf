@@ -24,6 +24,8 @@ public:
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "smtx-lamp-remedy"; };
+
+  bool isExpensive() { return true; }
 };
 
 class SmtxLampRemediator : public Remediator {

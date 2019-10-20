@@ -58,6 +58,13 @@ public:
 
   StringRef getRemedyName() const { return getPrivRemedyName(); };
   //StringRef getRemedyName() const { return "priv-remedy"; };
+
+  bool isExpensive() {
+    if (type == Normal)
+      return true;
+    else
+      return false;
+  }
 };
 
 class PrivRemediator : public Remediator {
