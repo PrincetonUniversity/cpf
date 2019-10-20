@@ -19,10 +19,6 @@
 #define FULL_OVERLAP_PRIV_REMED_COST 70
 #endif
 
-#ifndef LOCAL_PRIV_REMED_COST
-#define LOCAL_PRIV_REMED_COST 55
-#endif
-
 namespace liberty {
 using namespace llvm;
 
@@ -343,6 +339,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
         if (killFlow.instMustKill(B, ptrA, 0, 0, L)) {
           R.erase(remedy);
           remedy->type = PrivRemedy::FullOverlap;
+          remedy->cost = FULL_OVERLAP_PRIV_REMED_COST;
           R.insert(remedy);
           return res;
         } else {
@@ -371,6 +368,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
 
       R.erase(remedy);
       remedy->type = PrivRemedy::FullOverlap;
+      remedy->cost = FULL_OVERLAP_PRIV_REMED_COST;
       R.insert(remedy);
       return res;
     }
@@ -516,6 +514,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
     // interest iter
     R.erase(remedy);
     remedy->type = PrivRemedy::FullOverlap;
+    remedy->cost = FULL_OVERLAP_PRIV_REMED_COST;
     R.insert(remedy);
     return res;
   }
