@@ -36,10 +36,8 @@ LoopAA::AliasResult ClassicLoopAA::aliasCheck(const Pointer &P1,
 
 bool ClassicLoopAA::containsExpensiveRemeds(const Remedies &R) {
   for (auto remed : R) {
-    if (remed->getRemedyName().equals("smtx-lamp-remedy") ||
-        remed->getRemedyName().equals("points-to-remedy")) {
+    if (remed->isExpensive())
       return true;
-    }
   }
   return false;
 }

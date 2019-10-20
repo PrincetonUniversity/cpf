@@ -23,6 +23,8 @@ public:
   //void apply(Task *task) {};
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "points-to-remedy"; };
+
+  bool isExpensive() { return true; }
 };
 
 // You can use it as a LoopAA too!

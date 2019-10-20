@@ -6,47 +6,37 @@
 
 #include "liberty/Speculation/SmtxManager.h"
 
-namespace liberty
-{
-namespace SpecPriv
-{
+namespace liberty {
+namespace SpecPriv {
 
 using namespace llvm;
 
 struct SmtxAA : public LoopAA // Not a pass!
 {
-    SmtxAA(SmtxSpeculationManager *man) : LoopAA(), smtxMan(man) {}
+  SmtxAA(SmtxSpeculationManager *man) : LoopAA(), smtxMan(man) {}
 
-    virtual SchedulingPreference getSchedulingPreference() const {
-      return SchedulingPreference(Bottom);
-    }
+  virtual SchedulingPreference getSchedulingPreference() const {
+    return SchedulingPreference(Bottom);
+  }
 
-    StringRef getLoopAAName() const { return "smtx-aa"; }
+  StringRef getLoopAAName() const { return "smtx-aa"; }
 
-    AliasResult alias(
-      const Value *ptrA, unsigned sizeA,
-      TemporalRelation rel,
-      const Value *ptrB, unsigned sizeB,
-      const Loop *L, Remedies &R);
+  AliasResult alias(const Value *ptrA, unsigned sizeA, TemporalRelation rel,
+                    const Value *ptrB, unsigned sizeB, const Loop *L,
+                    Remedies &R);
 
-    ModRefResult modref(
-      const Instruction *A,
-      TemporalRelation rel,
-      const Value *ptrB, unsigned sizeB,
-      const Loop *L, Remedies &R);
+  ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                      const Value *ptrB, unsigned sizeB, const Loop *L,
+                      Remedies &R);
 
-    ModRefResult modref(
-      const Instruction *A,
-      TemporalRelation rel,
-      const Instruction *B,
-      const Loop *L, Remedies &R);
+  ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                      const Instruction *B, const Loop *L, Remedies &R);
 
-  private:
-    SmtxSpeculationManager *smtxMan;
+private:
+  SmtxSpeculationManager *smtxMan;
 };
-
-}
-}
+} // namespace SpecPriv
+} // namespace liberty
 
 #endif
 
