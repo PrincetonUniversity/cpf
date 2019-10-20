@@ -122,6 +122,9 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
       return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    } else {
+      for (auto remed : tmpR)
+        R.insert(remed);
     }
     return NoModRef;
   }
@@ -140,6 +143,9 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
       return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    } else {
+      for (auto remed : tmpR)
+        R.insert(remed);
     }
     return NoModRef;
   }
@@ -153,6 +159,9 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
       return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    } else {
+      for (auto remed : tmpR)
+        R.insert(remed);
     }
     return NoModRef;
   }
@@ -181,6 +190,9 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
       return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
+    } else {
+      for (auto remed : tmpR)
+        R.insert(remed);
     }
     return NoModRef;
   }
