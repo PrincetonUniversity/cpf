@@ -546,6 +546,11 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
   if(isInterprocedural(CS.getInstruction(), V))
     return ModRef;
 
+  // If P points to a constant memory location, the call definitely could not
+  // modify the memory location.
+  if(pointsToConstantMemory(V,L))
+    return Ref;
+
   const Value *Object = GetUnderlyingObject(V, currentMod->getDataLayout());
 
   // If this is a tail call and P points to a stack location, we know that the
@@ -632,11 +637,6 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
       break;
     }
     }
-
-  // If P points to a constant memory location, the call definitely could not
-  // modify the memory location.
-  if(pointsToConstantMemory(V,L))
-    return Ref;
 
   return ModRef;
 }
