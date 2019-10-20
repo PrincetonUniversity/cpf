@@ -121,20 +121,20 @@ bool PrivAA::isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
   return allLoopInvariant;
 }
 
-bool PrivAA::isCheapPrivate(const Instruction *I, const Value *ptr,
+bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
                             const Loop *L, Remedies &R) {
 
   if (I)
-    ptr = liberty::getMemOper(I);
-  if (!ptr)
+    *ptr = liberty::getMemOper(I);
+  if (!(*ptr))
     return false;
-  if (!isa<PointerType>(ptr->getType()))
+  if (!isa<PointerType>((*ptr)->getType()))
     return false;
 
   // const Ctx *ctx = read.getCtx(L);
   const HeapAssignment::AUToRemeds &cheapPrivs = asgn.getCheapPrivAUs();
   Ptrs aus;
-  if (read.getUnderlyingAUs(ptr, ctx, aus)) {
+  if (read.getUnderlyingAUs(*ptr, ctx, aus)) {
     if (HeapAssignment::subOfAUSet(aus, cheapPrivs)) {
       R = asgn.getRemedForPrivAUs(aus);
       return true;
@@ -171,10 +171,10 @@ LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
 
   Remedies Ra, Rb;
 
-  bool privateA = isCheapPrivate(nullptr, P1, L, Ra);
+  bool privateA = isCheapPrivate(nullptr, &P1, L, Ra);
   bool privateB = false;
   if (!privateA) {
-    privateB = isCheapPrivate(nullptr, P2, L, Rb);
+    privateB = isCheapPrivate(nullptr, &P2, L, Rb);
     if (privateB) {
       for (auto remed : Rb)
         R.insert(remed);
@@ -209,10 +209,10 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   Remedies Ra, Rb;
   const Value *ptrA;
 
-  bool privateA = isCheapPrivate(A, ptrA, L, Ra);
+  bool privateA = isCheapPrivate(A, &ptrA, L, Ra);
   bool privateB = false;
   if (!privateA) {
-    privateB = isCheapPrivate(nullptr, ptrB, L, Rb);
+    privateB = isCheapPrivate(nullptr, &ptrB, L, Rb);
     if (privateB) {
       for (auto remed : Rb)
         R.insert(remed);
@@ -247,10 +247,10 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   Remedies Ra, Rb;
   const Value *ptrA, *ptrB;
 
-  bool privateA = isCheapPrivate(A, ptrA, L, Ra);
+  bool privateA = isCheapPrivate(A, &ptrA, L, Ra);
   bool privateB = false;
   if (!privateA) {
-    privateB = isCheapPrivate(B, ptrB, L, Rb);
+    privateB = isCheapPrivate(B, &ptrB, L, Rb);
     if (privateB) {
       for (auto remed : Rb)
         R.insert(remed);
