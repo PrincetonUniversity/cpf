@@ -308,9 +308,15 @@ namespace liberty
                    TemporalRelation Rel,
                    const Value *V2, unsigned V2Size,
                    const Loop *L, Remedies &R) {
-      return alias(V1, V1Size, Rel, V2, V2Size, L, R) == NoAlias;
+      Remedies tmpR;
+      AliasResult res = alias(V1, V1Size, Rel, V2, V2Size, L, tmpR);
+      if (res == NoAlias) {
+        for (auto remed : tmpR)
+          R.insert(remed);
+        return true;
+      }
+      return false;
     }
-
 
     /// Subclasses must call this method at the beginning
     /// of runOnWhatever() to initalize the the LoopAA interface.
