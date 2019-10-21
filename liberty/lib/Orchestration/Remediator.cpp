@@ -6,10 +6,11 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Utilities/GetMemOper.h"
 
 namespace liberty
 {
@@ -116,18 +117,46 @@ namespace liberty
     return remedResp;
   }
 
+  // meant for RAW/WAW. ignores WAR (always resolved by memVer.)
+  const Value *Remediator::getPtrDepBased(const Instruction *I, bool rawDep,
+                                  bool srcI) {
+    const Value *ptr = liberty::getMemOper(I);
+    // if ptr null, check for memcpy/memmove inst.
+    // src pointer is read, dst pointer is written.
+    // choose pointer for current query based on dataDepTy
+    if (!ptr) {
+      if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I)) {
+        if (rawDep && !srcI)
+          ptr = mti->getRawSource();
+        else
+          ptr = mti->getRawDest();
+      }
+    }
+    return ptr;
+  }
+
   bool Remediator::noMemoryDep(const Instruction *src, const Instruction *dst,
                                LoopAA::TemporalRelation FW,
                                LoopAA::TemporalRelation RV, const Loop *loop,
                                LoopAA *aa, bool rawDep, Remedies &R) {
-    Remedies tmpR1;
-    Remedies tmpR2;
+    Remedies tmpR1, tmpR2, tmpR, aliasTmpR;
+
+    const Value *ptrSrc = getPtrDepBased(src, rawDep, true);
+    const Value *ptrDest = getPtrDepBased(dst, rawDep, false);
+    LoopAA::ModRefResult aliasRes = LoopAA::ModRef;
+    if (ptrSrc && ptrDest) {
+      if (LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize, FW, ptrDest,
+                                       LoopAA::UnknownSize, loop, aliasTmpR))
+        aliasRes = LoopAA::NoModRef;
+    }
 
     // forward dep test
     LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, tmpR1);
     if (LoopAA::NoModRef == forward) {
       for (auto remed : tmpR1)
-        R.insert(remed);
+        tmpR.insert(remed);
+      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
+                                          aliasTmpR);
       return true;
     }
 
@@ -141,15 +170,19 @@ namespace liberty
 
     if (LoopAA::NoModRef == reverse) {
       for (auto remed : tmpR2)
-        R.insert(remed);
+        tmpR.insert(remed);
+      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
+                                          aliasTmpR);
       return true;
     }
 
     if (LoopAA::Ref == forward && LoopAA::Ref == reverse) {
       for (auto remed : tmpR1)
-        R.insert(remed);
+        tmpR.insert(remed);
       for (auto remed : tmpR2)
-        R.insert(remed);
+        tmpR.insert(remed);
+      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
+                                          aliasTmpR);
       return true; // RaR dep; who cares.
     }
 
@@ -165,16 +198,26 @@ namespace liberty
 
     if (rawDep && !RAW) {
       for (auto remed : tmpR1)
-        R.insert(remed);
+        tmpR.insert(remed);
       for (auto remed : tmpR2)
-        R.insert(remed);
+        tmpR.insert(remed);
+      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
+                                          aliasTmpR);
       return true;
     }
 
     if (!rawDep && !WAR && !WAW) {
       for (auto remed : tmpR1)
-        R.insert(remed);
+        tmpR.insert(remed);
       for (auto remed : tmpR2)
+        tmpR.insert(remed);
+      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
+                                          aliasTmpR);
+      return true;
+    }
+
+    if (aliasRes == LoopAA::NoModRef) {
+      for (auto remed : aliasTmpR)
         R.insert(remed);
       return true;
     }
