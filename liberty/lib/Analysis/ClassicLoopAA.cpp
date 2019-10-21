@@ -42,6 +42,14 @@ bool ClassicLoopAA::containsExpensiveRemeds(const Remedies &R) {
   return false;
 }
 
+unsigned long totalRemedCost(const Remedies &R) {
+  unsigned long tcost = 0;
+  for (auto remed : R) {
+    tcost += remed->cost;
+  }
+  return tcost;
+}
+
 LoopAA::AliasResult
 ClassicLoopAA::aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
                                    TemporalRelation Rel, const Value *V2,
@@ -52,12 +60,15 @@ ClassicLoopAA::aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
     LoopAA::AliasResult chainRes =
         LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds);
     //if (chainRes == AR && !containsExpensiveRemeds(chainRemeds)) {
-    if (chainRes != MayAlias && !containsExpensiveRemeds(chainRemeds)) {
+    if (chainRes != MayAlias &&
+        (!containsExpensiveRemeds(chainRemeds) ||
+         totalRemedCost(chainRemeds) < totalRemedCost(tmpR))) {
       for (auto remed : chainRemeds)
         R.insert(remed);
       return chainRes;
     }
   }
+
   for (auto remed : tmpR)
     R.insert(remed);
   return AR;
@@ -68,7 +79,8 @@ LoopAA::ModRefResult ClassicLoopAA::modrefAvoidExpRemeds(
     LoopAA::ModRefResult chainRes, Remedies &chainRemeds) {
   if (containsExpensiveRemeds(tmpR)) {
     if (chainRes <= MR && chainRes != LoopAA::ModRef &&
-        !containsExpensiveRemeds(chainRemeds)) {
+        (!containsExpensiveRemeds(chainRemeds) ||
+         totalRemedCost(chainRemeds) < totalRemedCost(tmpR))) {
       for (auto remed : chainRemeds)
         R.insert(remed);
       return chainRes;
