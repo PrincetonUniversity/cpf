@@ -821,6 +821,7 @@ void HeapAssignment::assignSubHeaps()
   assignSubHeaps( getSharedAUs() );
   assignSubHeaps( getLocalAUs() );
   assignSubHeaps( getPrivateAUs() );
+  assignSubHeaps( getKillPrivAUs() );
   // (don't bother with the read-only heap)
   assignSubHeaps( getReductionAUs() );
 }
@@ -855,6 +856,9 @@ HeapAssignment::Type HeapAssignment::join(Type a, Type b)
     return b;
 
   if( a == Local && b == Private )
+    return Private;
+
+  if( a == KillPrivate && b == Private )
     return Private;
 
   return Unclassified;
@@ -1056,6 +1060,7 @@ bool HeapAssignment::isSimpleCase() const
   const AUSet &shareds    = getSharedAUs(),
               &locals     = getLocalAUs(),
               &privates   = getPrivateAUs(),
+              &killprivs  = getKillPrivAUs(),
               &ro         = getReadOnlyAUs();
 
   const ReduxAUSet &reductions = getReductionAUs();
@@ -1106,6 +1111,21 @@ bool HeapAssignment::isSimpleCase() const
       return false;
   }
   for(AUSet::const_iterator i=privates.begin(), e=privates.end(); i!=e; ++i)
+  {
+    AU *au = *i;
+    if (!au->value) {
+      errs() << "Empty value in au : " << *au << "\n";
+      continue;
+    }
+    allocationSites.insert( au->value );
+  }
+  for(AUSet::const_iterator i=killprivs.begin(), e=killprivs.end(); i!=e; ++i)
+  {
+    AU *au = *i;
+    if( au->value && allocationSites.count( au->value ) )
+      return false;
+  }
+  for(AUSet::const_iterator i=killprivs.begin(), e=killprivs.end(); i!=e; ++i)
   {
     AU *au = *i;
     if (!au->value) {
@@ -1280,7 +1300,8 @@ bool HeapAssignment::compatibleWith(const HeapAssignment &other) const
   &&     compatibleWith(Shared,   other.getSharedAUs())
   &&     compatibleWith(Redux,    other.getReductionAUs())
   &&     compatibleWith(Local,    other.getLocalAUs())
-  &&     compatibleWith(Private,  other.getPrivateAUs());
+  &&     compatibleWith(Private,  other.getPrivateAUs())
+  &&     compatibleWith(KillPrivate,  other.getKillPrivAUs());
 }
 
 bool HeapAssignment::compatibleWith(Type ty, const AUSet &set) const
@@ -1356,6 +1377,9 @@ void HeapAssignment::accumulate(const HeapAssignment &A, Type ty0, const AUSet &
       case Private:
         privs.insert(au);
         break;
+      case KillPrivate:
+        kill_privs.insert(au);
+        break;
       default:
         assert( false && "This should not happen");
         break;
@@ -1393,12 +1417,14 @@ HeapAssignment HeapAssignment::operator&(const HeapAssignment &other) const
   asgn.accumulate(*this, Redux, other.getReductionAUs());
   asgn.accumulate(*this, Local, other.getLocalAUs());
   asgn.accumulate(*this, Private, other.getPrivateAUs());
+  asgn.accumulate(*this, KillPrivate, other.getKillPrivAUs());
 
   asgn.accumulate(other, ReadOnly, this->getReadOnlyAUs());
   asgn.accumulate(other, Shared, this->getSharedAUs());
   asgn.accumulate(other, Redux, this->getReductionAUs());
   asgn.accumulate(other, Local, this->getLocalAUs());
   asgn.accumulate(other, Private, this->getPrivateAUs());
+  asgn.accumulate(other, KillPrivate, this->getKillPrivAUs());
 
   asgn.success.insert( this->success.begin(), this->success.end() );
   asgn.success.insert( other.success.begin(), other.success.end() );
@@ -1433,6 +1459,7 @@ void HeapAssignment::contextRenamedViaClone(
   updateAUSet(shareds, amap);
   updateAUSet(locals, amap);
   updateAUSet(privs, amap);
+  updateAUSet(kill_privs, amap);
   updateAUSet(ros, amap);
   updateAUSet(reduxs, amap);
 }
