@@ -42,7 +42,7 @@ bool ClassicLoopAA::containsExpensiveRemeds(const Remedies &R) {
   return false;
 }
 
-unsigned long totalRemedCost(const Remedies &R) {
+unsigned long ClassicLoopAA::totalRemedCost(const Remedies &R) {
   unsigned long tcost = 0;
   for (auto remed : R) {
     tcost += remed->cost;
