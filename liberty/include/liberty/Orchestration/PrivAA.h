@@ -60,6 +60,13 @@ private:
                            ScalarEvolution *se);
   bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
                            ScalarEvolution *se);
+
+  LoopAA::ModRefResult lookForCheaperNoModRef(const Instruction *A,
+                                              TemporalRelation rel,
+                                              const Instruction *B,
+                                              const Value *ptrB, unsigned sizeB,
+                                              const Loop *L, Remedies &R,
+                                              Remedies &tmpR);
 };
 
 } // namespace liberty
