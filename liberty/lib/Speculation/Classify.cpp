@@ -929,6 +929,16 @@ void HeapAssignment::print(raw_ostream &fout) const
       fout << "[sh=" << sh << ']';
     fout << ' ' << *au << ' ' << name << " #regression\n";
   }
+  fout << "  Found " << privs.size() << " cheap private AUs:\n";
+  for(auto i : cheap_privs)
+  {
+    AU *au = i.first;
+    fout << "    o cheap_priv";
+    int sh = getSubHeap(au);
+    if( -1 != sh )
+      fout << "[sh=" << sh << ']';
+    fout << ' ' << *au << ' ' << name << " #regression\n";
+  }
   fout << "  Found " << kill_privs.size() << " kill private AUs:\n";
   for ( AUSet::const_iterator i=kill_privs.begin(), e=kill_privs.end(); i != e; ++i )
   {
