@@ -67,6 +67,7 @@ public:
                             unsigned Size2, const Loop *L, Remedies &remeds);
 
   static bool containsExpensiveRemeds(const Remedies &R);
+  static unsigned long totalRemedCost(const Remedies &R);
 
   LoopAA::AliasResult aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
                                           TemporalRelation Rel, const Value *V2,
