@@ -123,7 +123,7 @@ bool PrivAA::isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
 }
 
 bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
-                            const Loop *L, Remedies &R) {
+                            const Loop *L, Remedies &R, Ptrs &aus) {
 
   if (I)
     *ptr = liberty::getMemOper(I);
@@ -134,7 +134,6 @@ bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
 
   // const Ctx *ctx = read.getCtx(L);
   const HeapAssignment::AUToRemeds &cheapPrivs = asgn.getCheapPrivAUs();
-  Ptrs aus;
   if (read.getUnderlyingAUs(*ptr, ctx, aus)) {
     if (HeapAssignment::subOfAUSet(aus, cheapPrivs)) {
       R = asgn.getRemedForPrivAUs(aus);
@@ -144,12 +143,12 @@ bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
   return false;
 }
 
-unsigned long getRemediesCost(Remedies &R) {
-  unsigned long totalCost = 0;
-  for (auto remed : R) {
-    totalCost += remed->cost;
+bool PrivAA::hasUsedFullOverlapPrivAUs(const Ptrs &aus) {
+  for (auto au: aus) {
+    if (usedFullOverlapPrivAUs.count(au.au))
+      return true;
   }
-  return totalCost;
+  return false;
 }
 
 LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
@@ -171,20 +170,21 @@ LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
   remedy->localPtr = nullptr;
 
   Remedies Ra, Rb, tmpR;
+  Ptrs ausA, ausB;
 
-  bool privateA = isCheapPrivate(nullptr, &P1, L, Ra);
-  bool privateB = false;
-  if (!privateA) {
-    privateB = isCheapPrivate(nullptr, &P2, L, Rb);
-    if (privateB) {
-      for (auto remed : Rb)
-        tmpR.insert(remed);
-      remedy->privPtr = P2;
-    }
-  } else {
+  bool privateA = isCheapPrivate(nullptr, &P1, L, Ra, ausA);
+  bool privateB = isCheapPrivate(nullptr, &P2, L, Rb, ausB);
+  if (privateA && (!privateB || usedCheapPrivPtrs.count(P1) ||
+                   !hasUsedFullOverlapPrivAUs(ausA))) {
     for (auto remed : Ra)
       tmpR.insert(remed);
     remedy->privPtr = P1;
+    usedCheapPrivPtrs.insert(P1);
+  } else {
+    for (auto remed : Rb)
+      tmpR.insert(remed);
+    remedy->privPtr = P2;
+    usedCheapPrivPtrs.insert(P2);
   }
 
   if (!privateA && !privateB)
@@ -248,21 +248,22 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   remedy->localPtr = nullptr;
 
   Remedies Ra, Rb, tmpR;
+  Ptrs ausA, ausB;
   const Value *ptrA;
 
-  bool privateA = isCheapPrivate(A, &ptrA, L, Ra);
-  bool privateB = false;
-  if (!privateA) {
-    privateB = isCheapPrivate(nullptr, &ptrB, L, Rb);
-    if (privateB) {
-      for (auto remed : Rb)
-        tmpR.insert(remed);
-      remedy->privPtr = ptrB;
-    }
-  } else {
+  bool privateA = isCheapPrivate(A, &ptrA, L, Ra, ausA);
+  bool privateB = isCheapPrivate(nullptr, &ptrB, L, Rb, ausB);
+  if (privateA && (!privateB || usedCheapPrivPtrs.count(ptrA) ||
+                   !hasUsedFullOverlapPrivAUs(ausA))) {
     for (auto remed : Ra)
       tmpR.insert(remed);
     remedy->privPtr = ptrA;
+    usedCheapPrivPtrs.insert(ptrA);
+  } else {
+    for (auto remed : Rb)
+      tmpR.insert(remed);
+    remedy->privPtr = ptrB;
+    usedCheapPrivPtrs.insert(ptrB);
   }
 
   if (!privateA && !privateB)
@@ -287,21 +288,22 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   remedy->localPtr = nullptr;
 
   Remedies Ra, Rb, tmpR;
+  Ptrs ausA, ausB;
   const Value *ptrA, *ptrB;
 
-  bool privateA = isCheapPrivate(A, &ptrA, L, Ra);
-  bool privateB = false;
-  if (!privateA) {
-    privateB = isCheapPrivate(B, &ptrB, L, Rb);
-    if (privateB) {
-      for (auto remed : Rb)
-        tmpR.insert(remed);
-      remedy->privPtr = ptrB;
-    }
-  } else {
+  bool privateA = isCheapPrivate(A, &ptrA, L, Ra, ausA);
+  bool privateB = isCheapPrivate(B, &ptrB, L, Rb, ausB);
+  if (privateA && (!privateB || usedCheapPrivPtrs.count(ptrA) ||
+                   !hasUsedFullOverlapPrivAUs(ausA))) {
     for (auto remed : Ra)
       tmpR.insert(remed);
     remedy->privPtr = ptrA;
+    usedCheapPrivPtrs.insert(ptrA);
+  } else if (privateB) {
+    for (auto remed : Rb)
+      tmpR.insert(remed);
+    remedy->privPtr = ptrB;
+    usedCheapPrivPtrs.insert(ptrB);
   }
 
   if (!privateA && !privateB)
@@ -384,6 +386,10 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
           R.insert(remedy);
           for (auto remed : tmpR)
             R.insert(remed);
+          for (auto au : ausA)
+            usedFullOverlapPrivAUs.insert(au.au);
+          for (auto au : ausB)
+            usedFullOverlapPrivAUs.insert(au.au);
           return LoopAA::NoModRef;
 
         } else {
@@ -416,6 +422,10 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
       R.insert(remedy);
       for (auto remed : tmpR)
         R.insert(remed);
+      for (auto au : ausA)
+        usedFullOverlapPrivAUs.insert(au.au);
+      for (auto au : ausB)
+        usedFullOverlapPrivAUs.insert(au.au);
       return LoopAA::NoModRef;
     }
 
@@ -564,6 +574,8 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
     R.insert(remedy);
     for (auto remed : tmpR)
       R.insert(remed);
+    for (auto au : ausA)
+      usedFullOverlapPrivAUs.insert(au.au);
     return LoopAA::NoModRef;
   }
 
