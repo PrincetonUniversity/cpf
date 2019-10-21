@@ -75,7 +75,7 @@ public:
                                           Remedies &R, LoopAA::AliasResult AR,
                                           Remedies &tmpR);
 
-  LoopAA::ModRefResult
+  static LoopAA::ModRefResult
   modrefAvoidExpRemeds(Remedies &R, LoopAA::ModRefResult MR, Remedies &tmpR,
                        LoopAA::ModRefResult chainRes, Remedies &chainRemeds);
 };
