@@ -19,6 +19,7 @@ struct PrivAA : public LoopAA // Not a pass!
     pdt = &mloops.getAnalysis_PostDominatorTree(f);
     li = &mloops.getAnalysis_LoopInfo(f);
     se = &mloops.getAnalysis_ScalarEvolution(f);
+    usedCheapPrivPtrs.clear();
   }
 
   StringRef getLoopAAName() const { return "priv-aa"; }
@@ -49,9 +50,13 @@ private:
   LoopInfo *li;
   ScalarEvolution *se;
 
-  bool isCheapPrivate(const Instruction *I, const Value **ptr, const Loop *L,
-                      Remedies &R);
+  std::unordered_set<const Value *> usedCheapPrivPtrs;
+  std::unordered_set<const AU *> usedFullOverlapPrivAUs;
 
+  bool isCheapPrivate(const Instruction *I, const Value **ptr, const Loop *L,
+                      Remedies &R, Ptrs &aus);
+
+  bool hasUsedFullOverlapPrivAUs(const Ptrs &aus);
   BasicBlock *getLoopEntryBB(const Loop *loop);
   bool isTransLoopInvariant(const Value *val, const Loop *L);
   bool isLoopInvariantValue(const Value *V, const Loop *L);
