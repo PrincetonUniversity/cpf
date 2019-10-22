@@ -1759,6 +1759,9 @@ bool HeapAssignment::subOfAUSet(Ptrs &aus, const AUSet &auSet) {
 }
 
 bool HeapAssignment::subOfAUSet(Ptrs &aus, const AUToRemeds &ausR) {
+  if (aus.size() == 0 || ausR.empty())
+    return false;
+
   for (unsigned i = 0; i < aus.size(); ++i) {
     AU *au = aus[i].au;
     if (au->type == AU_Null)
@@ -1781,6 +1784,8 @@ Remedies HeapAssignment::getRemedForPrivAUs(Ptrs &aus) const {
   Remedies allR;
   for (unsigned i = 0; i < aus.size(); ++i) {
     AU *au = aus[i].au;
+    if (au->type == AU_Null)
+      continue;
     const Remedies &R = cheap_privs.at(au);
     for (auto remed : R)
       allR.insert(remed);
