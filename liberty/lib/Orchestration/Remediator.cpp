@@ -145,14 +145,20 @@ namespace liberty
     const Value *ptrSrc = getPtrDepBased(src, rawDep, true);
     const Value *ptrDest = getPtrDepBased(dst, rawDep, false);
     LoopAA::ModRefResult aliasRes = LoopAA::ModRef;
+    // similar to ClassicLoopAA functionality of lifting modref to alias but
+    // with high-level knowledge of the type of dependence
     if (ptrSrc && ptrDest) {
-      if (LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize,
-                                       LoopAA::Same, ptrDest,
-                                       LoopAA::UnknownSize, loop, aliasTmpR) &&
-          LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize,
-                                       LoopAA::Before, ptrDest,
-                                       LoopAA::UnknownSize, loop, aliasTmpR))
+      if (LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize, FW, ptrDest,
+                                       LoopAA::UnknownSize, loop, aliasTmpR)) {
         aliasRes = LoopAA::NoModRef;
+      } else {
+        aliasTmpR.clear();
+        if (LoopAA::NoAlias == aa->alias(ptrDest, LoopAA::UnknownSize, RV,
+                                         ptrSrc, LoopAA::UnknownSize, loop,
+                                         aliasTmpR)) {
+          aliasRes = LoopAA::NoModRef;
+        }
+      }
     }
 
     // forward dep test
