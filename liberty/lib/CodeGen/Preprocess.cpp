@@ -456,16 +456,20 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
 }
 */
 
+// full-overlap is now handled during classificiation.
+// only predictable objects are moved from privs to killpriv here
 void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
   HeapAssignment::AUSet &kills = asgn.getKillPrivAUs();
-  HeapAssignment::AUSet exclusivelyKillAUs1;
+  //HeapAssignment::AUSet exclusivelyKillAUs1;
   HeapAssignment::AUSet exclusivelyKillAUs2;
   for (auto au : privs) {
+    /*
     if ((killPrivAUs.count(au) && !predPrivAUs.count(au)) &&
          !privateerPrivAUs.count(au) && !normalPrivAUs.count(au))
          //!localPrivAUs.count(au))
        exclusivelyKillAUs1.insert(au);
+    */
 
     // if (!killPrivAUs.count(au) && predPrivAUs.count(au) &&
     //     !privateerPrivAUs.count(au) && !normalPrivAUs.count(au) &&
@@ -477,11 +481,14 @@ void Preprocess::moveKillPrivs(HeapAssignment &asgn) {
        exclusivelyKillAUs2.insert(au);
   }
 
+  /*
   for (auto au : exclusivelyKillAUs1) {
     privs.erase(au);
     kills.insert(au);
     killCount++;
   }
+  */
+
   for (auto au : exclusivelyKillAUs2) {
     privs.erase(au);
     kills.insert(au);
@@ -504,6 +511,20 @@ uint64_t Preprocess::collectRelevantAUs(const Value *ptr, const Read &spresults,
 
   return counter;
 }
+
+/*
+bool includedInAUSet(const Value *ptr, const Read &spresults, Ctx *loop_ctx,
+                     HeapAssignment::AUSet &relAUs) {
+  Ptrs aus;
+  assert(spresults.getUnderlyingAUs(ptr, loop_ctx, aus) &&
+         "Failed to create AU objects?!");
+  for (Ptrs::iterator i = aus.begin(), e = aus.end(); i != e; ++i) {
+    if (relAUs.count(i->au))
+      return true;
+  }
+  return false;
+}
+*/
 
 void Preprocess::init(ModuleLoops &mloops)
 {
@@ -630,13 +651,26 @@ void Preprocess::init(ModuleLoops &mloops)
           privUsed = true;
           collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
                              normalPrivAUs);
+          /*
+          if (includedInAUSet(privRemed->privPtr, spresults, loop_ctx,
+                              killPrivAUs) &&
+              privRemed->altPrivPtr) {
+            collectRelevantAUs(privRemed->altPrivPtr, spresults, loop_ctx,
+                               normalPrivAUs);
+          }
+          else {
+            collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
+                               normalPrivAUs);
+          }
+          */
         } else if (remed->getRemedyName().equals("priv-local-remedy")) {
           assert(false && "priv-local should be generated during classification");
           //collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
           //                   loop_ctx, localPrivAUs);
         } else if (remed->getRemedyName().equals("priv-full-overlap-remedy")) {
-          collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
-                             killPrivAUs);
+          assert(false && "priv-full-overlap should be generated during classification");
+          //collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
+          //                   killPrivAUs);
         }
       }
     }
@@ -681,11 +715,11 @@ void Preprocess::init(ModuleLoops &mloops)
     }
   }
 
-  DEBUG(errs() << "normalPrivAUs: " << normalCount << '\n');
+  DEBUG(errs() << "normalPrivAUs: " << normalPrivAUs.size() << '\n');
   //DEBUG(errs() << "localPrivAUs: " << localCount << '\n');
-  DEBUG(errs() << "killPrivAUs: " << killCount << '\n');
+  //DEBUG(errs() << "new killPrivAUs: " << killCount << '\n');
   DEBUG(errs() << "predPrivAUs: " << predCount << '\n');
-  /* DEBUG(errs() << "privateerPrivAUs: " << privateerCount << '\n'); */
+  DEBUG(errs() << "privateerPrivAUs: " << privateerPrivAUs.size() << '\n');
   DEBUG(errs() << "sharedPrivAUs: " << sharedCount << '\n');
 }
 
