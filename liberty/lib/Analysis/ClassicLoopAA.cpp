@@ -81,8 +81,16 @@ LoopAA::ModRefResult ClassicLoopAA::modrefAvoidExpRemeds(
     if (chainRes <= MR && chainRes != LoopAA::ModRef &&
         (!containsExpensiveRemeds(chainRemeds) ||
          totalRemedCost(chainRemeds) < totalRemedCost(tmpR))) {
+
       for (auto remed : chainRemeds)
         R.insert(remed);
+
+      if (ModRefResult(MR & chainRes) != chainRes) {
+        chainRes = ModRefResult(MR & chainRes);
+        for (auto remed : tmpR)
+          R.insert(remed);
+      }
+
       return chainRes;
     }
   }
