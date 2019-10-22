@@ -143,14 +143,6 @@ bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
   return false;
 }
 
-bool PrivAA::hasUsedFullOverlapPrivAUs(const Ptrs &aus) {
-  for (auto au: aus) {
-    if (usedFullOverlapPrivAUs.count(au.au))
-      return true;
-  }
-  return false;
-}
-
 LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
                                   TemporalRelation rel, const Value *P2,
                                   unsigned S2, const Loop *L, Remedies &R) {
@@ -168,23 +160,25 @@ LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
   remedy->cost = DEFAULT_PRIV_REMED_COST;
   remedy->type = PrivRemedy::Normal;
   remedy->localPtr = nullptr;
+  remedy->altPrivPtr = nullptr;
 
   Remedies Ra, Rb, tmpR;
   Ptrs ausA, ausB;
 
   bool privateA = isCheapPrivate(nullptr, &P1, L, Ra, ausA);
   bool privateB = isCheapPrivate(nullptr, &P2, L, Rb, ausB);
-  if (privateA && (!privateB || usedCheapPrivPtrs.count(P1) ||
-                   !hasUsedFullOverlapPrivAUs(ausA))) {
+  if (privateA) {
     for (auto remed : Ra)
       tmpR.insert(remed);
     remedy->privPtr = P1;
-    usedCheapPrivPtrs.insert(P1);
-  } else {
+    if (privateB)
+      remedy->altPrivPtr = P2;
+  } else if (privateB) {
     for (auto remed : Rb)
       tmpR.insert(remed);
     remedy->privPtr = P2;
-    usedCheapPrivPtrs.insert(P2);
+    if (privateA)
+      remedy->altPrivPtr = P1;
   }
 
   if (!privateA && !privateB)
@@ -246,6 +240,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   remedy->cost = DEFAULT_PRIV_REMED_COST;
   remedy->type = PrivRemedy::Normal;
   remedy->localPtr = nullptr;
+  remedy->altPrivPtr = nullptr;
 
   Remedies Ra, Rb, tmpR;
   Ptrs ausA, ausB;
@@ -253,17 +248,18 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
 
   bool privateA = isCheapPrivate(A, &ptrA, L, Ra, ausA);
   bool privateB = isCheapPrivate(nullptr, &ptrB, L, Rb, ausB);
-  if (privateA && (!privateB || usedCheapPrivPtrs.count(ptrA) ||
-                   !hasUsedFullOverlapPrivAUs(ausA))) {
+  if (privateA) {
     for (auto remed : Ra)
       tmpR.insert(remed);
     remedy->privPtr = ptrA;
-    usedCheapPrivPtrs.insert(ptrA);
-  } else {
+    if (privateB)
+      remedy->altPrivPtr = ptrB;
+  } else if (privateB) {
     for (auto remed : Rb)
       tmpR.insert(remed);
     remedy->privPtr = ptrB;
-    usedCheapPrivPtrs.insert(ptrB);
+    if (privateA)
+      remedy->altPrivPtr = ptrA;
   }
 
   if (!privateA && !privateB)
@@ -286,6 +282,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   remedy->type = PrivRemedy::Normal;
   remedy->cost = DEFAULT_PRIV_REMED_COST;
   remedy->localPtr = nullptr;
+  remedy->altPrivPtr = nullptr;
 
   Remedies Ra, Rb, tmpR;
   Ptrs ausA, ausB;
@@ -293,17 +290,18 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
 
   bool privateA = isCheapPrivate(A, &ptrA, L, Ra, ausA);
   bool privateB = isCheapPrivate(B, &ptrB, L, Rb, ausB);
-  if (privateA && (!privateB || usedCheapPrivPtrs.count(ptrA) ||
-                   !hasUsedFullOverlapPrivAUs(ausA))) {
+  if (privateA) {
     for (auto remed : Ra)
       tmpR.insert(remed);
     remedy->privPtr = ptrA;
-    usedCheapPrivPtrs.insert(ptrA);
+    if (privateB)
+      remedy->altPrivPtr = ptrB;
   } else if (privateB) {
     for (auto remed : Rb)
       tmpR.insert(remed);
     remedy->privPtr = ptrB;
-    usedCheapPrivPtrs.insert(ptrB);
+    if (privateA)
+      remedy->altPrivPtr = ptrA;
   }
 
   if (!privateA && !privateB)
@@ -312,6 +310,10 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   // it can disprove deps but not necesserily cheaply
   tmpR.insert(remedy);
   ++numPrivNoMemDep;
+
+  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+
+  /*
 
   // check for full-overlap priv
   //
@@ -337,23 +339,27 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
       // check that A is killed by B
 
       if (!L)
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       if (!ptrA)
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       const BasicBlock *bbA = A->getParent();
       const BasicBlock *bbB = B->getParent();
       // dominance info are intra-procedural
       if (bbA->getParent() != bbB->getParent())
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
       const DominatorTree *dt = killFlow.getDT(bbA->getParent());
 
       // collect the chain of all idom from A
       DomTreeNode *nodeA = dt->getNode(const_cast<BasicBlock *>(bbA));
       DomTreeNode *nodeB = dt->getNode(const_cast<BasicBlock *>(bbB));
       if (!nodeA || !nodeB)
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       std::unordered_set<DomTreeNode *> idomChainA;
       for (DomTreeNode *n = nodeA; n; n = n->getIDom()) {
@@ -376,7 +382,8 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
         }
       }
       if (!commonDom)
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       if (commonDom == B->getParent()) {
         if (killFlow.instMustKill(B, ptrA, 0, 0, L)) {
@@ -396,21 +403,25 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
           commonDomNode = commonDomNode->getIDom();
           commonDom = commonDomNode->getBlock();
           if (!commonDom || !L->contains(commonDom))
-            return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+            return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                          tmpR, privA);
         }
       }
 
       if (!killFlow.blockMustKill(commonDom, ptrA, nullptr, A, 0, 0, L))
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       // the following check if not enough for correlation
       // if (!killFlow.pointerKilledBefore(L, ptrA, A) &&
       //    !killFlow.pointerKilledBefore(L, ptrB, A))
-      //  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+      //  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+      //  privA);
       // the following check is too conservative and misses fullOverlap
       // opportunities. Need to use killflow
       // if (!isPointerKillBefore(L, ptrA, A, true))
-      //  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+      //  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+      //  privA);
 
       // treat it as full_overlap. if it is not a fullOverlap there will be
       // self-WAW for either A or B that will not be reported as FullOverlap and
@@ -453,10 +464,12 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
 
     const BasicBlock *loopEntryBB = getLoopEntryBB(L);
     if (!loopEntryBB)
-      return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+      return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                    privA);
 
     if (loopEntryBB->getParent() != privStore->getFunction())
-      return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+      return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                    privA);
     const Loop *innerLoop = nullptr;
     if (pdt->dominates(privStore->getParent(), loopEntryBB)) {
       // private store executes on every iter of loop of interest
@@ -468,33 +481,42 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
       // reached.
       innerLoop = li->getLoopFor(privStore->getParent());
       if (!innerLoop)
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
       if (innerLoop->getHeader()->getParent() != loopEntryBB->getParent())
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
       // check that store executes on every iter of inner loop
       const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
       if (!innerLoopEntryBB)
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
       if (!pdt->dominates(privStore->getParent(), innerLoopEntryBB))
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
       // check that the inner loop that contains the store is a subloop of the
       // loop of interest
       if (!L->contains(innerLoop))
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       // go over all the parent loops until the loop of interest is reached
       const Loop *parentL = innerLoop->getParentLoop();
       const Loop *childL = innerLoop;
       do {
         if (!parentL)
-          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                        privA);
         const BasicBlock *parLEntryBB = getLoopEntryBB(parentL);
         if (!parLEntryBB)
-          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                        privA);
         if (childL->getHeader()->getParent() != parLEntryBB->getParent())
-          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                        privA);
         if (!pdt->dominates(childL->getHeader(), parLEntryBB))
-          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                        privA);
         const Loop *tmpL = parentL;
         parentL = parentL->getParentLoop();
         childL = tmpL;
@@ -517,7 +539,8 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
       // the base pointer of the gep should be loop-invariant (no support
       // yet for 2D arrays etc.)
       if (!isLoopInvariantValue(gep->getPointerOperand(), L))
-        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+        return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                      privA);
 
       // traverse all the indices of the gep, make sure that they are all
       // constant or affine SCEVAddRecExpr (to loops with loop-invariant trip
@@ -532,39 +555,48 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
           if (const SCEVAddRecExpr *addRec = dyn_cast<SCEVAddRecExpr>(
                   se->getSCEV(const_cast<Value *>(idxV)))) {
             if (!addRec)
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
             if (!addRec->isAffine())
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
 
             if (scevLoop && scevLoop != addRec->getLoop())
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
             scevLoop = addRec->getLoop();
             // if (scevLoop == L || !L->contains(scevLoop))
             if (scevLoop != innerLoop)
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
 
             // check for loop-invariant offset from base pointer (start, step
             // and loop trip count)
 
             if (!se->hasLoopInvariantBackedgeTakenCount(scevLoop))
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
 
             if (!isLoopInvariantSCEV(addRec->getStart(), L, se) ||
                 !isLoopInvariantSCEV(addRec->getStepRecurrence(*se), L, se))
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
 
           } else if (isa<SCEVUnknown>(se->getSCEV(const_cast<Value *>(idxV)))) {
             // detect pseudo-canonical IV (0, +, 1) and return max value
             auto limit = getLimitUnknown(idxV, innerLoop);
             if (!innerLoop || !limit || !isLoopInvariantValue(limit, L))
-              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+              return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R,
+                                            tmpR, privA);
           }
 
         } else
-          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+          return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                        privA);
       }
     } else
-      return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+      return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR,
+                                    privA);
 
     // success. private store executes same number of times on every loop of
     // interest iter
@@ -579,7 +611,8 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
     return LoopAA::NoModRef;
   }
 
-  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR, privA);
+  */
 }
 
 } // namespace liberty
