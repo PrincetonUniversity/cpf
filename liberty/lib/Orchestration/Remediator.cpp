@@ -117,9 +117,10 @@ namespace liberty
     return remedResp;
   }
 
-  // meant for RAW/WAW. ignores WAR (always resolved by memVer.)
-  const Value *Remediator::getPtrDepBased(const Instruction *I, bool rawDep,
-                                  bool srcI) {
+  // meant for RAW/WAW. ignores WAR (always resolved by memVer for free (in
+  // process based parallelization).
+  static const Value *getPtrDepBased(const Instruction *I, bool rawDep,
+                                     bool srcI) {
     const Value *ptr = liberty::getMemOper(I);
     // if ptr null, check for memcpy/memmove inst.
     // src pointer is read, dst pointer is written.
@@ -145,7 +146,11 @@ namespace liberty
     const Value *ptrDest = getPtrDepBased(dst, rawDep, false);
     LoopAA::ModRefResult aliasRes = LoopAA::ModRef;
     if (ptrSrc && ptrDest) {
-      if (LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize, FW, ptrDest,
+      if (LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize,
+                                       LoopAA::Same, ptrDest,
+                                       LoopAA::UnknownSize, loop, aliasTmpR) &&
+          LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize,
+                                       LoopAA::Before, ptrDest,
                                        LoopAA::UnknownSize, loop, aliasTmpR))
         aliasRes = LoopAA::NoModRef;
     }
