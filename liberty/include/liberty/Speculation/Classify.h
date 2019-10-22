@@ -208,6 +208,15 @@ private:
   bool getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx,
                         const CtxInst &dst, const Ctx *dst_ctx, AUs &aus,
                         bool printDbgFlows = true) const;
+
+  bool getUnderlyingAUs(const Instruction *srci, const Ctx *src_ctx,
+                        const Instruction *dsti, const Ctx *dst_ctx,
+                        const Read &spresults, AUs &aus) const;
+  bool getNoFullOverwritePrivAUs(Loop *loop, const Ctx *ctx,
+                                 HeapAssignment::AUSet &aus) const;
+  bool getNoFullOverwritePrivAUs(const Instruction *A, const Instruction *B,
+                                 const Loop *L, HeapAssignment::AUSet &aus,
+                                 KillFlow &kill) const;
 };
 
 }
