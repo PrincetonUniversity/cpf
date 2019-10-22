@@ -24,6 +24,8 @@
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Utilities/GepRange.h"
+#include "liberty/Utilities/GetMemOper.h"
 #include "liberty/Utilities/GlobalMalloc.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/StableHash.h"
@@ -201,6 +203,23 @@ static void union_into(const ReduxAUs &a, AUs &out)
   {
     AU *au = i->first;
     out.push_back(au);
+  }
+}
+
+static void union_into(const AUs &a, AUs &out)
+{
+  for(AUs::const_iterator i=a.begin(), e=a.end(); i!=e; ++i)
+  {
+    AU *au = *i;
+    out.push_back(au);
+  }
+}
+
+static void union_into(const AUs &a, HeapAssignment::AUSet &out) {
+  for(AUs::const_iterator i=a.begin(), e=a.end(); i!=e; ++i)
+  {
+    AU *au = *i;
+    out.insert(au);
   }
 }
 
@@ -426,6 +445,484 @@ bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx,
              << dst << "\n\n";
     }
   });
+
+  return true;
+}
+
+static BasicBlock *getLoopEntryBB(const Loop *loop) {
+  BasicBlock *header = loop->getHeader();
+  BranchInst *term = dyn_cast<BranchInst>(header->getTerminator());
+  BasicBlock *headerSingleInLoopSucc = nullptr;
+  if (term) {
+    for (unsigned sn = 0; sn < term->getNumSuccessors(); ++sn) {
+      BasicBlock *succ = term->getSuccessor(sn);
+      if (loop->contains(succ)) {
+        if (headerSingleInLoopSucc) {
+          headerSingleInLoopSucc = nullptr;
+          break;
+        } else
+          headerSingleInLoopSucc = succ;
+      }
+    }
+  }
+  return headerSingleInLoopSucc;
+}
+
+static bool isTransLoopInvariant(const Value *val, const Loop *L) {
+  if (L->isLoopInvariant(val))
+    return true;
+
+  if (auto inst = dyn_cast<Instruction>(val)) {
+
+    // limit to only arithmetic/logic ops
+    if (!inst->isBinaryOp() && !inst->isCast() && !inst->isLogicalShift() &&
+        !inst->isArithmeticShift() && !inst->isBitwiseLogicOp())
+      return false;
+
+    for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
+      if (!isTransLoopInvariant(inst->getOperand(i), L))
+        return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool isLoopInvariantValue(const Value *V, const Loop *L) {
+  if (L->isLoopInvariant(V)) {
+    return true;
+  } else if (isTransLoopInvariant(V, L)) {
+    return true;
+  } else if (const GlobalValue *globalSrc = liberty::findGlobalSource(V)) {
+    return isLoopInvariantGlobal(globalSrc, L);
+  } else
+    return false;
+}
+
+static bool extractValuesInSCEV(const SCEV *scev,
+                                std::unordered_set<const Value *> &involvedVals,
+                                ScalarEvolution *se) {
+  if (!scev)
+    return false;
+
+  if (auto unknown = dyn_cast<SCEVUnknown>(scev)) {
+    involvedVals.insert(unknown->getValue());
+    return true;
+  } else if (isa<SCEVConstant>(scev))
+    return true;
+  else if (auto *cast = dyn_cast<SCEVCastExpr>(scev))
+    return extractValuesInSCEV(cast->getOperand(), involvedVals, se);
+  else if (auto nary = dyn_cast<SCEVNAryExpr>(scev)) {
+    for (unsigned i = 0; i < nary->getNumOperands(); ++i) {
+      if (!extractValuesInSCEV(nary->getOperand(i), involvedVals, se))
+        return false;
+    }
+    return true;
+  } else if (auto udiv = dyn_cast<SCEVUDivExpr>(scev)) {
+    if (!extractValuesInSCEV(udiv->getLHS(), involvedVals, se))
+      return false;
+    return extractValuesInSCEV(udiv->getRHS(), involvedVals, se);
+  } else if (isa<SCEVCouldNotCompute>(scev))
+    return false;
+  else
+    // if any other type of SCEV is introduced, conservatively return false
+    return false;
+}
+
+static bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
+                                ScalarEvolution *se) {
+  if (se->isLoopInvariant(scev, L))
+    return true;
+  std::unordered_set<const Value *> involvedVals;
+  bool success = extractValuesInSCEV(scev, involvedVals, se);
+  if (!success)
+    return false;
+  bool allLoopInvariant = true;
+  for (auto val : involvedVals) {
+    allLoopInvariant &= isLoopInvariantValue(val, L);
+    if (!allLoopInvariant)
+      break;
+  }
+  return allLoopInvariant;
+}
+
+bool Classify::getNoFullOverwritePrivAUs(Loop *loop, const Ctx *ctx,
+                                         HeapAssignment::AUSet &aus) const {
+  KillFlow &kill = getAnalysis<KillFlow>();
+  ControlSpeculation *ctrlspec =
+      getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+  ctrlspec->setLoopOfInterest(loop->getHeader());
+
+  for (Loop::block_iterator i = loop->block_begin(), e = loop->block_end();
+       i != e; ++i) {
+    BasicBlock *srcbb = *i;
+    if (ctrlspec->isSpeculativelyDead(srcbb))
+      continue;
+
+    for (BasicBlock::iterator j = srcbb->begin(), f = srcbb->end(); j != f;
+         ++j) {
+      Instruction *src = &*j;
+      if (!src->mayWriteToMemory())
+        continue;
+
+      for (Loop::block_iterator k = loop->block_begin(); k != e; ++k) {
+        BasicBlock *dstbb = *k;
+        if (ctrlspec->isSpeculativelyDead(dstbb))
+          continue;
+
+        for (BasicBlock::iterator l = dstbb->begin(), h = dstbb->end(); l != h;
+             ++l) {
+          Instruction *dst = &*l;
+          if (!dst->mayWriteToMemory())
+            continue;
+
+          // check if WAW from src to dst is full-overwrite
+          if (!getNoFullOverwritePrivAUs(src, dst, loop, aus, kill))
+            return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+static const Value *getIPtr(const Instruction *I) {
+  const Value *ptr = liberty::getMemOper(I);
+
+  if (!ptr) {
+    if (const MemTransferInst *mti = dyn_cast<MemTransferInst>(I)) {
+      ptr = mti->getRawDest();
+    }
+  }
+  return ptr;
+}
+
+static bool noFullOverwrite(const AUs auWriteUnion,
+                            HeapAssignment::AUSet &aus) {
+  union_into(auWriteUnion, aus);
+
+  //for (auto au: auWriteUnion)
+  //  errs() << "noFullOverwrite: " << *au->value << "\n";
+
+  return true;
+}
+
+bool Classify::getNoFullOverwritePrivAUs(const Instruction *A,
+                                         const Instruction *B, const Loop *L,
+                                         HeapAssignment::AUSet &aus,
+                                         KillFlow &kill) const {
+
+  LoopAA *top = kill.getTopAA();
+  Remedies R;
+
+  // TODO: maybe avoid expensive remedies
+  // use of points-to can be allowed with smart subheaping
+  if (Remediator::noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, top,
+                              false, R))
+    return true;
+
+  const Read &spresults = getAnalysis<ReadPass>().getProfileInfo();
+  const Ctx *ctx = spresults.getCtx(L);
+
+  AUs auWriteUnion;
+  if (!getUnderlyingAUs(A, ctx, B, ctx, spresults, auWriteUnion))
+    return false;
+
+  if (auWriteUnion.empty())
+    return true;
+
+  const Value *ptrA = getIPtr(A);
+
+  ModuleLoops &mloops = getAnalysis< ModuleLoops >();
+  Function *f = L->getHeader()->getParent();
+  PostDominatorTree *pdt = &mloops.getAnalysis_PostDominatorTree(f);
+  LoopInfo *li = &mloops.getAnalysis_LoopInfo(f);
+  ScalarEvolution *se = &mloops.getAnalysis_ScalarEvolution(f);
+
+  // check for full-overlap priv
+  //
+  // need to be loop-carried WAW (two stores involved) where the privitizable
+  // store is either A or B
+  if (isa<StoreInst>(A) && isa<StoreInst>(B)) {
+
+    if (A != B) {
+      // want to cover cases such as this one:
+      // for (..)  {
+      //   x = ...   (B)
+      //   ...
+      //   x = ...   (A)
+      // }
+      // In this case self-WAW of A is killed by B and vice-versa but there is
+      // still a LC WAW from A to B. This LC WAW can be ignored provided that B
+      // overwrites the memory footprint of A. If not then it is likely that
+      // there is no self-WAW LC dep but there is a real non-full-overwrite WAW
+      // from A to B. Covariance benchmark from Polybench exhibits this case
+      // (A: symmat[j2][j1] = ...  , B: symmat[j1][j2] = 0.0;).
+      // Correlation exhibits a similar issue.
+      //
+      // check that A is killed by B
+
+      if (!L)
+        return noFullOverwrite(auWriteUnion, aus);
+
+      if (!ptrA)
+        return noFullOverwrite(auWriteUnion, aus);
+
+      const BasicBlock *bbA = A->getParent();
+      const BasicBlock *bbB = B->getParent();
+      // dominance info are intra-procedural
+      if (bbA->getParent() != bbB->getParent())
+        return noFullOverwrite(auWriteUnion, aus);
+      const DominatorTree *dt = kill.getDT(bbA->getParent());
+
+      // collect the chain of all idom from A
+      DomTreeNode *nodeA = dt->getNode(const_cast<BasicBlock *>(bbA));
+      DomTreeNode *nodeB = dt->getNode(const_cast<BasicBlock *>(bbB));
+      if (!nodeA || !nodeB)
+        return noFullOverwrite(auWriteUnion, aus);
+
+      std::unordered_set<DomTreeNode *> idomChainA;
+      for (DomTreeNode *n = nodeA; n; n = n->getIDom()) {
+        const BasicBlock *bb = n->getBlock();
+        if (!bb || !L->contains(bb))
+          break;
+        idomChainA.insert(n);
+      }
+
+      const BasicBlock *commonDom = nullptr;
+      DomTreeNode *commonDomNode = nullptr;
+      for (DomTreeNode *n = nodeB; n; n = n->getIDom()) {
+        const BasicBlock *bb = n->getBlock();
+        if (!bb || !L->contains(bb))
+          break;
+        if (idomChainA.count(n)) {
+          commonDom = bb;
+          commonDomNode = n;
+          break;
+        }
+      }
+      if (!commonDom)
+        return noFullOverwrite(auWriteUnion, aus);
+
+      if (commonDom == B->getParent()) {
+        if (kill.instMustKill(B, ptrA, 0, 0, L)) {
+          return true;
+        } else {
+          commonDomNode = commonDomNode->getIDom();
+          commonDom = commonDomNode->getBlock();
+          if (!commonDom || !L->contains(commonDom))
+            return noFullOverwrite(auWriteUnion, aus);
+        }
+      }
+
+      if (!kill.blockMustKill(commonDom, ptrA, nullptr, A, 0, 0, L))
+        return noFullOverwrite(auWriteUnion, aus);
+
+      // the following check if not enough for correlation
+      // if (!kill.pointerKilledBefore(L, ptrA, A) &&
+      //    !kill.pointerKilledBefore(L, ptrB, A))
+      //  return lookForCheaperNoModRef(A, ptrA, rel, B, nullptr, 0, L, R, tmpR,
+      //  privA);
+      // the following check is too conservative and misses fullOverlap
+      // opportunities. Need to use killflow
+      // if (!isPointerKillBefore(L, ptrA, A, true))
+      //  return lookForCheaperNoModRef(A, ptrA, rel, B, nullptr, 0, L, R, tmpR,
+      //  privA);
+
+      // treat it as full_overlap. if it is not a fullOverlap there will be
+      // self-WAW for either A or B that will not be reported as FullOverlap and
+      // the underlying AUs will remain in the private family
+
+      return true;
+    }
+
+    // A == B
+    const StoreInst *privStore = dyn_cast<StoreInst>(A);
+
+    // evaluate if the private store overwrites the same memory locations and
+    // executes the same number of times for every iteration of the loop of
+    // interest. If full-overlap is proved for this write then assign
+    // PrivRemedy::FullOverlap type to the remedy.
+
+    // ensure that on every iter of loop of interest the private store will
+    // execute the same number of times.
+    //
+    // the most accurate approach would be to explore all the ctrl deps until
+    // you reach the branch of the header of the loop of interest.
+    //
+    // for now we use a more conservative but a bit simpler approach.
+    // check if the private store executes on every iter of the loop of interest
+    // or in every iter of an inner loop which executes on every iter of outer
+    // loop. This approach address only loop depth of 1 and does not take
+    // advantage of loop-invariant if-statements; still in practise is very
+    // common. Note also that this approach requires that all involved BBs are
+    // in the same function (postdominator is intraprocedural)
+
+    const BasicBlock *loopEntryBB = getLoopEntryBB(L);
+    if (!loopEntryBB)
+      return noFullOverwrite(auWriteUnion, aus);
+
+    if (loopEntryBB->getParent() != privStore->getFunction())
+      return noFullOverwrite(auWriteUnion, aus);
+    const Loop *innerLoop = nullptr;
+    if (pdt->dominates(privStore->getParent(), loopEntryBB)) {
+      // private store executes on every iter of loop of interest
+    } else {
+      // private store does not postdominate loop of interest entry BB.
+      // check if private store executes on every iter of an inner loop and the
+      // header of inner loop executes on every iter of its parent loop. check
+      // same properties on every parent loop until the loop of interest is
+      // reached.
+      innerLoop = li->getLoopFor(privStore->getParent());
+      if (!innerLoop)
+        return noFullOverwrite(auWriteUnion, aus);
+      if (innerLoop->getHeader()->getParent() != loopEntryBB->getParent())
+        return noFullOverwrite(auWriteUnion, aus);
+      // check that store executes on every iter of inner loop
+      const BasicBlock *innerLoopEntryBB = getLoopEntryBB(innerLoop);
+      if (!innerLoopEntryBB)
+        return noFullOverwrite(auWriteUnion, aus);
+      if (!pdt->dominates(privStore->getParent(), innerLoopEntryBB))
+        return noFullOverwrite(auWriteUnion, aus);
+      // check that the inner loop that contains the store is a subloop of the
+      // loop of interest
+      if (!L->contains(innerLoop))
+        return noFullOverwrite(auWriteUnion, aus);
+
+      // go over all the parent loops until the loop of interest is reached
+      const Loop *parentL = innerLoop->getParentLoop();
+      const Loop *childL = innerLoop;
+      do {
+        if (!parentL)
+          return noFullOverwrite(auWriteUnion, aus);
+        const BasicBlock *parLEntryBB = getLoopEntryBB(parentL);
+        if (!parLEntryBB)
+          return noFullOverwrite(auWriteUnion, aus);
+        if (childL->getHeader()->getParent() != parLEntryBB->getParent())
+          return noFullOverwrite(auWriteUnion, aus);
+        if (!pdt->dominates(childL->getHeader(), parLEntryBB))
+          return noFullOverwrite(auWriteUnion, aus);
+        const Loop *tmpL = parentL;
+        parentL = parentL->getParentLoop();
+        childL = tmpL;
+      } while (childL != L);
+    }
+
+    // check if address of store is either a loop-invariant (to the loop of
+    // interest), or a gep with only constant or affine SCEVAddRecExpr (to loop
+    // with loop-invariant trip counts) indices
+    //
+    const Value *ptrPrivStore = privStore->getPointerOperand();
+    const Loop *scevLoop = nullptr;
+    if (L->isLoopInvariant(ptrPrivStore)) {
+      // good
+    } else if (isa<GlobalValue>(ptrPrivStore)) {
+      // good
+    } else if (isa<GetElementPtrInst>(ptrPrivStore)) {
+      const GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptrPrivStore);
+
+      // the base pointer of the gep should be loop-invariant (no support
+      // yet for 2D arrays etc.)
+      if (!isLoopInvariantValue(gep->getPointerOperand(), L))
+        return noFullOverwrite(auWriteUnion, aus);
+
+      // traverse all the indices of the gep, make sure that they are all
+      // constant or affine SCEVAddRecExpr (to loops with loop-invariant trip
+      // counts, and with loop-invariant step, start and limit/max_val).
+      for (auto idx = gep->idx_begin(); idx != gep->idx_end(); ++idx) {
+        const Value *idxV = *idx;
+        if (L->isLoopInvariant(idxV))
+          continue;
+        else if (isTransLoopInvariant(idxV, L))
+          continue;
+        else if (se->isSCEVable(idxV->getType())) {
+          if (const SCEVAddRecExpr *addRec = dyn_cast<SCEVAddRecExpr>(
+                  se->getSCEV(const_cast<Value *>(idxV)))) {
+            if (!addRec)
+              return noFullOverwrite(auWriteUnion, aus);
+            if (!addRec->isAffine())
+              return noFullOverwrite(auWriteUnion, aus);
+
+            if (scevLoop && scevLoop != addRec->getLoop())
+              return noFullOverwrite(auWriteUnion, aus);
+
+            scevLoop = addRec->getLoop();
+            // if (scevLoop == L || !L->contains(scevLoop))
+            if (scevLoop != innerLoop)
+              return noFullOverwrite(auWriteUnion, aus);
+
+            // check for loop-invariant offset from base pointer (start, step
+            // and loop trip count)
+
+            if (!se->hasLoopInvariantBackedgeTakenCount(scevLoop))
+              return noFullOverwrite(auWriteUnion, aus);
+
+            if (!isLoopInvariantSCEV(addRec->getStart(), L, se) ||
+                !isLoopInvariantSCEV(addRec->getStepRecurrence(*se), L, se))
+              return noFullOverwrite(auWriteUnion, aus);
+
+          } else if (isa<SCEVUnknown>(se->getSCEV(const_cast<Value *>(idxV)))) {
+            // detect pseudo-canonical IV (0, +, 1) and return max value
+            auto limit = getLimitUnknown(idxV, innerLoop);
+            if (!innerLoop || !limit || !isLoopInvariantValue(limit, L))
+              return noFullOverwrite(auWriteUnion, aus);
+          }
+
+        } else
+          return noFullOverwrite(auWriteUnion, aus);
+      }
+    } else
+      return noFullOverwrite(auWriteUnion, aus);
+
+    // success. private store executes same number of times on every loop of
+    // interest iter
+    return true;
+  }
+
+  return noFullOverwrite(auWriteUnion, aus);
+}
+
+bool Classify::getUnderlyingAUs(const Instruction *srci, const Ctx *src_ctx,
+                                const Instruction *dsti, const Ctx *dst_ctx,
+                                const Read &spresults, AUs &aus) const {
+
+  // Footprint of operation ci
+  // It's valid to look only at the WRITE footprint,
+  // because we're talking about a flow dep.
+  AUs ri, wi;
+  ReduxAUs xi;
+  if (!spresults.getFootprint(srci, src_ctx, ri, wi, xi)) {
+    errs() << "Failed to get write footprint for: " << *srci << '\n';
+    return false;
+  }
+
+  union_into(xi, wi);
+
+  // We are allowed to do whatever with undefined behavior.
+  strip_undefined_objects(wi);
+
+  if (wi.empty())
+    return true;
+
+  AUs rj, wj;
+  ReduxAUs xj;
+  if (!spresults.getFootprint(dsti, dst_ctx, rj, wj, xj)) {
+    errs() << "Failed to get read footprint for: " << *dsti << '\n';
+    return false;
+  }
+
+  // rj ||= xj
+  union_into(xj, wj);
+
+  // We are allowed to do whatever with undefined behavior.
+  // I choose to remove them.
+  strip_undefined_objects(wj);
+
+  if (wj.empty())
+    return true;
+
+  union_into(wi, aus);
+  union_into(wj, aus);
 
   return true;
 }
@@ -721,6 +1218,22 @@ bool Classify::runOnLoop(Loop *loop)
     if (!au->value)
       continue;
     if (HeapAssignment::isLocalPrivateGlobalAU(au->value, loop)) {
+      killPrivAUs.insert(au);
+      privateAUs.erase(au);
+      cheapPrivAUs.erase(au);
+    }
+  }
+
+  // find full-overlap-private objects (assigned to killpriv)
+  HeapAssignment::AUSet noFullOverwritePriv;
+  if (!getNoFullOverwritePrivAUs(loop, ctx, noFullOverwritePriv)) {
+    DEBUG(errs() << "Wild object spoiled classification.\n");
+    return false;
+  }
+
+  for (auto i : cheapPrivAUs) {
+    AU *au = i.first;
+    if (!noFullOverwritePriv.count(au)) {
       killPrivAUs.insert(au);
       privateAUs.erase(au);
       cheapPrivAUs.erase(au);
