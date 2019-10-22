@@ -34,10 +34,14 @@ bool PrivRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<PrivRemedy> privRhs =
       std::static_pointer_cast<PrivRemedy>(rhs);
   if (this->privPtr == privRhs->privPtr) {
-    if (this->type == privRhs->type) {
-      return this->localPtr < privRhs->localPtr;
+    if (this->altPrivPtr == privRhs->altPrivPtr) {
+      if (this->type == privRhs->type) {
+        return this->localPtr < privRhs->localPtr;
+      } else {
+        return this->type < privRhs->type;
+      }
     } else {
-      return this->type < privRhs->type;
+      this->altPrivPtr < privRhs->altPrivPtr;
     }
   }
   return this->privPtr < privRhs->privPtr;
@@ -263,7 +267,7 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
   return true;
 }
 
-const Value *getPtr(const Instruction *I, DataDepType dataDepTy) {
+static const Value *getPtr(const Instruction *I, DataDepType dataDepTy) {
   const Value *ptr = liberty::getMemOper(I);
   // if ptr null, check for memcpy/memmove inst.
   // src pointer is read, dst pointer is written.
@@ -327,7 +331,7 @@ BasicBlock *getLoopEntryBB(const Loop *loop) {
   return headerSingleInLoopSucc;
 }
 
-bool isTransLoopInvariant(const Value *val, const Loop *L) {
+static bool isTransLoopInvariant(const Value *val, const Loop *L) {
   if (L->isLoopInvariant(val))
     return true;
 
@@ -347,7 +351,7 @@ bool isTransLoopInvariant(const Value *val, const Loop *L) {
   return false;
 }
 
-bool isLoopInvariantValue(const Value *V, const Loop *L) {
+static bool isLoopInvariantValue(const Value *V, const Loop *L) {
   if (L->isLoopInvariant(V)) {
     return true;
   } else if (isTransLoopInvariant(V, L)) {
@@ -358,9 +362,9 @@ bool isLoopInvariantValue(const Value *V, const Loop *L) {
     return false;
 }
 
-bool extractValuesInSCEV(const SCEV *scev,
-                         std::unordered_set<const Value *> &involvedVals,
-                         ScalarEvolution *se) {
+static bool extractValuesInSCEV(const SCEV *scev,
+                                std::unordered_set<const Value *> &involvedVals,
+                                ScalarEvolution *se) {
   if (!scev)
     return false;
 
@@ -388,7 +392,8 @@ bool extractValuesInSCEV(const SCEV *scev,
     return false;
 }
 
-bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L, ScalarEvolution *se) {
+static bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
+                                ScalarEvolution *se) {
   if (se->isLoopInvariant(scev, L))
     return true;
   std::unordered_set<const Value *> involvedVals;
