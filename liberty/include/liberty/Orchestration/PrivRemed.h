@@ -26,6 +26,7 @@ class PrivRemedy : public Remedy {
 public:
   //const StoreInst *storeI;
   const Value *privPtr;
+  const Value *altPrivPtr;
   const Value *localPtr;
   bool ctrlSpecUsed;
 
