@@ -127,7 +127,7 @@ bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
 
   if (I)
     *ptr = liberty::getMemOper(I);
-  if (!(*ptr))
+  if (!ptr || !(*ptr))
     return false;
   if (!isa<PointerType>((*ptr)->getType()))
     return false;
