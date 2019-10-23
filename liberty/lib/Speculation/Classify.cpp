@@ -114,8 +114,9 @@ bool Classify::runOnModule(Module &mod)
     PtrResidueAA ptrresaa(mod.getDataLayout(), ptrResMan);
     ptrresaa.InitializeLoopAA(this, mod.getDataLayout());
 
-    TXIOAA txioaa;
-    txioaa.InitializeLoopAA(this, mod.getDataLayout());
+    // leave IO to be shared
+    //TXIOAA txioaa;
+    //txioaa.InitializeLoopAA(this, mod.getDataLayout());
 
     CommutativeLibsAA commlibsaa;
     commlibsaa.InitializeLoopAA(this, mod.getDataLayout());
