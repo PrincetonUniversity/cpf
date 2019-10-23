@@ -54,6 +54,9 @@ private:
   const Ctx *ctx;
 
   unordered_set<const Value*> privateInsts;
+
+  void populateCheapPrivRemedies(Ptrs aus, Remedies &R);
+  void populateNoWAWRemedies(Ptrs aus, Remedies &R);
 };
 
 }
