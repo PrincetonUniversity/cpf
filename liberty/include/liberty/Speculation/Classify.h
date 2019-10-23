@@ -67,6 +67,7 @@ struct HeapAssignment : public UpdateOnClone
   static bool subOfAUSet(Ptrs &aus, const AUSet &auSet);
   static bool subOfAUSet(Ptrs &aus, const AUToRemeds &ausR);
   Remedies getRemedForPrivAUs(Ptrs &aus) const;
+  Remedies getRemedForNoWAW(Ptrs &aus) const;
 
   const AUSet &getSharedAUs() const;
   const AUSet &getLocalAUs() const;
@@ -74,6 +75,7 @@ struct HeapAssignment : public UpdateOnClone
   const AUSet &getKillPrivAUs() const;
   const AUSet &getReadOnlyAUs() const;
   const AUToRemeds &getCheapPrivAUs() const;
+  const AUToRemeds &getNoWAWRemeds() const;
   const ReduxAUSet &getReductionAUs() const;
   const ReduxDepAUSet &getReduxDepAUs() const;
   const ReduxRegAUSet &getReduxRegAUs() const;
@@ -94,6 +96,7 @@ struct HeapAssignment : public UpdateOnClone
   AUSet &getKillPrivAUs();
   AUSet &getReadOnlyAUs();
   AUToRemeds &getCheapPrivAUs();
+  AUToRemeds &getNoWAWRemeds();
   ReduxAUSet &getReductionAUs();
   ReduxDepAUSet &getReduxDepAUs();
   ReduxRegAUSet &getReduxRegAUs();
@@ -134,7 +137,7 @@ private:
   /// Sets of shared,local,private and read-only AUs
   /// indexed by loop within this function.
   AUSet shareds, locals, kill_privs, privs, ros;
-  AUToRemeds cheap_privs;
+  AUToRemeds cheap_privs, no_waw_remeds;
   ReduxAUSet reduxs;
   ReduxDepAUSet reduxdeps;
   ReduxRegAUSet reduxregs; // collects all the register reductions
@@ -214,10 +217,12 @@ private:
                         const Read &spresults, AUs &aus) const;
   bool getNoFullOverwritePrivAUs(Loop *loop, const Ctx *ctx,
                                  HeapAssignment::AUSet &aus,
-                                 HeapAssignment::AUSet &wawDepAUs) const;
+                                 HeapAssignment::AUSet &wawDepAUs,
+                                 HeapAssignment::AUToRemeds &noWAWRemeds) const;
   bool getNoFullOverwritePrivAUs(const Instruction *A, const Instruction *B,
                                  const Loop *L, HeapAssignment::AUSet &aus,
                                  HeapAssignment::AUSet &wawDepAUs,
+                                 HeapAssignment::AUToRemeds &noWAWRemeds,
                                  KillFlow &kill) const;
 };
 

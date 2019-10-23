@@ -549,7 +549,8 @@ static bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
 
 bool Classify::getNoFullOverwritePrivAUs(
     Loop *loop, const Ctx *ctx, HeapAssignment::AUSet &aus,
-    HeapAssignment::AUSet &wawDepAUs) const {
+    HeapAssignment::AUSet &wawDepAUs,
+    HeapAssignment::AUToRemeds &noWAWRemeds) const {
   KillFlow &kill = getAnalysis<KillFlow>();
   ControlSpeculation *ctrlspec =
       getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
@@ -579,7 +580,8 @@ bool Classify::getNoFullOverwritePrivAUs(
             continue;
 
           // check if WAW from src to dst is full-overwrite
-          if (!getNoFullOverwritePrivAUs(src, dst, loop, aus, wawDepAUs, kill))
+          if (!getNoFullOverwritePrivAUs(src, dst, loop, aus, wawDepAUs,
+                                         noWAWRemeds, kill))
             return false;
         }
       }
@@ -609,20 +611,12 @@ static bool noFullOverwrite(const AUs auWriteUnion,
   return true;
 }
 
-bool Classify::getNoFullOverwritePrivAUs(const Instruction *A,
-                                         const Instruction *B, const Loop *L,
-                                         HeapAssignment::AUSet &aus,
-                                         HeapAssignment::AUSet &wawDepAUs,
-                                         KillFlow &kill) const {
+bool Classify::getNoFullOverwritePrivAUs(
+    const Instruction *A, const Instruction *B, const Loop *L,
+    HeapAssignment::AUSet &aus, HeapAssignment::AUSet &wawDepAUs,
+    HeapAssignment::AUToRemeds &noWAWRemeds, KillFlow &kill) const {
 
   LoopAA *top = kill.getTopAA();
-  Remedies R;
-
-  // TODO: maybe avoid expensive remedies
-  // use of points-to can be allowed with smart subheaping
-  if (Remediator::noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, top,
-                              false, R))
-    return true;
 
   const Read &spresults = getAnalysis<ReadPass>().getProfileInfo();
   const Ctx *ctx = spresults.getCtx(L);
@@ -633,6 +627,21 @@ bool Classify::getNoFullOverwritePrivAUs(const Instruction *A,
 
   if (auWriteUnion.empty())
     return true;
+
+  Remedies R;
+
+  // TODO: maybe avoid expensive remedies
+  // use of points-to can be allowed with smart subheaping
+  // check for WAW dep
+  if (Remediator::noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, top,
+                              false, R, true)) {
+    for (auto au : auWriteUnion) {
+      for (auto remed : R) {
+        noWAWRemeds[au].insert(remed);
+      }
+    }
+    return true;
+  }
 
   // the auWriteUnion participate in WAW deps. collect them
   union_into(auWriteUnion, wawDepAUs);
@@ -1012,6 +1021,7 @@ bool Classify::runOnLoop(Loop *loop)
         &readOnlyAUs = assignment.getReadOnlyAUs();
   HeapAssignment::AUToRemeds &cheapPrivAUs = assignment.getCheapPrivAUs();
   HeapAssignment::ReduxAUSet &reductionAUs = assignment.getReductionAUs();
+  HeapAssignment::AUToRemeds &noWAWRemeds = assignment.getNoWAWRemeds();
 
   const Ctx *ctx = spresults.getCtx(loop);
 
@@ -1233,17 +1243,19 @@ bool Classify::runOnLoop(Loop *loop)
   // find full-overlap-private objects (assigned to killpriv)
   HeapAssignment::AUSet noFullOverwriteAUs;
   HeapAssignment::AUSet wawDepAUs;
-  if (!getNoFullOverwritePrivAUs(loop, ctx, noFullOverwriteAUs, wawDepAUs)) {
+  if (!getNoFullOverwritePrivAUs(loop, ctx, noFullOverwriteAUs, wawDepAUs,
+                                 noWAWRemeds)) {
     DEBUG(errs() << "Wild object spoiled classification.\n");
     return false;
   }
+
+  //TODO: need to take those into account when using killpriv and shareable
 
   for (auto i : cheapPrivAUs) {
     AU *au = i.first;
     if (!noFullOverwriteAUs.count(au) && wawDepAUs.count(au)) {
       killPrivAUs.insert(au);
       privateAUs.erase(au);
-      cheapPrivAUs.erase(au);
     }
   }
 
@@ -1800,12 +1812,26 @@ Remedies HeapAssignment::getRemedForPrivAUs(Ptrs &aus) const {
   return allR;
 }
 
+Remedies HeapAssignment::getRemedForNoWAW(Ptrs &aus) const {
+  Remedies allR;
+  for (unsigned i = 0; i < aus.size(); ++i) {
+    AU *au = aus[i].au;
+    if (au->type == AU_Null)
+      continue;
+    const Remedies &R = no_waw_remeds.at(au);
+    for (auto remed : R)
+      allR.insert(remed);
+  }
+  return allR;
+}
+
 HeapAssignment::AUSet &HeapAssignment::getSharedAUs() {  return shareds; }
 HeapAssignment::AUSet &HeapAssignment::getLocalAUs() { return locals; }
 HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() { return privs; }
 HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() { return kill_privs; }
 HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() { return ros; }
 HeapAssignment::AUToRemeds &HeapAssignment::getCheapPrivAUs() { return cheap_privs; }
+HeapAssignment::AUToRemeds &HeapAssignment::getNoWAWRemeds() { return no_waw_remeds; }
 HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() { return reduxs; }
 HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() { return reduxdeps; }
 HeapAssignment::ReduxRegAUSet &HeapAssignment::getReduxRegAUs() { return reduxregs; }
@@ -1816,6 +1842,7 @@ const HeapAssignment::AUSet &HeapAssignment::getPrivateAUs() const { return priv
 const HeapAssignment::AUSet &HeapAssignment::getKillPrivAUs() const { return kill_privs; }
 const HeapAssignment::AUSet &HeapAssignment::getReadOnlyAUs() const { return ros; }
 const HeapAssignment::AUToRemeds &HeapAssignment::getCheapPrivAUs() const { return cheap_privs; }
+const HeapAssignment::AUToRemeds &HeapAssignment::getNoWAWRemeds() const { return no_waw_remeds; }
 const HeapAssignment::ReduxAUSet &HeapAssignment::getReductionAUs() const { return reduxs; }
 const HeapAssignment::ReduxDepAUSet &HeapAssignment::getReduxDepAUs() const { return reduxdeps; }
 const HeapAssignment::ReduxRegAUSet &HeapAssignment::getReduxRegAUs() const { return reduxregs; }
