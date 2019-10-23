@@ -139,7 +139,8 @@ namespace liberty
   bool Remediator::noMemoryDep(const Instruction *src, const Instruction *dst,
                                LoopAA::TemporalRelation FW,
                                LoopAA::TemporalRelation RV, const Loop *loop,
-                               LoopAA *aa, bool rawDep, Remedies &R) {
+                               LoopAA *aa, bool rawDep, Remedies &R,
+                               bool onlyWawDep) {
     Remedies tmpR1, tmpR2, tmpR, aliasTmpR;
 
     const Value *ptrSrc = getPtrDepBased(src, rawDep, true);
@@ -217,7 +218,7 @@ namespace liberty
       return true;
     }
 
-    if (!rawDep && !WAR && !WAW) {
+    if (!rawDep && ((!WAR && !WAW) || (onlyWawDep && !WAW))) {
       for (auto remed : tmpR1)
         tmpR.insert(remed);
       for (auto remed : tmpR2)
