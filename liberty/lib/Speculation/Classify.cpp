@@ -547,8 +547,9 @@ static bool isLoopInvariantSCEV(const SCEV *scev, const Loop *L,
   return allLoopInvariant;
 }
 
-bool Classify::getNoFullOverwritePrivAUs(Loop *loop, const Ctx *ctx,
-                                         HeapAssignment::AUSet &aus) const {
+bool Classify::getNoFullOverwritePrivAUs(
+    Loop *loop, const Ctx *ctx, HeapAssignment::AUSet &aus,
+    HeapAssignment::AUSet &wawDepAUs) const {
   KillFlow &kill = getAnalysis<KillFlow>();
   ControlSpeculation *ctrlspec =
       getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
@@ -578,7 +579,7 @@ bool Classify::getNoFullOverwritePrivAUs(Loop *loop, const Ctx *ctx,
             continue;
 
           // check if WAW from src to dst is full-overwrite
-          if (!getNoFullOverwritePrivAUs(src, dst, loop, aus, kill))
+          if (!getNoFullOverwritePrivAUs(src, dst, loop, aus, wawDepAUs, kill))
             return false;
         }
       }
@@ -611,6 +612,7 @@ static bool noFullOverwrite(const AUs auWriteUnion,
 bool Classify::getNoFullOverwritePrivAUs(const Instruction *A,
                                          const Instruction *B, const Loop *L,
                                          HeapAssignment::AUSet &aus,
+                                         HeapAssignment::AUSet &wawDepAUs,
                                          KillFlow &kill) const {
 
   LoopAA *top = kill.getTopAA();
@@ -631,6 +633,9 @@ bool Classify::getNoFullOverwritePrivAUs(const Instruction *A,
 
   if (auWriteUnion.empty())
     return true;
+
+  // the auWriteUnion participate in WAW deps. collect them
+  union_into(auWriteUnion, wawDepAUs);
 
   const Value *ptrA = getIPtr(A);
 
@@ -1226,15 +1231,16 @@ bool Classify::runOnLoop(Loop *loop)
   }
 
   // find full-overlap-private objects (assigned to killpriv)
-  HeapAssignment::AUSet noFullOverwritePriv;
-  if (!getNoFullOverwritePrivAUs(loop, ctx, noFullOverwritePriv)) {
+  HeapAssignment::AUSet noFullOverwriteAUs;
+  HeapAssignment::AUSet wawDepAUs;
+  if (!getNoFullOverwritePrivAUs(loop, ctx, noFullOverwriteAUs, wawDepAUs)) {
     DEBUG(errs() << "Wild object spoiled classification.\n");
     return false;
   }
 
   for (auto i : cheapPrivAUs) {
     AU *au = i.first;
-    if (!noFullOverwritePriv.count(au)) {
+    if (!noFullOverwriteAUs.count(au) && wawDepAUs.count(au)) {
       killPrivAUs.insert(au);
       privateAUs.erase(au);
       cheapPrivAUs.erase(au);

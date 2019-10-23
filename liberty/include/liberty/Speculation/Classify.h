@@ -213,9 +213,11 @@ private:
                         const Instruction *dsti, const Ctx *dst_ctx,
                         const Read &spresults, AUs &aus) const;
   bool getNoFullOverwritePrivAUs(Loop *loop, const Ctx *ctx,
-                                 HeapAssignment::AUSet &aus) const;
+                                 HeapAssignment::AUSet &aus,
+                                 HeapAssignment::AUSet &wawDepAUs) const;
   bool getNoFullOverwritePrivAUs(const Instruction *A, const Instruction *B,
                                  const Loop *L, HeapAssignment::AUSet &aus,
+                                 HeapAssignment::AUSet &wawDepAUs,
                                  KillFlow &kill) const;
 };
 
