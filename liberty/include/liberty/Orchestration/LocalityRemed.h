@@ -59,6 +59,7 @@ public:
     Local,
     Private,
     KillPriv,
+    SharePriv,
     Separated,
     Subheaps,
     LocalityAA
@@ -95,6 +96,9 @@ public:
       break;
     case KillPriv:
       return "locality-kill-priv-remedy";
+      break;
+    case SharePriv:
+      return "locality-share-priv-remedy";
       break;
     case Separated:
       return "locality-separated-remedy";

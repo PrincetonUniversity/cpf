@@ -22,6 +22,10 @@
 #define KILLPRIV_ACCESS_COST 5
 #endif
 
+#ifndef SHAREPRIV_ACCESS_COST
+#define SHAREPRIV_ACCESS_COST 35
+#endif
+
 namespace liberty
 {
 using namespace llvm;
@@ -30,10 +34,23 @@ STATISTIC(numEligible,        "Num eligible queries");
 STATISTIC(numPrivatizedPriv,  "Num privatized (Private)");
 STATISTIC(numPrivatizedRedux, "Num privatized (Redux)");
 STATISTIC(numPrivatizedShort, "Num privatized (Short-lived)");
+STATISTIC(numPrivatizedSharedPriv,  "Num privatized (Shared)");
 STATISTIC(numSeparated,       "Num separated");
 STATISTIC(numReusedPriv,      "Num avoid extra private inst");
 STATISTIC(numUnclassifiedPtrs,"Num of unclassified pointers");
 STATISTIC(numSubSep,          "Num separated via subheaps");
+
+void LocalityAA::populateCheapPrivRemedies(Ptrs aus, Remedies &R) {
+  Remedies privR = asgn.getRemedForPrivAUs(aus);
+  for (auto remed : privR)
+    R.insert(remed);
+}
+
+void LocalityAA::populateNoWAWRemedies(Ptrs aus, Remedies &R) {
+  Remedies noWawR = asgn.getRemedForNoWAW(aus);
+  for (auto remed : noWawR)
+    R.insert(remed);
+}
 
 LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
                                       TemporalRelation rel, const Value *P2,
@@ -88,6 +105,14 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
+        populateCheapPrivRemedies(aus1, R);
+        populateNoWAWRemedies(aus1, R);
+      } else if (t1 == HeapAssignment::SharePrivate) {
+        ++numPrivatizedSharedPriv;
+        remedy->cost += SHAREPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::SharePriv;
+        populateCheapPrivRemedies(aus1, R);
+        populateNoWAWRemedies(aus1, R);
       } else {
         ++numPrivatizedRedux;
         //if (auto sA = dyn_cast<StoreInst>(A))
@@ -109,6 +134,14 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
+        populateCheapPrivRemedies(aus2, R);
+        populateNoWAWRemedies(aus2, R);
+      } else if (t2 == HeapAssignment::SharePrivate) {
+        ++numPrivatizedSharedPriv;
+        remedy->cost += SHAREPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::SharePriv;
+        populateCheapPrivRemedies(aus2, R);
+        populateNoWAWRemedies(aus2, R);
       } else {
         ++numPrivatizedRedux;
         //if (auto sB = dyn_cast<StoreInst>(B))
@@ -213,6 +246,14 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
+        populateCheapPrivRemedies(aus1, R);
+        populateNoWAWRemedies(aus1, R);
+      } else if (t1 == HeapAssignment::SharePrivate) {
+        ++numPrivatizedSharedPriv;
+        remedy->cost += SHAREPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::SharePriv;
+        populateCheapPrivRemedies(aus1, R);
+        populateNoWAWRemedies(aus1, R);
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -234,6 +275,14 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
+        populateCheapPrivRemedies(aus2, R);
+        populateNoWAWRemedies(aus2, R);
+      } else if (t2 == HeapAssignment::SharePrivate) {
+        ++numPrivatizedSharedPriv;
+        remedy->cost += SHAREPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::SharePriv;
+        populateCheapPrivRemedies(aus2, R);
+        populateNoWAWRemedies(aus2, R);
       } else {
         ++numPrivatizedRedux;
         //if (auto sB = dyn_cast<StoreInst>(B))
@@ -352,6 +401,14 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
+        populateCheapPrivRemedies(aus1, R);
+        populateNoWAWRemedies(aus1, R);
+      } else if (t1 == HeapAssignment::SharePrivate) {
+        ++numPrivatizedSharedPriv;
+        remedy->cost += SHAREPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::SharePriv;
+        populateCheapPrivRemedies(aus1, R);
+        populateNoWAWRemedies(aus1, R);
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -373,6 +430,14 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
+        populateCheapPrivRemedies(aus2, R);
+        populateNoWAWRemedies(aus2, R);
+      } else if (t2 == HeapAssignment::SharePrivate) {
+        ++numPrivatizedSharedPriv;
+        remedy->cost += SHAREPRIV_ACCESS_COST;
+        remedy->type = LocalityRemedy::SharePriv;
+        populateCheapPrivRemedies(aus2, R);
+        populateNoWAWRemedies(aus2, R);
       } else {
         ++numPrivatizedRedux;
         if (auto sB = dyn_cast<StoreInst>(B))
