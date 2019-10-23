@@ -915,6 +915,7 @@ bool ApplySeparationSpec::reallocateStaticAUs()
   modified |= reallocateGlobals(asgn, asgn.getLocalAUs(),    HeapAssignment::Local );
   modified |= reallocateGlobals(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
   modified |= reallocateGlobals(asgn, asgn.getKillPrivAUs(), HeapAssignment::KillPrivate );
+  modified |= reallocateGlobals(asgn, asgn.getSharePrivAUs(), HeapAssignment::SharePrivate );
   modified |= reallocateGlobals(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
   modified |= reallocateGlobals(asgn, asgn.getReductionAUs());
@@ -1266,6 +1267,7 @@ bool ApplySeparationSpec::reallocateDynamicAUs()
   modified |= reallocateInst(asgn, asgn.getLocalAUs(),    HeapAssignment::Local );
   modified |= reallocateInst(asgn, asgn.getPrivateAUs(),  HeapAssignment::Private );
   modified |= reallocateInst(asgn, asgn.getKillPrivAUs(),  HeapAssignment::KillPrivate );
+  modified |= reallocateInst(asgn, asgn.getSharePrivAUs(),  HeapAssignment::SharePrivate );
   modified |= reallocateInst(asgn, asgn.getReadOnlyAUs(), HeapAssignment::ReadOnly );
 
   modified |= reallocateInst(asgn, asgn.getReductionAUs());
