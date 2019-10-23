@@ -1847,6 +1847,8 @@ Remedies HeapAssignment::getRemedForPrivAUs(Ptrs &aus) const {
     AU *au = aus[i].au;
     if (au->type == AU_Null)
       continue;
+    if (!cheap_privs.count(au))
+      continue;
     const Remedies &R = cheap_privs.at(au);
     for (auto remed : R)
       allR.insert(remed);
@@ -1859,6 +1861,8 @@ Remedies HeapAssignment::getRemedForNoWAW(Ptrs &aus) const {
   for (unsigned i = 0; i < aus.size(); ++i) {
     AU *au = aus[i].au;
     if (au->type == AU_Null)
+      continue;
+    if (!no_waw_remeds.count(au))
       continue;
     const Remedies &R = no_waw_remeds.at(au);
     for (auto remed : R)
