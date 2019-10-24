@@ -1649,7 +1649,7 @@ private:
       {
         BasicBlock *bb = &*i;
         TerminatorInst *term = bb->getTerminator();
-        if( isa< ReturnInst >(term) || isa< ResumeInst >(term) )
+        if(term && (isa< ReturnInst >(term) || isa< ResumeInst >(term)) )
         {
           // Mark end of function, so that we can clear stack
           // variables from our live list.
