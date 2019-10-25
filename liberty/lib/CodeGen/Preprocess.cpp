@@ -713,6 +713,20 @@ void Preprocess::init(ModuleLoops &mloops)
       shared.insert(au);
       sharedCount++;
     }
+
+    HeapAssignment::AUSet &shareprivs = asgn.getSharePrivAUs();
+    HeapAssignment::AUSet shareableAUs;
+    for (auto au : shareprivs) {
+      //if (!normalPrivAUs.count(au) && !localPrivAUs.count(au) &&
+      if (!normalPrivAUs.count(au) && !killPrivAUs.count(au))
+        shareableAUs.insert(au);
+    }
+
+    for (auto au : shareableAUs) {
+      shareprivs.erase(au);
+      shared.insert(au);
+      sharedCount++;
+    }
   }
 
   DEBUG(errs() << "normalPrivAUs: " << normalPrivAUs.size() << '\n');
