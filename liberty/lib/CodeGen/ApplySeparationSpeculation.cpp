@@ -291,6 +291,12 @@ bool ApplySeparationSpec::isPrivate(Loop *loop, Value *ptr)
 {
   return selectHeap(ptr,loop) == HeapAssignment::Private;
 }
+
+bool ApplySeparationSpec::isSharePrivate(Loop *loop, Value *ptr)
+{
+  return selectHeap(ptr,loop) == HeapAssignment::SharePrivate;
+}
+
 bool ApplySeparationSpec::isRedux(Loop *loop, Value *ptr)
 {
   return selectHeap(ptr,loop) == HeapAssignment::Redux;
@@ -335,6 +341,40 @@ void ApplySeparationSpec::insertPrivateWrite(Instruction *gravity, InstInsertPt 
   where << validation;
   preprocess.addToLPS(validation, gravity);
 }
+
+void ApplySeparationSpec::insertSharePrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
+{
+  //++numPrivWrite;
+
+  Preprocess &preprocess = getAnalysis< Preprocess >();
+
+  // Maybe cast to void*
+  Value *base = ptr;
+  if( base->getType() != voidptr )
+  {
+    Instruction *cast = new BitCastInst(ptr, voidptr);
+    where << cast;
+    preprocess.addToLPS(cast, gravity);
+    base = cast;
+  }
+
+  // Maybe cast the length
+  Value *len = sz;
+  if( len->getType() != u32 )
+  {
+    Instruction *cast = new TruncInst(len,u32);
+    where << cast;
+    preprocess.addToLPS(cast, gravity);
+    len = cast;
+  }
+
+  Constant *writerange = Api(mod).getSharePrivateWriteRange();
+  Value *actuals[] = { base, len };
+  Instruction *validation = CallInst::Create(writerange, ArrayRef<Value*>(&actuals[0], &actuals[2]) );
+  where << validation;
+  preprocess.addToLPS(validation, gravity);
+}
+
 void ApplySeparationSpec::insertReduxWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz)
 {
   ++numReduxWrite;
@@ -449,7 +489,9 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
     {
       Value *ptr = store->getPointerOperand();
 
-      if( !isPrivate(loop,ptr) )
+      bool isPriv = isPrivate(loop,ptr);
+      bool isSharePriv = isSharePrivate(loop,ptr);
+      if( !isPriv && !isSharePriv )
         continue;
 
       const GlobalVariable *gv = dyn_cast<GlobalVariable>(ptr);
@@ -467,7 +509,10 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
       uint64_t size = td.getTypeStoreSize(eltty);
       Value *sz = ConstantInt::get(u32,size);
 
-      insertPrivateWrite(store, InstInsertPt::Before(store), ptr, sz);
+      if (isPriv)
+        insertPrivateWrite(store, InstInsertPt::Before(store), ptr, sz);
+      else
+        insertSharePrivateWrite(store, InstInsertPt::Before(store), ptr, sz);
       modified = true;
     }
     else if( MemTransferInst *mti = dyn_cast< MemTransferInst >(inst) )
@@ -494,18 +539,34 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
         insertPrivateWrite(mti, InstInsertPt::Before(mti), dst, sz );
         modified = true;
       }
+
+      bool pdst2 = isSharePrivate(loop, dst);
+      if( pdst2 )
+      {
+        DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
+
+        insertSharePrivateWrite(mti, InstInsertPt::Before(mti), dst, sz );
+        modified = true;
+      }
+
     }
     else if( MemSetInst *msi = dyn_cast< MemSetInst >(inst) )
     {
       Value *ptr = msi->getRawDest(),
             *sz  = msi->getLength();
 
-      if( !isPrivate(loop,ptr) )
+      bool isPriv = isPrivate(loop,ptr);
+      bool isSharePriv = isSharePrivate(loop,ptr);
+      if( !isPriv && !isSharePriv )
         continue;
 
       DEBUG(errs() << "Instrumenting private dest of memset: " << *msi << '\n');
 
-      insertPrivateWrite(msi, InstInsertPt::Before(msi), ptr, sz );
+      if (isPriv)
+        insertPrivateWrite(msi, InstInsertPt::Before(msi), ptr, sz);
+      else
+        insertSharePrivateWrite(msi, InstInsertPt::Before(msi), ptr, sz);
+
       modified = true;
     }
   }

@@ -328,6 +328,16 @@ struct Api
     std::string name = (Twine(personality) + "_private_write_range").str();
     return mod->getOrInsertFunction(name, fty);
   }
+  Constant *getSharePrivateWriteRange()
+  {
+    std::vector<Type*> formals(2);
+    formals[0] = voidptr;
+    formals[1] = u32;
+    FunctionType *fty = FunctionType::get(voidty, formals, false);
+
+    std::string name = (Twine(personality) + "_shareprivate_write_range").str();
+    return mod->getOrInsertFunction(name, fty);
+  }
   Constant *getReduxWriteRange()
   {
     std::vector<Type*> formals(2);
