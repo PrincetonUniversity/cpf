@@ -684,6 +684,21 @@ private:
       modified |= joinWithinFcn(writes, reads);
     }
 
+    Constant *sharewrite_range = api.getSharePrivateWriteRange();
+
+    FSet sharefcns;
+    CallsByBlock sharewrites, sharereads;
+    groupByBlock(sharewrite_range, sharefcns, sharewrites);
+
+    // Foreach function which calls write
+    for(FSet::iterator i=sharefcns.begin(), e=sharefcns.end(); i!=e; ++i)
+    {
+      fcn = *i;
+
+      // Operate on callsites within this function
+      modified |= joinWithinFcn(sharewrites, sharereads);
+    }
+
     return modified;
   }
 
@@ -1004,6 +1019,19 @@ private:
 
       // Operate on callsites within this function
       modified |= eliminateWithinFcn(writes, reads);
+    }
+
+    Constant *sharewrite_range = api.getSharePrivateWriteRange();
+    CallsByBlock sharewrites, sharereads;
+    FSet sharefcns;
+    groupByBlock(sharewrite_range, sharefcns, sharewrites);
+    // Foreach function which calls write
+    for(FSet::iterator i=sharefcns.begin(), e=sharefcns.end(); i!=e; ++i)
+    {
+      fcn = *i;
+
+      // Operate on callsites within this function
+      modified |= eliminateWithinFcn(sharewrites, sharereads);
     }
 
     return modified;
@@ -1583,6 +1611,23 @@ private:
 
       // Operate on callsites within this function
       if( promoteWithinFcn(writes, reads, AllowSparse) )
+        return true; // invalidated loop info; retstart
+    }
+
+    Constant *sharewrite_range = api.getSharePrivateWriteRange();
+
+    // Collect all uses of each, grouped by function.
+    FSet sharefcns;
+    CallsByBlock sharewrites, sharereads;
+    groupByBlock(sharewrite_range, sharefcns, sharewrites);
+
+    // Foreach function which calls write
+    for(FSet::iterator i=sharefcns.begin(), e=sharefcns.end(); i!=e; ++i)
+    {
+      fcn = *i;
+
+      // Operate on callsites within this function
+      if( promoteWithinFcn(sharewrites, sharereads, AllowSparse) )
         return true; // invalidated loop info; retstart
     }
 
