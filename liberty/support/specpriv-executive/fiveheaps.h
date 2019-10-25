@@ -26,6 +26,8 @@ void *__specpriv_alloc_priv(Len size, SubHeap subheap);
 void __specpriv_free_priv(void *ptr);
 void *__specpriv_alloc_killpriv(Len size, SubHeap subheap);
 void __specpriv_free_killpriv(void *ptr);
+void *__specpriv_alloc_sharepriv(Len size, SubHeap subheap);
+void __specpriv_free_sharepriv(void *ptr);
 
 void *__specpriv_alloc_unclassified(Len size);
 void __specpriv_free_unclassified(void *ptr);
@@ -51,12 +53,14 @@ void __specpriv_set_first_reduction_info(ReductionInfo *frI);
 // and redux heaps BEFORE the invocation began.
 unsigned __specpriv_sizeof_private(void);
 unsigned __specpriv_sizeof_killprivate(void);
+unsigned __specpriv_sizeof_shareprivate(void);
 unsigned __specpriv_sizeof_redux(void);
 unsigned __specpriv_sizeof_local(void);
 
 unsigned __specpriv_sizeof_ro(void);
 void __specpriv_set_sizeof_private(unsigned sp);
 void __specpriv_set_sizeof_killprivate(unsigned sp);
+void __specpriv_set_sizeof_shareprivate(unsigned sp);
 void __specpriv_set_sizeof_redux(unsigned sr);
 void __specpriv_set_sizeof_ro(unsigned sr);
 void __specpriv_set_sizeof_local(unsigned sr);

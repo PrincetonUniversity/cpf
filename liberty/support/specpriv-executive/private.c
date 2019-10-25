@@ -22,6 +22,10 @@ static Iteration checkpointGranularity;
 static uint8_t *shadow_lowest_inclusive,
                *shadow_highest_exclusive;
 
+
+static uint8_t *shareshadow_lowest_inclusive,
+               *shareshadow_highest_exclusive;
+
 // 8-,16-,32-, and 64-bit shadow memory codes to indicate
 // the current iteration.
 static uint8_t code8 = 0;
@@ -52,6 +56,21 @@ static void update_shadow_range(uint8_t *shadow, uint64_t len)
     shadow_highest_exclusive = shadow + len;
 }
 
+static void __specpriv_reset_shareshadow_range(void)
+{
+  // Initially, an empty range has been touched.
+  shareshadow_lowest_inclusive = (uint8_t*) (SHARESHADOW_ADDR + (1UL<<POINTER_BITS));
+  shareshadow_highest_exclusive = (uint8_t*) (SHARESHADOW_ADDR);
+}
+
+static void update_shareshadow_range(uint8_t *shareshadow, uint64_t len)
+{
+  if (shareshadow < shareshadow_lowest_inclusive)
+    shareshadow_lowest_inclusive = shareshadow;
+  if (shareshadow_highest_exclusive < shareshadow + len)
+    shareshadow_highest_exclusive = shareshadow + len;
+}
+
 // Called once at beginning of invocation, before workers are spawned.
 void __specpriv_init_private(void)
 {
@@ -64,6 +83,7 @@ void __specpriv_init_private(void)
   //DEBUG( checkpointGranularity = 10 );
 
   __specpriv_reset_shadow_range();
+  __specpriv_reset_shareshadow_range();
 }
 
 static void __specpriv_set_iter(Iteration i)
@@ -165,6 +185,31 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
     DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     TOUT(worker_private_bytes_written += len);
+  }
+
+  TADD(worker_private_write_time,start);
+  TIME(worker_pause_time);
+}
+
+// Update the range [shadow_lowest_inclusive, shadow_highest_exclusive)
+void __specpriv_shareprivate_write_range(void *ptr, uint64_t len)
+{
+  TOUT(
+      __specpriv_add_right_time( &worker_on_iteration_time, &worker_off_iteration_time,
+        worker_pause_time);
+      );
+  uint64_t start;
+  TIME(start);
+
+  if( ! __specpriv_i_am_main_process() ) // shadow is only mapped in worker processes
+  {
+    uint8_t *shadow = (uint8_t*) ( SHARESHADOW_ADDR | (uint64_t)ptr );
+
+    update_shareshadow_range(shadow, len);
+
+    DEBUG( assert( ((uint64_t)shareshadow_highest_exclusive) <= SHARESHADOW_ADDR + __specpriv_sizeof_shareprivate() ) );
+
+    TOUT(worker_shareprivate_bytes_written += len);
   }
 
   TADD(worker_private_write_time,start);
@@ -313,6 +358,7 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
   TIME(worker_pause_time);
   TADD(worker_private_read_time,start);
 }
+
 
 // The remainder of the file contains
 // specialized versions of private_write and private_read
@@ -1000,6 +1046,73 @@ Bool __specpriv_distill_worker_killprivate_into_partial(
   return 0; // never misspecs
 }
 
+Bool __specpriv_distill_worker_shareprivate_into_partial(
+  Checkpoint *partial, MappedHeap *partial_sharepriv, MappedHeap *partial_shareshadow )
+{
+  uint64_t start;
+  //TIME(start);
+  const unsigned len = __specpriv_sizeof_shareprivate();
+
+  if( len > 0 )
+  {
+    uint8_t *src_p = (uint8_t*)SHAREPRIV_ADDR,           // pointer to worker's private value
+            *src_s = (uint8_t*)SHARESHADOW_ADDR,         // pointer to worker's shadow
+            *dst_p = (uint8_t*)partial_sharepriv->base,  // pointer to main's private value
+            *dst_s = (uint8_t*)partial_shareshadow->base;// pointer to main's shadow
+
+    DEBUG(
+      printf("Distilling %u share_private bytes from worker 0x%lx/0x%lx into partial 0x%lx/0x%lx\n",
+        len, (uint64_t)src_p, (uint64_t)src_s, (uint64_t)dst_p, (uint64_t)dst_s);
+      printf("-> fine range is [0x%lx, 0x%lx)\n",
+        (uint64_t)shareshadow_lowest_inclusive, (uint64_t)shadow_highest_exclusive);
+    );
+
+    const unsigned bytesPerWord = sizeof(uint64_t) / sizeof(uint8_t);
+
+    const unsigned low  = ROUND_DOWN( shareshadow_lowest_inclusive - src_s, bytesPerWord ),
+                   high = ROUND_UP( shareshadow_highest_exclusive - src_s, bytesPerWord );
+
+    // TODO: vectorize this.
+    for(unsigned i=low; i<high; i += bytesPerWord )
+    {
+      uint64_t *manys = (uint64_t*) &src_s[i];
+      uint64_t *manyp = (uint64_t*) &src_p[i];
+      if( *manyp == *manys )
+        continue;
+
+      // ss != LIVE_IN
+
+      for(unsigned j=0; j<bytesPerWord; ++j)
+      {
+        const unsigned k = i+j;
+        const uint8_t ss = src_s[k], sp = src_p[k];
+
+        // if updated, update partial
+        // no real need to update workers shadow. the same address will not be
+        // re-written again but prevent future unnecessary updates
+        if( ss != sp)
+        {
+          dst_p[k] = sp;
+          dst_s[k] = ~sp;
+          //src_s[k] = sp;
+        }
+      }
+    }
+  }
+
+  // Update [low,high) ranges.
+  if( shareshadow_lowest_inclusive < partial->shareshadow_lowest_inclusive )
+    partial->shareshadow_lowest_inclusive = shareshadow_lowest_inclusive;
+  if( partial->shareshadow_highest_exclusive < shareshadow_highest_exclusive )
+    partial->shareshadow_highest_exclusive = shareshadow_highest_exclusive;
+
+  __specpriv_reset_shareshadow_range();
+
+  //TADD(worker_committed_sharepriv_to_partial_time, start);
+
+  return 0; // never misspecs
+}
+
 // partial <-- later(committed,partial)
 // where committed comes from an EARLIER checkpoint-group of iterations.
 Bool __specpriv_distill_committed_private_into_partial(
@@ -1082,6 +1195,54 @@ Bool __specpriv_distill_committed_killprivate_into_partial(
   return 0;
 }
 
+// partial <-- later(committed,partial)
+// where committed comes from an EARLIER checkpoint-group of iterations.
+Bool __specpriv_distill_committed_shareprivate_into_partial(
+  Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow,
+  Checkpoint *partial, MappedHeap *partial_sharepriv, MappedHeap *partial_shareshadow)
+{
+  uint64_t start;
+  //TIME(start);
+  const unsigned len = __specpriv_sizeof_shareprivate();
+
+  if( len > 0 )
+  {
+    uint8_t *src_p = (uint8_t*)commit_priv->base,   // ptr to committed shareprivate value
+            *src_s = (uint8_t*)commit_shadow->base, // ptr to committed shadow
+            *dst_p = (uint8_t*)partial_sharepriv->base,  // ptr to partial shareprivate value
+            *dst_s = (uint8_t*)partial_shareshadow->base;// ptr to partial shadow
+
+    DEBUG(
+      printf("Distilling %u shareprivate bytes from committed 0x%lx/0x%lx into partial 0x%lx/0x%lx\n",
+        len, (uint64_t)src_p, (uint64_t)src_s, (uint64_t)dst_p, (uint64_t)dst_s);
+      printf("-> fine range is [0x%lx, 0x%lx)\n",
+        (uint64_t)commit->shareshadow_lowest_inclusive, (uint64_t)commit->shareshadow_highest_exclusive);
+    );
+
+    const unsigned low  = commit->shareshadow_lowest_inclusive - (uint8_t*)SHARESHADOW_ADDR,
+                   high = commit->shareshadow_highest_exclusive - (uint8_t*)SHARESHADOW_ADDR;
+
+    // TODO make this faster; vectorize?
+    for(unsigned i=low; i<high; ++i)
+    {
+      const uint8_t sp = src_p[i];
+
+      if (sp != src_s[i]) {
+        dst_p[i] = sp;
+        dst_s[i] = ~sp;
+      }
+    }
+  }
+
+  // Update [low,high) ranges.
+  if( commit->shareshadow_lowest_inclusive < partial->shareshadow_lowest_inclusive )
+    partial->shareshadow_lowest_inclusive = commit->shareshadow_lowest_inclusive;
+  if( partial->shareshadow_highest_exclusive < commit->shareshadow_highest_exclusive )
+    partial->shareshadow_highest_exclusive = commit->shareshadow_highest_exclusive;
+
+  //TADD(worker_committed_shareprivate_to_partial_time, start);
+  return 0;
+}
 
 Bool __specpriv_distill_committed_private_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow)
 {
@@ -1129,6 +1290,35 @@ Bool __specpriv_distill_committed_killprivate_into_main( Checkpoint *commit,
   return 0;
 }
 
+Bool __specpriv_distill_committed_shareprivate_into_main(Checkpoint *commit, MappedHeap *commit_priv, MappedHeap *commit_shadow)
+{
+  const unsigned len = __specpriv_sizeof_shareprivate();
 
+  if( len > 0 )
+  {
+    uint8_t *src_p = (uint8_t*)commit_priv->base,   // ptr to committed shareprivate value
+            *src_s = (uint8_t*)commit_shadow->base, // ptr to committed shareshadow
+            *dst_p = (uint8_t*)SHAREPRIV_ADDR;           // ptr to partial shareprivate value
+
+    DEBUG(
+      printf("Distilling %u shareprivate bytes from committed 0x%lx/0x%lx into main 0x%lx/-\n",
+        len, (uint64_t)src_p, (uint64_t)src_s, (uint64_t)dst_p);
+      printf("-> fine range is [0x%lx, 0x%lx)\n",
+        (uint64_t)commit->shareshadow_lowest_inclusive, (uint64_t)commit->shareshadow_highest_exclusive);
+    );
+
+    const unsigned low = commit->shareshadow_lowest_inclusive - (uint8_t*)SHARESHADOW_ADDR,
+                   high = commit->shareshadow_highest_exclusive - (uint8_t*)SHARESHADOW_ADDR;
+
+    // TODO: vectorize this.
+    for(unsigned i=low; i<high; ++i) {
+      const uint8_t sp = src_p[i];
+      if( sp != src_s[i] )
+        dst_p[i] = sp;
+    }
+  }
+
+  return 0;
+}
 
 

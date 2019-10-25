@@ -174,8 +174,12 @@ Checkpoint *__specpriv_alloc_checkpoint(CheckpointManager *mgr)
   DEBUG(printf("Opened chkpt-private in shm\n"); fflush(stdout););
   heap_init( &chkpt->heap_killpriv, "chkpt-killprivate", HEAP_SIZE, (void*)KILLPRIV_ADDR, name);
   DEBUG(printf("Opened chkpt-killprivate in shm\n"); fflush(stdout););
+  heap_init( &chkpt->heap_sharepriv, "chkpt-shareprivate", HEAP_SIZE, (void*)SHAREPRIV_ADDR, name);
+  DEBUG(printf("Opened chkpt-shareprivate in shm\n"); fflush(stdout););
   heap_init( &chkpt->heap_shadow,   "chkpt-shadow",      HEAP_SIZE, (void*)SHADOW_ADDR, name);
   DEBUG(printf("Opened chkpt-shadow in shm\n"); fflush(stdout););
+  heap_init( &chkpt->heap_shareshadow,   "chkpt-shareshadow",      HEAP_SIZE, (void*)SHADOW_ADDR, name);
+  DEBUG(printf("Opened chkpt-shareshadow in shm\n"); fflush(stdout););
   heap_init( &chkpt->heap_redux,    "chkpt-redux",       HEAP_SIZE, (void*)REDUX_ADDR,  name);
   DEBUG(printf("Opened chkpt-redux in shm\n"); fflush(stdout););
 
@@ -186,8 +190,10 @@ void __specpriv_destroy_checkpoint(Checkpoint *chkpt)
 {
   heap_fini( &chkpt->heap_redux );
   heap_fini( &chkpt->heap_shadow );
+  heap_fini( &chkpt->heap_shareshadow );
   heap_fini( &chkpt->heap_priv );
   heap_fini( &chkpt->heap_killpriv );
+  heap_fini( &chkpt->heap_sharepriv );
 
   __specpriv_free_meta( chkpt );
 }
@@ -263,8 +269,11 @@ static void __specpriv_initialize_checkpoint_redux(MappedHeap *redux, uint8_t co
   }
 }
 
-static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, MappedHeap *shadow, MappedHeap *redux)
-{
+static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial,
+                                                     MappedHeap *shadow,
+                                                     MappedHeap *redux,
+                                                     MappedHeap *sharepriv,
+                                                     MappedHeap *shareshadow) {
   // Initialize shadow, redux.
 
   const Len priv_used = __specpriv_sizeof_private();
@@ -273,6 +282,12 @@ static void __specpriv_initialize_partial_checkpoint(Checkpoint *partial, Mapped
 
   partial->shadow_lowest_inclusive = (uint8_t*) (SHADOW_ADDR + (1UL<<POINTER_BITS));
   partial->shadow_highest_exclusive = (uint8_t*) (SHADOW_ADDR);
+
+  const Len sharepriv_used = __specpriv_sizeof_shareprivate();
+  memset((void*)shareshadow->base, LIVE_IN, sharepriv_used);
+  memset((void*)sharepriv->base, LIVE_IN, sharepriv_used);
+  partial->shareshadow_lowest_inclusive = (uint8_t*) (SHARESHADOW_ADDR + (1UL<<POINTER_BITS));
+  partial->shareshadow_highest_exclusive = (uint8_t*) (SHARESHADOW_ADDR);
 
   // initialize with identity reductions in the checkpoint object
   __specpriv_initialize_checkpoint_redux(redux, 0);
@@ -374,6 +389,35 @@ static Bool __specpriv_combine_killprivate( Checkpoint *older, Checkpoint *newer
   return 0; // never misspecs
 }
 
+
+static Bool __specpriv_combine_shareprivate( Checkpoint *older, Checkpoint *newer )
+{
+  MappedHeap commit_sharepriv, partial_sharepriv;
+  mapped_heap_init( &commit_sharepriv );
+  mapped_heap_init( &partial_sharepriv );
+  heap_map_anywhere( &older->heap_sharepriv, &commit_sharepriv );
+  heap_map_anywhere( &newer->heap_sharepriv, &partial_sharepriv );
+
+  MappedHeap commit_shareshadow, partial_shareshadow;
+  mapped_heap_init( &commit_shareshadow );
+  mapped_heap_init( &partial_shareshadow );
+  heap_map_anywhere( &older->heap_shareshadow, &commit_shareshadow );
+  heap_map_anywhere( &newer->heap_shareshadow, &partial_shareshadow );
+
+  // no need for shadow heaps
+  __specpriv_distill_committed_shareprivate_into_partial(
+      older, &commit_sharepriv, &commit_shareshadow, newer, &partial_sharepriv,
+      &partial_shareshadow);
+
+  heap_unmap( &partial_sharepriv );
+  heap_unmap( &commit_sharepriv );
+  heap_unmap( &partial_shareshadow );
+  heap_unmap( &commit_shareshadow );
+
+  return 0; // never misspecs
+}
+
+
 static Bool __specpriv_combine_redux(Checkpoint *older, Checkpoint *newer)
 {
   Bool misspec = 0;
@@ -419,6 +463,7 @@ static Bool __specpriv_combine_checkpoints(Checkpoint *older, Checkpoint *newer)
 
   Bool misspec = __specpriv_combine_private(older,newer)
               || __specpriv_combine_killprivate(older, newer)
+              || __specpriv_combine_shareprivate(older, newer)
               || __specpriv_combine_redux(older,newer);
 
 
@@ -524,27 +569,36 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt, Itera
   uint64_t start;
   TIME(start);
 
-  MappedHeap partial_priv, partial_killpriv, partial_shadow, partial_redux;
+  MappedHeap partial_priv, partial_killpriv, partial_sharepriv, partial_shadow,
+      partial_shareshadow, partial_redux;
   mapped_heap_init( &partial_priv );
   mapped_heap_init( &partial_killpriv );
+  mapped_heap_init( &partial_sharepriv );
   mapped_heap_init( &partial_shadow );
+  mapped_heap_init( &partial_shareshadow );
   mapped_heap_init( &partial_redux );
 
   heap_map_anywhere( &chkpt->heap_priv, &partial_priv );
   heap_map_anywhere( &chkpt->heap_killpriv, &partial_killpriv );
+  heap_map_anywhere( &chkpt->heap_sharepriv, &partial_sharepriv );
   heap_map_anywhere( &chkpt->heap_shadow, &partial_shadow );
+  heap_map_anywhere( &chkpt->heap_shareshadow, &partial_shareshadow );
   heap_map_anywhere( &chkpt->heap_redux, &partial_redux );
 
   heap_alloc( &partial_redux, chkpt->redux_used );
 
   if( chkpt->num_workers == 0 )
-    __specpriv_initialize_partial_checkpoint(chkpt, &partial_shadow, &partial_redux);
+    __specpriv_initialize_partial_checkpoint(chkpt, &partial_shadow,
+                                             &partial_redux, &partial_sharepriv,
+                                             &partial_shareshadow);
   TADD(worker_prepare_checkpointing_time, start);
 
   // Commit /my/ private values to the partial heap
   TOUT( if(rec) TIME(rec->private_start); );
   {
     __specpriv_distill_worker_private_into_partial(chkpt, &partial_priv, &partial_shadow);
+    __specpriv_distill_worker_shareprivate_into_partial(
+        chkpt, &partial_sharepriv, &partial_shareshadow);
     if ( iter == LAST_ITERATION ) // ezpz
       __specpriv_distill_worker_killprivate_into_partial(chkpt, &partial_killpriv);
   }
@@ -571,8 +625,10 @@ static void __specpriv_worker_perform_checkpoint_locked(Checkpoint *chkpt, Itera
   TIME(start);
   heap_unmap( &partial_redux );
   heap_unmap( &partial_shadow );
+  heap_unmap( &partial_shareshadow );
   heap_unmap( &partial_priv );
   heap_unmap( &partial_killpriv );
+  heap_unmap( &partial_sharepriv );
 
   ++chkpt->num_workers;
   DEBUG(printf("Finished distilling worker into partial %p\n", (void *)chkpt););
@@ -671,29 +727,38 @@ void __specpriv_distill_checkpoints_into_liveout(CheckpointManager *mgr)
 
     DEBUG(printf(" * complete checkpoint %d\n", chkpt->iteration));
 
-    MappedHeap commit_priv, commit_killpriv, commit_shadow, commit_redux;
+    MappedHeap commit_priv, commit_killpriv, commit_sharepriv, commit_shadow,
+        commit_redux, commit_shareshadow;
     mapped_heap_init( &commit_priv );
     mapped_heap_init( &commit_shadow );
+    mapped_heap_init( &commit_shareshadow );
     mapped_heap_init( &commit_redux );
     mapped_heap_init( &commit_killpriv );
+    mapped_heap_init( &commit_sharepriv );
 
     heap_map_anywhere( &chkpt->heap_priv, &commit_priv );
     heap_map_anywhere( &chkpt->heap_killpriv, &commit_killpriv );
+    heap_map_anywhere( &chkpt->heap_sharepriv, &commit_sharepriv );
     heap_map_anywhere( &chkpt->heap_shadow, &commit_shadow );
+    heap_map_anywhere( &chkpt->heap_shareshadow, &commit_shareshadow );
     heap_map_anywhere( &chkpt->heap_redux, &commit_redux );
 
     __specpriv_commit_io( &chkpt->io_events, &commit_redux );
     __specpriv_distill_committed_private_into_main( chkpt, &commit_priv, &commit_shadow );
     // gc14 - don't know why this is needed but it works
-    if ( !pcb->misspeculation_happened )
+    if ( !pcb->misspeculation_happened ) {
       __specpriv_distill_committed_killprivate_into_main( chkpt, &commit_killpriv );
+      __specpriv_distill_committed_shareprivate_into_main( chkpt, &commit_sharepriv, &commit_shareshadow);
+    }
     __specpriv_distill_committed_redux_into_main(&commit_redux,
                                                  chkpt->lastUpdateIteration);
     mgr->main_checkpoint->iteration = chkpt->iteration;
 
     heap_unmap( &commit_redux );
     heap_unmap( &commit_shadow );
+    heap_unmap( &commit_shareshadow );
     heap_unmap( &commit_killpriv );
+    heap_unmap( &commit_sharepriv );
     heap_unmap( &commit_priv );
 
     // Free this checkpoint.

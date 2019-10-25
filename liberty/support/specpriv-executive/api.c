@@ -104,6 +104,7 @@ struct WorkerArgs {
   int64_t chunkSize;
   unsigned sizeof_private;
   unsigned sizeof_killprivate;
+  unsigned sizeof_shareprivate;
   unsigned sizeof_redux;
   unsigned sizeof_ro;
   unsigned sizeof_local;
@@ -232,6 +233,7 @@ static void __specpriv_worker_setup(Wid wid)
     TIME(start);
     __specpriv_set_sizeof_private(workerArgs.sizeof_private);
     __specpriv_set_sizeof_killprivate(workerArgs.sizeof_killprivate);
+    __specpriv_set_sizeof_shareprivate(workerArgs.sizeof_shareprivate);
     __specpriv_set_sizeof_redux(workerArgs.sizeof_redux);
     __specpriv_set_sizeof_ro(workerArgs.sizeof_ro);
     __specpriv_set_sizeof_local(workerArgs.sizeof_local);
@@ -639,6 +641,7 @@ static void __specpriv_trigger_workers(Iteration firstIter, void (*callback)(voi
   workerArgs.numCores = numCores;
   workerArgs.chunkSize = chunkSize;
   workerArgs.sizeof_killprivate = __specpriv_sizeof_killprivate();
+  workerArgs.sizeof_shareprivate = __specpriv_sizeof_shareprivate();
   workerArgs.sizeof_private = __specpriv_sizeof_private();
   workerArgs.sizeof_redux = __specpriv_sizeof_redux();
   workerArgs.sizeof_ro = __specpriv_sizeof_ro();

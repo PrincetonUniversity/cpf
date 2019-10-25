@@ -35,7 +35,9 @@ struct s_checkpoint
 
   Heap            heap_priv;
   Heap            heap_killpriv;
+  Heap            heap_sharepriv;
   Heap            heap_shadow;
+  Heap            heap_shareshadow;
   Heap            heap_redux;
 
   // A range [lo,hi) of bytes from the private
@@ -44,6 +46,9 @@ struct s_checkpoint
   // the natural address of the shadow heap.
   uint8_t *       shadow_lowest_inclusive,
           *       shadow_highest_exclusive;
+
+  uint8_t *       shareshadow_lowest_inclusive,
+          *       shareshadow_highest_exclusive;
 
   Len             redux_used;
 

@@ -56,6 +56,8 @@
 #define LOCAL_ADDR        (6ULL << POINTER_BITS)
 #define SHADOW_ADDR       (7ULL << POINTER_BITS)
 #define KILLPRIV_ADDR     (8ULL << POINTER_BITS)
+#define SHAREPRIV_ADDR    (9ULL << POINTER_BITS)
+#define SHARESHADOW_ADDR  (10ULL << POINTER_BITS)
 
 
 // Sizes of kibi-, mibi-, and gibi-bytes
