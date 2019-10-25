@@ -51,8 +51,11 @@ private:
   bool manageHeaps();
   bool replaceFrees();
   bool isPrivate(Loop *loop, Value *ptr);
+  bool isSharePrivate(Loop *loop, Value *ptr);
   bool isRedux(Loop *loop, Value *ptr);
   void insertPrivateWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz);
+  void insertSharePrivateWrite(Instruction *gravity, InstInsertPt where,
+                               Value *ptr, Value *sz);
   void insertReduxWrite(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz);
   void insertPrivateRead(Instruction *gravity, InstInsertPt where, Value *ptr, Value *sz);
   bool replacePrivateLoadsStores(Loop *loop, BasicBlock *bb);
