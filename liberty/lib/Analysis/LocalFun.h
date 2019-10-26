@@ -30,3 +30,6 @@
   "snprintf",
   "vsprintf",
   "vsnprintf",
+
+// spec funcs
+  "spec_qsort",
