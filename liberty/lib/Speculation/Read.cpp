@@ -443,8 +443,8 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
     return false;
   }
 
-  else if( ! callee->isDeclaration() )
-  {
+  else if (!callee->isDeclaration() && !pure->isReadOnly(callee) &&
+           !pure->isLocal(callee) && !semi->isSemiLocal(callee, *pure)) {
     std::pair<CallSiteSet::iterator,bool> res = already.insert(op);
     if( !res.second )
       return true; // already in there.
@@ -468,7 +468,14 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
     for(CallSite::arg_iterator i=cs.arg_begin(),  e=cs.arg_end(); i!=e; ++i)
     {
       const Value *actual = *i;
-      if( actual->getType()->isPointerTy() )
+
+      if (const CastInst *cast = dyn_cast<CastInst>(actual))
+        actual = cast->getOperand(0);
+
+      if (const BitCastOperator *cast = dyn_cast<BitCastOperator>(actual))
+        actual = cast->getOperand(0);
+
+      if( actual->getType()->isPointerTy() && !isa<Function>(actual))
       {
         Ptrs aus;
         if( ! getUnderlyingAUs(actual, exec_ctx, aus) )
