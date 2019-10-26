@@ -7,6 +7,8 @@
 #include "liberty/Analysis/CallsiteDepthCombinator.h"
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/Analysis/KillFlow.h"
+#include "liberty/Analysis/PureFunAA.h"
+#include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 
 #include <ctime>
@@ -48,7 +50,6 @@ namespace liberty
       killflow->setDL(&DL);
       //killflow->setProxy(this);
     }
-
 
     return false;
   }
@@ -378,17 +379,12 @@ namespace liberty
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
-    const Instruction *src,
-    const Instruction *dst,
-    const Loop *L,
-    KillFlow &kill,
-    Remedies &R,
-    CCPairs *allFlowsOut,
-    time_t queryStart, unsigned Timeout,
-    CCPairsRemedsMap *remedNoFlows)
-  {
+      const Instruction *src, const Instruction *dst, const Loop *L,
+      KillFlow &kill, Remedies &R, CCPairs *allFlowsOut, time_t queryStart,
+      unsigned Timeout, CCPairsRemedsMap *remedNoFlows, PureFunAA *pure,
+      SemiLocalFunAA *semi) {
 
-    ReverseStoreSearch writes(src, kill, queryStart, Timeout);
+    ReverseStoreSearch writes(src, kill, queryStart, Timeout, pure, semi);
     INTROSPECT(
       errs() << "LiveOuts {\n";
       // List all live-outs and live-ins.
@@ -404,21 +400,15 @@ namespace liberty
     );
 
     return doFlowSearchCrossIter(src, dst, L, writes, kill, R, allFlowsOut,
-                                 queryStart, Timeout, remedNoFlows);
+                                 queryStart, Timeout, remedNoFlows, pure, semi);
   }
 
   bool CallsiteDepthCombinator::doFlowSearchCrossIter(
-    const Instruction *src,
-    const Instruction *dst,
-    const Loop *L,
-    InstSearch &writes,
-    KillFlow &kill,
-    Remedies &R,
-    CCPairs *allFlowsOut,
-    time_t queryStart, unsigned Timeout,
-    CCPairsRemedsMap *remedNoFlows)
-  {
-    ForwardLoadSearch reads(dst,kill,queryStart,Timeout);
+      const Instruction *src, const Instruction *dst, const Loop *L,
+      InstSearch &writes, KillFlow &kill, Remedies &R, CCPairs *allFlowsOut,
+      time_t queryStart, unsigned Timeout, CCPairsRemedsMap *remedNoFlows,
+      PureFunAA *pure, SemiLocalFunAA *semi) {
+    ForwardLoadSearch reads(dst,kill,queryStart,Timeout, pure, semi);
     INTROSPECT(
       errs() << "LiveIns {\n";
 

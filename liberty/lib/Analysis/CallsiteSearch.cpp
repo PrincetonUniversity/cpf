@@ -428,8 +428,8 @@ namespace liberty
     return out;
   }
 
-  InstSearch::InstSearch(bool read, bool write, time_t start, unsigned t_o)
-  : fringe(), visited(), hits(), queryStart(start), Timeout(t_o), Reads(read), Writes(write)
+  InstSearch::InstSearch(bool read, bool write, time_t start, unsigned t_o, PureFunAA *p, SemiLocalFunAA *s)
+  : fringe(), visited(), hits(), queryStart(start), Timeout(t_o), Reads(read), Writes(write), pure(p), semi(s)
   {
     assert( Reads || Writes );
   }
@@ -517,6 +517,9 @@ namespace liberty
       // the Pure Function list...
       if( const Function *callee = cs.getCalledFunction() )
       {
+        if (pure && pure->isReadOnly(callee))
+          return false;
+
         const StringRef  name = callee->getName();
         if( name == "llvm.lifetime.start"
         ||  name == "llvm.lifetime.end"
@@ -572,8 +575,8 @@ namespace liberty
     &&     this->offset == other.offset;
   }
 
-  ForwardSearch::ForwardSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart, unsigned Timeout)
-    : InstSearch(read,write,queryStart,Timeout), kill(k)
+  ForwardSearch::ForwardSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart, unsigned Timeout, PureFunAA *p, SemiLocalFunAA *s)
+    : InstSearch(read,write,queryStart,Timeout, p, s), kill(k)
   {
     // Initialize the fringe.
     CtxInst s0(start, 0);
@@ -609,6 +612,15 @@ namespace liberty
           return goal(n);
         else
           return false;
+      }
+
+      // if footprint based on arguments. no need to go inside the function
+      // exclude semis that have hidden state
+      else if (pure && (pure->isLocal(callee)))
+       // ||
+      //                  (semi && semi->isSemiLocal(callee, *pure)))) {
+      {
+        return goal(n);
       }
 
       // Direct calls to defined functions
@@ -688,8 +700,8 @@ namespace liberty
   }
 
 
-  ReverseSearch::ReverseSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart, unsigned Timeout)
-    : InstSearch(read,write,queryStart,Timeout), kill(k)
+  ReverseSearch::ReverseSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart, unsigned Timeout, PureFunAA *p, SemiLocalFunAA *s)
+    : InstSearch(read,write,queryStart,Timeout, p, s), kill(k)
   {
     // Initialize the fringe.
     CtxInst s0(start, 0);
@@ -725,6 +737,15 @@ namespace liberty
           return goal(n);
         else
           return false;
+      }
+
+      // if footprint based on arguments. no need to go inside the function
+      // exclude semis that have hidden state
+      else if (pure && (pure->isLocal(callee)))
+       // ||
+      //                  (semi && semi->isSemiLocal(callee, *pure)))) {
+      {
+        return goal(n);
       }
 
       // Direct calls to defined functions

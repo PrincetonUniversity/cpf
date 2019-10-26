@@ -6,6 +6,8 @@
 #include "liberty/Analysis/CallsiteDepthCombinator.h"
 #include "liberty/Analysis/CallsiteSearch.h"
 #include "liberty/Analysis/KillFlow.h"
+#include "liberty/Analysis/PureFunAA.h"
+#include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Analysis/SimpleAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
@@ -73,6 +75,8 @@ void Classify::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< LoopAA >();
   au.addRequired< KillFlow >();
+  au.addRequired< PureFunAA >();
+  au.addRequired< SemiLocalFunAA >();
   au.addRequired<KillFlow_CtrlSpecAware>();
   au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   au.addRequired< Targets >();
@@ -273,6 +277,8 @@ static void strip_undefined_objects(HeapAssignment::ReduxAUSet &out)
 bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
                                  HeapAssignment::AUToRemeds &auToRemeds) const {
   KillFlow &kill = getAnalysis< KillFlow >();
+  PureFunAA &pure = getAnalysis< PureFunAA >();
+  SemiLocalFunAA &semi = getAnalysis< SemiLocalFunAA >();
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop->getHeader());
 
@@ -289,7 +295,7 @@ bool Classify::getLoopCarriedAUs(Loop *loop, const Ctx *ctx, AUs &aus,
         continue;
 
       // Re-use this to speed it all up.
-      ReverseStoreSearch search_src(src,kill);
+      ReverseStoreSearch search_src(src, kill, 0, 0, &pure, &semi);
 
       for(Loop::block_iterator k=loop->block_begin(); k!=e; ++k)
       {
@@ -323,12 +329,14 @@ bool Classify::getUnderlyingAUs(Loop *loop, ReverseStoreSearch &search_src,
                                 Instruction *dst, const Ctx *dst_ctx, AUs &aus,
                                 HeapAssignment::AUToRemeds &auToRemeds) const {
   KillFlow &kill = getAnalysis< KillFlow >();
+  PureFunAA &pure = getAnalysis< PureFunAA >();
+  SemiLocalFunAA &semi = getAnalysis< SemiLocalFunAA >();
 
   Remedies R;
   CCPairs flows;
   CCPairsRemedsMap remedNoFlows;
   CallsiteDepthCombinator::doFlowSearchCrossIter(
-      src, dst, loop, search_src, kill, R, &flows, 0, 0, &remedNoFlows);
+      src, dst, loop, search_src, kill, R, &flows, 0, 0, &remedNoFlows, &pure, &semi);
 
   //if( flows.empty() )
   //  return true;

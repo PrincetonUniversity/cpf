@@ -44,6 +44,8 @@ namespace liberty
 
   // See KillFlow.h
   class KillFlow;
+  class PureFunAA;
+  class SemiLocalFunAA;
 
   /// Represents the context in which we
   /// observed an instruction; effectively
@@ -238,7 +240,7 @@ namespace liberty
 
     /// Reads means include instructions which may read from memory.
     /// Writes means include instructions which may write to memory.
-    InstSearch(bool read, bool write, time_t queryStart=0, unsigned Timeout=0);
+    InstSearch(bool read, bool write, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr, SemiLocalFunAA *semi=nullptr);
     virtual ~InstSearch() {}
 
     iterator begin();
@@ -265,6 +267,8 @@ namespace liberty
 
     time_t     queryStart;
     unsigned   Timeout;
+    PureFunAA *pure;
+    SemiLocalFunAA *semi;
 
     bool mayReadWrite(const Instruction *inst) const;
 
@@ -279,7 +283,7 @@ namespace liberty
   /// Visit instructions in dominator-order
   struct ForwardSearch : public InstSearch
   {
-    ForwardSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart=0, unsigned Timeout=0);
+    ForwardSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr, SemiLocalFunAA *semi=nullptr);
     virtual void tryGetMoreHits();
 
   private:
@@ -294,18 +298,18 @@ namespace liberty
 
   struct ForwardLoadSearch : public ForwardSearch
   {
-    ForwardLoadSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0) : ForwardSearch(start,k,true,false,queryStart,Timeout) {}
+    ForwardLoadSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr,SemiLocalFunAA *semi=nullptr) : ForwardSearch(start,k,true,false,queryStart,Timeout, pure, semi) {}
   };
 
   struct ForwardStoreSearch : public ForwardSearch
   {
-    ForwardStoreSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0) : ForwardSearch(start,k,false,true,queryStart,Timeout) {}
+    ForwardStoreSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr, SemiLocalFunAA *semi=nullptr) : ForwardSearch(start,k,false,true,queryStart,Timeout, pure, semi) {}
   };
 
   /// Visit instructions in post-dominator-order
   struct ReverseSearch : public InstSearch
   {
-    ReverseSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart=0, unsigned Timeout=0);
+    ReverseSearch(const Instruction *start, KillFlow &k, bool read, bool write, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr, SemiLocalFunAA *semi=nullptr);
     virtual void tryGetMoreHits();
 
   private:
@@ -321,13 +325,13 @@ namespace liberty
 
   struct ReverseLoadSearch : public ReverseSearch
   {
-    ReverseLoadSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0) : ReverseSearch(start,k,true,false,queryStart,Timeout) {}
+    ReverseLoadSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr, SemiLocalFunAA *semi=nullptr) : ReverseSearch(start,k,true,false,queryStart,Timeout, pure, semi) {}
   };
 
 
   struct ReverseStoreSearch : public ReverseSearch
   {
-    ReverseStoreSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0) : ReverseSearch(start,k,false,true,queryStart,Timeout) {}
+    ReverseStoreSearch(const Instruction *start, KillFlow &k, time_t queryStart=0, unsigned Timeout=0, PureFunAA *pure=nullptr, SemiLocalFunAA *semi=nullptr) : ReverseSearch(start,k,false,true,queryStart,Timeout, pure, semi) {}
   };
 }
 
