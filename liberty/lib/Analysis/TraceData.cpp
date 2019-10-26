@@ -192,6 +192,9 @@ bool Tracer::traceConcreteIntegerValues(Value *expr, IntSet &output, ValueSet &a
         case BinaryOperator::Shl:
           output.insert( vi<<vj );
           break;
+        case BinaryOperator::Xor:
+          output.insert( vi^vj );
+          break;
 
         default:
           // TODO: Sub, Mul, UDiv, SDiv, URem, SRem, LShr, AShr, And, Xor
