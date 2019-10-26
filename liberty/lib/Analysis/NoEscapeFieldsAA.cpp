@@ -710,6 +710,8 @@ namespace liberty
         // Same (sane) structure, same fields?
         else if( field1 != 0 && field1 == field2 )
         {
+          if (!isa<GetElementPtrInst>(P1.ptr) || !isa<GetElementPtrInst>(P2.ptr))
+            return MayAlias;
           // fp1==true implies isa<GEP>(V1), so cast<> is safe.
           const Value *parent1 = cast<GetElementPtrInst>(P1.ptr)->getPointerOperand(),
                       *parent2 = cast<GetElementPtrInst>(P2.ptr)->getPointerOperand();
