@@ -12,6 +12,7 @@
 #define SPECPRIV_PROFILER_RECOGNIZED_EXTERNAL_FUNCTIONS_H
   "__assert_fail",
   "__cxa_atexit",
+  "__cxa_begin_catch",
   "__errno_location",
   "__isoc99_fscanf",
   "__isoc99_scanf",
@@ -62,6 +63,7 @@
   "fprintf",
   "fscanf",
   "fopen",
+  "fopen64",
   "freopen",
   "fputc",
   "fputs",
@@ -103,6 +105,8 @@
   "llvm.va_copy",
   "llvm.va_start",    // introduces an opaque pointer
   "llvm.va_end",
+  "llvm.round.f64",
+  "llvm.exp2.f64",
   "lseek",
   "malloc",
   "memcmp",
@@ -119,6 +123,7 @@
   "putenv",
   "puts",
   "qsort",
+  "spec_qsort",
   "rand",
   "read",
   "realloc",
