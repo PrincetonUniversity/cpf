@@ -9,8 +9,8 @@
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Analysis/SimpleAA.h"
-#include "liberty/LAMP/LAMPLoadProfile.h"
-#include "liberty/LAMP/LampOracleAA.h"
+//#include "liberty/LAMP/LAMPLoadProfile.h"
+//#include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/CommutativeLibsAA.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
@@ -18,6 +18,7 @@
 #include "liberty/Orchestration/PtrResidueAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Orchestration/ShortLivedAA.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Orchestration/TXIOAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/Classify.h"
@@ -65,12 +66,12 @@ static cl::opt<unsigned> NumSubHeaps(
 
 void Classify::getAnalysisUsage(AnalysisUsage &au) const
 {
-  //au.addRequired< DataLayout >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   au.addRequired< ModuleLoops >();
-  au.addRequired< LAMPLoadProfile >();
+  //au.addRequired< LAMPLoadProfile >();
   au.addRequired< ReadPass >();
   au.addRequired< PtrResidueSpeculationManager >();
+  au.addRequired< SmtxSpeculationManager>();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired< LoopAA >();
@@ -99,10 +100,16 @@ bool Classify::runOnModule(Module &mod)
     ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
     EdgeCountOracle edgeaa(ctrlspec);
     edgeaa.InitializeLoopAA(this, mod.getDataLayout());
+
+    // LampOracle does not produce remedies. Need to use SmtxAA instead
     // LAMP
-    LAMPLoadProfile &lamp = getAnalysis< LAMPLoadProfile >();
-    LampOracle lampaa(&lamp);
-    lampaa.InitializeLoopAA(this, mod.getDataLayout());
+    //LAMPLoadProfile &lamp = getAnalysis< LAMPLoadProfile >();
+    //LampOracle lampaa(&lamp);
+    //lampaa.InitializeLoopAA(this, mod.getDataLayout());
+    SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
+    SmtxAA smtxaa(&smtxMan);
+    smtxaa.InitializeLoopAA(this, mod.getDataLayout());
+
     // Points-to
     const Read &spresults = getAnalysis< ReadPass >().getProfileInfo();
     PointsToAA pointstoaa(spresults);
