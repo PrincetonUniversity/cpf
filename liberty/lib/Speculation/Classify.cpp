@@ -1214,7 +1214,11 @@ bool Classify::runOnLoop(Loop *loop)
     // Otherwise, it is private.
     privateAUs.insert(au);
 
-    cheapPrivAUs[au] = auToRemeds[au];
+    if (!auToRemeds.count(au)) {
+      Remedies R;
+      cheapPrivAUs[au] = R;
+    } else
+      cheapPrivAUs[au] = auToRemeds[au];
   }
 
   // TODO: create a separate heap for privLocals.
