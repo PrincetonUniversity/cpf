@@ -96,7 +96,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
     if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
-        t1 == HeapAssignment::KillPrivate) {
+        t1 == HeapAssignment::KillPrivate ||
+        t1 == HeapAssignment::SharePrivate) {
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
@@ -125,7 +126,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
     }
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
-        t2 == HeapAssignment::KillPrivate) {
+        t2 == HeapAssignment::KillPrivate ||
+        t2 == HeapAssignment::SharePrivate) {
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
@@ -236,7 +238,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
     if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
-        t1 == HeapAssignment::KillPrivate) {
+        t1 == HeapAssignment::KillPrivate ||
+        t1 == HeapAssignment::SharePrivate) {
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
@@ -266,7 +269,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
     }
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
-        t2 == HeapAssignment::KillPrivate) {
+        t2 == HeapAssignment::KillPrivate ||
+        t2 == HeapAssignment::SharePrivate) {
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
@@ -391,7 +395,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
     // Reduction, local and private heaps are iteration-private, thus
     // there cannot be cross-iteration flows.
     if (t1 == HeapAssignment::Redux || t1 == HeapAssignment::Local ||
-        t1 == HeapAssignment::KillPrivate) {
+        t1 == HeapAssignment::KillPrivate ||
+        t1 == HeapAssignment::SharePrivate) {
       if (t1 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
@@ -421,7 +426,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
     }
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
-        t2 == HeapAssignment::KillPrivate) {
+        t2 == HeapAssignment::KillPrivate ||
+        t2 == HeapAssignment::SharePrivate) {
       if (t2 == HeapAssignment::Local) {
         ++numPrivatizedShort;
         remedy->cost += LOCAL_ACCESS_COST;
