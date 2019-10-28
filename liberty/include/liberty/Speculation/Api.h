@@ -1068,7 +1068,7 @@ struct Api
         /* redux    */ (2ULL << 43),
         /* local    */ (6ULL << 43),
         /* killpriv */ (8ULL << 43),
-        /* cheappriv */ (9ULL << 43),
+        /* cheappriv */ (10ULL << 43),
         /* priv     */ (3ULL << 43)
       };
 
