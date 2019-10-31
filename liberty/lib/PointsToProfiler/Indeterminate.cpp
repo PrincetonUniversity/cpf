@@ -83,7 +83,7 @@ void Indeterminate::findIndeterminateObjects(BasicBlock &bb, UO &pointers, UO &o
     if( cs.getInstruction() )
     {
       Function *callee = cs.getCalledFunction();
-      if( !callee || callee->isDeclaration() )
+      if( !callee || callee->isDeclaration() || callee->getName().equals("spec_qsort"))
       {
         for(CallSite::arg_iterator k=cs.arg_begin(), q=cs.arg_end(); k!=q; ++k)
         {
