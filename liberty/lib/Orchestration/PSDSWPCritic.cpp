@@ -1419,7 +1419,8 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
   if (firstStage && firstStage->type == PipelineStage::Sequential)
     adjustForRegLCFromSeqToPar(ps, pdg, firstStage, parallelStage);
 
-
+  // temp disable for pldi20. TODO: undo this
+  /*
   // if a last sequential stage exists, consider moving all output I/O
   // operations from other stages to the last seq stage
   // Note that output I/O are not expected to source any non-removable
@@ -1437,7 +1438,7 @@ void PSDSWPCritic::adjustPipeline(PipelineStrategy &ps, PDG &pdg) {
   //    else if first stage is parallel try to move loop exit branch and its
   //      dependents to the replicated prefix of the parallel stage.
   avoidCtrlSpecOnLoopExits(ps, pdg, firstStage, parallelStage, lastSeqStage);
-
+  */
 
   // If there is a first sequential stage and it is replicable and lightweight
   // convert it to a replicable prefix of the parallel stage
@@ -1532,7 +1533,9 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
 
   Criticisms tmpCriticisms;
   populateCriticisms(*ps, tmpCriticisms, pdg);
-  avoidExpensiveCriticisms(pdg, *ps, tmpCriticisms);
+
+  // temp disable for pldi20. TODO: undo this
+  //avoidExpensiveCriticisms(pdg, *ps, tmpCriticisms);
 
   // re-populate criticisms after instruction movement across stages to ensure
   // that there are no missing criticisms
