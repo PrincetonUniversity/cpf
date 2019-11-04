@@ -57,6 +57,9 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
                                       unsigned S2, const Loop *L, Remedies &R,
                                       DesiredAliasResult dAliasRes) {
 
+  if (dAliasRes == DMustAlias)
+    return LoopAA::alias(P1, S1, rel, P2, S2, L, R, dAliasRes);
+
   //  if( !L || !asgn.isValidFor(L) )
   //    return MayAlias;
 
