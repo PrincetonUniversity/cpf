@@ -22,12 +22,11 @@ namespace liberty
     cl::NotHidden,
     cl::desc("Maximum number of observed flows to report NoModRef"));
 
-  LoopAA::AliasResult LampOracle::alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L, Remedies &R)
-  {
+  LoopAA::AliasResult LampOracle::alias(const Value *ptrA, unsigned sizeA,
+                                        TemporalRelation rel, const Value *ptrB,
+                                        unsigned sizeB, const Loop *L,
+                                        Remedies &R,
+                                        DesiredAliasResult dAliasRes) {
     return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L,R);
   }
 

@@ -169,12 +169,10 @@ namespace liberty
     }
   }
 
-  LoopAA::AliasResult LoopAA::alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L, Remedies &R)
-  {
+  LoopAA::AliasResult LoopAA::alias(const Value *ptrA, unsigned sizeA,
+                                    TemporalRelation rel, const Value *ptrB,
+                                    unsigned sizeB, const Loop *L, Remedies &R,
+                                    DesiredAliasResult dAliasRes) {
     assert(nextAA && "Failure in chaining to next LoopAA; did you remember to add -no-loop-aa?");
     return nextAA->alias(ptrA,sizeA,rel,ptrB,sizeB,L, R);
   }
@@ -320,12 +318,11 @@ namespace liberty
     return false;
   }
 
-  LoopAA::AliasResult NoLoopAA::alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L, Remedies &R)
-  {
+  LoopAA::AliasResult NoLoopAA::alias(const Value *ptrA, unsigned sizeA,
+                                      TemporalRelation rel, const Value *ptrB,
+                                      unsigned sizeB, const Loop *L,
+                                      Remedies &R,
+                                      DesiredAliasResult dAliasRes) {
     DEBUG(errs() << "NoLoopAA\n");
     return MayAlias;
   }
@@ -461,12 +458,11 @@ namespace liberty
     return false;
   }
 
-  LoopAA::AliasResult AAToLoopAA::alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L, Remedies &R)
-  {
+  LoopAA::AliasResult AAToLoopAA::alias(const Value *ptrA, unsigned sizeA,
+                                        TemporalRelation rel, const Value *ptrB,
+                                        unsigned sizeB, const Loop *L,
+                                        Remedies &R,
+                                        DesiredAliasResult dAliasRes) {
     DEBUG(errs() << "AAToLoopAA\n");
     if( rel == Same && isValid(L, ptrA) && isValid(L, ptrB) )
     {

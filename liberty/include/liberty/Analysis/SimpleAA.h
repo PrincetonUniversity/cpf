@@ -13,7 +13,7 @@ struct SimpleAA : public LoopAA // Not a pass!
 
   AliasResult alias(const Value *ptrA, unsigned sizeA, TemporalRelation rel,
                     const Value *ptrB, unsigned sizeB, const Loop *L,
-                    Remedies &R);
+                    Remedies &R, DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   ModRefResult modref(const Instruction *A, TemporalRelation rel,
                       const Value *ptrB, unsigned sizeB, const Loop *L,

@@ -54,7 +54,8 @@ void LocalityAA::populateNoWAWRemedies(Ptrs aus, Remedies &R) {
 
 LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
                                       TemporalRelation rel, const Value *P2,
-                                      unsigned S2, const Loop *L, Remedies &R) {
+                                      unsigned S2, const Loop *L, Remedies &R,
+                                      DesiredAliasResult dAliasRes) {
 
   //  if( !L || !asgn.isValidFor(L) )
   //    return MayAlias;
