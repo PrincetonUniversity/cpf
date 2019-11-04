@@ -5,7 +5,7 @@
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 
-#define DEFAULT_POINTS_TO_REMED_COST 1001
+#define DEFAULT_POINTS_TO_REMED_COST 10001
 
 namespace liberty
 {
@@ -28,7 +28,7 @@ LoopAA::AliasResult PointsToAA::aliasCheck(
     TemporalRelation rel,
     const Pointer &P2,
     const Loop *L,
-    Remedies &R)
+    Remedies &R, DesiredAliasResult dAliasRes)
 {
   if( !L )
     return MayAlias;
