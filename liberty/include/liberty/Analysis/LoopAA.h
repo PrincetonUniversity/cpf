@@ -140,6 +140,14 @@ namespace liberty
       ModRef    = 3
     };
 
+    /// This is the desired result of an alias query.
+    enum DesiredAliasResult
+    {
+      DNoAlias   = 1,
+      DMustAlias = 2,
+      DNoOrMustAlias  = 3
+    };
+
     //typedef std::pair<AliasResult, Remedies> AliasResultFull;
     //typedef std::pair<ModRefResult, Remedies> ModRefResultFull;
 
@@ -204,12 +212,10 @@ namespace liberty
     /// Do not be surpised:
     ///   This is NOT a transitive relation.
     ///
-    virtual AliasResult alias(
-      const Value *ptrA, unsigned sizeA,
-      TemporalRelation rel,
-      const Value *ptrB, unsigned sizeB,
-      const Loop *L,
-      Remedies &remeds);
+    virtual AliasResult alias(const Value *ptrA, unsigned sizeA,
+                              TemporalRelation rel, const Value *ptrB,
+                              unsigned sizeB, const Loop *L, Remedies &remeds,
+                              DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
     /// This is the method that consumers of
     /// dependence analysis will call.  It means:
@@ -469,12 +475,10 @@ namespace liberty
 
     virtual StringRef getLoopAAName() const { return "NoLoopAA"; }
 
-    virtual AliasResult alias(
-      const Value *ptrA, unsigned sizeA,
-      TemporalRelation rel,
-      const Value *ptrB, unsigned sizeB,
-      const Loop *L,
-      Remedies &remeds);
+    virtual AliasResult alias(const Value *ptrA, unsigned sizeA,
+                              TemporalRelation rel, const Value *ptrB,
+                              unsigned sizeB, const Loop *L, Remedies &remeds,
+                              DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
     virtual ModRefResult modref(
       const Instruction *A,
@@ -514,12 +518,10 @@ namespace liberty
 
     virtual StringRef getLoopAAName() const { return "AAToLoopAA"; }
 
-    virtual AliasResult alias(
-      const Value *ptrA, unsigned sizeA,
-      TemporalRelation rel,
-      const Value *ptrB, unsigned sizeB,
-      const Loop *L,
-      Remedies &remeds);
+    virtual AliasResult alias(const Value *ptrA, unsigned sizeA,
+                              TemporalRelation rel, const Value *ptrB,
+                              unsigned sizeB, const Loop *L, Remedies &remeds,
+                              DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
     virtual ModRefResult modref(
       const Instruction *A,

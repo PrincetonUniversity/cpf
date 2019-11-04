@@ -64,7 +64,8 @@ public:
 
   virtual AliasResult alias(const Value *V1, unsigned Size1,
                             TemporalRelation Rel, const Value *V2,
-                            unsigned Size2, const Loop *L, Remedies &remeds);
+                            unsigned Size2, const Loop *L, Remedies &remeds,
+                            DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   static bool containsExpensiveRemeds(const Remedies &R);
   static unsigned long totalRemedCost(const Remedies &R);

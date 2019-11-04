@@ -192,12 +192,10 @@ bool PtrResidueAA::may_modref(
   return true;
 }
 
-LoopAA::AliasResult PtrResidueAA::alias(
-  const Value *P1, unsigned S1,
-  TemporalRelation rel,
-  const Value *P2, unsigned S2,
-  const Loop *L, Remedies &R)
-{
+LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
+                                        TemporalRelation rel, const Value *P2,
+                                        unsigned S2, const Loop *L, Remedies &R,
+                                        DesiredAliasResult dAliasRes) {
   ++numQueries;
 
   PtrResidueSpeculationManager::Assumption a1,a2;

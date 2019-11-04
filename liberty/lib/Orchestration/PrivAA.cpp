@@ -145,7 +145,8 @@ bool PrivAA::isCheapPrivate(const Instruction *I, const Value **ptr,
 
 LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
                                   TemporalRelation rel, const Value *P2,
-                                  unsigned S2, const Loop *L, Remedies &R) {
+                                  unsigned S2, const Loop *L, Remedies &R,
+                                  DesiredAliasResult dAliasRes) {
 
   if (rel == LoopAA::Same)
     return LoopAA::alias(P1, S1, rel, P2, S2, L, R);
