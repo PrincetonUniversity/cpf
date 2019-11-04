@@ -59,11 +59,13 @@ public:
     return false;
   }
 
-  virtual AliasResult aliasCheck(const Pointer &P1,
-                                 TemporalRelation Rel,
-                                 const Pointer &P2,
-                                 const Loop *L,
-                                 Remedies &R) {
+  virtual AliasResult
+  aliasCheck(const Pointer &P1, TemporalRelation Rel, const Pointer &P2,
+             const Loop *L, Remedies &R,
+             DesiredAliasResult dAliasRes = DNoOrMustAlias) {
+
+    if (dAliasRes == DMustAlias)
+      return MayAlias;
 
     const Value *V1 = P1.ptr, *V2 = P2.ptr;
 

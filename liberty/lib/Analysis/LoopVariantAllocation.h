@@ -37,11 +37,9 @@ public:
                                      const llvm::Loop *L,
                                      Remedies &R);
 
-  virtual AliasResult aliasCheck(const Pointer &P1,
-                                 TemporalRelation Rel,
-                                 const Pointer &P2,
-                                 const Loop *L,
-                                 Remedies &R);
+  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                                 const Pointer &P2, const Loop *L, Remedies &R,
+                                 DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   StringRef getLoopAAName() const { return "loop-variant-allocation-aa"; }
 

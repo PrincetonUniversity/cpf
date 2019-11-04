@@ -79,13 +79,15 @@ static bool definitelyDifferent(const ClassicLoopAA::Pointer &P1, const ClassicL
   ||different(P1,P2,"stderr",DL);
 }
 
-LoopAA::AliasResult StdInOutErr::aliasCheck(
-  const Pointer &P1,
-  TemporalRelation Rel,
-  const Pointer &P2,
-  const Loop *L,
-  Remedies &R)
-{
+LoopAA::AliasResult StdInOutErr::aliasCheck(const Pointer &P1,
+                                            TemporalRelation Rel,
+                                            const Pointer &P2, const Loop *L,
+                                            Remedies &R,
+                                            DesiredAliasResult dAliasRes) {
+
+  if (dAliasRes == DMustAlias)
+    return MayAlias;
+
   //sot
   const DataLayout &DL = Mod->getDataLayout();
 

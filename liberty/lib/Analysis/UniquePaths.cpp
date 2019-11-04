@@ -569,7 +569,8 @@ public:
   AliasResult uapAlias(const Pointer &P1, const Value *obj1,
                        TemporalRelation Rel, const Pointer &P2,
                        const Value *obj2, const Loop *L, Remedies &R,
-                       time_t queryStart, unsigned Timeout) {
+                       time_t queryStart, unsigned Timeout,
+                       DesiredAliasResult dAliasRes) {
     LoopAA *top = getTopAA();
 
     AccessPath *ap1 = findPathForLoad(obj1);
@@ -595,6 +596,9 @@ public:
         else
           return MayAlias;
       }
+
+      if (dAliasRes == DMustAlias)
+        return MayAlias;
 
       AliasResult result = NoAlias;
 
@@ -692,6 +696,9 @@ public:
 
     else if( eligible(ap1) )
     {
+      if (dAliasRes == DMustAlias)
+        return MayAlias;
+
       ++numEligible;
       AliasResult result = NoAlias;
 
@@ -748,6 +755,9 @@ public:
 
     else if( eligible(ap2) )
     {
+      if (dAliasRes == DMustAlias)
+        return MayAlias;
+
       ++numEligible;
       AliasResult result = NoAlias;
 
@@ -804,12 +814,10 @@ public:
     return MayAlias;
   }
 
-  virtual AliasResult aliasCheck(const Pointer &P1,
-                                 TemporalRelation Rel,
-                                 const Pointer &P2,
-                                 const Loop *L,
-                                 Remedies &R)
-  {
+  virtual AliasResult
+  aliasCheck(const Pointer &P1, TemporalRelation Rel, const Pointer &P2,
+             const Loop *L, Remedies &R,
+             DesiredAliasResult dAliasRes = DNoOrMustAlias) {
     INTROSPECT(ENTER(P1,Rel,P2,L));
     ++numQueries;
 
@@ -863,7 +871,7 @@ public:
         const Value *obj2 = *j;
 
         result = join(result, uapAlias(P1, obj1, Rel, P2, obj2, L, tmpR,
-                                       queryStart, AnalysisTimeout));
+                                       queryStart, AnalysisTimeout, dAliasRes));
 
         if(AnalysisTimeout > 0 && queryStart > 0)
         {

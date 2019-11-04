@@ -26,7 +26,8 @@ public:
   virtual bool runOnModule(llvm::Module &M);
 
   virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
-                                 const Pointer &P2, const Loop *L, Remedies &R);
+                                 const Pointer &P2, const Loop *L, Remedies &R,
+                                 DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   /// May not call down the LoopAA stack, but may top
   virtual ModRefResult getModRefInfo(CallSite CS1, TemporalRelation Rel,

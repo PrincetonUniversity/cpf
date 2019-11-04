@@ -451,9 +451,10 @@ namespace {
                                        const Pointer &P2, const Loop *L,
                                        Remedies &R);
 
-    virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
-                                   const Pointer &P2, const Loop *L,
-                                   Remedies &R);
+    virtual AliasResult
+    aliasCheck(const Pointer &P1, TemporalRelation Rel, const Pointer &P2,
+               const Loop *L, Remedies &R,
+               DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
     AliasResult aliasCommon(const Value *V1, unsigned V1Size,
                             TemporalRelation Rel, const Value *V2,
@@ -918,7 +919,8 @@ BasicLoopAA::aliasPHI(const PHINode *PN, unsigned PNSize, TemporalRelation Rel,
 //
 liberty::LoopAA::AliasResult
 BasicLoopAA::aliasCheck(const Pointer &P1, TemporalRelation Rel,
-                        const Pointer &P2, const Loop *L, Remedies &R) {
+                        const Pointer &P2, const Loop *L, Remedies &R,
+                        DesiredAliasResult dAliasRes) {
 
   const Value *V1 = P1.ptr, *V2 = P2.ptr;
   const unsigned V1Size = P1.size, V2Size = P2.size;
