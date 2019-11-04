@@ -16,6 +16,7 @@ namespace SpecPriv
 {
 using namespace llvm;
 
+struct PerformanceEstimator;
 
 struct LoopParallelizationStrategy
 {
@@ -36,6 +37,8 @@ struct LoopParallelizationStrategy
   // Write a short summary message,
   // such as 'DOALL' or 'DSWP [S-P-S]'
   virtual void summary(raw_ostream &fout) const = 0;
+  virtual void pStageWeightPrint(raw_ostream &fout, PerformanceEstimator &perf,
+                                 const Loop *loop) const = 0;
 
   // To apply speculation independently of parallelization.
   // When we modify the parallel region by adding
@@ -75,6 +78,11 @@ struct DoallStrategy : public LoopParallelizationStrategy
   virtual void summary(raw_ostream &fout) const
   {
     fout << "DOALL";
+  }
+
+  virtual void pStageWeightPrint(raw_ostream &fout, PerformanceEstimator &perf,
+                                 const Loop *loop) const {
+    fout << "\t100.0";
   }
 
   // Update strategies.
@@ -154,6 +162,9 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   CrossStageMemFlows crossStageMemFlows;
 
   virtual void summary(raw_ostream &fout) const;
+  virtual void pStageWeightPrint(raw_ostream &fout, PerformanceEstimator &perf,
+                                 const Loop *loop) const;
+
   void dump_pipeline(raw_ostream &fout, StringRef line_suffix = "") const;
 
   bool expandReplicatedStages();

@@ -399,8 +399,10 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
   }
 }
 
-void printOneLoopStrategy(raw_ostream &fout, Loop *loop, LoopParallelizationStrategy *strategy, LoopProfLoad &lpl, bool willTransform)
-{
+void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
+                          LoopParallelizationStrategy *strategy,
+                          LoopProfLoad &lpl, bool willTransform,
+                          PerformanceEstimator &perf) {
   const unsigned FixedPoint(1000);
   const unsigned long tt = FixedPoint * lpl.getTotTime();
   BasicBlock *header = loop->getHeader();
@@ -426,8 +428,10 @@ void printOneLoopStrategy(raw_ostream &fout, Loop *loop, LoopParallelizationStra
 
   fout << "    ";
 
-  if( strategy )
+  if( strategy ) {
     strategy->summary(fout);
+    strategy->pStageWeightPrint(fout, perf, loop);
+  }
   else
     fout << "(no strat)";
 
@@ -776,8 +780,10 @@ bool Selector::doSelection(
     Loop *loop = vertices[ v ];
 
     // 'loop' is a loop we will parallelize
-    if( DebugFlag && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-      printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(), lpl, true);
+    if (DebugFlag &&
+        (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
+      printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
+                           lpl, true, *perf);
 
     Vertices::iterator j = std::find(toDelete.begin(), toDelete.end(), loop);
     if( j != toDelete.end() )
@@ -791,8 +797,11 @@ bool Selector::doSelection(
     Loop *deleteme = toDelete[i];
 
     // 'deleteme' is a loop we will NOT parallelize.
-    if( DebugFlag && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-      printOneLoopStrategy(errs(), deleteme, strategies[deleteme->getHeader()].get(), lpl, false);
+    if (DebugFlag &&
+        (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
+      printOneLoopStrategy(errs(), deleteme,
+                           strategies[deleteme->getHeader()].get(), lpl, false,
+                           *perf);
 
     Loop2Strategy::iterator j = strategies.find( deleteme->getHeader() );
     if( j != strategies.end() )

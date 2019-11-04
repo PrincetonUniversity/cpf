@@ -7,6 +7,7 @@
 #include "llvm/IR/ValueMap.h"
 #include "llvm/Support/FileSystem.h"
 
+#include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ModuleLoops.h"
@@ -553,6 +554,25 @@ void PipelineStrategy::summary(raw_ostream &fout) const
       fout << '\'';
   }
   fout << ']';
+}
+
+void PipelineStrategy::pStageWeightPrint(raw_ostream &fout,
+                                         PerformanceEstimator &perf,
+                                         const Loop *loop) const {
+  fout << "\t";
+  double pWt = 0.0;
+  double estimate_loop_wt = perf.estimate_loop_weight(loop);
+  for (unsigned i = 0, N = stages.size(); i < N; ++i) {
+    const PipelineStage &stage = stages[i];
+    if (stage.type == PipelineStage::Parallel) {
+      double wt = perf.estimate_weight(stage.instructions.begin(),
+                                       stage.instructions.end());
+      wt += perf.estimate_weight(stage.replicated.begin(),
+                                 stage.replicated.end());
+      pWt += wt;
+    }
+  }
+  fout << format("P-portion=%6.2f\%", 100.0 * (double)pWt / estimate_loop_wt);
 }
 
 void PipelineStrategy::addInstruction(Instruction *newInst,
