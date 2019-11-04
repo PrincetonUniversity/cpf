@@ -32,9 +32,10 @@ namespace SpecPriv
 
 class HeapAssignment;
 
-void printOneLoopStrategy(raw_ostream &fout,
-  Loop *loop, LoopParallelizationStrategy *strategy,
-  LoopProfLoad &lpl, bool willTransform);
+void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
+                          LoopParallelizationStrategy *strategy,
+                          LoopProfLoad &lpl, bool willTransform,
+                          PerformanceEstimator &perf);
 
 struct Selector : public UpdateOnClone
 {
