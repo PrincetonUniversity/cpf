@@ -7,7 +7,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#define DEFAULT_LAMP_REMED_COST 999
+#define DEFAULT_LAMP_REMED_COST 9999
 
 namespace liberty {
 
