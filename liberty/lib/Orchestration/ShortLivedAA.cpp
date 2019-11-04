@@ -23,17 +23,18 @@ STATISTIC(numEligible,   "Num eligible queries");
 STATISTIC(numPrivatized, "Num privatized");
 STATISTIC(numSeparated,  "Num separated");
 
-LoopAA::AliasResult ShortLivedAA::aliasCheck(
-    const Pointer &P1,
-    TemporalRelation rel,
-    const Pointer &P2,
-    const Loop *L,
-    Remedies &R)
-{
+LoopAA::AliasResult ShortLivedAA::aliasCheck(const Pointer &P1,
+                                             TemporalRelation rel,
+                                             const Pointer &P2, const Loop *L,
+                                             Remedies &R,
+                                             DesiredAliasResult dAliasRes) {
   ++numQueries;
 
-//  if( !L || !asgn.isValidFor(L) )
-//    return MayAlias;
+  if (dAliasRes == DMustAlias)
+    return MayAlias;
+
+  //  if( !L || !asgn.isValidFor(L) )
+  //    return MayAlias;
 
   if( !isa<PointerType>( P1.ptr->getType() ) )
     return MayAlias;

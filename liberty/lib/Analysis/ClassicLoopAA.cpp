@@ -30,7 +30,8 @@ LoopAA::ModRefResult ClassicLoopAA::getModRefInfo(CallSite CS,
 LoopAA::AliasResult ClassicLoopAA::aliasCheck(const Pointer &P1,
                                               TemporalRelation Rel,
                                               const Pointer &P2, const Loop *L,
-                                              Remedies &R) {
+                                              Remedies &R,
+                                              DesiredAliasResult dAliasRes) {
   return MayAlias;
 }
 
@@ -50,15 +51,14 @@ unsigned long ClassicLoopAA::totalRemedCost(const Remedies &R) {
   return tcost;
 }
 
-LoopAA::AliasResult
-ClassicLoopAA::aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
-                                   TemporalRelation Rel, const Value *V2,
-                                   unsigned Size2, const Loop *L, Remedies &R,
-                                   LoopAA::AliasResult AR, Remedies &tmpR) {
+LoopAA::AliasResult ClassicLoopAA::aliasAvoidExpRemeds(
+    const Value *V1, unsigned Size1, TemporalRelation Rel, const Value *V2,
+    unsigned Size2, const Loop *L, Remedies &R, LoopAA::AliasResult AR,
+    Remedies &tmpR, DesiredAliasResult dAliasRes) {
   if (containsExpensiveRemeds(tmpR)) {
     Remedies chainRemeds;
     LoopAA::AliasResult chainRes =
-        LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds);
+        LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds, dAliasRes);
     //if (chainRes == AR && !containsExpensiveRemeds(chainRemeds)) {
     if (chainRes != MayAlias &&
         (!containsExpensiveRemeds(chainRemeds) ||
@@ -226,12 +226,13 @@ LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
                                          DesiredAliasResult dAliasRes) {
 
   Remedies tmpR;
-  const AliasResult AR =
-      aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2), L, tmpR);
+  const AliasResult AR = aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2),
+                                    L, tmpR, dAliasRes);
   if (AR != MayAlias) {
-    return aliasAvoidExpRemeds(V1, Size1, Rel, V2, Size2, L, R, AR, tmpR);
+    return aliasAvoidExpRemeds(V1, Size1, Rel, V2, Size2, L, R, AR, tmpR,
+                               dAliasRes);
   }
-  return LoopAA::alias(V1, Size1, Rel, V2, Size2, L, R);
+  return LoopAA::alias(V1, Size1, Rel, V2, Size2, L, R, dAliasRes);
 }
 
 LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const LoadInst *Load,

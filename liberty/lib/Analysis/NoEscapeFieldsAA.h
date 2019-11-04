@@ -132,12 +132,9 @@ namespace liberty {
 
     StringRef getLoopAAName() const { return "NoEscapeFieldsAA"; }
 
-    AliasResult aliasCheck(
-      const Pointer &P1,
-      TemporalRelation rel,
-      const Pointer &P2,
-      const Loop *L,
-      Remedies &R);
+    AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
+                           const Pointer &P2, const Loop *L, Remedies &R,
+                           DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
     ModRefResult getModRefInfo(
       CallSite cs,

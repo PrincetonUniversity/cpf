@@ -52,7 +52,8 @@ public:
   /// May not call down the LoopAA stack, but may top
   virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
                                  const Pointer &P2, const Loop *L,
-                                 Remedies &remeds);
+                                 Remedies &remeds,
+                                 DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   virtual ModRefResult modref(const Instruction *I1, TemporalRelation Rel,
                               const Instruction *I2, const Loop *L,
@@ -70,11 +71,11 @@ public:
   static bool containsExpensiveRemeds(const Remedies &R);
   static unsigned long totalRemedCost(const Remedies &R);
 
-  LoopAA::AliasResult aliasAvoidExpRemeds(const Value *V1, unsigned Size1,
-                                          TemporalRelation Rel, const Value *V2,
-                                          unsigned Size2, const Loop *L,
-                                          Remedies &R, LoopAA::AliasResult AR,
-                                          Remedies &tmpR);
+  LoopAA::AliasResult
+  aliasAvoidExpRemeds(const Value *V1, unsigned Size1, TemporalRelation Rel,
+                      const Value *V2, unsigned Size2, const Loop *L,
+                      Remedies &R, LoopAA::AliasResult AR, Remedies &tmpR,
+                      DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   static LoopAA::ModRefResult
   modrefAvoidExpRemeds(Remedies &R, LoopAA::ModRefResult MR, Remedies &tmpR,

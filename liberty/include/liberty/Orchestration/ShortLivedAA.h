@@ -30,12 +30,9 @@ struct ShortLivedAA : public ClassicLoopAA // Not a pass!
 
   StringRef getLoopAAName() const { return "spec-priv-local-aa"; }
 
-  virtual AliasResult aliasCheck(
-    const Pointer &P1,
-    TemporalRelation rel,
-    const Pointer &P2,
-    const Loop *L,
-    Remedies &R);
+  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
+                                 const Pointer &P2, const Loop *L, Remedies &R,
+                                 DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
 private:
   const Read &read;
