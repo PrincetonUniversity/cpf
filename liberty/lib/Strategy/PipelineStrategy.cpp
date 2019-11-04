@@ -572,7 +572,7 @@ void PipelineStrategy::pStageWeightPrint(raw_ostream &fout,
       pWt += wt;
     }
   }
-  fout << format("P-portion=%6.2f\%", 100.0 * (double)pWt / estimate_loop_wt);
+  fout << format("P-portion=%6.2f%%", 100.0 * (double)pWt / estimate_loop_wt);
 }
 
 void PipelineStrategy::addInstruction(Instruction *newInst,
