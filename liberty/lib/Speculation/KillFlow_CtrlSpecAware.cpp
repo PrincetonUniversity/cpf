@@ -92,7 +92,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     LoopAA *top = getEffectiveTopAA();
     ++numSubQueries;
-    return top->alias(storeptr,1, Same, loadptr,1, 0, R) == LoopAA::MustAlias;
+    return top->alias(storeptr, 1, Same, loadptr, 1, 0, R,
+                      LoopAA::DMustAlias) == LoopAA::MustAlias;
   }
 
   /// Non-topping case of pointer comparison.
