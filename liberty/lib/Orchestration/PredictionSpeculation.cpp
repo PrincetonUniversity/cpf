@@ -101,6 +101,10 @@ LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
                                         unsigned sizeB, const Loop *L,
                                         Remedies &R,
                                         DesiredAliasResult dAliasRes) {
+
+  if (dAliasRes == DMustAlias)
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+
   if (rel == LoopAA::Same)
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 

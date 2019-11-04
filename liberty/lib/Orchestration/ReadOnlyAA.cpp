@@ -29,8 +29,11 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
 
   ++numQueries;
 
-//  if( !L || !asgn->isValidFor(L) )
-//    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
+  if (dAliasRes == DMustAlias)
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+
+  //  if( !L || !asgn->isValidFor(L) )
+  //    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L);
 
   if( !isa<PointerType>( ptrA->getType() ) )
     return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L,R);
