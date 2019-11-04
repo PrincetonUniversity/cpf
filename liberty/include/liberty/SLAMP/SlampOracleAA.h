@@ -19,11 +19,9 @@ public:
 
   StringRef getLoopAAName() const { return "slamp-oracle-aa"; }
 
-  AliasResult alias(
-    const Value *ptrA, unsigned sizeA,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L, Remedies &R);
+  AliasResult alias(const Value *ptrA, unsigned sizeA, TemporalRelation rel,
+                    const Value *ptrB, unsigned sizeB, const Loop *L,
+                    Remedies &R, DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
   ModRefResult modref(
     const Instruction *A,
