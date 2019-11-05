@@ -576,6 +576,9 @@ public:
     AccessPath *ap1 = findPathForLoad(obj1);
     AccessPath *ap2 = findPathForLoad(obj2);
 
+    const Instruction *objI1 = dyn_cast<Instruction>(obj1);
+    const Instruction *objI2 = dyn_cast<Instruction>(obj2);
+
     if( eligible(ap1) && eligible(ap2) )
     {
       ++numEligible;
@@ -624,6 +627,21 @@ public:
         }
 
         DEBUG(errs() << "\t\t" << *ap2 << " has " << defs2.size() << '\n');
+
+        const Instruction *defI1 = dyn_cast<Instruction>(def1);
+        if (defI1 && objI1) {
+          ++numSubQueries;
+          const ModRefResult modrefresult =
+              top->modref(defI1, Rel, objI1, L, R);
+          if (modrefresult == NoModRef)
+            continue;
+        }
+
+        if (def1 == P1.ptr) {
+          mtf(defs1, i);
+          return MayAlias;
+        }
+
         const unsigned size1 = ~0U; // TODO
         for(AccessPathAttrs::Defs::iterator j=defs2.begin(), z=defs2.end(); j!=z; ++j)
         {
@@ -639,10 +657,13 @@ public:
 
           const unsigned size2 = ~0U; // TODO
 
-          if( def1 == P1.ptr )
-          {
-            mtf(defs1, i);
-            return MayAlias;
+          const Instruction *defI2 = dyn_cast<Instruction>(def2);
+          if (defI2 && objI2) {
+            ++numSubQueries;
+            const ModRefResult modrefresult =
+                top->modref(defI2, Rel, objI2, L, R);
+            if (modrefresult == NoModRef)
+              continue;
           }
 
           if( def2 == P2.ptr )
@@ -713,6 +734,15 @@ public:
 
         DEBUG(errs() << "\t\tvs " << *P2.ptr << '\n');
 
+        const Instruction *defI1 = dyn_cast<Instruction>(def1);
+        if (defI1 && objI1) {
+          ++numSubQueries;
+          const ModRefResult modrefresult =
+              top->modref(defI1, Rel, objI1, L, R);
+          if (modrefresult == NoModRef)
+            continue;
+        }
+
         if( def1 == P1.ptr )
         {
           mtf(defs1, i);
@@ -771,6 +801,15 @@ public:
         const unsigned size2 = ~0U; // TODO
 
         DEBUG(errs() << "\t\tvs " << *P1.ptr << '\n');
+
+        const Instruction *defI2 = dyn_cast<Instruction>(def2);
+        if (defI2 && objI2) {
+          ++numSubQueries;
+          const ModRefResult modrefresult =
+              top->modref(defI2, Rel, objI2, L, R);
+          if (modrefresult == NoModRef)
+            continue;
+        }
 
         if( def2 == P2.ptr )
         {
