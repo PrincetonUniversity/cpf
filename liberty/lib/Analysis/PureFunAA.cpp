@@ -25,21 +25,23 @@ static bool isReadOnlyProp(const Instruction *inst) {
   const DataLayout& td = inst->getModule()->getDataLayout();
   if( const MemIntrinsic *mem = dyn_cast<MemIntrinsic>(inst) ) {
     const Value *obj = GetUnderlyingObject( mem->getDest(), td);
-    if( !obj )
-      return true;
-    if( const AllocaInst *alloca = dyn_cast< AllocaInst >(obj) )
-      if( alloca->getParent() == inst->getParent() )
-        return false;
-    return true;
+    //if( !obj )
+    //  return false;
+    if (obj)
+      if (const AllocaInst *alloca = dyn_cast<AllocaInst>(obj))
+        if (alloca->getParent() == inst->getParent())
+          return true;
+    //return false;
   }
   else if( const StoreInst *store = dyn_cast<StoreInst>(inst) ) {
     const Value *obj = GetUnderlyingObject( store->getPointerOperand(), td );
-    if( !obj )
-      return true;
-    if( const AllocaInst *alloca = dyn_cast< AllocaInst >(obj) )
-      if( alloca->getParent() == inst->getParent() )
-        return false;
-    return true;
+    //if( !obj )
+    //  return false;
+    if (obj)
+      if (const AllocaInst *alloca = dyn_cast<AllocaInst>(obj))
+        if (alloca->getParent() == inst->getParent())
+          return true;
+    //return false;
   }
   // return true;
   return !inst->mayWriteToMemory();
