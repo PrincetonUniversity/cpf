@@ -444,7 +444,7 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
   }
 
   else if (!callee->isDeclaration() && !pure->isReadOnly(callee) &&
-           !pure->isLocal(callee) && !semi->isSemiLocal(callee, *pure)) {
+           !pure->isLocal(callee)) {
     std::pair<CallSiteSet::iterator,bool> res = already.insert(op);
     if( !res.second )
       return true; // already in there.
