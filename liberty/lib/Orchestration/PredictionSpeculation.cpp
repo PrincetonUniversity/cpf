@@ -57,8 +57,10 @@ bool PredictionAA::mustAliasFast(const Value *ptr1, const Value *ptr2) {
 
 bool PredictionAA::mustAlias(const Value *ptr1, const Value *ptr2) {
   // Very easy case
+  /*
   if (ptr1 == ptr2 && isa<GlobalValue>(ptr1))
     return true;
+  */
 
   LoopAA *top = getTopAA();
   ++numSubQueries;
@@ -83,7 +85,8 @@ bool PredictionAA::isPredictablePtr(const Value *ptr) {
   if (!isPredPtr) {
     // check if ptr must alias with any of the predictable pointers
     for (auto predPtr : predictableMemLocs) {
-      if (mustAliasFast(predPtr, ptr) || mustAlias(predPtr, ptr)) {
+      //if (mustAliasFast(predPtr, ptr) || mustAlias(predPtr, ptr)) {
+      if (mustAlias(predPtr, ptr)) {
         mustAliasWithPredictableMemLocMap[ptr] = predPtr;
         isPredPtr = true;
         break;
