@@ -11,6 +11,8 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/PredictionSpeculation.h"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"

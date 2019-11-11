@@ -4,11 +4,11 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Support/FileSystem.h"
 
-#include "liberty/Analysis/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/EdgeCountOracleAA.h"
-#include "liberty/Analysis/KillFlow_CtrlSpecAware.h"
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 //#include "liberty/Analysis/TXIOAA.h"
 //#include "liberty/Analysis/CommutativeLibsAA.h"
 //#include "liberty/Analysis/CommutativeGuessAA.h"
@@ -215,7 +215,7 @@ private:
     else
       ctrlspec = &noctrlspec;
 
-    if ( !UseValuePred )
+    if ( UseValuePred )
       predaa->setLoopOfInterest(loop);
     else
       predspec = &nopredspec;
@@ -242,8 +242,6 @@ private:
       killflow_aware->setLoopOfInterest(ctrlspec, loop);
       callsite_aware->setLoopOfInterest(ctrlspec, loop);
     }
-
-    //TODO: add setLoopOfInterest for the rest
 
     LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
     aa->stackHasChanged();
