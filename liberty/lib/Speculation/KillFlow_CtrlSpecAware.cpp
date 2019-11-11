@@ -613,12 +613,22 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     BBPtrPair key(bb,ptr);
 
+    /*
+    // the following leads to bugs (unclear why it was useful in the first
+    place). e.g., 129.compress with noinline for globals getcode.size and
+    getcode.offset
+    //
+    // if a instruction replaces a pointer in the key then the cached data will
+    lead to wrongfully killed pointers results. The inst could be a call
+    instruction that wrongfully represents multiple pointers
+
     // for pointerKilledBefore queries we allow the use of the ptr of the other
     // instruction instead of solely the ptr of the before inst
     // (see Backward kills for loop-carried queries to modref)
     if (!after)
       key.second = before;
 
+    */
 
     if( bbKills.count(key) )
     {
