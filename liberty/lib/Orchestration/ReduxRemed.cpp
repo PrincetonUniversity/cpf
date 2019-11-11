@@ -311,8 +311,13 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
       if (binop) {
         if (Reduction::Type type = Reduction::isAssocAndCommut(binop)) {
-          assert(!foundAssocCommutBinOp &&
-                 "More than 1 accoc & commut binops in redux SCC!!");
+          if (foundAssocCommutBinOp && (type != remedy->type)) {
+            errs() << "More than 1 accoc & commut binops in redux SCC!!";
+            remedResp.depRes = DepResult::Dep;
+            return remedResp;
+          }
+          //assert((!foundAssocCommutBinOp || (type == remedy->type)) &&
+          //       "More than 1 accoc & commut binops in redux SCC!!");
           foundAssocCommutBinOp = true;
           remedy->type = type;
           DEBUG(errs() << "Binop in redux SCC: " << *binop
@@ -320,8 +325,13 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         }
       }
     }
-    assert(foundAssocCommutBinOp &&
-           "Noelle redux SCC does not have a assoc & commut binop");
+    if (!foundAssocCommutBinOp) {
+      errs() << "Noelle redux SCC does not have a assoc & commut binop!!\n";
+      remedResp.depRes = DepResult::Dep;
+      return remedResp;
+    }
+    //assert(foundAssocCommutBinOp &&
+    //       "Noelle redux SCC does not have a assoc & commut binop!!");
 
     remedResp.remedy = remedy;
     return remedResp;
