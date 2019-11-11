@@ -1,9 +1,9 @@
 #define DEBUG_TYPE "pipeline"
 
-#include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ReductionDetection.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Speculation/LoopDominators.h"
 
 #include "llvm/Analysis/ValueTracking.h"
@@ -252,6 +252,8 @@ LoopAA::ModRefResult Exp_PDG_NoTiming::query(Instruction *sop, LoopAA::TemporalR
 
   ++numQueries;
 
+  Remedies R;
+
 //  gettimeofday(&start,0);
   LoopAA::ModRefResult res;
   if( HideContext )
@@ -259,20 +261,20 @@ LoopAA::ModRefResult Exp_PDG_NoTiming::query(Instruction *sop, LoopAA::TemporalR
     // Intentionally mix loop-carried, intra-iteration, and loop-insensitive queries
     // to create a context-blind result.
 
-    res = aa->modref(sop,LoopAA::Same,dop,0); // Probably the least precise of these four.
+    res = aa->modref(sop,LoopAA::Same,dop,0,R); // Probably the least precise of these four.
     if( res != LoopAA::ModRef ) // Don't waste time if already worst-case
     {
-      const LoopAA::ModRefResult res2 = aa->modref(sop,LoopAA::After,dop,loop);
+      const LoopAA::ModRefResult res2 = aa->modref(sop,LoopAA::After,dop,loop,R);
       res = join(res, res2); // can only get worse
 
       if( res != LoopAA::ModRef ) // Don't waste time if already worst-case
       {
-        const LoopAA::ModRefResult res3 = aa->modref(sop,LoopAA::Same,dop,loop);
+        const LoopAA::ModRefResult res3 = aa->modref(sop,LoopAA::Same,dop,loop,R);
         res = join(res, res3); // can only get worse
 
         if( res != LoopAA::ModRef ) // Don't waste time if already worst-case
         {
-          const LoopAA::ModRefResult res4 = aa->modref(sop,LoopAA::Before,dop,loop);
+          const LoopAA::ModRefResult res4 = aa->modref(sop,LoopAA::Before,dop,loop,R);
           res = join(res, res4); // can only get worse
         }
       }
@@ -281,7 +283,7 @@ LoopAA::ModRefResult Exp_PDG_NoTiming::query(Instruction *sop, LoopAA::TemporalR
   else
   {
     // Normal query, context not hidden.
-    res = aa->modref(sop,rel,dop,loop);
+    res = aa->modref(sop,rel,dop,loop,R);
   }
 
 //  gettimeofday(&stop,0);

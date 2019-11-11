@@ -6,17 +6,17 @@
 #include "llvm/ADT/BitVector.h"
 
 #include "liberty/Analysis/ControlSpeculation.h"
-#include "liberty/Analysis/EdgeCountOracleAA.h"
-#include "liberty/Analysis/PureFunAA.h"
-#include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Analysis/PureFunAA.h"
+#include "liberty/Analysis/SemiLocalFunAA.h"
+#include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 //#include "liberty/Analysis/TXIOAA.h"
 //#include "liberty/Analysis/CommutativeLibsAA.h"
 //#include "liberty/Analysis/CommutativeGuessAA.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
@@ -381,7 +381,8 @@ private:
   void query(LoopAA *aa, Instruction *src, LoopAA::TemporalRelation R, Instruction *dst, Loop *L, std::ofstream &fout) const
   {
     const uint64_t t0 = rdtsc();
-    LoopAA::ModRefResult res = aa->modref(src,R,dst,L);
+    Remedies Remeds;
+    LoopAA::ModRefResult res = aa->modref(src,R,dst,L,Remeds);
     const uint64_t t1 = rdtsc();
 
     const double seconds = (t1 - t0) / (double) countCyclesPerSecond();

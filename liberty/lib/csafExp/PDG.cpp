@@ -1,11 +1,11 @@
 #define DEBUG_TYPE "pipeline"
 
+#include "PDG.h"
+#include "liberty/Analysis/ControlSpecIterators.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ReductionDetection.h"
-#include "liberty/Analysis/ControlSpecIterators.h"
-#include "liberty/Analysis/PredictionSpeculation.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Speculation/LoopDominators.h"
-#include "PDG.h"
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -975,7 +975,8 @@ LoopAA::ModRefResult PDG::query(Instruction *sop, LoopAA::TemporalRelation rel, 
   ++numQueries;
 
 //  gettimeofday(&start,0);
-  const LoopAA::ModRefResult res = aa->modref(sop,rel,dop,loop);
+  Remedies R;
+  const LoopAA::ModRefResult res = aa->modref(sop,rel,dop,loop,R);
 //  gettimeofday(&stop,0);
 
 //  const uint64_t microseconds = 1e6*(stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec);

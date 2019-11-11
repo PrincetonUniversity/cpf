@@ -2,11 +2,11 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_TRANSFORM_PIPELINE_OLD_H
 #define LLVM_LIBERTY_SPEC_PRIV_TRANSFORM_PIPELINE_OLD_H
 
-#include "liberty/Analysis/PredictionSpeculation.h"
-#include "liberty/Speculation/ControlSpeculator.h"
 #include "DAGSCC.h"
 #include "PDG.h"
 #include "PipelineStrategy.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
+#include "liberty/Speculation/ControlSpeculator.h"
 
 namespace liberty
 {
