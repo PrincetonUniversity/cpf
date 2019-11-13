@@ -4,19 +4,25 @@
 
 #define DEBUG_TYPE "inliner"
 
+#include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/BlockFrequencyInfo.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Operator.h"
-#include "llvm/IR/CallSite.h"
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/BlockFrequencyInfo.h"
-#include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
+#include "liberty/Analysis/LoopAA.h"
 #include "liberty/LoopProf/Targets.h"
+//#include "liberty/Speculation/PDGBuilder.hpp"
+#include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
+
+//#include "DGGraphTraits.hpp"
+//#include "PDG.hpp"
 
 #include <queue>
 #include <unordered_set>
@@ -39,6 +45,8 @@ struct Inliner: public ModulePass
     au.addRequired< ModuleLoops >();
     au.addRequired< BlockFrequencyInfoWrapperPass >();
     au.addRequired< Targets >();
+  	//au.addRequired< PDGBuilder >();
+  	au.addRequired< LoopAA >();
   }
 
   bool runOnModule(Module &mod)
@@ -88,8 +96,55 @@ private:
     return false;
   }
 
-  void processBB(BasicBlock &BB,
-                 std::unordered_set<Function *> &curPathVisited) {
+  // check if call sources or sinks any LC flow dependences
+  bool noFlowDep(CallInst *call, LoopAA *aa, Loop *loop) {
+
+    if (queryMemoryFlowDep(call, call, LoopAA::Before, LoopAA::After, loop, aa))
+      return false;
+
+    for (BasicBlock *BB : loop->getBlocks()) {
+      for (Instruction &I : *BB) {
+
+        if (!I.mayReadOrWriteMemory())
+          continue;
+
+				if (&I == call)
+					continue;
+
+        if (queryMemoryFlowDep(call, &I, LoopAA::Before, LoopAA::After, loop,
+                               aa))
+          return false;
+        if (queryMemoryFlowDep(&I, call, LoopAA::Before, LoopAA::After, loop,
+                               aa))
+          return false;
+      }
+    }
+
+    /*
+       // call could be hidden within another fun calls and
+       //might be a pdgNode in the loopPDG
+
+        auto pdgNode = pdg->fetchNode(call);
+        for (auto edge : pdgNode->getOutgoingEdges()) {
+          if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
+              edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT()))
+       { return false;
+          }
+        }
+
+        for (auto edge : pdgNode->getIncomingEdges()) {
+          if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
+              edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT()))
+       { return false;
+          }
+        }
+    */
+
+    return true;
+  }
+
+  void processBB(BasicBlock &BB, std::unordered_set<Function *> &curPathVisited,
+                 LoopAA *aa, Loop *loop) {
     if (isSpeculativelyDeadBB(BB))
       return;
 
@@ -97,9 +152,19 @@ private:
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
         if (calledFun && !calledFun->isDeclaration()) {
+          if (noFlowDep(call, aa, loop))
+						continue;
+					/*
+          // spec_qsort/spec_qsort.c from SPEC 2017
+          if (calledFun->getName().equals("spec_qsort") ||
+              calledFun->getName().equals("med3")) {
+            inlineCallInsts.push(call);
+            validCallInsts.insert(call);
+          }
+          */
           if (validCallInsts.count(call))
             continue;
-          if (processFunction(calledFun, curPathVisited)) {
+          if (processFunction(calledFun, curPathVisited, aa, loop)) {
             inlineCallInsts.push(call);
             validCallInsts.insert(call);
           }
@@ -109,7 +174,8 @@ private:
   }
 
   bool processFunction(Function *F,
-                       std::unordered_set<Function *> &curPathVisited) {
+                       std::unordered_set<Function *> &curPathVisited,
+                       LoopAA *aa, Loop *loop) {
     // check if there is a cycle in call graph
     // or if the function is recursive (quick check)
     if (curPathVisited.count(F) || isRecursiveFnFast(F))
@@ -123,7 +189,7 @@ private:
     processedFunctions.insert(F);
 
     for (BasicBlock &BB : *F)
-      processBB(BB, curPathVisited);
+      processBB(BB, curPathVisited, aa, loop);
 
     curPathVisited.erase(F);
     return true;
@@ -134,8 +200,13 @@ private:
     Function *loopFun = loop->getHeader()->getParent();
     curPathVisited.insert(loopFun);
 
+  	//PDGBuilder &pdgBuilder = getAnalysis< PDGBuilder >();
+    //llvm::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
+
+  	LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+
     for (BasicBlock *BB : loop->getBlocks())
-      processBB(*BB, curPathVisited);
+      processBB(*BB, curPathVisited, aa, loop);
   }
 
   void inlineCall(CallInst *call) {
@@ -189,6 +260,73 @@ private:
       runOnGlobal(*global);
     }
 
+    /*
+    // inline functions with function pointer arguments
+    // TODO: check better for recursiveness
+    for (Module::iterator k = mod.begin(), em = mod.end(); k != em; ++k) {
+      Function *fcn = &*k;
+      for (Function::iterator i = fcn->begin(), e = fcn->end(); i != e; ++i) {
+        BasicBlock *bb = &*i;
+        for (BasicBlock::iterator j = bb->begin(), z = bb->end(); j != z; ++j) {
+          Instruction *inst = &*j;
+
+          CallSite cs = getCallSite(inst);
+          if (!cs.getInstruction())
+            continue; // not a call
+
+          Value *fcn_ptr = cs.getCalledValue();
+          if (isa<Constant>(fcn_ptr))
+            continue; // direct function call.
+
+          if (CallInst *call = dyn_cast<CallInst>(inst))
+            if (call->isInlineAsm())
+              continue; // wtf!
+
+          // found an indirect function call.
+          // check if called function is an argument
+
+        //  errs() << "indirect call found " << *inst << "\n";
+
+          bool isArg = false;
+          for (Function::arg_iterator ar = fcn->arg_begin(),
+                                      ea = fcn->arg_end();
+               ar != ea; ++ar) {
+            Value *argument = &*ar;
+            if (argument == fcn_ptr) {
+              isArg = true;
+              break;
+            }
+          }
+          if (!isArg)
+            continue;
+
+        //  errs() << "arg found " << *fcn_ptr << "\n";
+
+          // calls to fcn should be inlined
+          for (Value::user_iterator user = fcn->user_begin();
+               user != fcn->user_end(); ++user) {
+            if (CallInst *callU = dyn_cast<CallInst>(*user)) {
+              // check that the function where the call resides is not the
+              // called function (avoid one simple case of recursion)
+
+               //errs() << "callU " << *callU << "\n";
+
+              if (callU->getCalledFunction() &&
+                  callU->getCalledFunction() == fcn &&
+                  callU->getParent()->getParent() != fcn) {
+                if (!validCallInsts.count(callU)) {
+                  inlineCallInsts.push(callU);
+                  validCallInsts.insert(callU);
+                  //errs() << "TO BE INLINED CALL " << *callU << "\n";
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    */
+
     // performing function inlining on collected call insts
     while (!inlineCallInsts.empty()) {
       auto callInst = inlineCallInsts.front();
@@ -199,6 +337,69 @@ private:
     }
 
     return modified;
+  }
+
+
+  static bool queryMemoryFlowDep(Instruction *src, Instruction *dst,
+                                 LoopAA::TemporalRelation FW,
+                                 LoopAA::TemporalRelation RV, Loop *loop,
+                                 LoopAA *aa) {
+    if (!src->mayReadOrWriteMemory())
+      return false;
+    if (!dst->mayReadOrWriteMemory())
+      return false;
+    if (!src->mayWriteToMemory() && !dst->mayWriteToMemory())
+      return false;
+
+    bool loopCarried = FW != RV;
+
+    Remedies Rf;
+    Remedies Rr;
+
+    // forward dep test
+    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, Rf);
+    if (LoopAA::NoModRef == forward)
+      return false;
+
+    // forward is Mod, ModRef, or Ref
+
+    if (!src->mayWriteToMemory())
+      forward = LoopAA::ModRefResult(forward & (~LoopAA::Mod));
+    if (!src->mayReadFromMemory())
+      forward = LoopAA::ModRefResult(forward & (~LoopAA::Ref));
+
+    // reverse dep test
+    LoopAA::ModRefResult reverse = forward;
+
+    // in some cases calling reverse is not needed depending on whether dst
+    // writes or/and reads to/from memory but in favor of correctness (AA stack
+    // does not just check aliasing) instead of performance we call reverse and
+    // use assertions to identify accuracy bugs of AA stack
+    if (loopCarried || src != dst)
+      reverse = aa->modref(dst, RV, src, loop, Rr);
+
+    if (!dst->mayWriteToMemory())
+      reverse = LoopAA::ModRefResult(reverse & (~LoopAA::Mod));
+    if (!dst->mayReadFromMemory())
+      reverse = LoopAA::ModRefResult(reverse & (~LoopAA::Ref));
+
+    if (LoopAA::NoModRef == reverse)
+      return false;
+
+    if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
+      return false; // RaR dep; who cares.
+
+    // At this point, we know there is one or more of
+    // a flow-, anti-, or output-dependence.
+
+    // only interested in flow deps
+    bool RAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
+               (reverse == LoopAA::Ref || reverse == LoopAA::ModRef);
+
+    if (!RAW)
+      return false;
+
+    return true;
   }
 };
 
