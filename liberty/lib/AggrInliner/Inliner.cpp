@@ -17,12 +17,8 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/LoopProf/Targets.h"
-//#include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
-
-//#include "DGGraphTraits.hpp"
-//#include "PDG.hpp"
 
 #include <queue>
 #include <unordered_set>
@@ -120,26 +116,6 @@ private:
       }
     }
 
-    /*
-       // call could be hidden within another fun calls and
-       //might be a pdgNode in the loopPDG
-
-        auto pdgNode = pdg->fetchNode(call);
-        for (auto edge : pdgNode->getOutgoingEdges()) {
-          if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
-              edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT()))
-       { return false;
-          }
-        }
-
-        for (auto edge : pdgNode->getIncomingEdges()) {
-          if (edge->isLoopCarriedDependence() && edge->isMemoryDependence() &&
-              edge->isRAWDependence() && pdg->isInternal(edge->getIncomingT()))
-       { return false;
-          }
-        }
-    */
-
     return true;
   }
 
@@ -154,14 +130,6 @@ private:
         if (calledFun && !calledFun->isDeclaration()) {
           if (noFlowDep(call, aa, loop))
 						continue;
-					/*
-          // spec_qsort/spec_qsort.c from SPEC 2017
-          if (calledFun->getName().equals("spec_qsort") ||
-              calledFun->getName().equals("med3")) {
-            inlineCallInsts.push(call);
-            validCallInsts.insert(call);
-          }
-          */
           if (validCallInsts.count(call))
             continue;
           if (processFunction(calledFun, curPathVisited, aa, loop)) {
@@ -199,9 +167,6 @@ private:
     std::unordered_set<Function *> curPathVisited;
     Function *loopFun = loop->getHeader()->getParent();
     curPathVisited.insert(loopFun);
-
-  	//PDGBuilder &pdgBuilder = getAnalysis< PDGBuilder >();
-    //llvm::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
 
   	LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
 
@@ -260,73 +225,6 @@ private:
       runOnGlobal(*global);
     }
 
-    /*
-    // inline functions with function pointer arguments
-    // TODO: check better for recursiveness
-    for (Module::iterator k = mod.begin(), em = mod.end(); k != em; ++k) {
-      Function *fcn = &*k;
-      for (Function::iterator i = fcn->begin(), e = fcn->end(); i != e; ++i) {
-        BasicBlock *bb = &*i;
-        for (BasicBlock::iterator j = bb->begin(), z = bb->end(); j != z; ++j) {
-          Instruction *inst = &*j;
-
-          CallSite cs = getCallSite(inst);
-          if (!cs.getInstruction())
-            continue; // not a call
-
-          Value *fcn_ptr = cs.getCalledValue();
-          if (isa<Constant>(fcn_ptr))
-            continue; // direct function call.
-
-          if (CallInst *call = dyn_cast<CallInst>(inst))
-            if (call->isInlineAsm())
-              continue; // wtf!
-
-          // found an indirect function call.
-          // check if called function is an argument
-
-        //  errs() << "indirect call found " << *inst << "\n";
-
-          bool isArg = false;
-          for (Function::arg_iterator ar = fcn->arg_begin(),
-                                      ea = fcn->arg_end();
-               ar != ea; ++ar) {
-            Value *argument = &*ar;
-            if (argument == fcn_ptr) {
-              isArg = true;
-              break;
-            }
-          }
-          if (!isArg)
-            continue;
-
-        //  errs() << "arg found " << *fcn_ptr << "\n";
-
-          // calls to fcn should be inlined
-          for (Value::user_iterator user = fcn->user_begin();
-               user != fcn->user_end(); ++user) {
-            if (CallInst *callU = dyn_cast<CallInst>(*user)) {
-              // check that the function where the call resides is not the
-              // called function (avoid one simple case of recursion)
-
-               //errs() << "callU " << *callU << "\n";
-
-              if (callU->getCalledFunction() &&
-                  callU->getCalledFunction() == fcn &&
-                  callU->getParent()->getParent() != fcn) {
-                if (!validCallInsts.count(callU)) {
-                  inlineCallInsts.push(callU);
-                  validCallInsts.insert(callU);
-                  //errs() << "TO BE INLINED CALL " << *callU << "\n";
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    */
-
     // performing function inlining on collected call insts
     while (!inlineCallInsts.empty()) {
       auto callInst = inlineCallInsts.front();
@@ -373,8 +271,7 @@ private:
 
     // in some cases calling reverse is not needed depending on whether dst
     // writes or/and reads to/from memory but in favor of correctness (AA stack
-    // does not just check aliasing) instead of performance we call reverse and
-    // use assertions to identify accuracy bugs of AA stack
+    // does not just check aliasing) instead of performance we call reverse
     if (loopCarried || src != dst)
       reverse = aa->modref(dst, RV, src, loop, Rr);
 
