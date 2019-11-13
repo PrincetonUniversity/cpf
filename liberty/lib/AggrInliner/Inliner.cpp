@@ -17,6 +17,7 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
@@ -38,11 +39,13 @@ struct Inliner: public ModulePass
 
   void getAnalysisUsage(AnalysisUsage &au) const
   {
+  	au.addRequired< TargetLibraryInfoWrapperPass >();
     au.addRequired< ModuleLoops >();
     au.addRequired< BlockFrequencyInfoWrapperPass >();
     au.addRequired< Targets >();
   	//au.addRequired< PDGBuilder >();
   	au.addRequired< LoopAA >();
+  	au.addRequired<SmtxSpeculationManager>();
   }
 
   bool runOnModule(Module &mod)
@@ -168,7 +171,12 @@ private:
     Function *loopFun = loop->getHeader()->getParent();
     curPathVisited.insert(loopFun);
 
-  	LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+    const DataLayout &DL = loopFun->getParent()->getDataLayout();
+    SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
+    SmtxAA smtxaa(&smtxMan);
+    smtxaa.InitializeLoopAA(this, DL);
+
+    LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
 
     for (BasicBlock *BB : loop->getBlocks())
       processBB(*BB, curPathVisited, aa, loop);
