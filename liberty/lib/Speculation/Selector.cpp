@@ -80,9 +80,7 @@ HeapAssignment &Selector::getAssignment()
 
 void Selector::analysisUsage(AnalysisUsage &au)
 {
-  //au.addRequired< DataLayout >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
-  //au.addRequired< ProfileInfo >();
   au.addRequired< BlockFrequencyInfoWrapperPass >();
   au.addRequired< BranchProbabilityInfoWrapperPass >();
   //au.addRequired< LoopAA >();
