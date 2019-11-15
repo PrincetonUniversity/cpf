@@ -53,7 +53,7 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   localityaa->InitializeLoopAA(&proxy, DL);
 
   // Value prediction
-  predaa = new PredictionAA(predspec);
+  predaa = new PredictionAA(predspec, perf);
   predaa->InitializeLoopAA(&proxy, DL);
 
   // Ptr-residue

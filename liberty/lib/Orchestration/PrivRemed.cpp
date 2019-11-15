@@ -419,7 +419,8 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<PrivRemedy> remedy =
       std::shared_ptr<PrivRemedy>(new PrivRemedy());
-  remedy->cost = DEFAULT_PRIV_REMED_COST;
+  //remedy->cost = DEFAULT_PRIV_REMED_COST;
+  remedy->cost = 0;
   remedy->privPtr = nullptr;
   remedy->localPtr = nullptr;
   remedy->ctrlSpecUsed = false;
@@ -432,7 +433,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr1;
       remedy->privPtr = (dyn_cast<StoreInst>(A))->getPointerOperand();
-      remedy->cost = LOCAL_PRIV_REMED_COST;
+      //remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
 
@@ -446,7 +447,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
       remedResp.depRes = DepResult::NoDep;
       remedy->localPtr = ptr2;
       remedy->privPtr = (dyn_cast<StoreInst>(B))->getPointerOperand();
-      remedy->cost = LOCAL_PRIV_REMED_COST;
+      //remedy->cost = LOCAL_PRIV_REMED_COST;
       remedy->type = PrivRemedy::Local;
       remedResp.remedy = remedy;
 

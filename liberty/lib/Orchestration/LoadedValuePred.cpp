@@ -20,9 +20,18 @@ void LoadedValuePredRemedy::apply(Task *task) {
 bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<LoadedValuePredRemedy> valPredRhs =
       std::static_pointer_cast<LoadedValuePredRemedy>(rhs);
-  if (this->ptr == valPredRhs->ptr)
-    return this->write < valPredRhs->write;
+  //if (this->ptr == valPredRhs->ptr)
+  //  return this->write < valPredRhs->write;
   return this->ptr < valPredRhs->ptr;
+}
+
+unsigned long LoadedValuePredRemedy::setCost(PerformanceEstimator *perf,
+                                             const Loop *loop) {
+  unsigned validation_weight = 100;
+  const Instruction *gravity = loop->getHeader()->getTerminator();
+  assert(gravity && "no terminator in BB??");
+  this->cost =
+      Remediator::estimate_validation_weight(perf, gravity, validation_weight);
 }
 
 const Value *LoadedValuePredRemediator::getPtr(const Instruction *I,
@@ -126,7 +135,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
 
   std::shared_ptr<LoadedValuePredRemedy> remedy =
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
-  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+  //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
   const DataLayout &DL = A->getModule()->getDataLayout();
 
   // if A or B is a loop-invariant load instruction report no dep
@@ -147,6 +156,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
   }
 
   if (!loopCarried) {
+    remedy->setCost(perf, L);
     remedResp.remedy = remedy;
     return remedResp;
   }
@@ -175,6 +185,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
                  << "  and  " << *B << '\n');
   }
 
+  remedy->setCost(perf, L);
   remedResp.remedy = remedy;
   return remedResp;
 }

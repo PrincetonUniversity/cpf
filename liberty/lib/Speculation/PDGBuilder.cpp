@@ -17,6 +17,7 @@
 
 #include "liberty/Analysis/LLVMAAResults.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 
 #include "Assumptions.h"
 
@@ -39,6 +40,7 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<Classify>();
   AU.addRequired<KillFlow_CtrlSpecAware>();
   AU.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+  AU.addRequired< ProfilePerformanceEstimator >();
   AU.setPreservesAll();
 }
 
@@ -93,7 +95,8 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
 
   predspec =
       getAnalysis<ProfileGuidedPredictionSpeculator>().getPredictionSpecPtr();
-  predaa = new PredictionAA(predspec);
+  PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
+  predaa = new PredictionAA(predspec, perf);
   predaa->InitializeLoopAA(this, *DL);
 
   PtrResidueSpeculationManager &ptrresMan =

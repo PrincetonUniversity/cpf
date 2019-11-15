@@ -87,14 +87,15 @@ private:
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
       KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-      CallsiteDepthCombinator_CtrlSpecAware *callsiteA);
+      CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+      PerformanceEstimator *perf);
 
   std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                      unsigned threadBudget, LoopProfLoad *lpl);
 
   void addressCriticisms(SelectedRemedies &selectedRemedies,
                          unsigned long &selectedRemediesCost,
-                         Criticisms &criticisms, PerformanceEstimator *perf);
+                         Criticisms &criticisms);
 
   void printRemediatorSelectionCnt();
   void printRemedies(Remedies &rs, bool selected);

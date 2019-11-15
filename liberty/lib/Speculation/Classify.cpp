@@ -26,6 +26,7 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/GepRange.h"
 #include "liberty/Utilities/GetMemOper.h"
@@ -81,6 +82,7 @@ void Classify::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired<KillFlow_CtrlSpecAware>();
   au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   au.addRequired< Targets >();
+  au.addRequired< ProfilePerformanceEstimator >();
   au.setPreservesAll();
 }
 
@@ -116,7 +118,8 @@ bool Classify::runOnModule(Module &mod)
     pointstoaa.InitializeLoopAA(this, mod.getDataLayout());
     // Value predictions
     ProfileGuidedPredictionSpeculator &predspec = getAnalysis< ProfileGuidedPredictionSpeculator >();
-    PredictionAA predaa(&predspec);
+    PerformanceEstimator *perf = &getAnalysis< ProfilePerformanceEstimator >();
+    PredictionAA predaa(&predspec, perf);
     predaa.InitializeLoopAA(this, mod.getDataLayout());
 
     // Ptr-residue

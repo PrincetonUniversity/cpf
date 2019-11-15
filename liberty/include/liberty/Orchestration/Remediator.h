@@ -11,17 +11,17 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Critic.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/InsertPrintf.h"
 #include "liberty/Speculation/Api.h"
+#include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/Read.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/Utilities/InsertPrintf.h"
+#include "liberty/Utilities/InstInsertPt.h"
+
 #include "Assumptions.h"
 #include "PDG.hpp"
 #include "LoopDependenceInfo.hpp"
 #include "TaskExecution.hpp"
-
-
-#include "liberty/Speculation/Read.h"
-#include "liberty/Speculation/Classify.h"
 
 #include <set>
 #include <unordered_set>

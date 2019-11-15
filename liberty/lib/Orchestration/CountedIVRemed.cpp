@@ -33,7 +33,8 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
     return remedResp;
 
   auto remedy = std::make_shared<CountedIVRemedy>();
-  remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
+  //remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
+  remedy->cost = 0;
 
   auto aSCC = loopDepInfo->loopSCCDAG->sccOfValue(const_cast<Instruction *>(A));
   auto bSCC = loopDepInfo->loopSCCDAG->sccOfValue(const_cast<Instruction *>(B));
@@ -65,7 +66,8 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
 
   auto remedy = std::make_shared<CountedIVRemedy>();
-  remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
+  //remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
+  remedy->cost = 0;
 
   auto aSCC = loopDepInfo->loopSCCDAG->sccOfValue(const_cast<Instruction *>(A));
 

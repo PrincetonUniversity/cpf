@@ -42,6 +42,7 @@ void PredictionAA::setLoopOfInterest(Loop *loop) {
     }
   }
   DL = &loop->getHeader()->getModule()->getDataLayout();
+  this->L = loop;
 }
 
 /// No-topping case of pointer comparison.
@@ -113,7 +114,7 @@ LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
 
   std::shared_ptr<LoadedValuePredRemedy> remedy =
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
-  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+  //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
 
   bool predPtrA = isPredictablePtr(ptrA);
   bool predPtrB = isPredictablePtr(ptrB);
@@ -129,6 +130,7 @@ LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
       // if (I2->mayWriteToMemory())
       //  remedy->write = true;
     }
+    remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoAlias;
   }
@@ -143,12 +145,13 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
 
   std::shared_ptr<LoadedValuePredRemedy> remedy =
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
-  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+  //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
 
   const Value *ptrA = liberty::getMemOper(I1);
   if (predspec->isPredictable(I1, L)) {
     ++numNoAlias;
     remedy->ptr = ptrA;
+    remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
   }
@@ -173,6 +176,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
       //if (I2->mayWriteToMemory())
       //  remedy->write = true;
     }
+    remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
   }
@@ -187,7 +191,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
 
   std::shared_ptr<LoadedValuePredRemedy> remedy =
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
-  remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
+  //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
 
   const Value *ptrA = liberty::getMemOper(I1);
   const Value *ptrB = liberty::getMemOper(I2);
@@ -197,6 +201,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
   if (predA || predB) {
     ++numNoAlias;
     remedy->ptr = (predA) ? ptrA : ptrB;
+    remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
   }
@@ -234,6 +239,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
       if (I2->mayWriteToMemory())
         remedy->write = true;
     }
+    remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
   }
