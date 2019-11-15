@@ -31,6 +31,12 @@ struct PerformanceEstimator
   // count of the loop
   virtual double estimate_parallelization_weight(const Instruction *inst, const Loop* loop) = 0;
 
+  virtual unsigned long relative_weight_with_gravity(const Instruction *gravity,
+                                                     unsigned inst_weight) = 0;
+
+  virtual double convert_relative_weight(const Instruction *inst,
+                                         const unsigned long relative) = 0;
+
   // Estimate the weight of some collection of instructions
   template <class InstIter>
   double estimate_weight(const InstIter &begin, const InstIter &end)
