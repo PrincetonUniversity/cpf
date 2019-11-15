@@ -558,7 +558,8 @@ void PipelineStrategy::summary(raw_ostream &fout) const
 
 void PipelineStrategy::pStageWeightPrint(raw_ostream &fout,
                                          PerformanceEstimator &perf,
-                                         const Loop *loop) const {
+                                         const Loop *loop,
+                                         double remediesCost) const {
   fout << "\t";
   double pWt = 0.0;
   double estimate_loop_wt = perf.estimate_loop_weight(loop);
@@ -572,7 +573,10 @@ void PipelineStrategy::pStageWeightPrint(raw_ostream &fout,
       pWt += wt;
     }
   }
-  fout << format("P-portion=%6.2f%%", 100.0 * (double)pWt / estimate_loop_wt);
+
+  fout << format("P-portion=%6.2f%%  Remed-ovehead=%6.2f%%",
+                 100.0 * pWt / estimate_loop_wt,
+                 100.0 * remediesCost / estimate_loop_wt);
 }
 
 void PipelineStrategy::addInstruction(Instruction *newInst,

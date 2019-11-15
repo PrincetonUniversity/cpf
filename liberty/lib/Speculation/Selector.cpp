@@ -400,7 +400,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
                           LoopParallelizationStrategy *strategy,
                           LoopProfLoad &lpl, bool willTransform,
-                          PerformanceEstimator &perf) {
+                          PerformanceEstimator &perf, double remediesCost) {
   const unsigned FixedPoint(1000);
   const unsigned long tt = FixedPoint * lpl.getTotTime();
   BasicBlock *header = loop->getHeader();
@@ -428,7 +428,7 @@ void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
 
   if( strategy ) {
     strategy->summary(fout);
-    strategy->pStageWeightPrint(fout, perf, loop);
+    strategy->pStageWeightPrint(fout, perf, loop, remediesCost);
   }
   else
     fout << "(no strat)";
@@ -777,11 +777,15 @@ bool Selector::doSelection(
     const unsigned v = *i;
     Loop *loop = vertices[ v ];
 
+    double remediesCost = 0.0;
+    for (auto remed: *selectedRemedies[loop->getHeader()])
+      remediesCost += remed->getCost(perf);
+
     // 'loop' is a loop we will parallelize
     if (DebugFlag &&
         (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
       printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
-                           lpl, true, *perf);
+                           lpl, true, *perf, remediesCost);
 
     Vertices::iterator j = std::find(toDelete.begin(), toDelete.end(), loop);
     if( j != toDelete.end() )
@@ -794,12 +798,16 @@ bool Selector::doSelection(
   {
     Loop *deleteme = toDelete[i];
 
+    double remediesCost = 0.0;
+    for (auto remed: *selectedRemedies[deleteme->getHeader()])
+      remediesCost += remed->getCost(perf);
+
     // 'deleteme' is a loop we will NOT parallelize.
     if (DebugFlag &&
         (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
       printOneLoopStrategy(errs(), deleteme,
                            strategies[deleteme->getHeader()].get(), lpl, false,
-                           *perf);
+                           *perf, remediesCost);
 
     Loop2Strategy::iterator j = strategies.find( deleteme->getHeader() );
     if( j != strategies.end() )
