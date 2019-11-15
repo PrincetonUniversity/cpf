@@ -176,6 +176,10 @@ public:
   /// Get the name of this remediator
   virtual StringRef getRemediatorName() const = 0;
 
+  static double estimate_validation_weight(PerformanceEstimator *perf,
+                                           const Instruction *gravity,
+                                           unsigned long validation_weight);
+
   static bool noMemoryDep(const Instruction *src, const Instruction *dst,
                           LoopAA::TemporalRelation FW,
                           LoopAA::TemporalRelation RV, const Loop *loop,
