@@ -62,7 +62,8 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
     KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-    CallsiteDepthCombinator_CtrlSpecAware *callsiteA) {
+    CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+    PerformanceEstimator *perf) {
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
@@ -119,7 +120,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   // all flow deps are remediated via this remediator stack
   remeds.push_back(std::make_unique<MemSpecAARemediator>(
       proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
-      &ptrResMan, killflowA, callsiteA, kill, mloops));
+      &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
 
   return remeds;
 }
@@ -256,8 +257,7 @@ void Orchestrator::printAllRemedies(const SetOfRemedies &sors, Criticism &cr) {
 // remedies for a given set of criticisms
 void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
                                      unsigned long &selectedRemediesCost,
-                                     Criticisms &criticisms,
-                                     PerformanceEstimator *perf) {
+                                     Criticisms &criticisms) {
   DEBUG(errs() << "\n-====================================================-\n");
   DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
@@ -266,7 +266,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
     const Remedies_ptr cheapestR = *(sors.begin());
     for (auto &r : *cheapestR) {
       if (!selectedRemedies.count(r)) {
-        selectedRemediesCost += r->getCost(perf);
+        selectedRemediesCost += r->cost;
         selectedRemedies.insert(r);
       }
     }
@@ -317,10 +317,10 @@ bool Orchestrator::findBestStrategy(
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
   // address all possible criticisms
-  std::vector<Remediator_ptr> remeds =
-      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred,
-                     mloops, tli, ldi, smtxMan, smtxLampMan, ptrResMan, lamp,
-                     rd, asgn, proxy, loopAA, kill, killflowA, callsiteA);
+  std::vector<Remediator_ptr> remeds = getRemediators(
+      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, tli, ldi,
+      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
+      killflowA, callsiteA, &perf);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
@@ -331,11 +331,11 @@ bool Orchestrator::findBestStrategy(
         if (r->hasSubRemedies()) {
           for (Remedy_ptr subr : *(r->getSubRemedies())) {
             remedSet->insert(subr);
-            tcost += subr->getCost(&perf);
+            tcost += subr->cost;
           }
         } else {
           remedSet->insert(r);
-          tcost = r->getCost(&perf);
+          tcost = r->cost;
         }
         // now remedies are added to the edges.
         // for now keeping only the cheapest one but could keep all the

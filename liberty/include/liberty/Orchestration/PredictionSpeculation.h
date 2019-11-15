@@ -16,6 +16,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -23,6 +24,7 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace SpecPriv;
 
 struct PredictionSpeculation
 {
@@ -42,7 +44,8 @@ struct NoPredictionSpeculation : public PredictionSpeculation
 // You can use it as a LoopAA too!
 struct PredictionAA : public LoopAA // Not a pass!
 {
-  PredictionAA(PredictionSpeculation *ps) : LoopAA(), predspec(ps) {}
+  PredictionAA(PredictionSpeculation *ps, PerformanceEstimator *pf)
+      : LoopAA(), predspec(ps), perf(pf) {}
 
   StringRef getLoopAAName() const { return "spec-priv-prediction-oracle-aa"; }
 
@@ -67,6 +70,8 @@ struct PredictionAA : public LoopAA // Not a pass!
 private:
   PredictionSpeculation *predspec;
   const DataLayout *DL;
+  const Loop *L;
+  PerformanceEstimator *perf;
 
   std::unordered_set<const Value *> predictableMemLocs;
   std::unordered_set<const Value *> nonPredictableMemLocs;

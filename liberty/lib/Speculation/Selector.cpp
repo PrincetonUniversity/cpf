@@ -779,7 +779,7 @@ bool Selector::doSelection(
 
     double remediesCost = 0.0;
     for (auto remed: *selectedRemedies[loop->getHeader()])
-      remediesCost += remed->getCost(perf);
+      remediesCost += remed->cost;
 
     // 'loop' is a loop we will parallelize
     if (DebugFlag &&
@@ -800,7 +800,7 @@ bool Selector::doSelection(
 
     double remediesCost = 0.0;
     for (auto remed: *selectedRemedies[deleteme->getHeader()])
-      remediesCost += remed->getCost(perf);
+      remediesCost += remed->cost;
 
     // 'deleteme' is a loop we will NOT parallelize.
     if (DebugFlag &&

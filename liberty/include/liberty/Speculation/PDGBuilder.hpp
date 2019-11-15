@@ -5,7 +5,6 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 
-#include "PDG.hpp"
 #include "liberty/Analysis/ControlSpecIterators.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/LoopAA.h"
@@ -23,6 +22,8 @@
 #include "liberty/Speculation/LoopDominators.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
+
+#include "PDG.hpp"
 
 #include <unordered_set>
 #include <unordered_map>

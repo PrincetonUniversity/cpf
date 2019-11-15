@@ -7,6 +7,7 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
 #include <unordered_set>
 
@@ -20,14 +21,16 @@ public:
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
+  unsigned long setCost(PerformanceEstimator *perf, const Loop *loop);
   StringRef getRemedyName() const { return "invariant-value-pred-remedy"; };
 };
 
 class LoadedValuePredRemediator : public Remediator {
 public:
-  LoadedValuePredRemediator(PredictionSpeculation *ps, LoopAA *aa)
-      : Remediator(), predspec(ps), loopAA(aa), WAWcollabDepsHandled(0),
-        RAWcollabDepsHandled(0) {}
+  LoadedValuePredRemediator(PredictionSpeculation *ps, LoopAA *aa,
+                            PerformanceEstimator *pf)
+      : Remediator(), predspec(ps), loopAA(aa), perf(pf),
+        WAWcollabDepsHandled(0), RAWcollabDepsHandled(0) {}
 
   StringRef getRemediatorName() const {
     return "invariant-value-pred-remediator";
@@ -50,6 +53,7 @@ public:
 private:
   PredictionSpeculation *predspec;
   LoopAA *loopAA;
+  PerformanceEstimator *perf;
 
   uint64_t WAWcollabDepsHandled;
   uint64_t RAWcollabDepsHandled;

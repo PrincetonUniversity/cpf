@@ -37,7 +37,8 @@ Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<MemVerRemedy> remedy =
       std::shared_ptr<MemVerRemedy>(new MemVerRemedy());
-  remedy->cost = DEFAULT_MEM_VER_REMED_COST;
+  //remedy->cost = DEFAULT_MEM_VER_REMED_COST;
+  remedy->cost = 0;
   bool RAW = dataDepTy == DataDepType::RAW;
   bool WAW = dataDepTy == DataDepType::WAW;
 
@@ -57,7 +58,8 @@ Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
       // WAW dep removal is expensive since the last write to each mem
       // location needs to be tracked
       remedy->waw = false;
-      remedy->cost = WAR_MEM_VER_REMED_COST;
+      //remedy->cost = WAR_MEM_VER_REMED_COST;
+      remedy->cost = 0;
     }
     DEBUG(errs() << "MemVerRemed removed false mem dep between inst " << *A
                  << "  and  " << *B << '\n');

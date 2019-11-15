@@ -54,11 +54,11 @@ public:
                       PtrResidueSpeculationManager *pman,
                       KillFlow_CtrlSpecAware *killflowA,
                       CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
-                      KillFlow &kill, ModuleLoops &ml)
+                      KillFlow &kill, ModuleLoops &ml, PerformanceEstimator *pf)
       : Remediator(), proxy(p), ctrlspec(cs), lamp(lp), spresults(read),
         asgn(c), predspec(ps), smtxMan(sman), ptrresMan(pman),
         killflow_aware(killflowA), callsite_aware(callsiteA), killFlow(kill),
-        mloops(ml) {}
+        mloops(ml), perf(pf) {}
 
   StringRef getRemediatorName() const { return "mem-spec-aa-remediator"; }
 
@@ -93,6 +93,7 @@ private:
   KillFlow &killFlow;
   ModuleLoops &mloops;
   PrivAA *privaa;
+  PerformanceEstimator *perf;
 };
 
 } // namespace liberty

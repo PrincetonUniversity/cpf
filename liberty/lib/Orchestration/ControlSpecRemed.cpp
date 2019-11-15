@@ -200,7 +200,8 @@ Remediator::RemedResp ControlSpecRemediator::memdep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
-  remedy->cost = DEFAULT_CTRL_REMED_COST;
+  //remedy->cost = DEFAULT_CTRL_REMED_COST;
+  remedy->cost = 0;
   remedy->brI = nullptr;
 
   // isReachable function call requires non-const parameters
@@ -247,7 +248,8 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
-  remedy->cost = DEFAULT_CTRL_REMED_COST;
+  remedy->cost = 0;
+  //remedy->cost = DEFAULT_CTRL_REMED_COST;
 
   // check if the control speculator was able to remove the control
   // dependence when it preprocesed the loop
@@ -269,7 +271,8 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
   assert(tA);
 
   if (speculator->misspecInProfLoopExit(tA))
-    remedy->cost = EXPENSIVE_CTRL_REMED_COST;
+    remedy->cost = 0;
+    //remedy->cost = EXPENSIVE_CTRL_REMED_COST;
 
   remedResp.depRes = DepResult::NoDep;
   DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
@@ -290,7 +293,8 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
-  remedy->cost = DEFAULT_CTRL_REMED_COST;
+  remedy->cost = 0;
+  //remedy->cost = DEFAULT_CTRL_REMED_COST;
   remedy->brI = nullptr;
 
   // check if the inst that source the dependence is speculatively dead

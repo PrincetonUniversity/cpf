@@ -74,7 +74,8 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<CommutativeLibsRemedy> remedy =
       std::shared_ptr<CommutativeLibsRemedy>(new CommutativeLibsRemedy());
-  remedy->cost = DEFAULT_COMM_LIBS_REMED_COST;
+  //remedy->cost = DEFAULT_COMM_LIBS_REMED_COST;
+  remedy->cost = 0;
 
   Function *CalledFunA = getCalledFun(A);
   Function *CalledFunB = getCalledFun(B);
@@ -136,7 +137,8 @@ CommutativeLibsRemediator::regdep(const Instruction *A, const Instruction *B,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<CommutativeLibsRemedy> remedy =
       std::shared_ptr<CommutativeLibsRemedy>(new CommutativeLibsRemedy());
-  remedy->cost = DEFAULT_COMM_LIBS_REMED_COST;
+  remedy->cost = 0;
+  //remedy->cost = DEFAULT_COMM_LIBS_REMED_COST;
 
   // check if reg deps across different iterations can be removed due to self
   // commutative functions

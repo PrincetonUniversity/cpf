@@ -224,7 +224,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     return remedResp;
 
   auto remedy = make_shared<ReduxRemedy>();
-  remedy->cost = DEFAULT_REDUX_REMED_COST;
+  //remedy->cost = DEFAULT_REDUX_REMED_COST;
+  remedy->cost = 0;
 
   //const bool loopCarried = (B->getParent() == L->getHeader() && isa<PHINode>(B));
 
@@ -412,7 +413,8 @@ Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
   // conservative answer
   remedResp.depRes = DepResult::Dep;
   auto remedy = make_shared<ReduxRemedy>();
-  remedy->cost = DEFAULT_REDUX_REMED_COST;
+  //remedy->cost = DEFAULT_REDUX_REMED_COST;
+  remedy->cost = 0;
 
   if (!LoopCarried)
     return remedResp;

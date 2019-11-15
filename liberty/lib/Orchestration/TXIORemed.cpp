@@ -71,7 +71,8 @@ TXIORemediator::memdep(const Instruction *A, const Instruction *B,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<TXIORemedy> remedy =
       std::shared_ptr<TXIORemedy>(new TXIORemedy());
-  remedy->cost = DEFAULT_TXIO_REMED_COST;
+  //remedy->cost = DEFAULT_TXIO_REMED_COST;
+  remedy->cost = 0;
 
   if (!LoopCarried) {
     remedResp.remedy = remedy;
