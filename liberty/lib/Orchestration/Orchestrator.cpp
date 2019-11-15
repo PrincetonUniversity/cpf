@@ -256,7 +256,8 @@ void Orchestrator::printAllRemedies(const SetOfRemedies &sors, Criticism &cr) {
 // remedies for a given set of criticisms
 void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
                                      unsigned long &selectedRemediesCost,
-                                     Criticisms &criticisms) {
+                                     Criticisms &criticisms,
+                                     PerformanceEstimator *perf) {
   DEBUG(errs() << "\n-====================================================-\n");
   DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
@@ -265,7 +266,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
     const Remedies_ptr cheapestR = *(sors.begin());
     for (auto &r : *cheapestR) {
       if (!selectedRemedies.count(r)) {
-        selectedRemediesCost += r->cost;
+        selectedRemediesCost += r->getCost(perf);
         selectedRemedies.insert(r);
       }
     }
@@ -330,11 +331,11 @@ bool Orchestrator::findBestStrategy(
         if (r->hasSubRemedies()) {
           for (Remedy_ptr subr : *(r->getSubRemedies())) {
             remedSet->insert(subr);
-            tcost += subr->cost;
+            tcost += subr->getCost(&perf);
           }
         } else {
           remedSet->insert(r);
-          tcost = r->cost;
+          tcost = r->getCost(&perf);
         }
         // now remedies are added to the edges.
         // for now keeping only the cheapest one but could keep all the

@@ -94,7 +94,7 @@ private:
 
   void addressCriticisms(SelectedRemedies &selectedRemedies,
                          unsigned long &selectedRemediesCost,
-                         Criticisms &criticisms);
+                         Criticisms &criticisms, PerformanceEstimator *perf);
 
   void printRemediatorSelectionCnt();
   void printRemedies(Remedies &rs, bool selected);
