@@ -49,45 +49,54 @@ unsigned ProfilePerformanceEstimator::instruction_type_weight(const Instruction 
     return 100;
 }
 
-unsigned long ProfilePerformanceEstimator::relative_weight(const Instruction *inst)
+unsigned long ProfilePerformanceEstimator::inst_count(const Instruction *inst)
 {
   // edge-count profile results
-  //ProfileInfo &pi = getAnalysis< ProfileInfo >();
+  // ProfileInfo &pi = getAnalysis< ProfileInfo >();
 
   const BasicBlock *bb = inst->getParent();
   const Function *fcn = bb->getParent();
 
   // Evil, but okay because it won't modify the IR
-  Function *non_const_fcn = const_cast<Function*>(fcn);
-  BlockFrequencyInfo &bfi = getAnalysis< BlockFrequencyInfoWrapperPass >(*non_const_fcn).getBFI();
+  Function *non_const_fcn = const_cast<Function *>(fcn);
+  BlockFrequencyInfo &bfi =
+      getAnalysis<BlockFrequencyInfoWrapperPass>(*non_const_fcn).getBFI();
 
-  //sot
-  //const double fcnt = pi.getExecutionCount(fcn);
-  //getEntryCount returns -1 if no value in LLVM 7.0
+  // sot
+  // const double fcnt = pi.getExecutionCount(fcn);
+  // getEntryCount returns -1 if no value in LLVM 7.0
   // in LLVM 5.0 it returns llvm::Optional<long unsigned int>
   auto fcnt = fcn->getEntryCount();
-  if ((fcnt.hasValue() && fcnt.getValue() < 1) || !fcnt.hasValue())
-  {
+  if ((fcnt.hasValue() && fcnt.getValue() < 1) || !fcnt.hasValue()) {
     // Function never executed or no profile info available, so we don't know
     // the relative weights of the blocks inside.  We will assign the same
     // relative weight to all blocks in this function.
 
-    return 100 * instruction_type_weight(inst);
-  }
-  else
-  {
-    //sot
-    //const double bbcnt = pi.getExecutionCount(bb);
+    return 100;
+  } else {
+    // sot
+    // const double bbcnt = pi.getExecutionCount(bb);
     if (!bfi.getBlockProfileCount(bb).hasValue()) {
       errs() << "No profile count for BB " << bb->getName() << "\n";
       return 100 * instruction_type_weight(inst);
     }
     const double bbcnt = bfi.getBlockProfileCount(bb).getValue();
-    const unsigned long bbicnt = (unsigned) (100 * bbcnt);
+    const unsigned long bbicnt = (unsigned)(100 * bbcnt);
 
     // errs() << "bbcnt, bbicnt: " << bbcnt << " " << bbicnt << "\n";
-    return bbicnt * instruction_type_weight(inst);
+
+    return bbicnt;
   }
+}
+
+unsigned long ProfilePerformanceEstimator::relative_weight(const Instruction *inst)
+{
+  return inst_count(inst) * instruction_type_weight(inst);
+}
+
+unsigned long ProfilePerformanceEstimator::relative_weight_with_gravity(
+    const Instruction *gravity, unsigned inst_weight) {
+  return inst_count(gravity) * inst_weight;
 }
 
 double ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
@@ -117,6 +126,29 @@ double ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
     return 0;
 
   const unsigned long relative = relative_weight(inst);
+
+  // errs() << "local, relative, sum: " << local_weight << " " << relative << " " << sum_local_relative << "\n";
+  return local_weight * (double)relative / (double)sum_local_relative;
+}
+
+double ProfilePerformanceEstimator::convert_relative_weight(
+    const Instruction *inst, const unsigned long relative) {
+  assert(!isa<CallInst>(inst) && !isa<InvokeInst>(inst) &&
+         "gravity inst in convert_relative_weight is callInst or InvokeInst??");
+
+  const BasicBlock *bb = inst->getParent();
+  const Function *fcn = bb->getParent();
+  visit(fcn);
+
+  ModuleLoops &mloops = getAnalysis< ModuleLoops >();
+  LoopInfo &loops = mloops.getAnalysis_LoopInfo(fcn);
+  const Loop *loop = loops.getLoopFor(bb);
+
+  const TimeAndWeight &tw = ctx2timeAndWeight[ Context(fcn,loop) ];
+  const unsigned long local_weight = tw.first;
+  const unsigned long sum_local_relative = tw.second;
+  if( 0 == local_weight || 0 == sum_local_relative )
+    return 0;
 
   // errs() << "local, relative, sum: " << local_weight << " " << relative << " " << sum_local_relative << "\n";
   return local_weight * (double)relative / (double)sum_local_relative;
