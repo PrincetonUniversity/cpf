@@ -174,17 +174,51 @@ bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
   return this->privateI < sepRhs->privateI;
 }
 
+void LocalityRemedy::setCost(PerformanceEstimator *perf) {
+  unsigned validation_weight;
+  switch (type) {
+  case ReadOnly:
+  case Redux:
+  case Local: // local also need to increment and decrement alloc count during
+              // alloc. Ignored for now
+  case KillPriv:  // not exactly for free
+  case SharePriv: // not exactly for free
+  case Separated: // no expected to be used
+  case Subheaps:  // no expected to be used
+    this->cost = 0;
+    break;
+  case Private:
+    assert(this->privateI && "no privateI in Private remedy???");
+    validation_weight = 4000; // even 5000 seems okay
+    if (isa<LoadInst>(this->privateI))
+      validation_weight = 4000;
+    this->cost = Remediator::estimate_validation_weight(perf, this->privateI,
+                                                        validation_weight);
+    break;
+  case UOCheck:
+    this->cost = 0;
+    validation_weight = 201;
+    assert(this->ptr && "no pointer in UOCheck remedy???");
+    if (const Instruction *gravity = dyn_cast<Instruction>(this->ptr))
+      this->cost = Remediator::estimate_validation_weight(perf, gravity,
+                                                          validation_weight);
+    break;
+  default:
+    assert(false && "No locality-remedy type?");
+  }
+}
+
 Remedies LocalityRemediator::satisfy(const PDG &pdg, Loop *loop,
                                      const Criticisms &criticisms) {
 
   const DataLayout &DL = loop->getHeader()->getModule()->getDataLayout();
   const Ctx *ctx = read.getCtx(loop);
-  localityaa = new LocalityAA(read, asgn, ctx);
-  localityaa->InitializeLoopAA(&proxy, DL);
+  //localityaa = new LocalityAA(read, asgn, ctx);
+  //localityaa->InitializeLoopAA(&proxy, DL);
 
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
 
-  delete localityaa;
+  //delete localityaa;
 
   return remedies;
 }
