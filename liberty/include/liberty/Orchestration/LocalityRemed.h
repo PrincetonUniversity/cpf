@@ -62,6 +62,7 @@ public:
     SharePriv,
     Separated,
     Subheaps,
+    UOCheck,
     LocalityAA
   };
 
@@ -78,6 +79,7 @@ public:
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
+  void setCost(PerformanceEstimator *perf);
   StringRef getRemedyName() const { return "locality-remedy"; };
 
   StringRef getLocalityRemedyName() const {
@@ -105,6 +107,9 @@ public:
       break;
     case Subheaps:
       return "locality-subheaps-remedy";
+      break;
+    case UOCheck:
+      return "locality-uocheck-remedy";
       break;
     case LocalityAA:
       return "locality-aa-remedy";
