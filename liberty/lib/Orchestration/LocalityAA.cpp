@@ -125,6 +125,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         remedy->type = LocalityRemedy::Redux;
       }
       remedy->ptr = const_cast<Value *>(P1);
+      remedy->type = LocalityRemedy::UOCheck;
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoAlias;
     }
@@ -155,6 +157,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         remedy->type = LocalityRemedy::Redux;
       }
       remedy->ptr = const_cast<Value *>(P2);
+      remedy->type = LocalityRemedy::UOCheck;
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoAlias;
     }
@@ -164,10 +168,22 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
   if( t1 != t2 && t1 != HeapAssignment::Unclassified && t2 != HeapAssignment::Unclassified )
   {
     ++numSeparated;
-    remedy->ptr1 = const_cast<Value *>(P1);
-    remedy->ptr2 = const_cast<Value *>(P2);
-    remedy->type = LocalityRemedy::Separated;
+
+    std::shared_ptr<LocalityRemedy> remedy2 =
+        std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy2->privateI = nullptr;
+    remedy2->privateLoad = nullptr;
+    remedy2->reduxS = nullptr;
+
+    remedy->ptr = const_cast<Value *>(P1);
+    remedy2->ptr = const_cast<Value *>(P2);
+    remedy->type = LocalityRemedy::UOCheck;
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy->setCost(perf);
+    remedy2->setCost(perf);
     R.insert(remedy);
+    R.insert(remedy2);
     return NoAlias;
   }
 
@@ -183,10 +199,22 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
       if( subheap2 > 0 && subheap1 != subheap2 )
       {
         ++numSubSep;
-        remedy->ptr1 = const_cast<Value *>(P1);
-        remedy->ptr2 = const_cast<Value *>(P2);
-        remedy->type = LocalityRemedy::Subheaps;
+
+        std::shared_ptr<LocalityRemedy> remedy2 =
+            std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+        remedy2->type = LocalityRemedy::UOCheck;
+        remedy2->privateI = nullptr;
+        remedy2->privateLoad = nullptr;
+        remedy2->reduxS = nullptr;
+
+        remedy->ptr = const_cast<Value *>(P1);
+        remedy2->ptr = const_cast<Value *>(P2);
+        remedy->type = LocalityRemedy::UOCheck;
+        remedy2->type = LocalityRemedy::UOCheck;
+        remedy->setCost(perf);
+        remedy2->setCost(perf);
         R.insert(remedy);
+        R.insert(remedy2);
         return NoAlias;
       }
     }
@@ -268,6 +296,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         remedy->type = LocalityRemedy::Redux;
       }
       remedy->ptr = const_cast<Value *>(ptrA);
+      remedy->type = LocalityRemedy::UOCheck;
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoModRef;
     }
@@ -298,6 +328,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         remedy->type = LocalityRemedy::Redux;
       }
       remedy->ptr = const_cast<Value *>(ptrB);
+      remedy->type = LocalityRemedy::UOCheck;
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoModRef;
     }
@@ -307,10 +339,22 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   if( t1 != t2 && t1 != HeapAssignment::Unclassified && t2 != HeapAssignment::Unclassified )
   {
     ++numSeparated;
-    remedy->ptr1 = const_cast<Value *>(ptrA);
-    remedy->ptr2 = const_cast<Value *>(ptrB);
-    remedy->type = LocalityRemedy::Separated;
+
+    std::shared_ptr<LocalityRemedy> remedy2 =
+        std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy2->privateI = nullptr;
+    remedy2->privateLoad = nullptr;
+    remedy2->reduxS = nullptr;
+
+    remedy->ptr = const_cast<Value *>(ptrA);
+    remedy2->ptr = const_cast<Value *>(ptrB);
+    remedy->type = LocalityRemedy::UOCheck;
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy->setCost(perf);
+    remedy2->setCost(perf);
     R.insert(remedy);
+    R.insert(remedy2);
     return NoModRef;
   }
 
@@ -326,10 +370,22 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
       if( subheap2 > 0 && subheap1 != subheap2 )
       {
         ++numSubSep;
-        remedy->ptr1 = const_cast<Value *>(ptrA);
-        remedy->ptr2 = const_cast<Value *>(ptrB);
-        remedy->type = LocalityRemedy::Subheaps;
+
+        std::shared_ptr<LocalityRemedy> remedy2 =
+            std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+        remedy2->type = LocalityRemedy::UOCheck;
+        remedy2->privateI = nullptr;
+        remedy2->privateLoad = nullptr;
+        remedy2->reduxS = nullptr;
+
+        remedy->ptr = const_cast<Value *>(ptrA);
+        remedy2->ptr = const_cast<Value *>(ptrB);
+        remedy->type = LocalityRemedy::UOCheck;
+        remedy2->type = LocalityRemedy::UOCheck;
+        remedy->setCost(perf);
+        remedy2->setCost(perf);
         R.insert(remedy);
+        R.insert(remedy2);
         return NoModRef;
       }
     }
@@ -347,7 +403,21 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
       privateInsts.insert(A);
       if (isa<LoadInst>(A))
         remedy->privateLoad = dyn_cast<LoadInst>(A);
+
+      remedy->setCost(perf);
+
+      std::shared_ptr<LocalityRemedy> remedy2 =
+          std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+      remedy2->type = LocalityRemedy::UOCheck;
+      remedy2->privateI = nullptr;
+      remedy2->privateLoad = nullptr;
+      remedy2->reduxS = nullptr;
+      remedy2->ptr = const_cast<Value *>(ptrA);
+      remedy2->type = LocalityRemedy::UOCheck;
+      remedy2->setCost(perf);
+
       R.insert(remedy);
+      R.insert(remedy2);
       return NoModRef;
     }
   }
@@ -425,6 +495,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         remedy->type = LocalityRemedy::Redux;
       }
       remedy->ptr = const_cast<Value *>(ptrA);
+      remedy->type = LocalityRemedy::UOCheck;
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoModRef;
     }
@@ -455,6 +527,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         remedy->type = LocalityRemedy::Redux;
       }
       remedy->ptr = const_cast<Value *>(ptrB);
+      remedy->type = LocalityRemedy::UOCheck;
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoModRef;
     }
@@ -465,10 +539,23 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
   if (t1 != t2 && t1 != HeapAssignment::Unclassified &&
       t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
-    remedy->ptr1 = const_cast<Value *>(ptrA);
-    remedy->ptr2 = const_cast<Value *>(ptrB);
-    remedy->type = LocalityRemedy::Separated;
+
+    std::shared_ptr<LocalityRemedy> remedy2 =
+        std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy2->privateI = nullptr;
+    remedy2->privateLoad = nullptr;
+    remedy2->reduxS = nullptr;
+
+    remedy->ptr = const_cast<Value *>(ptrA);
+    remedy2->ptr = const_cast<Value *>(ptrB);
+    remedy->type = LocalityRemedy::UOCheck;
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy->setCost(perf);
+    remedy2->setCost(perf);
     R.insert(remedy);
+    R.insert(remedy2);
+
     return NoModRef;
   }
 
@@ -481,10 +568,22 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
       const int subheap2 = asgn.getSubHeap(aus2);
       if (subheap2 > 0 && subheap1 != subheap2) {
         ++numSubSep;
-        remedy->ptr1 = const_cast<Value *>(ptrA);
-        remedy->ptr2 = const_cast<Value *>(ptrB);
-        remedy->type = LocalityRemedy::Subheaps;
+
+        std::shared_ptr<LocalityRemedy> remedy2 =
+            std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+        remedy2->type = LocalityRemedy::UOCheck;
+        remedy2->privateI = nullptr;
+        remedy2->privateLoad = nullptr;
+        remedy2->reduxS = nullptr;
+
+        remedy->ptr = const_cast<Value *>(ptrA);
+        remedy2->ptr = const_cast<Value *>(ptrB);
+        remedy->type = LocalityRemedy::UOCheck;
+        remedy2->type = LocalityRemedy::UOCheck;
+        remedy->setCost(perf);
+        remedy2->setCost(perf);
         R.insert(remedy);
+        R.insert(remedy2);
         return NoModRef;
       }
     }
@@ -506,7 +605,21 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         remedy->privateLoad = dyn_cast<LoadInst>(A);
       else if (t2 == HeapAssignment::Private && isa<LoadInst>(B))
         remedy->privateLoad = dyn_cast<LoadInst>(B);
+
+      remedy->setCost(perf);
+
+      std::shared_ptr<LocalityRemedy> remedy2 =
+          std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+      remedy2->type = LocalityRemedy::UOCheck;
+      remedy2->privateI = nullptr;
+      remedy2->privateLoad = nullptr;
+      remedy2->reduxS = nullptr;
+      remedy2->ptr = const_cast<Value *>(ptrA);
+      remedy2->type = LocalityRemedy::UOCheck;
+      remedy2->setCost(perf);
+
       R.insert(remedy);
+      R.insert(remedy2);
       return NoModRef;
     } else if (t2 == HeapAssignment::Private) {
       if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
@@ -521,7 +634,21 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         remedy->privateLoad = dyn_cast<LoadInst>(B);
       else if (t1 == HeapAssignment::Private && isa<LoadInst>(A))
         remedy->privateLoad = dyn_cast<LoadInst>(A);
+
+      remedy->setCost(perf);
+
+      std::shared_ptr<LocalityRemedy> remedy2 =
+          std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+      remedy2->type = LocalityRemedy::UOCheck;
+      remedy2->privateI = nullptr;
+      remedy2->privateLoad = nullptr;
+      remedy2->reduxS = nullptr;
+      remedy2->ptr = const_cast<Value *>(ptrA);
+      remedy2->type = LocalityRemedy::UOCheck;
+      remedy2->setCost(perf);
+
       R.insert(remedy);
+      R.insert(remedy2);
       return NoModRef;
     }
   }

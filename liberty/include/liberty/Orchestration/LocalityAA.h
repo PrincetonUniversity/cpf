@@ -19,8 +19,9 @@ using namespace SpecPriv;
 /// Adapts separation speculation to LoopAA.
 struct LocalityAA : public LoopAA, Remediator // Not a pass!
 {
-  LocalityAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
-      : LoopAA(), read(rd), asgn(ha), ctx(cx) {}
+  LocalityAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx,
+             PerformanceEstimator *pf)
+      : LoopAA(), read(rd), asgn(ha), ctx(cx), perf(pf) {}
 
   StringRef getLoopAAName() const { return "spec-priv-locality-oracle-aa"; }
 
@@ -53,6 +54,7 @@ private:
   const Read &read;
   const HeapAssignment &asgn;
   const Ctx *ctx;
+  PerformanceEstimator *perf;
 
   unordered_set<const Value*> privateInsts;
 
