@@ -13,7 +13,8 @@ using namespace llvm;
 
 struct SmtxAA : public LoopAA // Not a pass!
 {
-  SmtxAA(SmtxSpeculationManager *man) : LoopAA(), smtxMan(man) {}
+  SmtxAA(SmtxSpeculationManager *man, PerformanceEstimator *pf)
+      : LoopAA(), smtxMan(man), perf(pf) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Bottom);
@@ -34,6 +35,7 @@ struct SmtxAA : public LoopAA // Not a pass!
 
 private:
   SmtxSpeculationManager *smtxMan;
+  PerformanceEstimator *perf;
 };
 } // namespace SpecPriv
 } // namespace liberty

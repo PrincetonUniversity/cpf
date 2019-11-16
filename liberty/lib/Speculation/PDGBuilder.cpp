@@ -85,9 +85,11 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 }
 
 void llvm::PDGBuilder::addSpecModulesToLoopAA() {
+  PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
   SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
-  smtxaa = new SmtxAA(&smtxMan);
-  smtxaa->InitializeLoopAA(this, *DL);
+  // tmp removal
+  //smtxaa = new SmtxAA(&smtxMan, perf);
+  //smtxaa->InitializeLoopAA(this, *DL);
 
   ctrlspec = getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
   edgeaa = new EdgeCountOracle(ctrlspec);
@@ -95,19 +97,20 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
 
   predspec =
       getAnalysis<ProfileGuidedPredictionSpeculator>().getPredictionSpecPtr();
-  PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
   predaa = new PredictionAA(predspec, perf);
   predaa->InitializeLoopAA(this, *DL);
 
   PtrResidueSpeculationManager &ptrresMan =
       getAnalysis<PtrResidueSpeculationManager>();
-  ptrresaa = new PtrResidueAA(*DL, ptrresMan);
+  ptrresaa = new PtrResidueAA(*DL, ptrresMan, perf);
   ptrresaa->InitializeLoopAA(this, *DL);
 
   spresults = &getAnalysis<ReadPass>().getProfileInfo();
 
-  pointstoaa = new PointsToAA(*spresults);
-  pointstoaa->InitializeLoopAA(this, *DL);
+  // cannot validate points-to object info.
+  // should only be used within localityAA validation only for points-to heap
+  //pointstoaa = new PointsToAA(*spresults);
+  //pointstoaa->InitializeLoopAA(this, *DL);
 
   simpleaa = new SimpleAA();
   simpleaa->InitializeLoopAA(this, *DL);
@@ -121,6 +124,7 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
 }
 
 void llvm::PDGBuilder::specModulesLoopSetup(Loop *loop) {
+  PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
   ctrlspec->setLoopOfInterest(loop->getHeader());
   predaa->setLoopOfInterest(loop);
 
@@ -132,10 +136,10 @@ void llvm::PDGBuilder::specModulesLoopSetup(Loop *loop) {
   }
 
   const Ctx *ctx = spresults->getCtx(loop);
-  roaa = new ReadOnlyAA(*spresults, asgn, ctx);
+  roaa = new ReadOnlyAA(*spresults, asgn, ctx, perf);
   roaa->InitializeLoopAA(this, *DL);
 
-  localaa = new ShortLivedAA(*spresults, asgn, ctx);
+  localaa = new ShortLivedAA(*spresults, asgn, ctx, perf);
   localaa->InitializeLoopAA(this, *DL);
 
   killflow_aware->setLoopOfInterest(ctrlspec, loop);
@@ -143,11 +147,11 @@ void llvm::PDGBuilder::specModulesLoopSetup(Loop *loop) {
 }
 
 void llvm::PDGBuilder::removeSpecModulesFromLoopAA() {
-    delete smtxaa;
+    //delete smtxaa;
     delete edgeaa;
     delete predaa;
     delete ptrresaa;
-    delete pointstoaa;
+    //delete pointstoaa;
     delete roaa;
     delete localaa;
     delete simpleaa;

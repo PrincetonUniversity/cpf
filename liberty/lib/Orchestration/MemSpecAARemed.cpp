@@ -40,16 +40,19 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   // LAMP
   //lampaa = new LampOracle(lamp);
   //lampaa->InitializeLoopAA(&proxy, DL);
-  smtxaa = new SmtxAA(smtxMan);
-  smtxaa->InitializeLoopAA(&proxy, DL);
+
+  // tmp removal
+  //smtxaa = new SmtxAA(smtxMan, perf);
+  //smtxaa->InitializeLoopAA(&proxy, DL);
 
   // Points-to
-  pointstoaa = new PointsToAA(spresults);
-  pointstoaa->InitializeLoopAA(&proxy, DL);
+  // cannot validate points-to
+  //pointstoaa = new PointsToAA(spresults);
+  //pointstoaa->InitializeLoopAA(&proxy, DL);
 
   // Separation Spec
   const Ctx *ctx = spresults.getCtx(loop);
-  localityaa = new LocalityAA(spresults, asgn, ctx);
+  localityaa = new LocalityAA(spresults, asgn, ctx, perf);
   localityaa->InitializeLoopAA(&proxy, DL);
 
   // Value prediction
@@ -57,15 +60,15 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   predaa->InitializeLoopAA(&proxy, DL);
 
   // Ptr-residue
-  ptrresaa = new PtrResidueAA(DL, *ptrresMan);
+  ptrresaa = new PtrResidueAA(DL, *ptrresMan, perf);
   ptrresaa->InitializeLoopAA(&proxy, DL);
 
   // read-only aa
-  roaa = new ReadOnlyAA(spresults, asgn, ctx);
+  roaa = new ReadOnlyAA(spresults, asgn, ctx, perf);
   roaa->InitializeLoopAA(&proxy, DL);
 
   // short-lived aa
-  localaa = new ShortLivedAA(spresults, asgn, ctx);
+  localaa = new ShortLivedAA(spresults, asgn, ctx, perf);
   localaa->InitializeLoopAA(&proxy, DL);
 
   txioaa = new TXIOAA();
@@ -94,8 +97,9 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   // remove these AAs from the stack by destroying them
   delete edgeaa;
   //delete lampaa;
-  delete smtxaa;
-  delete pointstoaa;
+
+  //delete smtxaa;
+  //delete pointstoaa;
   delete localityaa;
   delete predaa;
   delete ptrresaa;

@@ -23,6 +23,7 @@ public:
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
+  unsigned long setCost(PerformanceEstimator *perf);
   StringRef getRemedyName() const { return "smtx-lamp-remedy"; };
 
   bool isExpensive() { return true; }
@@ -30,8 +31,9 @@ public:
 
 class SmtxLampRemediator : public Remediator {
 public:
-  SmtxLampRemediator(SpecPriv::SmtxSpeculationManager *man, Pass &p)
-      : Remediator(), smtxMan(man), proxy(p) {
+  SmtxLampRemediator(SpecPriv::SmtxSpeculationManager *man, Pass &p,
+                     PerformanceEstimator *pf)
+      : Remediator(), smtxMan(man), proxy(p), perf(pf) {
     //smtxaa = std::make_unique<SmtxAA>(smtxMan);
   }
 
@@ -47,6 +49,7 @@ private:
   SpecPriv::SmtxSpeculationManager *smtxMan;
   DenseMap<IIKey, bool> queried;
   Pass &proxy;
+  PerformanceEstimator *perf;
   //std::unique_ptr<SmtxAA> smtxaa;
   SmtxAA *smtxaa;
 };
