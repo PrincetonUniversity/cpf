@@ -18,6 +18,7 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/SmtxAA.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
@@ -46,6 +47,7 @@ struct Inliner: public ModulePass
   	//au.addRequired< PDGBuilder >();
   	au.addRequired< LoopAA >();
   	au.addRequired<SmtxSpeculationManager>();
+    au.addRequired<ProfilePerformanceEstimator>();
   }
 
   bool runOnModule(Module &mod)
@@ -173,7 +175,8 @@ private:
 
     const DataLayout &DL = loopFun->getParent()->getDataLayout();
     SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
-    SmtxAA smtxaa(&smtxMan);
+    PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
+    SmtxAA smtxaa(&smtxMan, perf);
     smtxaa.InitializeLoopAA(this, DL);
 
     LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
