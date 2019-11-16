@@ -226,7 +226,8 @@ LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
 
   std::shared_ptr<PtrResidueRemedy> remedy =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-  remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy->setCost(perf, a1.first, a2.first);
   remedy->ptr1 = a1.first;
   remedy->ctx1 = a1.second;
   remedy->ptr2 = a2.first;
@@ -269,7 +270,8 @@ LoopAA::ModRefResult PtrResidueAA::modref(
 
   std::shared_ptr<PtrResidueRemedy> remedy =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-  remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy->setCost(perf, a1.first, a2.first);
   remedy->ptr1 = a1.first;
   remedy->ctx1 = a1.second;
   remedy->ptr2 = a2.first;
@@ -329,7 +331,8 @@ LoopAA::ModRefResult PtrResidueAA::modref(
 
     std::shared_ptr<PtrResidueRemedy> remedy =
         std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-    remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+    //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+    remedy->setCost(perf, a1.first, a2.first);
     remedy->ptr1 = a1.first;
     remedy->ctx1 = a1.second;
     remedy->ptr2 = a2.first;

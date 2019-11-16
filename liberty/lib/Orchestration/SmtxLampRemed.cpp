@@ -30,6 +30,11 @@ bool SmtxLampRemedy::compare(const Remedy_ptr rhs) const {
   return this->writeI < smtxRhs->writeI;
 }
 
+
+unsigned long SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
+  // ??
+}
+
 static cl::opt<unsigned>
     Threshhold("smtx-lamp-threshhold2", cl::init(0), cl::NotHidden,
                cl::desc("Maximum number of observed flows to report NoModRef"));
@@ -51,7 +56,7 @@ Remedies SmtxLampRemediator::satisfy(const PDG &pdg, Loop *loop,
                                      const Criticisms &criticisms) {
 
   const DataLayout &DL = loop->getHeader()->getModule()->getDataLayout();
-  smtxaa = new SmtxAA(smtxMan);
+  smtxaa = new SmtxAA(smtxMan, perf);
   smtxaa->InitializeLoopAA(&proxy, DL);
 
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);

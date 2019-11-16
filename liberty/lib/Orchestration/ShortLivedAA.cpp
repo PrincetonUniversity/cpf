@@ -47,9 +47,8 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(const Pointer &P1,
 
   std::shared_ptr<LocalityRemedy> remedy =
       std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
-  remedy->cost = DEFAULT_LOCALITY_REMED_COST + LOCAL_ACCESS_COST;
-  remedy->type = LocalityRemedy::Local;
-
+  //remedy->cost = DEFAULT_LOCALITY_REMED_COST + LOCAL_ACCESS_COST;
+  remedy->type = LocalityRemedy::UOCheck;
   remedy->privateI = nullptr;
   remedy->privateLoad = nullptr;
   remedy->reduxS = nullptr;
@@ -84,6 +83,7 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(const Pointer &P1,
     {
       ++numPrivatized;
       remedy->ptr = const_cast<Value *>(P1.ptr);
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoAlias;
     }
@@ -92,6 +92,7 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(const Pointer &P1,
     {
       ++numPrivatized;
       remedy->ptr = const_cast<Value *>(P2.ptr);
+      remedy->setCost(perf);
       R.insert(remedy);
       return NoAlias;
     }
@@ -102,10 +103,21 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(const Pointer &P1,
       t1 != t2 && t1 != HeapAssignment::Unclassified &&
       t2 != HeapAssignment::Unclassified) {
     ++numSeparated;
-    remedy->ptr1 = const_cast<Value *>(P1.ptr);
-    remedy->ptr2 = const_cast<Value *>(P2.ptr);
-    remedy->type = LocalityRemedy::Separated;
+
+    std::shared_ptr<LocalityRemedy> remedy2 =
+        std::shared_ptr<LocalityRemedy>(new LocalityRemedy());
+    remedy2->type = LocalityRemedy::UOCheck;
+    remedy2->privateI = nullptr;
+    remedy2->privateLoad = nullptr;
+    remedy2->reduxS = nullptr;
+
+    remedy->ptr = const_cast<Value *>(P1.ptr);
+    remedy2->ptr = const_cast<Value *>(P2.ptr);
+
+    remedy->setCost(perf);
+    remedy2->setCost(perf);
     R.insert(remedy);
+    R.insert(remedy2);
     return NoAlias;
   }
 

@@ -10,8 +10,9 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/PtrResidueManager.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
 namespace liberty
 {
@@ -21,8 +22,9 @@ using namespace llvm;
 
 struct PtrResidueAA : public LoopAA // Not a pass!
 {
-  PtrResidueAA(const DataLayout &TD, PtrResidueSpeculationManager &man)
-    : LoopAA(), td(TD), manager(man) {}
+  PtrResidueAA(const DataLayout &TD, PtrResidueSpeculationManager &man,
+               PerformanceEstimator *pf)
+      : LoopAA(), td(TD), manager(man), perf(pf) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Low - 4);
@@ -50,6 +52,7 @@ struct PtrResidueAA : public LoopAA // Not a pass!
 private:
   const DataLayout &td;
   PtrResidueSpeculationManager &manager;
+  PerformanceEstimator *perf;
 
   /// Can there be an alias?  If so, report necessary assumptions
   bool may_alias(

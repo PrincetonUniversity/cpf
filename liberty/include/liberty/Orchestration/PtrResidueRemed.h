@@ -22,13 +22,16 @@ public:
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
+  unsigned long setCost(PerformanceEstimator *perf, const Value *ptr1,
+                        const Value *ptr2);
   StringRef getRemedyName() const { return "ptr-residue-remedy"; };
 };
 
 class PtrResidueRemediator : public Remediator {
 public:
-  PtrResidueRemediator(SpecPriv::PtrResidueSpeculationManager *man)
-      : Remediator(), manager(man) {
+  PtrResidueRemediator(SpecPriv::PtrResidueSpeculationManager *man,
+                       PerformanceEstimator *pf)
+      : Remediator(), manager(man), perf(pf) {
     td = nullptr;
   }
 
@@ -42,6 +45,7 @@ public:
 private:
   const DataLayout *td;
   SpecPriv::PtrResidueSpeculationManager *manager;
+  PerformanceEstimator *perf;
 
   /// Can there be an alias?  If so, report necessary assumptions
   bool may_alias(const Value *P1, unsigned S1, const Value *P2, unsigned S2,

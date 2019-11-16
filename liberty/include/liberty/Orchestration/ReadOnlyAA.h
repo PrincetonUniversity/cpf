@@ -11,6 +11,7 @@
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
 namespace liberty
 {
@@ -20,12 +21,16 @@ using namespace SpecPriv;
 //struct ReadOnlyAA : public ClassicLoopAA // Not a pass!
 struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
 {
-  ReadOnlyAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx)
-      : LoopAA(), read(rd), asgn(&ha), readOnlyAUs(nullptr), ctx(cx) {}
+  ReadOnlyAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx,
+             PerformanceEstimator *pf)
+      : LoopAA(), read(rd), asgn(&ha), readOnlyAUs(nullptr), ctx(cx), perf(pf) {
+  }
   //: ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
-  ReadOnlyAA(const Read &rd, const HeapAssignment::AUSet *roAUs, const Ctx *cx)
-      : LoopAA(), read(rd), asgn(nullptr), readOnlyAUs(roAUs), ctx(cx) {}
+  ReadOnlyAA(const Read &rd, const HeapAssignment::AUSet *roAUs, const Ctx *cx,
+             PerformanceEstimator *pf)
+      : LoopAA(), read(rd), asgn(nullptr), readOnlyAUs(roAUs), ctx(cx),
+        perf(pf) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Bottom + 9);
@@ -65,6 +70,7 @@ private:
   const HeapAssignment *asgn;
   const HeapAssignment::AUSet *readOnlyAUs;
   const Ctx *ctx;
+  PerformanceEstimator *perf;
 
   LoopAA::ModRefResult check_modref(const Value *ptrA, const Value *ptrB,
                                     const Loop *L, Remedies &R);

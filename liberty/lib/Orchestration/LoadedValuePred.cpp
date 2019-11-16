@@ -27,7 +27,8 @@ bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
 
 unsigned long LoadedValuePredRemedy::setCost(PerformanceEstimator *perf,
                                              const Loop *loop) {
-  unsigned validation_weight = 100;
+  // 1 cmp, 1 branch
+  unsigned validation_weight = 101;
   const Instruction *gravity = loop->getHeader()->getTerminator();
   assert(gravity && "no terminator in BB??");
   this->cost =

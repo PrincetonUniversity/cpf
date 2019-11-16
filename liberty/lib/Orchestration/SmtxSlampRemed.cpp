@@ -100,6 +100,8 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
                                                   bool LoopCarried,
                                                   DataDepType dataDepTy,
                                                   const Loop *L) {
+  assert(false && "Cannot use before adjusting cost as in SmtxLamp");
+
   ++numQueries;
   Remediator::RemedResp remedResp;
   // conservative answer

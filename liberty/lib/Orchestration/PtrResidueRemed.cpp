@@ -30,6 +30,20 @@ bool PtrResidueRemedy::compare(const Remedy_ptr rhs) const {
   return this->ptr1 < ptrResRhs->ptr1;
 }
 
+unsigned long PtrResidueRemedy::setCost(PerformanceEstimator *perf,
+                                        const Value *ptr1, const Value *ptr2) {
+  // 1 cmp, 1 bitwise, 1 branch
+  unsigned validation_weight = 201;
+  this->cost = 0;
+  if (const Instruction *gravity1 = dyn_cast<Instruction>(ptr1))
+    this->cost += Remediator::estimate_validation_weight(perf, gravity1,
+                                                         validation_weight);
+
+  if (const Instruction *gravity2 = dyn_cast<Instruction>(ptr2))
+    this->cost += Remediator::estimate_validation_weight(perf, gravity2,
+                                                         validation_weight);
+}
+
 // Rotate bv to the left by N bits
 static uint16_t rol_i16(uint16_t bv, unsigned N) {
   return (bv << N) | (bv >> (16 - N));
@@ -193,7 +207,7 @@ Remediator::RemedResp PtrResidueRemediator::memdep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
   std::shared_ptr<PtrResidueRemedy> remedy =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-  remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
 
   if (!td)
     td = &A->getModule()->getDataLayout();
@@ -221,6 +235,7 @@ Remediator::RemedResp PtrResidueRemediator::memdep(const Instruction *A,
       manager->setAssumed(a2);
       ++numNoMemDep;
       remedResp.depRes = DepResult::NoDep;
+      remedy->setCost(perf, a1.first, a2.first);
       remedy->ptr1 = a1.first;
       remedy->ctx1 = a1.second;
       remedy->ptr2 = a2.first;

@@ -98,6 +98,8 @@ bool Classify::runOnModule(Module &mod)
   // of the speculative AAs...
 
   {
+    PerformanceEstimator *perf = &getAnalysis< ProfilePerformanceEstimator >();
+
     // CtrlSpec
     ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
     EdgeCountOracle edgeaa(ctrlspec);
@@ -109,7 +111,7 @@ bool Classify::runOnModule(Module &mod)
     //LampOracle lampaa(&lamp);
     //lampaa.InitializeLoopAA(this, mod.getDataLayout());
     SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
-    SmtxAA smtxaa(&smtxMan);
+    SmtxAA smtxaa(&smtxMan, perf);
     smtxaa.InitializeLoopAA(this, mod.getDataLayout());
 
     // Points-to
@@ -118,14 +120,13 @@ bool Classify::runOnModule(Module &mod)
     pointstoaa.InitializeLoopAA(this, mod.getDataLayout());
     // Value predictions
     ProfileGuidedPredictionSpeculator &predspec = getAnalysis< ProfileGuidedPredictionSpeculator >();
-    PerformanceEstimator *perf = &getAnalysis< ProfilePerformanceEstimator >();
     PredictionAA predaa(&predspec, perf);
     predaa.InitializeLoopAA(this, mod.getDataLayout());
 
     // Ptr-residue
     PtrResidueSpeculationManager &ptrResMan =
         getAnalysis<PtrResidueSpeculationManager>();
-    PtrResidueAA ptrresaa(mod.getDataLayout(), ptrResMan);
+    PtrResidueAA ptrresaa(mod.getDataLayout(), ptrResMan, perf);
     ptrresaa.InitializeLoopAA(this, mod.getDataLayout());
 
     // leave IO to be shared
@@ -1185,12 +1186,14 @@ bool Classify::runOnLoop(Loop *loop)
       readOnlyAUs.insert(au);
   }
 
+
+  PerformanceEstimator *perf = &getAnalysis< ProfilePerformanceEstimator >();
   // read-only aa
-  ReadOnlyAA roaa(spresults, &readOnlyAUs , ctx);
+  ReadOnlyAA roaa(spresults, &readOnlyAUs , ctx, perf);
   roaa.InitializeLoopAA(this, fcn->getParent()->getDataLayout());
 
   // short-lived aa
-  ShortLivedAA localaa(spresults, &localAUs, ctx);
+  ShortLivedAA localaa(spresults, &localAUs, ctx, perf);
   localaa.InitializeLoopAA(this, fcn->getParent()->getDataLayout());
 
   // For each pair (write, read) in the loop.
