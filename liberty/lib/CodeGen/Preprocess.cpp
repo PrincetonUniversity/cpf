@@ -673,6 +673,11 @@ void Preprocess::init(ModuleLoops &mloops)
           //                   killPrivAUs);
         }
       }
+      else if (remed->getRemedyName().equals("points-to-remedy")) {
+        assert(false && "points-to object info do not get validated");
+      }
+      else
+        assert(false && "unsupport remedy in preprocess???");
     }
     if (specUsedFlag) {
       specUsed.insert(header);
