@@ -380,8 +380,8 @@ private:
 
   void query(LoopAA *aa, Instruction *src, LoopAA::TemporalRelation R, Instruction *dst, Loop *L, std::ofstream &fout) const
   {
-    const uint64_t t0 = rdtsc();
     Remedies Remeds;
+    const uint64_t t0 = rdtsc();
     LoopAA::ModRefResult res = aa->modref(src,R,dst,L,Remeds);
     const uint64_t t1 = rdtsc();
 
@@ -390,9 +390,14 @@ private:
     // just for sanity check
     res = LoopAA::ModRefResult(res & noLoopAA(src, dst));
 
+    std::string remediesStr = "";
+    for (auto &r: Remeds) {
+      remediesStr += r->getRemedyName().str() + ":";
+    }
+
     //fout << '\n' << src << '\n';
     //fout << dst << '\n';
-    fout << res << ' ' << seconds << ' ';
+    fout << res << ' ' << seconds << ' ' << remediesStr << ' ';
   }
 };
 
