@@ -259,6 +259,8 @@ private:
     LoopAA *aa = getAnalysis< LoopAA >().getRealTopAA();
     aa->stackHasChanged();
 
+    aa->dump();
+
     typedef std::vector<Instruction*> IVec;
     IVec writes, reads;
     for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
