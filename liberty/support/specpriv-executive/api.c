@@ -977,14 +977,12 @@ Iteration __specpriv_last_redux_update_iter(void) {
 // that certain bits within the pointer match the
 // encoded heap information
 // uo checks are inlined in postprocess. This function was never called
-/*
-void __specpriv_uo(void *ptr, uint64_t code, const char *msg)
+void __specpriv_uo(void *ptr, uint64_t code, uint64_t subheap, const char *msg)
 {
   if( ptr )
     if( (POINTER_MASK & (uint64_t)ptr) != code )
       __specpriv_misspec(msg);
 }
-*/
 
 // -----------------------------------------------------------------------
 // Value prediction
