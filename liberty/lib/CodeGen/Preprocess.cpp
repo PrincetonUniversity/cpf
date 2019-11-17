@@ -612,6 +612,7 @@ void Preprocess::init(ModuleLoops &mloops)
                              predPrivAUs);
       } else if (remed->getRemedyName().equals("smtx-remedy") ||
                  remed->getRemedyName().equals("smtx-lamp-remedy") ||
+                 remed->getRemedyName().equals("ptr-residue-remedy") ||
                  remed->getRemedyName().equals("mem-spec-aa-remedy")) {
         specUsedFlag = true;
       } else if (remed->getRemedyName().equals("redux-remedy")) {
@@ -672,6 +673,9 @@ void Preprocess::init(ModuleLoops &mloops)
           //collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
           //                   killPrivAUs);
         }
+      }
+      else if (remed->getRemedyName().equals("txio-remedy")) {
+        // nothing to do in preprocess for IO deferral
       }
       else if (remed->getRemedyName().equals("points-to-remedy")) {
         assert(false && "points-to object info do not get validated");
