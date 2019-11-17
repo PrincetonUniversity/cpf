@@ -228,9 +228,9 @@ bool Targets::runOnModule(Module &mod)
     // Add all loops whose execution time is at least 10% of program runtime.
     // and which iterate at least N times.
     double min = load.getTotTime() * (double)MinExecTimePercent / 100;
-    std::string largest_fname;
-    std::string largest_hname;
-    double maxS = -1;
+    //std::string largest_fname;
+    //std::string largest_hname;
+    //double maxS = -1;
     for(LoopProfLoad::iterator i=load.begin(), e=load.end(); i!=e; ++i)
     {
       const std::string &name = i->first;
@@ -253,17 +253,19 @@ bool Targets::runOnModule(Module &mod)
         continue;
       }
 
+      /*
       if (i->second > maxS)
       {
         largest_fname = fname;
         largest_hname = hname;
         maxS = i->second;
       }
+      */
 
-      //addLoopByName( mod, fname, hname, i->second, true );
+      addLoopByName( mod, fname, hname, i->second, true );
     }
-    if (maxS > 0.0)
-      addLoopByName(mod, largest_fname, largest_hname, maxS, true);
+    //if (maxS > 0.0)
+      //addLoopByName(mod, largest_fname, largest_hname, maxS, true);
   }
 
   // Sort loops by execution weight, descending, if available.
