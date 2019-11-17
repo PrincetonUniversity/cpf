@@ -548,6 +548,12 @@ namespace liberty
 
   };
 
+  class CafRemedy : public Remedy {
+  public:
+    // void apply(Task *task);
+    bool compare(const Remedy_ptr rhs) const { return false; }
+    StringRef getRemedyName() const { return "caf-remedy"; };
+  };
 }
 
 #endif

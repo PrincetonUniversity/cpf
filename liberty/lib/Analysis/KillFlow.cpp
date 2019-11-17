@@ -899,6 +899,10 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
         ptr2 = cast2->getOperand(0);
     }
 
+    std::shared_ptr<CafRemedy> remedy =
+        std::shared_ptr<CafRemedy>(new CafRemedy());
+    remedy->cost = 0;
+
     if( Rel == Same )
     {
       if( L->contains(i1) && L->contains(i2) )
@@ -959,6 +963,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           }
         }
       }
+      if (res != ModRef)
+        R.insert(remedy);
+
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
       if (res != NoModRef) {
         Remedies tmpR;
@@ -1066,6 +1073,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     if( res == Ref || res == NoModRef )
     {
+      R.insert(remedy);
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
       queryStart = 0;
       return res;
@@ -1086,6 +1094,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           ++numKilledForwardStoreFlows;
           //res = ModRefResult(res & ~Mod);
           res = NoModRef;
+          R.insert(remedy);
           return res;
         }
       }
@@ -1119,6 +1128,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           DEBUG(errs() << "Killed dep: load inst as earlier : " << *load << "\n later is "  << *later << "\n");
           ++numKilledForwardLoad;
           res = NoModRef;
+          R.insert(remedy);
           return res;
         }
       }
@@ -1128,6 +1138,8 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     DEBUG(errs() << "Can't say jack about " << *i2 << " at "
       << i2->getParent()->getParent()->getName() << ':' << i2->getParent()->getName() << '\n');
     INTROSPECT(EXIT(i1,Rel,i2,L,res));
+    if (res != ModRef)
+      R.insert(remedy);
     if (res != NoModRef) {
       Remedies tmpR;
       ModRefResult nextRes = getEffectiveNextAA()->modref(i1, Rel, i2, L, tmpR);

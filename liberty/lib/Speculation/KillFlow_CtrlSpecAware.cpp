@@ -885,6 +885,10 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     remedy->cost = DEFAULT_CTRL_REMED_COST;
     remedy->brI = nullptr;
 
+    std::shared_ptr<CafRemedy> remedy2 =
+        std::shared_ptr<CafRemedy>(new CafRemedy());
+    remedy2->cost = 0;
+
     // use ptr1 & ptr2 for load/store cases
     const Value *ptr1 = liberty::getMemOper(i1);
     const Value *ptr2 = liberty::getMemOper(i2);
@@ -921,6 +925,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
               ++numKilledForwardStoreFlows;
               //res = ModRefResult(res & ~Mod);
               R.insert(remedy);
+              R.insert(remedy2);
               res = NoModRef;
             }
           }
@@ -933,6 +938,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
               ++numKilledBackwardLoadFlows;
               //res = ModRefResult(res & ~Mod);
               R.insert(remedy);
+              R.insert(remedy2);
               res = NoModRef;
             }
           }
@@ -945,6 +951,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             {
               ++numKilledForwardLoad;
               R.insert(remedy);
+              R.insert(remedy2);
               res = NoModRef;
             }
           }
@@ -957,6 +964,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
             {
               ++numKilledBackwardStore;
               R.insert(remedy);
+              R.insert(remedy2);
               res = NoModRef;
             }
           }
@@ -1003,6 +1011,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           DEBUG(errs() << "Removed the mod bit at AAA\n");
           // res = ModRefResult(res & ~Mod);
           R.insert(remedy);
+          R.insert(remedy2);
           res = NoModRef;
         }
 
@@ -1015,6 +1024,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           DEBUG(errs() << "Removed the mod bit at AAA\n");
           // res = ModRefResult(res & ~Mod);
           R.insert(remedy);
+          R.insert(remedy2);
           res = NoModRef;
         }
       }
@@ -1053,6 +1063,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           ++numKilledBackwardStore;
           // no dependence between this store and insts from previous iteration possible
           R.insert(remedy);
+          R.insert(remedy2);
           res = NoModRef;
         }
 
@@ -1063,6 +1074,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
                                      AnalysisTimeout)) {
           ++numKilledBackwardStore;
           R.insert(remedy);
+          R.insert(remedy2);
           res = NoModRef;
         }
 
@@ -1093,6 +1105,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           ++numKilledForwardStoreFlows;
           //res = ModRefResult(res & ~Mod);
           R.insert(remedy);
+          R.insert(remedy2);
           res = NoModRef;
           return res;
         }
@@ -1127,6 +1140,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
           DEBUG(errs() << "Killed dep: load inst as earlier : " << *load << "\n later is "  << *later << "\n");
           ++numKilledForwardLoad;
           R.insert(remedy);
+          R.insert(remedy2);
           res = NoModRef;
           return res;
         }

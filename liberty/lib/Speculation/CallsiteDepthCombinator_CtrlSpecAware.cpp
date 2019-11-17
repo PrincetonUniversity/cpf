@@ -475,7 +475,21 @@ namespace liberty
           }
         }
 
-        if( !mayFlowCrossIter(kill, src,dst,L, write,read, R, queryStart, Timeout) )
+        Remedies tmpR;
+        bool flow = mayFlowCrossIter(kill, src, dst, L, write, read, tmpR,
+                                     queryStart, Timeout);
+
+        if (!flow) {
+          std::shared_ptr<CafRemedy> remedy =
+              std::shared_ptr<CafRemedy>(new CafRemedy());
+          remedy->cost = 0;
+          tmpR.insert(remedy);
+
+          for (auto remed : tmpR)
+            R.insert(remed);
+        }
+
+        if (!flow)
           continue;
 
         // TODO
@@ -486,20 +500,18 @@ namespace liberty
         // necessary, but (iii) Leave those callsites
         // unexpanded for later iterations of the loop?
 
-        INTROSPECT(
-          errs() << "Can't disprove flow\n"
-                 << "\tfrom: " << write << '\n'
-                 << "\t  to: " << read  << '\n');
-        DEBUG(
-          errs() << "Can't disprove flow\n"
-                 << "\tfrom: " << write << '\n'
-                 << "\t  to: " << read  << '\n');
+        INTROSPECT(errs() << "Can't disprove flow\n"
+                          << "\tfrom: " << write << '\n'
+                          << "\t  to: " << read << '\n');
+        DEBUG(errs() << "Can't disprove flow\n"
+                     << "\tfrom: " << write << '\n'
+                     << "\t  to: " << read << '\n');
 
-        if( allFlowsOut )
-          allFlowsOut->push_back( CIPair(write,read) );
+        if (allFlowsOut)
+          allFlowsOut->push_back(CIPair(write, read));
         isFlow = true;
 
-        if( stopAfterFirst && isFlow )
+        if (stopAfterFirst && isFlow)
           break;
       }
 

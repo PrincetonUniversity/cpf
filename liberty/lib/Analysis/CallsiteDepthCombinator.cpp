@@ -469,6 +469,11 @@ namespace liberty
                                      queryStart, Timeout);
 
         if (!flow) {
+          std::shared_ptr<CafRemedy> remedy =
+              std::shared_ptr<CafRemedy>(new CafRemedy());
+          remedy->cost = 0;
+          tmpR.insert(remedy);
+
           for (auto remed : tmpR)
             R.insert(remed);
           if (remedNoFlows) {

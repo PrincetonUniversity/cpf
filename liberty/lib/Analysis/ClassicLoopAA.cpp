@@ -125,6 +125,10 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
   Remedies tmpR;
   Remedies chainRemeds;
 
+  std::shared_ptr<CafRemedy> remedy =
+      std::shared_ptr<CafRemedy>(new CafRemedy());
+  remedy->cost = 0;
+
   if (!CS2.getInstruction() && !liberty::isVolatile(I2)) {
     const Value *V = liberty::getMemOper(I2);
     unsigned Size = liberty::getTargetSize(V, getDataLayout());
@@ -136,6 +140,8 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
   }
 
   if (MR == NoModRef) {
+    tmpR.insert(remedy);
+
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
@@ -157,6 +163,8 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
   }
 
   if (MR == NoModRef) {
+    tmpR.insert(remedy);
+
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
@@ -173,6 +181,8 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
   }
 
   if (MR == NoModRef) {
+    tmpR.insert(remedy);
+
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
@@ -183,6 +193,8 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
     }
     return NoModRef;
   }
+
+  tmpR.insert(remedy);
 
   LoopAA::ModRefResult chainRes = LoopAA::modref(I1, Rel, I2, L, chainRemeds);
   return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
@@ -198,12 +210,17 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
   Remedies tmpR;
   Remedies chainRemeds;
 
+  std::shared_ptr<CafRemedy> remedy =
+      std::shared_ptr<CafRemedy>(new CafRemedy());
+  remedy->cost = 0;
+
   if (CS.getInstruction())
     MR = getModRefInfo(CS, Rel, Pointer(V, Size), L, tmpR);
   else
     MR = modrefSimple(I, Rel, Pointer(V, Size), L, tmpR);
 
   if (MR == NoModRef) {
+    tmpR.insert(remedy);
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
@@ -214,6 +231,8 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
     }
     return NoModRef;
   }
+
+  tmpR.insert(remedy);
 
   LoopAA::ModRefResult chainRes = LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
   return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
@@ -229,6 +248,10 @@ LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
   const AliasResult AR = aliasCheck(Pointer(V1, Size1), Rel, Pointer(V2, Size2),
                                     L, tmpR, dAliasRes);
   if (AR != MayAlias) {
+    std::shared_ptr<CafRemedy> remedy =
+        std::shared_ptr<CafRemedy>(new CafRemedy());
+    remedy->cost = 0;
+    tmpR.insert(remedy);
     return aliasAvoidExpRemeds(V1, Size1, Rel, V2, Size2, L, R, AR, tmpR,
                                dAliasRes);
   }
@@ -253,6 +276,12 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const LoadInst *Load,
   const AliasResult AR =
       aliasCheck(Pointer(Load, P1, Size1), Rel, P2, L, tmpR);
   if (AR == NoAlias) {
+
+    std::shared_ptr<CafRemedy> remedy =
+        std::shared_ptr<CafRemedy>(new CafRemedy());
+    remedy->cost = 0;
+    tmpR.insert(remedy);
+
     aliasAvoidExpRemeds(P1, Size1, Rel, P2.ptr, P2.size, L, R, AR, tmpR);
     return NoModRef;
   }
@@ -285,6 +314,12 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const StoreInst *Store,
   const AliasResult AR =
       aliasCheck(Pointer(Store, P1, Size1), Rel, P2, L, tmpR);
   if (AR == NoAlias) {
+
+    std::shared_ptr<CafRemedy> remedy =
+        std::shared_ptr<CafRemedy>(new CafRemedy());
+    remedy->cost = 0;
+    tmpR.insert(remedy);
+
     aliasAvoidExpRemeds(P1, Size1, Rel, P2.ptr, P2.size, L, R, AR, tmpR);
     return NoModRef;
   }
@@ -311,6 +346,12 @@ LoopAA::ModRefResult ClassicLoopAA::modrefSimple(const VAArgInst *VAArg,
   const AliasResult AR =
       aliasCheck(Pointer(VAArg, P1, UnknownSize), Rel, P2, L, tmpR);
   if (!AR) {
+
+    std::shared_ptr<CafRemedy> remedy =
+        std::shared_ptr<CafRemedy>(new CafRemedy());
+    remedy->cost = 0;
+    tmpR.insert(remedy);
+
     aliasAvoidExpRemeds(P1, UnknownSize, Rel, P2.ptr, P2.size, L, R, AR, tmpR);
     return NoModRef;
   }

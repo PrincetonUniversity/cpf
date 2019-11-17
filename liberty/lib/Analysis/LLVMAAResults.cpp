@@ -58,6 +58,10 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
   if (rel != LoopAA::Same)
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
 
+  std::shared_ptr<CafRemedy> remedy =
+      std::shared_ptr<CafRemedy>(new CafRemedy());
+  remedy->cost = 0;
+
   // only handles intra-iteration mem queries
   auto *funA = getParent(ptrA);
   if (!funA || !notDifferentParent(ptrA, ptrB))
@@ -69,6 +73,7 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
   auto aaRes = aa->alias(ptrA, sizeA, ptrB, sizeB);
 
   if (aaRes == llvm::NoAlias) {
+    R.insert(remedy);
     ++numNoAlias;
     return LoopAA::NoAlias;
   }
@@ -76,8 +81,10 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
   LoopAA::AliasResult aaLoopAARes;
   if (aaRes == llvm::PartialAlias || aaRes == llvm::MayAlias)
     aaLoopAARes = LoopAA::MayAlias;
-  else  //aaRes == llvm::MustAlias
+  else {  //aaRes == llvm::MustAlias
+    R.insert(remedy);
     aaLoopAARes = LoopAA::MustAlias;
+  }
 
   return LoopAA::AliasResult(aaLoopAARes & LoopAA::alias(ptrA, sizeA, rel, ptrB,
                                                          sizeB, L, R,
@@ -101,7 +108,15 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
   if (funA != curF)
     computeAAResults(funA);
 
+  std::shared_ptr<CafRemedy> remedy =
+      std::shared_ptr<CafRemedy>(new CafRemedy());
+  remedy->cost = 0;
+
   auto aaRes = aa->getModRefInfo(A, ptrB, sizeB);
+
+  if (aaRes != llvm::MRI_ModRef) {
+    R.insert(remedy);
+  }
 
   if (aaRes == llvm::MRI_NoModRef) {
     // DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
