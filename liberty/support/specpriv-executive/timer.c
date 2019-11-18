@@ -25,6 +25,14 @@ uint64_t consume_wait_time = 0;
 uint64_t produce_actual_time = 0;
 uint64_t consume_actual_time = 0;
 
+// validation overheads
+uint64_t val_uo_check_time;
+uint64_t val_uo_check_count;
+uint64_t val_private_read_time;
+uint64_t val_private_read_count;
+uint64_t val_private_write_time;
+uint64_t val_private_write_count;
+
 //////// ONE-TIME COSTS ////////
 /******************************************************************************
  * Worker time from when __specpriv_worker_setup() is called to worker.callback()
@@ -140,7 +148,8 @@ uint64_t rdtsc(void)
 {
   uint32_t a, d;
   /* timers_hit++; */
-  __asm__ volatile("rdtscp" : "=a" (a), "=d" (d));
+  __asm__ volatile("rdtsc" : "=a" (a), "=d" (d));
+  //__asm__ volatile("rdtscp" : "=a" (a), "=d" (d));
   return ((uint64_t)a) | (((uint64_t)d) <<32 );
 }
 
@@ -398,4 +407,23 @@ void __specpriv_print_main_times(void)
 #endif
 }
 
+void __specpriv_reset_val_timers(void)
+{
+  val_uo_check_time = 0;
+  val_uo_check_count = 0;
+  val_private_read_time = 0;
+  val_private_read_count = 0;
+  val_private_write_time = 0;
+  val_private_write_count = 0;
+}
 
+void __specpriv_print_val_timers(void)
+{
+    printf("Single UO check overhead:       %15lf\n"
+           "Single Private read overhead:   %15lf\n"
+           "Single Private write overhead:  %15lf\n",
+         (double)(val_uo_check_time) / val_uo_check_count,
+         (double)(val_private_read_time) / val_private_read_count,
+         (double)(val_private_write_time) / val_private_write_count
+    );
+}
