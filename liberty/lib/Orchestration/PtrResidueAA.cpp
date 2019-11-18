@@ -224,15 +224,21 @@ LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
   manager.setAssumed(a2);
   ++numBenefit;
 
-  std::shared_ptr<PtrResidueRemedy> remedy =
+  std::shared_ptr<PtrResidueRemedy> remedy1 =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-  //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
-  remedy->setCost(perf, a1.first, a2.first);
-  remedy->ptr1 = a1.first;
-  remedy->ctx1 = a1.second;
-  remedy->ptr2 = a2.first;
-  remedy->ctx2 = a2.second;
-  R.insert(remedy);
+  //remedy1->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy1->ptr = a1.first;
+  remedy1->ctx = a1.second;
+  remedy1->setCost(perf, a1.first);
+  R.insert(remedy1);
+
+  std::shared_ptr<PtrResidueRemedy> remedy2 =
+      std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
+  //remedy2->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy2->ptr = a2.first;
+  remedy2->ctx = a2.second;
+  remedy2->setCost(perf, a2.first);
+  R.insert(remedy2);
 
   return NoAlias;
 }
@@ -268,15 +274,21 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   manager.setAssumed(a2);
   ++numBenefit;
 
-  std::shared_ptr<PtrResidueRemedy> remedy =
+  std::shared_ptr<PtrResidueRemedy> remedy1 =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-  //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
-  remedy->setCost(perf, a1.first, a2.first);
-  remedy->ptr1 = a1.first;
-  remedy->ctx1 = a1.second;
-  remedy->ptr2 = a2.first;
-  remedy->ctx2 = a2.second;
-  R.insert(remedy);
+  //remedy1->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy1->ptr = a1.first;
+  remedy1->ctx = a1.second;
+  remedy1->setCost(perf, a1.first);
+  R.insert(remedy1);
+
+  std::shared_ptr<PtrResidueRemedy> remedy2 =
+      std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
+  //remedy2->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+  remedy2->ptr = a2.first;
+  remedy2->ctx = a2.second;
+  remedy2->setCost(perf, a2.first);
+  R.insert(remedy2);
 
   return NoModRef;
 }
@@ -329,15 +341,21 @@ LoopAA::ModRefResult PtrResidueAA::modref(
     manager.setAssumed(a2);
     ++numBenefit;
 
-    std::shared_ptr<PtrResidueRemedy> remedy =
+    std::shared_ptr<PtrResidueRemedy> remedy1 =
         std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
-    //remedy->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
-    remedy->setCost(perf, a1.first, a2.first);
-    remedy->ptr1 = a1.first;
-    remedy->ctx1 = a1.second;
-    remedy->ptr2 = a2.first;
-    remedy->ctx2 = a2.second;
-    R.insert(remedy);
+    // remedy1->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+    remedy1->ptr = a1.first;
+    remedy1->ctx = a1.second;
+    remedy1->setCost(perf, a1.first);
+    R.insert(remedy1);
+
+    std::shared_ptr<PtrResidueRemedy> remedy2 =
+        std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
+    // remedy2->cost = DEFAULT_PTR_RESIDUE_REMED_COST;
+    remedy2->ptr = a2.first;
+    remedy2->ctx = a2.second;
+    remedy2->setCost(perf, a2.first);
+    R.insert(remedy2);
 
     return NoModRef;
   }

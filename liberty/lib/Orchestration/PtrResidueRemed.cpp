@@ -18,6 +18,11 @@ void PtrResidueRemedy::apply(Task *task) {}
 bool PtrResidueRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<PtrResidueRemedy> ptrResRhs =
       std::static_pointer_cast<PtrResidueRemedy>(rhs);
+  if (this->ptr == ptrResRhs->ptr) {
+    return this->ctx < ptrResRhs->ctx;
+  }
+  return this->ptr < ptrResRhs->ptr;
+  /*
   if (this->ptr1 == ptrResRhs->ptr1) {
     if (this->ctx1 == ptrResRhs->ctx1) {
       if (this->ptr2 == ptrResRhs->ptr2) {
@@ -28,19 +33,16 @@ bool PtrResidueRemedy::compare(const Remedy_ptr rhs) const {
     return this->ctx1 < ptrResRhs->ctx1;
   }
   return this->ptr1 < ptrResRhs->ptr1;
+  */
 }
 
 unsigned long PtrResidueRemedy::setCost(PerformanceEstimator *perf,
-                                        const Value *ptr1, const Value *ptr2) {
+                                        const Value *ptr) {
   // 1 cmp, 1 bitwise, 1 branch
   unsigned validation_weight = 201;
   this->cost = 0;
-  if (const Instruction *gravity1 = dyn_cast<Instruction>(ptr1))
-    this->cost += Remediator::estimate_validation_weight(perf, gravity1,
-                                                         validation_weight);
-
-  if (const Instruction *gravity2 = dyn_cast<Instruction>(ptr2))
-    this->cost += Remediator::estimate_validation_weight(perf, gravity2,
+  if (const Instruction *gravity = dyn_cast<Instruction>(ptr1))
+    this->cost += Remediator::estimate_validation_weight(perf, gravity,
                                                          validation_weight);
 }
 
@@ -235,7 +237,8 @@ Remediator::RemedResp PtrResidueRemediator::memdep(const Instruction *A,
       manager->setAssumed(a2);
       ++numNoMemDep;
       remedResp.depRes = DepResult::NoDep;
-      remedy->setCost(perf, a1.first, a2.first);
+      remedy->setCost(perf, a1.first);
+      //remedy->setCost(perf, a1.first, a2.first);
       remedy->ptr1 = a1.first;
       remedy->ctx1 = a1.second;
       remedy->ptr2 = a2.first;
