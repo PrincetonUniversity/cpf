@@ -20,6 +20,7 @@ class SmtxLampRemedy : public Remedy {
 public:
   const Instruction *writeI;
   const Instruction *readI;
+  const Instruction *memI;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;

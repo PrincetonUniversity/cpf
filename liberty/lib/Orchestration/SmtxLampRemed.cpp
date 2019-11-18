@@ -25,14 +25,22 @@ void SmtxLampRemedy::apply(Task *task) {
 bool SmtxLampRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<SmtxLampRemedy> smtxRhs =
       std::static_pointer_cast<SmtxLampRemedy>(rhs);
-  if (this->writeI == smtxRhs->writeI)
+  if (this->writeI == smtxRhs->writeI) {
+    if (this->readI == smtxRhs->readI) {
+      return this->memI < smtxRhs->memI;
+    }
     return this->readI < smtxRhs->readI;
+  }
   return this->writeI < smtxRhs->writeI;
 }
 
-
 unsigned long SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
-  // ??
+  assert(this->memI && "no memI in SmtxLampRemedy remedy???");
+  unsigned validation_weight = 4000;
+  if (isa<LoadInst>(this->memI))
+    validation_weight = 4000;
+  this->cost = Remediator::estimate_validation_weight(perf, this->memI,
+                                                      validation_weight);
 }
 
 static cl::opt<unsigned>
