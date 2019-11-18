@@ -23,11 +23,32 @@ uint64_t rdtsc(void);
 
 #endif
 
+#if VAL_TIMER != 0
+
+#define VAL_TOUT(...)   do { __VA_ARGS__ ; } while(0)
+#define VAL_TIME(v)     do { v = rdtsc() ; } while(0)
+#define VAL_TADD(d,s)   do { d += rdtsc() - s; } while(0)
+#define VAL_ADD(c)   do { c += 1; } while(0)
+
+#else
+
+#define VAL_TOUT(...)
+#define VAL_TIME(v)     do { (void)v; } while(0)
+#define VAL_TADD(d,s)   do { (void)d; (void)s; } while(0)
+#define VAL_ADD(c)   do { (void)c; } while(0)
+
+#endif
+
+
+
 void __specpriv_reset_timers(void);
 void __specpriv_add_right_time( uint64_t *on_time, uint64_t *off_time, uint64_t begin );
 void __specpriv_print_worker_times(void);
 void __specpriv_print_main_times(void);
 void __specpriv_print_percentages( void );
+
+void __specpriv_reset_val_timers(void);
+void __specpriv_print_val_timers(void);
 
 // Timer variables
 extern uint64_t main_begin_invocation, main_end_invocation;
@@ -35,6 +56,15 @@ extern uint64_t worker_begin_invocation, worker_end_invocation;
 extern uint64_t worker_enter_loop, worker_exit_loop;
 extern uint64_t worker_begin_waitpid, worker_end_waitpid;
 extern uint64_t distill_into_liveout_start, distill_into_liveout_end;
+
+
+// validation overheads
+extern uint64_t val_uo_check_time;
+extern uint64_t val_uo_check_count;
+extern uint64_t val_private_read_time;
+extern uint64_t val_private_read_count;
+extern uint64_t val_private_write_time;
+extern uint64_t val_private_write_count;
 
 //////// ONE-TIME COSTS ////////
 /******************************************************************************
