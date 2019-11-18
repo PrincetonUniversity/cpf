@@ -79,12 +79,22 @@ namespace SpecPriv
 
     LAMPLoadProfile &lamp = smtxMan->getLampResult();
 
-    std::shared_ptr<SmtxLampRemedy> remedy =
+    std::shared_ptr<SmtxLampRemedy> remedyA =
         std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
-    remedy->cost = DEFAULT_LAMP_REMED_COST;
+    std::shared_ptr<SmtxLampRemedy> remedyB =
+        std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
+    //remedy->cost = DEFAULT_LAMP_REMED_COST;
 
-    remedy->writeI = A;
-    remedy->readI = B;
+    //remedy->writeI = A;
+    //remedy->readI = B;
+    remedyA->writeI = nullptr;
+    remedyA->readI = nullptr;
+    remedyB->writeI = nullptr;
+    remedyB->readI = nullptr;
+    remedyA->memI = A;
+    remedyB->memI = B;
+    remedyA->setCost(perf);
+    remedyB->setCost(perf);
 
     // Loop carried forward queries, or
     // Same queries.
@@ -147,7 +157,8 @@ namespace SpecPriv
           result = ModRefResult(result & ~Mod);
           ++numNoForwardFlow;
 
-          R.insert(remedy);
+          R.insert(remedyA);
+          R.insert(remedyB);
 
           // Keep track of this
           smtxMan->setAssumedLC(L,A,B);
@@ -167,7 +178,8 @@ namespace SpecPriv
           result = ModRefResult(result & ~Mod);
           ++numNoForwardFlow;
 
-          R.insert(remedy);
+          R.insert(remedyA);
+          R.insert(remedyB);
 
           // Keep track of this
           smtxMan->setAssumedII(L,A,B);
@@ -234,7 +246,8 @@ namespace SpecPriv
 
         ++numNoReverseFlow;
 
-        R.insert(remedy);
+        R.insert(remedyA);
+        R.insert(remedyB);
 
         // Keep track of this
         smtxMan->setAssumedLC(L,B,A);
