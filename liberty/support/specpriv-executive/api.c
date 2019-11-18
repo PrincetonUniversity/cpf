@@ -467,6 +467,7 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
 
   // reset timers
   TOUT(__specpriv_reset_timers(););
+  VAL_TOUT(__specpriv_reset_val_timers());
 
   __specpriv_initialize_worker_heaps();
 
@@ -503,6 +504,7 @@ void __specpriv_worker_finishes(Exit exitTaken)
   TIME(worker_end_invocation);
   TOUT( __specpriv_print_worker_times() );
   TOUT( __specpriv_print_percentages());
+  VAL_TOUT(__specpriv_print_val_timers());
 
   DEBUG(printf("Worker %u finished.\n", myWorkerId));
 
@@ -979,9 +981,13 @@ Iteration __specpriv_last_redux_update_iter(void) {
 // uo checks are inlined in postprocess. This function was never called
 void __specpriv_uo(void *ptr, uint64_t code, uint64_t subheap, const char *msg)
 {
+  uint64_t start;
+  VAL_TIME(start);
   if( ptr )
     if( (POINTER_MASK & (uint64_t)ptr) != code )
       __specpriv_misspec(msg);
+  VAL_TADD(val_uo_check_time,start);
+  VAL_ADD(val_uo_check_count);
 }
 
 // -----------------------------------------------------------------------
