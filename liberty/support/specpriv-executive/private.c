@@ -154,6 +154,9 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
 
   if( ! __specpriv_i_am_main_process() ) // shadow is only mapped in worker processes
   {
+
+    uint64_t val_start = rdtsc();
+
     uint8_t *shadow = (uint8_t*) ( SHADOW_ADDR | (uint64_t)ptr );
     // TODO: speed this up.
     if( memchr(shadow, READ_LIVE_IN, len) )
@@ -165,6 +168,9 @@ void __specpriv_private_write_range(void *ptr, uint64_t len)
     DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     TOUT(worker_private_bytes_written += len);
+
+    var_private_write_time += rdtsc() - val_start;
+    ++var_private_write_count;
   }
 
   TADD(worker_private_write_time,start);
@@ -296,6 +302,8 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
 
   if( ! __specpriv_i_am_main_process() ) // shadow is only mapped in worker processes
   {
+    uint64_t val_start = rdtsc();
+
     uint8_t *shadow = (uint8_t*) ( SHADOW_ADDR | (uint64_t)ptr );
 
     __specpriv_private_read_range_internal(shadow, &shadow[len], name);
@@ -308,6 +316,9 @@ void __specpriv_private_read_range(void *ptr, uint64_t len, const char *name)
     DEBUG( assert( ((uint64_t)shadow_highest_exclusive) <= SHADOW_ADDR + __specpriv_sizeof_private() ) );
 
     TOUT(worker_private_bytes_read += len);
+
+    var_private_read_time += rdtsc() - val_start;
+    ++var_private_read_count;
   }
 
   TIME(worker_pause_time);

@@ -25,6 +25,15 @@ uint64_t consume_wait_time = 0;
 uint64_t produce_actual_time = 0;
 uint64_t consume_actual_time = 0;
 
+//validation costs
+uint64_t var_uo_check_time = 0;
+uint64_t var_uo_check_count = 0;
+uint64_t var_private_write_time = 0;
+uint64_t var_private_write_count = 0;
+uint64_t var_private_read_time = 0;
+uint64_t var_private_read_count = 0;
+
+
 //////// ONE-TIME COSTS ////////
 /******************************************************************************
  * Worker time from when __specpriv_worker_setup() is called to worker.callback()
@@ -145,6 +154,7 @@ uint64_t rdtsc(void)
   uint32_t a, d;
   /* timers_hit++; */
   __asm__ volatile("rdtscp" : "=a" (a), "=d" (d));
+  //__asm__ volatile("rdtsc" : "=a" (a), "=d" (d));
   return ((uint64_t)a) | (((uint64_t)d) <<32 );
 }
 
@@ -414,4 +424,20 @@ void __specpriv_print_main_times(void)
 #endif
 }
 
+void __specpriv_reset_val_times(void) {
+  var_uo_check_time = 0;
+  var_uo_check_count = 0;
+  var_private_write_time = 0;
+  var_private_write_count = 0;
+  var_private_read_time = 0;
+  var_private_read_count = 0;
+}
 
+void __specpriv_print_val_times(void) {
+  printf("UO check average cycle latency:      %15lf\n"
+         "Private read average cycle latency:  %15lf\n"
+         "Private write average cycle latency: %15lf\n",
+         ((double)var_uo_check_time) / var_uo_check_count,
+         ((double)var_private_read_time) / var_private_read_count,
+         ((double)var_private_write_time) / var_private_write_count);
+}

@@ -196,8 +196,8 @@ struct Api
   {
     std::vector<Type*> formals(4);
     formals[0] = voidptr; // pointer
-    formals[1] = u8;      // heap number or (-1)
-    formals[2] = u8;      // sub-heap number or (-1)
+    formals[1] = u64;      // heap number or (-1)
+    formals[2] = u64;      // sub-heap number or (-1)
     formals[3] = voidptr; // error on misspeculation
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 

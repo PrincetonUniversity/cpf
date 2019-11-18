@@ -433,6 +433,8 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
 {
   DEBUG(printf("__specpriv_worker_starts, %u worker\n", wid));
 
+  __specpriv_reset_val_times();
+
   // reset timers
   TOUT(__specpriv_reset_timers(););
 
@@ -449,6 +451,8 @@ static void __specpriv_worker_starts(Iteration firstIter, Wid wid)
 void __specpriv_worker_finishes(Exit exitTaken)
 {
   assert( myWorkerId != MAIN_PROCESS );
+
+  __specpriv_print_val_times();
 
   DEBUG(printf("Worker %u finishing with exitTaken:%u.\n", myWorkerId,
                exitTaken));
@@ -937,14 +941,15 @@ Iteration __specpriv_last_redux_update_iter(void) {
 // that certain bits within the pointer match the
 // encoded heap information
 // uo checks are inlined in postprocess. This function was never called
-/*
-void __specpriv_uo(void *ptr, uint64_t code, const char *msg)
+void __specpriv_uo(void *ptr, uint64_t code, uint64_t subheap, const char *msg)
 {
+  uint64_t start = rdtsc();
   if( ptr )
     if( (POINTER_MASK & (uint64_t)ptr) != code )
       __specpriv_misspec(msg);
+  var_uo_check_time += rdtsc() - start;
+  ++var_uo_check_count;
 }
-*/
 
 // -----------------------------------------------------------------------
 // Value prediction

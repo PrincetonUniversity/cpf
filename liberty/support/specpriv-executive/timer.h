@@ -29,12 +29,23 @@ void __specpriv_print_worker_times(void);
 void __specpriv_print_main_times(void);
 void __specpriv_print_percentages( void );
 
+void __specpriv_reset_val_times(void);
+void __specpriv_print_val_times(void);
+
 // Timer variables
 extern uint64_t main_begin_invocation, main_end_invocation;
 extern uint64_t worker_begin_invocation, worker_end_invocation;
 extern uint64_t worker_enter_loop, worker_exit_loop;
 extern uint64_t worker_begin_waitpid, worker_end_waitpid;
 extern uint64_t distill_into_liveout_start, distill_into_liveout_end;
+
+//validation costs
+extern uint64_t var_uo_check_time;
+extern uint64_t var_uo_check_count;
+extern uint64_t var_private_write_time;
+extern uint64_t var_private_write_count;
+extern uint64_t var_private_read_time;
+extern uint64_t var_private_read_count;
 
 //////// ONE-TIME COSTS ////////
 /******************************************************************************
