@@ -133,15 +133,17 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
     const Value *V = liberty::getMemOper(I2);
     unsigned Size = liberty::getTargetSize(V, getDataLayout());
     const Pointer P(I2, V, Size);
-    if (CS1.getInstruction())
-      MR = ModRefResult(MR & getModRefInfo(CS1, Rel, P, L, tmpR));
+    if (CS1.getInstruction()) {
+      auto newMR = getModRefInfo(CS1, Rel, P, L, tmpR);
+      if (newMR != ModRef)
+        tmpR.insert(remedy);
+      MR = ModRefResult(MR & newMR);
+    }
     else
       MR = ModRefResult(MR & modrefSimple(I1, Rel, P, L, tmpR));
   }
 
   if (MR == NoModRef) {
-    tmpR.insert(remedy);
-
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
@@ -160,11 +162,12 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
     ModRefResult inverse = getModRefInfo(CS2, Rev(Rel), P, L, tmpR);
     if (inverse == NoModRef)
       MR = NoModRef;
+
+    if (inverse != ModRef)
+      tmpR.insert(remedy);
   }
 
   if (MR == NoModRef) {
-    tmpR.insert(remedy);
-
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
@@ -177,12 +180,15 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
   }
 
   if (CS1.getInstruction() && CS2.getInstruction()) {
-    MR = ModRefResult(MR & getModRefInfo(CS1, Rel, CS2, L, tmpR));
+
+    auto newMR = getModRefInfo(CS1, Rel, CS2, L, tmpR);
+    if (newMR != ModRef)
+      tmpR.insert(remedy);
+
+    MR = ModRefResult(MR & newMR);
   }
 
   if (MR == NoModRef) {
-    tmpR.insert(remedy);
-
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I1, Rel, I2, L, chainRemeds);
@@ -193,8 +199,6 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I1,
     }
     return NoModRef;
   }
-
-  tmpR.insert(remedy);
 
   LoopAA::ModRefResult chainRes = LoopAA::modref(I1, Rel, I2, L, chainRemeds);
   return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);
@@ -214,13 +218,15 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
       std::shared_ptr<CafRemedy>(new CafRemedy());
   remedy->cost = 0;
 
-  if (CS.getInstruction())
+  if (CS.getInstruction()) {
     MR = getModRefInfo(CS, Rel, Pointer(V, Size), L, tmpR);
+    if (MR != ModRef)
+      tmpR.insert(remedy);
+  }
   else
     MR = modrefSimple(I, Rel, Pointer(V, Size), L, tmpR);
 
   if (MR == NoModRef) {
-    tmpR.insert(remedy);
     if (containsExpensiveRemeds(tmpR)) {
       LoopAA::ModRefResult chainRes =
           LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
@@ -231,8 +237,6 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
     }
     return NoModRef;
   }
-
-  tmpR.insert(remedy);
 
   LoopAA::ModRefResult chainRes = LoopAA::modref(I, Rel, V, Size, L, chainRemeds);
   return modrefAvoidExpRemeds(R, MR, tmpR, chainRes, chainRemeds);

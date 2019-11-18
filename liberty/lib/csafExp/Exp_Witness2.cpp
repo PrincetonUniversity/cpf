@@ -397,6 +397,9 @@ private:
       remediesStr += r->getRemedyName().str() + ":";
     }
 
+    if (Remeds.empty())
+      remediesStr = "none";
+
     //fout << '\n' << src << '\n';
     //fout << dst << '\n';
     fout << res << ' ' << seconds << ' ' << remediesStr << ' ';
