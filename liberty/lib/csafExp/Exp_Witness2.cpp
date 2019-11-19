@@ -16,9 +16,10 @@
 //#include "liberty/Analysis/TXIOAA.h"
 //#include "liberty/Analysis/CommutativeLibsAA.h"
 //#include "liberty/Analysis/CommutativeGuessAA.h"
-#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/LocalityRemed.h"
 #include "liberty/Orchestration/PointsToAA.h"
+#include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/PtrResidueAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Orchestration/ShortLivedAA.h"
@@ -28,7 +29,6 @@
 #include "liberty/Speculation/Read.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/MakePtr.h"
-
 
 #include "Exp.h"
 
@@ -394,7 +394,12 @@ private:
 
     std::string remediesStr = "";
     for (auto &r: Remeds) {
-      remediesStr += r->getRemedyName().str() + ":";
+      StringRef remedyName = r->getRemedyName();
+      if (remedyName.equals("locality-remedy")) {
+        LocalityRemedy *localityRemed = (LocalityRemedy *)&*(r);
+        remedyName = localityRemed->getLocalityRemedyName();
+      }
+      remediesStr += remedyName.str() + ":";
     }
 
     if (Remeds.empty())
