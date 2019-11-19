@@ -76,7 +76,7 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
     ++numSeparated;
     remedy->ptr1 = const_cast<Value *>(ptrA);
     remedy->ptr2 = const_cast<Value *>(ptrB);
-    remedy->type = LocalityRemedy::Separated;
+    remedy->type = LocalityRemedy::ReadOnly;
     R.insert(remedy);
     return NoAlias;
   }
@@ -140,7 +140,7 @@ LoopAA::ModRefResult ReadOnlyAA::check_modref(const Value *ptrA,
     ++numSeparated;
     remedy->ptr1 = const_cast<Value *>(ptrA);
     remedy->ptr2 = const_cast<Value *>(ptrB);
-    remedy->type = LocalityRemedy::Separated;
+    remedy->type = LocalityRemedy::ReadOnly;
     R.insert(remedy);
     return NoModRef;
   }
