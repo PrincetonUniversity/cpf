@@ -94,8 +94,9 @@ unsigned long ProfilePerformanceEstimator::relative_weight(const Instruction *in
   return inst_count(inst) * instruction_type_weight(inst);
 }
 
-unsigned long ProfilePerformanceEstimator::relative_weight_with_gravity(
-    const Instruction *gravity, unsigned inst_weight) {
+unsigned long
+ProfilePerformanceEstimator::weight_with_gravity(const Instruction *gravity,
+                                                 unsigned inst_weight) {
   return inst_count(gravity) * inst_weight;
 }
 

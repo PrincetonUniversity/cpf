@@ -192,16 +192,16 @@ void LocalityRemedy::setCost(PerformanceEstimator *perf) {
     validation_weight = 4000; // even 5000 seems okay
     if (isa<LoadInst>(this->privateI))
       validation_weight = 4000;
-    this->cost = Remediator::estimate_validation_weight(perf, this->privateI,
-                                                        validation_weight);
+    // multiply validation cost time with number of estimated invocations
+    this->cost = perf->weight_with_gravity(this->privateI, validation_weight);
     break;
   case UOCheck:
     this->cost = 0;
     validation_weight = 201;
     assert(this->ptr && "no pointer in UOCheck remedy???");
     if (const Instruction *gravity = dyn_cast<Instruction>(this->ptr))
-      this->cost = Remediator::estimate_validation_weight(perf, gravity,
-                                                          validation_weight);
+      // multiply validation cost time with number of estimated invocations
+      this->cost = perf->weight_with_gravity(gravity, validation_weight);
     break;
   default:
     assert(false && "No locality-remedy type?");

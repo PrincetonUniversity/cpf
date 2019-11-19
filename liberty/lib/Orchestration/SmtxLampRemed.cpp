@@ -39,8 +39,8 @@ unsigned long SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
   unsigned validation_weight = 4000;
   if (isa<LoadInst>(this->memI))
     validation_weight = 4000;
-  this->cost = Remediator::estimate_validation_weight(perf, this->memI,
-                                                      validation_weight);
+  // multiply validation cost time with number of estimated invocations
+  this->cost = perf->weight_with_gravity(this->memI, validation_weight);
 }
 
 static cl::opt<unsigned>
