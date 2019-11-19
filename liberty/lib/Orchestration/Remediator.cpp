@@ -243,7 +243,7 @@ namespace liberty
                                          unsigned long validation_weight) {
 
     const unsigned long relative_weight =
-        perf->relative_weight_with_gravity(gravity, validation_weight);
+        perf->weight_with_gravity(gravity, validation_weight);
 
     return perf->convert_relative_weight(gravity, relative_weight);
   }

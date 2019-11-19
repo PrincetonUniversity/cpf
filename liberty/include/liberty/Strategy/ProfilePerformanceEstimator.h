@@ -32,8 +32,8 @@ struct ProfilePerformanceEstimator : public ModulePass, public PerformanceEstima
   // and instruction latency (i.e. loads/stores more expensive than add/sub)
   unsigned long relative_weight(const Instruction *inst);
 
-  virtual unsigned long relative_weight_with_gravity(const Instruction *gravity,
-                                                     unsigned inst_weight);
+  virtual unsigned long weight_with_gravity(const Instruction *gravity,
+                                            unsigned inst_weight);
 
   virtual double convert_relative_weight(const Instruction *inst,
                                          const unsigned long relative);
