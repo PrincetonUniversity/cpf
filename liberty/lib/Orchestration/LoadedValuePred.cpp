@@ -84,8 +84,7 @@ bool LoadedValuePredRemediator::mustAlias(const Value *ptr1,
 
   // no must alias responses with spec
   Remedies R;
-  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R,
-                       LoopAA::DMustAlias) == MustAlias;
+  return loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R) == MustAlias;
 }
 
 bool LoadedValuePredRemediator::isPredictablePtr(const Value *ptr,

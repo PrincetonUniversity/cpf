@@ -89,8 +89,7 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
     // for now no spec provides must alias answer, no the remedies argument does
     // not matter (it will always be an empty set)
     Remedies R;
-    return top->alias(storeptr, 1, Same, loadptr, 1, 0, R,
-                      LoopAA::DMustAlias) == LoopAA::MustAlias;
+    return top->alias(storeptr,1, Same, loadptr,1, 0, R) == LoopAA::MustAlias;
   }
 
   /// Non-topping case of pointer comparison.

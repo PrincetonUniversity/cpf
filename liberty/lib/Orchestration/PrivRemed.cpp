@@ -70,8 +70,7 @@ bool PrivRemediator::mustAlias(const Value *ptr1, const Value *ptr2) {
     return ptrsMustAlias[key];
 
   Remedies R;
-  ptrsMustAlias[key] = loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R,
-                                     LoopAA::DMustAlias) == LoopAA::MustAlias;
+  ptrsMustAlias[key] = loopAA->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R) == LoopAA::MustAlias;
   return ptrsMustAlias[key];
 }
 

@@ -206,8 +206,8 @@ public:
       if (staticallyDiffIndexFound) {
         // 0. Check if the base pointers must alias.
         if (getTopAA()->alias(gep1->getPointerOperand(), 1, Same,
-                              gep2->getPointerOperand(), 1, 0, R,
-                              LoopAA::DMustAlias) == MustAlias) {
+                              gep2->getPointerOperand(), 1, 0,
+                              R) == MustAlias) {
           ++numNoAlias;
           return NoAlias;
         }

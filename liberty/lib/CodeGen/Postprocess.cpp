@@ -788,9 +788,7 @@ private:
             continue;
 
           // Overlap?
-          LoopAA::AliasResult res =
-              aa->alias(wobj, size1 - size2 + 1, LoopAA::Same, robj, 1, loop, R,
-                        LoopAA::DMustAlias);
+          LoopAA::AliasResult res = aa->alias(wobj,size1-size2+1,LoopAA::Same,robj,1,loop,R);
           DEBUG(errs() << "    result => " << res << '\n');
           if( res == LoopAA::MustAlias )
           {

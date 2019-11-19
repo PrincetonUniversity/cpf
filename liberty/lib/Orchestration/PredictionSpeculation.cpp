@@ -68,8 +68,7 @@ bool PredictionAA::mustAlias(const Value *ptr1, const Value *ptr2) {
   // no remedies needed for mustAlias queries. No spec returns must alias for
   // now
   Remedies R;
-  return top->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R, LoopAA::DMustAlias) ==
-         MustAlias;
+  return top->alias(ptr1, 1, LoopAA::Same, ptr2, 1, 0, R) == MustAlias;
 }
 
 bool PredictionAA::isPredictablePtr(const Value *ptr) {
