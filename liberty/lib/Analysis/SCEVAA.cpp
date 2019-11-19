@@ -408,11 +408,12 @@ public:
            DT.dominates(BottomB, BottomA);
   }
 
-  virtual AliasResult
-  aliasCheck(const Pointer &P1, TemporalRelation Rel, const Pointer &P2,
-             const Loop *L, Remedies &R,
-             DesiredAliasResult dAliasRes = DNoOrMustAlias) {
-
+  virtual AliasResult aliasCheck(const Pointer &P1,
+                                 TemporalRelation Rel,
+                                 const Pointer &P2,
+                                 const Loop *L,
+                                 Remedies &R)
+  {
     ++numQueries;
 
     if( !L )
@@ -460,9 +461,6 @@ public:
         std::swap(s1,s2);
       // s1 is evaluated in an earlier iteration than s2.
     }
-
-    if (dAliasRes == DMustAlias)
-      return MayAlias;
 
     // check for this case (seen in 052.alvinn)
     // for (i=0; i < N; i++)

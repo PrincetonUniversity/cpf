@@ -38,9 +38,12 @@ struct PointsToAA : public ClassicLoopAA // Not a pass!
 
   StringRef getLoopAAName() const { return "spec-priv-points-to-oracle-aa"; }
 
-  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
-                                 const Pointer &P2, const Loop *L, Remedies &R,
-                                 DesiredAliasResult dAliasRes = DNoOrMustAlias);
+  virtual AliasResult aliasCheck(
+    const Pointer &P1,
+    TemporalRelation rel,
+    const Pointer &P2,
+    const Loop *L,
+    Remedies &R);
 
 private:
   const Read &read;

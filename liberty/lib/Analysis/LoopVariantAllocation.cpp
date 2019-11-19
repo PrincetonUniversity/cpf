@@ -68,14 +68,15 @@ static bool isNoaliasWithinLoop(const Value *src, const Loop *L,
   return false;
 }
 
-LoopAA::AliasResult
-LoopVariantAllocation::aliasCheck(const Pointer &P1, TemporalRelation Rel,
-                                  const Pointer &P2, const Loop *L, Remedies &R,
-                                  DesiredAliasResult dAliasRes) {
-  if( Rel == Same || L == 0 )
-    return MayAlias;
 
-  if (dAliasRes == DMustAlias)
+LoopAA::AliasResult LoopVariantAllocation::aliasCheck(
+  const Pointer &P1,
+  TemporalRelation Rel,
+  const Pointer &P2,
+  const Loop *L,
+  Remedies &R)
+{
+  if( Rel == Same || L == 0 )
     return MayAlias;
 
   const Value *src1 = GetUnderlyingObject(P1.ptr, *DL, 0),

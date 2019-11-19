@@ -197,14 +197,11 @@ public:
     return true;
   }
 
-  virtual AliasResult
-  aliasCheck(const Pointer &P1, TemporalRelation Rel, const Pointer &P2,
-             const Loop *L, Remedies &R,
-             DesiredAliasResult dAliasRes = DNoOrMustAlias) {
-
-    if (dAliasRes == DMustAlias)
-      return MayAlias;
-
+  virtual AliasResult aliasCheck(const Pointer &P1,
+                                 TemporalRelation Rel,
+                                 const Pointer &P2,
+                                 const Loop *L,
+                                 Remedies &R) {
     INTROSPECT(ENTER(P1,Rel,P2,L));
     ++numQueries;
 

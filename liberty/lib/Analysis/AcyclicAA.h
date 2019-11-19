@@ -48,9 +48,12 @@ namespace liberty {
       return "Identify acyclic recursive data structures (in the simplest of all possible senses)";
     }
 
-    AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
-                           const Pointer &P2, const Loop *L, Remedies &R,
-                           DesiredAliasResult dAliasRes = DNoOrMustAlias);
+    AliasResult aliasCheck(
+      const Pointer &P1,
+      TemporalRelation rel,
+      const Pointer &P2,
+      const Loop *L,
+      Remedies &R);
 
     /// getAdjustedAnalysisPointer - This method is used when a pass implements
     /// an analysis interface through multiple inheritance.  If needed, it

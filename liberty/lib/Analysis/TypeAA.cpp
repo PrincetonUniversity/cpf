@@ -69,10 +69,12 @@ namespace liberty
 
     StringRef getLoopAAName() const { return "TypeAA"; }
 
-    virtual AliasResult
-    aliasCheck(const Pointer &P1, TemporalRelation rel, const Pointer &P2,
-               const Loop *L, Remedies &R,
-               DesiredAliasResult dAliasRes = DNoOrMustAlias);
+    virtual AliasResult aliasCheck(
+      const Pointer &P1,
+      TemporalRelation rel,
+      const Pointer &P2,
+      const Loop *L,
+      Remedies &R);
   };
 
   char TypeAA::ID = 0;
@@ -663,13 +665,15 @@ namespace liberty
     findDefs(v,defsOut,visited);
   }
 
-  LoopAA::AliasResult
-  TypeAA::aliasCheck(const Pointer &P1, TemporalRelation rel, const Pointer &P2,
-                     const Loop *L, Remedies &R, DesiredAliasResult dAliasRes) {
 
-    if (dAliasRes == DMustAlias)
-      return MayAlias;
 
+  LoopAA::AliasResult TypeAA::aliasCheck(
+    const Pointer &P1,
+    TemporalRelation rel,
+    const Pointer &P2,
+    const Loop *L,
+    Remedies &R)
+  {
     DEBUG_WITH_TYPE("loopaa", errs() << "TypeAA\n");
     ++numQueries;
 

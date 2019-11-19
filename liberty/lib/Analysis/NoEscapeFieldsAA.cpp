@@ -674,13 +674,13 @@ namespace liberty
     return ModRef;
   }
 
-  LoopAA::AliasResult
-  NoEscapeFieldsAA::aliasCheck(const Pointer &P1, TemporalRelation rel,
-                               const Pointer &P2, const Loop *L, Remedies &R,
-                               DesiredAliasResult dAliasRes) {
-    if (dAliasRes == DMustAlias)
-      return MayAlias;
-
+  LoopAA::AliasResult NoEscapeFieldsAA::aliasCheck(
+    const Pointer &P1,
+    TemporalRelation rel,
+    const Pointer &P2,
+    const Loop *L,
+    Remedies &R)
+  {
     DEBUG_WITH_TYPE("loopaa", errs() << "NoEscapeFieldsAA\n");
 
     NonCapturedFieldsAnalysis &ncfa = getAnalysis< NonCapturedFieldsAnalysis >();

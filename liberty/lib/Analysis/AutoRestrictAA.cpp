@@ -216,12 +216,9 @@ private:
     return false;
   }
 
-  virtual AliasResult
-  aliasCheck(const Pointer &P1, TemporalRelation Rel, const Pointer &P2,
-             const Loop *L, Remedies &R,
-             DesiredAliasResult dAliasRes = DNoOrMustAlias) {
-    if (dAliasRes == DMustAlias)
-      return MayAlias;
+  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation Rel,
+                                 const Pointer &P2, const Loop *L,
+                                 Remedies &R) {
 
     const Value *V1 = P1.ptr, *V2 = P2.ptr;
     const unsigned V1Size = P1.size, V2Size = P2.size;

@@ -123,11 +123,8 @@ public:
   }
 
   AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
-                         const Pointer &P2, const Loop *L, Remedies &R,
-                         DesiredAliasResult dAliasRes = DNoOrMustAlias) {
-
-    if (dAliasRes == DMustAlias)
-      return MayAlias;
+                         const Pointer &P2, const Loop *L,
+                         Remedies &R) {
 
     const Value *O1 = GetUnderlyingObject(P1.ptr, *DL);
     const Value *O2 = GetUnderlyingObject(P2.ptr, *DL);
