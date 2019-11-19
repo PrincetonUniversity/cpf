@@ -103,7 +103,7 @@ LoopAA::AliasResult ShortLivedAA::aliasCheck(
     ++numSeparated;
     remedy->ptr1 = const_cast<Value *>(P1.ptr);
     remedy->ptr2 = const_cast<Value *>(P2.ptr);
-    remedy->type = LocalityRemedy::Separated;
+    remedy->type = LocalityRemedy::Local;
     R.insert(remedy);
     return NoAlias;
   }
