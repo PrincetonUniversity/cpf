@@ -841,6 +841,7 @@ namespace liberty
       }
     }
 
+    ++numNoAliases;
     return NoAlias;
   }
 
