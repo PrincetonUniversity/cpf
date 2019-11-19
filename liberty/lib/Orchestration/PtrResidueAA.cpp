@@ -198,9 +198,6 @@ LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
                                         DesiredAliasResult dAliasRes) {
   ++numQueries;
 
-  if (dAliasRes == DMustAlias)
-    return LoopAA::alias(P1, S1, rel, P2, S2, L, R, dAliasRes);
-
   PtrResidueSpeculationManager::Assumption a1,a2;
   if( may_alias(P1,S1,rel,P2,S2,L,a1,a2) )
     return LoopAA::alias(P1,S1,rel,P2,S2,L,R); // no help
