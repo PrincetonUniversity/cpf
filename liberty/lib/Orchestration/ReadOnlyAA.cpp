@@ -24,8 +24,7 @@ STATISTIC(numNoRead,     "Num no-read");
 LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
                                       TemporalRelation rel, const Value *ptrB,
                                       unsigned sizeB, const Loop *L,
-                                      Remedies &R,
-                                      DesiredAliasResult dAliasRes) {
+                                      Remedies &R) {
 
   ++numQueries;
 

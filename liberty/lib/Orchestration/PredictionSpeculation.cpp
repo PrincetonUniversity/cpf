@@ -101,8 +101,7 @@ bool PredictionAA::isPredictablePtr(const Value *ptr) {
 LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
                                         TemporalRelation rel, const Value *ptrB,
                                         unsigned sizeB, const Loop *L,
-                                        Remedies &R,
-                                        DesiredAliasResult dAliasRes) {
+                                        Remedies &R) {
   if (rel == LoopAA::Same)
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 

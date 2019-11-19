@@ -48,10 +48,9 @@ struct PredictionAA : public LoopAA // Not a pass!
 
   void setLoopOfInterest(Loop *L);
 
-  virtual LoopAA::AliasResult
-  alias(const Value *ptrA, unsigned sizeA, TemporalRelation rel,
-        const Value *ptrB, unsigned sizeB, const Loop *L, Remedies &R,
-        DesiredAliasResult dAliasRes = DNoOrMustAlias);
+  virtual LoopAA::AliasResult alias(const Value *ptrA, unsigned sizeA,
+                                    TemporalRelation rel, const Value *ptrB,
+                                    unsigned sizeB, const Loop *L, Remedies &R);
 
   virtual ModRefResult modref(const Instruction *i1, TemporalRelation rel,
                               const Instruction *i2, const Loop *L,

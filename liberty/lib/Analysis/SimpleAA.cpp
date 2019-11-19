@@ -5,9 +5,8 @@ namespace liberty
 using namespace llvm;
 
 LoopAA::AliasResult SimpleAA::alias(const Value *ptrA, unsigned sizeA,
-                                    TemporalRelation rel, const Value *ptrB,
-                                    unsigned sizeB, const Loop *L, Remedies &R,
-                                    DesiredAliasResult dAliasRes) {
+                                  TemporalRelation rel, const Value *ptrB,
+                                  unsigned sizeB, const Loop *L, Remedies &R) {
   return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 }
 

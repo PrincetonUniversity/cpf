@@ -245,8 +245,7 @@ LoopAA::ModRefResult ClassicLoopAA::modref(const Instruction *I,
 LoopAA::AliasResult ClassicLoopAA::alias(const Value *V1, unsigned Size1,
                                          TemporalRelation Rel, const Value *V2,
                                          unsigned Size2, const Loop *L,
-                                         Remedies &R,
-                                         DesiredAliasResult dAliasRes) {
+                                         Remedies &R) {
 
   Remedies tmpR;
   const AliasResult AR =

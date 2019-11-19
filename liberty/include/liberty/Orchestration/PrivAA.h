@@ -26,8 +26,7 @@ struct PrivAA : public LoopAA // Not a pass!
 
   LoopAA::AliasResult alias(const Value *P1, unsigned S1, TemporalRelation rel,
                             const Value *P2, unsigned S2, const Loop *L,
-                            Remedies &R,
-                            DesiredAliasResult dAliasRes = DNoOrMustAlias);
+                            Remedies &R);
 
   LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
                               const Value *ptrB, unsigned sizeB, const Loop *L,

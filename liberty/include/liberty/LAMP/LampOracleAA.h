@@ -17,10 +17,11 @@ class LampOracle : public LoopAA // Not a pass!
 
     StringRef getLoopAAName() const { return "lamp-oracle-aa"; }
 
-    AliasResult alias(const Value *ptrA, unsigned sizeA, TemporalRelation rel,
-                      const Value *ptrB, unsigned sizeB, const Loop *L,
-                      Remedies &R,
-                      DesiredAliasResult dAliasRes = DNoOrMustAlias);
+    AliasResult alias(
+      const Value *ptrA, unsigned sizeA,
+      TemporalRelation rel,
+      const Value *ptrB, unsigned sizeB,
+      const Loop *L, Remedies &R);
 
     ModRefResult modref(
       const Instruction *A,

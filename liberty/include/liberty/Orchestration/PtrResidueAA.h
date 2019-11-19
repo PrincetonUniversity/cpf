@@ -30,10 +30,11 @@ struct PtrResidueAA : public LoopAA // Not a pass!
 
   StringRef getLoopAAName() const { return "spec-priv-ptr-residue-aa"; }
 
-  virtual AliasResult alias(const Value *P1, unsigned S1, TemporalRelation rel,
-                            const Value *P2, unsigned S2, const Loop *L,
-                            Remedies &R,
-                            DesiredAliasResult dAliasRes = DNoOrMustAlias);
+  virtual AliasResult alias(
+    const Value *P1, unsigned S1,
+    TemporalRelation rel,
+    const Value *P2, unsigned S2,
+    const Loop *L, Remedies &R);
 
   virtual ModRefResult modref(
     const Instruction *A,

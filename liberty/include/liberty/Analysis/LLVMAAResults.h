@@ -64,8 +64,7 @@ namespace liberty
 
     AliasResult alias(const Value *ptrA, unsigned sizeA, TemporalRelation rel,
                       const Value *ptrB, unsigned sizeB, const Loop *L,
-                      Remedies &R,
-                      DesiredAliasResult dAliasRes = DNoOrMustAlias);
+                      Remedies &R);
 
     ModRefResult modref(const Instruction *i1, TemporalRelation Rel,
                         const Value *p2, unsigned sz2, const Loop *L,

@@ -47,11 +47,11 @@ static bool notDifferentParent(const Value *O1, const Value *O2) {
   return !F1 || !F2 || F1 == F2;
 }
 
-LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
-                                         TemporalRelation rel,
-                                         const Value *ptrB, unsigned sizeB,
-                                         const Loop *L, Remedies &R,
-                                         DesiredAliasResult dAliasRes) {
+LoopAA::AliasResult LLVMAAResults::alias(
+    const Value *ptrA, unsigned sizeA,
+    TemporalRelation rel,
+    const Value *ptrB, unsigned sizeB,
+    const Loop *L, Remedies &R) {
 
   // ZY: LLVM AA seems only applicable for II deps
   // sot: mustAlias from standard LLVM AA could be misleading for loop carried deps

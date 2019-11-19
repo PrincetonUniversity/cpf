@@ -37,8 +37,7 @@ struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
 
   LoopAA::AliasResult alias(const Value *ptrA, unsigned sizeA,
                             TemporalRelation rel, const Value *ptrB,
-                            unsigned sizeB, const Loop *L, Remedies &R,
-                            DesiredAliasResult dAliasRes = DNoOrMustAlias);
+                            unsigned sizeB, const Loop *L, Remedies &R);
 
   LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
                               const Value *ptrB, unsigned sizeB, const Loop *L,
