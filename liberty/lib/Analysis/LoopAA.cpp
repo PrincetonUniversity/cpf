@@ -174,7 +174,7 @@ namespace liberty
                                     unsigned sizeB, const Loop *L, Remedies &R,
                                     DesiredAliasResult dAliasRes) {
     assert(nextAA && "Failure in chaining to next LoopAA; did you remember to add -no-loop-aa?");
-    return nextAA->alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+    return nextAA->alias(ptrA,sizeA,rel,ptrB,sizeB,L, R);
   }
 
 
@@ -471,7 +471,7 @@ namespace liberty
         return r;
     }
 
-    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L, R);
   }
 
   LoopAA::ModRefResult AAToLoopAA::modref(

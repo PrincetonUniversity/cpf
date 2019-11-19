@@ -56,7 +56,8 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
   // ZY: LLVM AA seems only applicable for II deps
   // sot: mustAlias from standard LLVM AA could be misleading for loop carried deps
   if (rel != LoopAA::Same)
-    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
+
 
   std::shared_ptr<CafRemedy> remedy =
       std::shared_ptr<CafRemedy>(new CafRemedy());
@@ -65,7 +66,7 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
   // only handles intra-iteration mem queries
   auto *funA = getParent(ptrA);
   if (!funA || !notDifferentParent(ptrA, ptrB))
-    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 
   if (funA != curF)
     computeAAResults(funA);
@@ -86,9 +87,8 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
     aaLoopAARes = LoopAA::MustAlias;
   }
 
-  return LoopAA::AliasResult(aaLoopAARes & LoopAA::alias(ptrA, sizeA, rel, ptrB,
-                                                         sizeB, L, R,
-                                                         dAliasRes));
+  return LoopAA::AliasResult(
+      aaLoopAARes & LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R));
 }
 
 LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,

@@ -27,7 +27,7 @@ namespace liberty
                                         unsigned sizeB, const Loop *L,
                                         Remedies &R,
                                         DesiredAliasResult dAliasRes) {
-    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+    return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L,R);
   }
 
   LoopAA::ModRefResult LampOracle::modref(

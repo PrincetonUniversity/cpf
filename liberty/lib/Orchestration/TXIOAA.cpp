@@ -58,7 +58,7 @@ LoopAA::AliasResult TXIOAA::alias(const Value *ptrA, unsigned sizeA,
                                   TemporalRelation rel, const Value *ptrB,
                                   unsigned sizeB, const Loop *L, Remedies &R,
                                   DesiredAliasResult dAliasRes) {
-  return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+  return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 }
 
 LoopAA::ModRefResult TXIOAA::modref(const Instruction *A, TemporalRelation rel,

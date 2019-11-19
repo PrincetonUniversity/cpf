@@ -25,7 +25,7 @@ LoopAA::AliasResult SlampOracle::alias(const Value *ptrA, unsigned sizeA,
                                        unsigned sizeB, const Loop *L,
                                        Remedies &R,
                                        DesiredAliasResult dAliasRes) {
-  return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+  return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L, R);
 }
 
 LoopAA::ModRefResult SlampOracle::modref(
