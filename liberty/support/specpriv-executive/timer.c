@@ -1,3 +1,5 @@
+#include <sys/time.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -153,9 +155,31 @@ uint64_t rdtsc(void)
 {
   uint32_t a, d;
   /* timers_hit++; */
-  __asm__ volatile("rdtscp" : "=a" (a), "=d" (d));
-  //__asm__ volatile("rdtsc" : "=a" (a), "=d" (d));
+  //__asm__ volatile("rdtscp" : "=a" (a), "=d" (d));
+  __asm__ volatile("rdtsc" : "=a" (a), "=d" (d));
   return ((uint64_t)a) | (((uint64_t)d) <<32 );
+}
+
+static uint64_t cycles_per_second = 0;
+uint64_t countCyclesPerSecond(void) {
+  if (cycles_per_second > 0)
+    return cycles_per_second;
+
+  struct timeval tv_start, tv_stop;
+  gettimeofday(&tv_start, 0);
+  const uint64_t start = rdtsc();
+
+  sleep(10);
+
+  const uint64_t stop = rdtsc();
+  gettimeofday(&tv_stop, 0);
+
+  double actual_duration = (tv_stop.tv_sec - tv_start.tv_sec) +
+                           (tv_stop.tv_usec - tv_start.tv_usec) * 1.0e-9;
+
+  cycles_per_second = (stop - start) / (actual_duration);
+  printf("There are %lu cycles/second\n", cycles_per_second);
+  return cycles_per_second;
 }
 
 void __specpriv_reset_timers(void)
@@ -434,10 +458,16 @@ void __specpriv_reset_val_times(void) {
 }
 
 void __specpriv_print_val_times(void) {
-  printf("UO check average cycle latency:      %15lf\n"
-         "Private read average cycle latency:  %15lf\n"
-         "Private write average cycle latency: %15lf\n",
-         ((double)var_uo_check_time) / var_uo_check_count,
-         ((double)var_private_read_time) / var_private_read_count,
-         ((double)var_private_write_time) / var_private_write_count);
+
+  printf("UO check average cycle latency:      %15lf sec\n"
+         "Private read average cycle latency:  %15lf sec\n"
+         "Private write average cycle latency: %15lf sec\n",
+         ((double)var_uo_check_time) /
+             (var_uo_check_count * (double)countCyclesPerSecond()),
+         ((double)var_private_read_time) /
+             (var_private_read_count * (double)countCyclesPerSecond()),
+         ((double)var_private_write_time) /
+             (var_private_write_count * (double)countCyclesPerSecond()));
+
+  fflush(stdout);
 }
