@@ -62,6 +62,7 @@ Remedies LoadedValuePredRemediator::satisfy(const PDG &pdg, Loop *loop,
     if (predspec->isPredictable(load, loop)) {
       Value *ptr = load->getPointerOperand();
       predictableMemLocs.insert(ptr);
+      mapPtrsToLoad[ptr] = load;
     }
   }
 
@@ -148,6 +149,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
   if (predA || predB) {
     ++numNoMemDep;
     remedy->ptr = (predA) ? ptrA : ptrB;
+    remedy->loadI = (predA) ? A : B;
     remedResp.depRes = DepResult::NoDep;
 
     predictableI = true;
@@ -175,6 +177,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
       if (B->mayWriteToMemory())
         remedy->write = true;
     }
+    remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedResp.depRes = DepResult::NoDep;
 
     if ( loopCarried && dataDepTy == DataDepType::WAW && !predictableI)

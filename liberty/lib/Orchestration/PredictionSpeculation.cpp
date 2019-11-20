@@ -37,6 +37,7 @@ void PredictionAA::setLoopOfInterest(Loop *loop) {
         if (predspec->isPredictable(load, loop)) {
           Value *ptr = load->getPointerOperand();
           predictableMemLocs.insert(ptr);
+          mapPtrsToLoad[ptr] = load;
         }
       }
     }
@@ -130,6 +131,7 @@ LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
       // if (I2->mayWriteToMemory())
       //  remedy->write = true;
     }
+    remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoAlias;
@@ -151,6 +153,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
   if (predspec->isPredictable(I1, L)) {
     ++numNoAlias;
     remedy->ptr = ptrA;
+    remedy->loadI = I1;
     remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
@@ -176,6 +179,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
       //if (I2->mayWriteToMemory())
       //  remedy->write = true;
     }
+    remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
@@ -201,6 +205,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
   if (predA || predB) {
     ++numNoAlias;
     remedy->ptr = (predA) ? ptrA : ptrB;
+    remedy->loadI = (predA) ? I1 : I2;
     remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;
@@ -239,6 +244,7 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
       if (I2->mayWriteToMemory())
         remedy->write = true;
     }
+    remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedy->setCost(perf, this->L);
     R.insert(remedy);
     return NoModRef;

@@ -77,6 +77,7 @@ private:
   std::unordered_set<const Value *> nonPredictableMemLocs;
   std::unordered_map<const Value *, const Value *>
       mustAliasWithPredictableMemLocMap;
+  std::unordered_map<const Value *, const Instruction *> mapPtrsToLoad;
 
   bool mustAliasFast(const Value *ptr1, const Value *ptr2);
 
