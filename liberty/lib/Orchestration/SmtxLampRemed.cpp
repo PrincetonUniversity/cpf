@@ -36,9 +36,9 @@ bool SmtxLampRemedy::compare(const Remedy_ptr rhs) const {
 
 unsigned long SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
   assert(this->memI && "no memI in SmtxLampRemedy remedy???");
-  unsigned validation_weight = 4000;
+  unsigned validation_weight = 0.0000738;
   if (isa<LoadInst>(this->memI))
-    validation_weight = 4000;
+    validation_weight = 0.0000276;
   // multiply validation cost time with number of estimated invocations
   this->cost = perf->weight_with_gravity(this->memI, validation_weight);
 }
