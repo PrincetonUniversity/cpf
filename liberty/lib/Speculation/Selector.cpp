@@ -444,11 +444,7 @@ const Instruction *getGravityInstFromRemed(Remedy_ptr &remed) {
   if (remed->getRemedyName().equals("invariant-value-pred-remedy")) {
     LoadedValuePredRemedy *loadedValuePredRemedy =
         (LoadedValuePredRemedy *)&*remed;
-
-    // need to find the predictable load inst
-    if (const Instruction *gravity =
-            dyn_cast<Instruction>(loadedValuePredRemedy->ptr))
-      return gravity;
+      return loadedValuePredRemedy->loadI;
   } else if (remed->getRemedyName().equals("locality-remedy")) {
     LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
     if (localityRemed->type == LocalityRemedy::UOCheck) {
@@ -472,6 +468,7 @@ const Instruction *getGravityInstFromRemed(Remedy_ptr &remed) {
 
 void populateRemedCostPerStage(LoopParallelizationStrategy *strategy, Loop *L,
                                SelectedRemedies &remeds) {
+  unsigned unknownStageCnt = 0;
 
   for (auto remed : remeds) {
     // find gravity inst
@@ -488,6 +485,7 @@ void populateRemedCostPerStage(LoopParallelizationStrategy *strategy, Loop *L,
       // instruction not contained in the loop. Conservatively assume taht it is
       // contained in all the stages
       errs() << "Unknown stage for " << *gravity << "\n";
+      unknownStageCnt++;
       for (auto j = 0; j < strategy->getStageNum(); ++j)
         stages.push_back(j);
     }
@@ -497,6 +495,9 @@ void populateRemedCostPerStage(LoopParallelizationStrategy *strategy, Loop *L,
       strategy->addRemedCostToStage(remed->cost, i);
     }
   }
+
+  errs() << "Count of remeds with unknown gravity stage: " << unknownStageCnt
+         << "\n";
 }
 
 void Selector::contextRenamedViaClone(
