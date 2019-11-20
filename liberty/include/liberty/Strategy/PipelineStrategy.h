@@ -38,8 +38,7 @@ struct LoopParallelizationStrategy
   // such as 'DOALL' or 'DSWP [S-P-S]'
   virtual void summary(raw_ostream &fout) const = 0;
   virtual void pStageWeightPrint(raw_ostream &fout, PerformanceEstimator &perf,
-                                 const Loop *loop,
-                                 double remediesCost) const = 0;
+                                 const Loop *loop) const = 0;
 
   // To apply speculation independently of parallelization.
   // When we modify the parallel region by adding
@@ -60,6 +59,8 @@ struct LoopParallelizationStrategy
   virtual bool ifI2IsInI1IsIn(Instruction* i1, Instruction* i2) = 0;
 
   virtual unsigned getStageNum() const = 0;
+
+  virtual void addRemedCostToStage(unsigned cost, unsigned stage) = 0;
 
   // Sanity check
   virtual void assertConsistentWithIR(Loop *loop);
@@ -97,6 +98,8 @@ struct DoallStrategy : public LoopParallelizationStrategy
 
   virtual unsigned getStageNum() const { return 1; }
 
+  virtual void addRemedCostToStage(unsigned cost, unsigned stage) {}
+
   static bool classof(const LoopParallelizationStrategy *lps)
   {
     return lps->getKind() == LPSK_DOALL;
@@ -127,10 +130,13 @@ struct PipelineStage
   Type      type;
   unsigned  parallel_factor;
   unsigned  stageno;
+  double remediesCost;
 
   bool communicatesTo(const PipelineStage &other) const;
 
   void print_txt(raw_ostream &fout, StringRef line_suffix = "") const;
+
+  void addRemedCost(double remedC) { remediesCost += remedC; }
 
 private:
   //sot
@@ -164,7 +170,7 @@ struct PipelineStrategy : public LoopParallelizationStrategy
 
   virtual void summary(raw_ostream &fout) const;
   virtual void pStageWeightPrint(raw_ostream &fout, PerformanceEstimator &perf,
-                                 const Loop *loop, double remediesCost) const;
+                                 const Loop *loop) const;
 
   void dump_pipeline(raw_ostream &fout, StringRef line_suffix = "") const;
 
@@ -197,6 +203,10 @@ struct PipelineStrategy : public LoopParallelizationStrategy
   virtual bool ifI2IsInI1IsIn(Instruction* i1, Instruction* i2);
 
   virtual unsigned getStageNum() const { return stages.size(); }
+
+  virtual void addRemedCostToStage(unsigned cost, unsigned stageno) {
+    stages[stageno].addRemedCost(cost);
+  }
 
   // Sanity check
   /*

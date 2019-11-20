@@ -41,7 +41,7 @@ unsigned long PtrResidueRemedy::setCost(PerformanceEstimator *perf,
   // 1 cmp, 1 bitwise, 1 branch
   unsigned validation_weight = 201;
   this->cost = 0;
-  if (const Instruction *gravity = dyn_cast<Instruction>(ptr1))
+  if (const Instruction *gravity = dyn_cast<Instruction>(ptr))
     this->cost += Remediator::estimate_validation_weight(perf, gravity,
                                                          validation_weight);
 }
