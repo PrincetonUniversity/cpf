@@ -134,10 +134,6 @@ double ProfilePerformanceEstimator::estimate_weight(const Instruction *inst)
 
 double ProfilePerformanceEstimator::convert_relative_weight(
     const Instruction *inst, const unsigned long relative) {
-  //assert(!isa<CallInst>(inst) && !isa<InvokeInst>(inst) &&
-  //       "gravity inst in convert_relative_weight is callInst or InvokeInst??");
-  errs() << "gravity inst in convert_relative_weight is callInst or "
-            "InvokeInst??\n";
 
   const BasicBlock *bb = inst->getParent();
   const Function *fcn = bb->getParent();
