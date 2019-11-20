@@ -189,15 +189,15 @@ void LocalityRemedy::setCost(PerformanceEstimator *perf) {
     break;
   case Private:
     assert(this->privateI && "no privateI in Private remedy???");
-    validation_weight = 4000; // even 5000 seems okay
+    validation_weight = 0.0000738;
     if (isa<LoadInst>(this->privateI))
-      validation_weight = 4000;
+      validation_weight = 0.0000276;
     // multiply validation cost time with number of estimated invocations
     this->cost = perf->weight_with_gravity(this->privateI, validation_weight);
     break;
   case UOCheck:
     this->cost = 0;
-    validation_weight = 201;
+    validation_weight = 0.0000208;
     assert(this->ptr && "no pointer in UOCheck remedy???");
     if (const Instruction *gravity = dyn_cast<Instruction>(this->ptr))
       // multiply validation cost time with number of estimated invocations
