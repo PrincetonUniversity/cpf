@@ -35,6 +35,7 @@ uint64_t var_private_write_count = 0;
 uint64_t var_private_read_time = 0;
 uint64_t var_private_read_count = 0;
 
+uint64_t cycles_per_second = 0;
 
 //////// ONE-TIME COSTS ////////
 /******************************************************************************
@@ -160,7 +161,6 @@ uint64_t rdtsc(void)
   return ((uint64_t)a) | (((uint64_t)d) <<32 );
 }
 
-static uint64_t cycles_per_second = 0;
 uint64_t countCyclesPerSecond(void) {
   if (cycles_per_second > 0)
     return cycles_per_second;
@@ -455,19 +455,22 @@ void __specpriv_reset_val_times(void) {
   var_private_write_count = 0;
   var_private_read_time = 0;
   var_private_read_count = 0;
+  cycles_per_second = 0;
 }
 
 void __specpriv_print_val_times(void) {
 
-  printf("UO check average cycle latency:      %15lf sec\n"
-         "Private read average cycle latency:  %15lf sec\n"
-         "Private write average cycle latency: %15lf sec\n",
+  double cyclerPerMilliSec = countCyclesPerSecond() / 1000;
+
+  printf("UO check average cycle latency:      %.15lf msec\n"
+         "Private read average cycle latency:  %.15lf msec\n"
+         "Private write average cycle latency: %.15lf msec\n",
          ((double)var_uo_check_time) /
-             (var_uo_check_count * (double)countCyclesPerSecond()),
+             (var_uo_check_count * cyclerPerMilliSec),
          ((double)var_private_read_time) /
-             (var_private_read_count * (double)countCyclesPerSecond()),
+             (var_private_read_count * cyclerPerMilliSec),
          ((double)var_private_write_time) /
-             (var_private_write_count * (double)countCyclesPerSecond()));
+             (var_private_write_count * cyclerPerMilliSec));
 
   fflush(stdout);
 }

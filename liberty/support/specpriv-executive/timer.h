@@ -47,6 +47,8 @@ extern uint64_t var_private_write_count;
 extern uint64_t var_private_read_time;
 extern uint64_t var_private_read_count;
 
+extern uint64_t cycles_per_second;
+
 //////// ONE-TIME COSTS ////////
 /******************************************************************************
  * Worker setup time
