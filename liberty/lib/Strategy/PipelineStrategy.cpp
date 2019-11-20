@@ -52,7 +52,7 @@ bool PipelineStage::communicatesTo(const PipelineStage &other) const
 }
 
 PipelineStage::PipelineStage(Loop *loop)
-  : type( PipelineStage::Sequential ), parallel_factor(1)
+  : type( PipelineStage::Sequential ), parallel_factor(1), remediesCost(0)
 {
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
@@ -64,7 +64,7 @@ PipelineStage::PipelineStage(Loop *loop)
 
 
 PipelineStage::PipelineStage(Type t, const PDG &pdg, const SCCDAG::SCCSet &scc_list)
-  : type(t), parallel_factor(1)
+  : type(t), parallel_factor(1), remediesCost(0)
 {
   for (auto scc : scc_list)
   {
@@ -78,7 +78,7 @@ PipelineStage::PipelineStage(Type t, const PDG &pdg, const SCCDAG::SCCSet &scc_l
 }
 
 PipelineStage::PipelineStage(Type t, std::vector<Instruction *> &parallelInstV)
-    : type(t), parallel_factor(1)
+    : type(t), parallel_factor(1), remediesCost(0)
 {
   for (auto &inst : parallelInstV)
     instructions.insert(inst);
@@ -558,10 +558,11 @@ void PipelineStrategy::summary(raw_ostream &fout) const
 
 void PipelineStrategy::pStageWeightPrint(raw_ostream &fout,
                                          PerformanceEstimator &perf,
-                                         const Loop *loop,
-                                         double remediesCost) const {
+                                         const Loop *loop) const {
   fout << "\t";
   double pWt = 0.0;
+  double largestSeqWeight = 0.0;
+  double largestSeqWeightWithVal = 0.0;
   double estimate_loop_wt = perf.estimate_loop_weight(loop);
   for (unsigned i = 0, N = stages.size(); i < N; ++i) {
     const PipelineStage &stage = stages[i];
@@ -572,11 +573,24 @@ void PipelineStrategy::pStageWeightPrint(raw_ostream &fout,
                                  stage.replicated.end());
       pWt += wt;
     }
+    else if (stage.type == PipelineStage::Sequential) {
+      double wt = perf.estimate_weight(stage.instructions.begin(),
+                                       stage.instructions.end());
+      wt += perf.estimate_weight(stage.replicated.begin(),
+                                 stage.replicated.end());
+      if (wt > largestSeqWeight)
+        largestSeqWeight = wt;
+
+      if (wt + stage.remediesCost > largestSeqWeightWithVal)
+        largestSeqWeightWithVal = wt + stage.remediesCost;
+    }
   }
 
-  fout << format("P-portion=%6.2f%%  Remed-ovehead=%6.2f%%",
+  fout << format("P-portion=%6.2f%% LgstSeq-portion=%6.2f%% "
+                 "LgstSeq-with-val-portion=%6.2f%%",
                  100.0 * pWt / estimate_loop_wt,
-                 100.0 * remediesCost / estimate_loop_wt);
+                 100.0 * largestSeqWeight / estimate_loop_wt,
+                 100.0 * largestSeqWeightWithVal / estimate_loop_wt);
 }
 
 void PipelineStrategy::addInstruction(Instruction *newInst,

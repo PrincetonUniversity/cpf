@@ -400,7 +400,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
                           LoopParallelizationStrategy *strategy,
                           LoopProfLoad &lpl, bool willTransform,
-                          PerformanceEstimator &perf, double remediesCost) {
+                          PerformanceEstimator &perf) {
   const unsigned FixedPoint(1000);
   const unsigned long tt = FixedPoint * lpl.getTotTime();
   BasicBlock *header = loop->getHeader();
@@ -428,7 +428,7 @@ void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
 
   if( strategy ) {
     strategy->summary(fout);
-    strategy->pStageWeightPrint(fout, perf, loop, remediesCost);
+    strategy->pStageWeightPrint(fout, perf, loop);
   }
   else
     fout << "(no strat)";
@@ -437,6 +437,66 @@ void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
     fout << "\t\t\t#regrn-par-loop\n";
   else
     fout << "\t\t\t#regrn-no-par-loop\n";
+}
+
+const Instruction *getGravityInstFromRemed(Remedy_ptr &remed) {
+  // only handle remedies that have a cost
+  if (remed->getRemedyName().equals("invariant-value-pred-remedy")) {
+    LoadedValuePredRemedy *loadedValuePredRemedy =
+        (LoadedValuePredRemedy *)&*remed;
+
+    // need to find the predictable load inst
+    if (const Instruction *gravity =
+            dyn_cast<Instruction>(loadedValuePredRemedy->ptr))
+      return gravity;
+  } else if (remed->getRemedyName().equals("locality-remedy")) {
+    LocalityRemedy *localityRemed = (LocalityRemedy *)&*remed;
+    if (localityRemed->type == LocalityRemedy::UOCheck) {
+      if (const Instruction *gravity =
+              dyn_cast<Instruction>(localityRemed->ptr))
+        return gravity;
+    } else if (localityRemed->type == LocalityRemedy::Private) {
+      return localityRemed->privateI;
+    }
+  } else if (remed->getRemedyName().equals("smtx-lamp-remedy")) {
+    SmtxLampRemedy *smtxLampRemedy = (SmtxLampRemedy *)&*remed;
+    return smtxLampRemedy->memI;
+  } else if (remed->getRemedyName().equals("ptr-residue-remedy")) {
+    PtrResidueRemedy *ptrResidueRemedy = (PtrResidueRemedy *)&*remed;
+    if (const Instruction *gravity =
+            dyn_cast<Instruction>(ptrResidueRemedy->ptr))
+      return gravity;
+  }
+  return nullptr;
+}
+
+void populateRemedCostPerStage(LoopParallelizationStrategy *strategy, Loop *L,
+                               SelectedRemedies &remeds) {
+
+  for (auto remed : remeds) {
+    // find gravity inst
+    const Instruction *gravity = getGravityInstFromRemed(remed);
+    if (!gravity)
+      continue;
+
+    std::vector<unsigned> stages;
+
+    if (L->contains(gravity))
+      strategy->getExecutingStages(const_cast<Instruction *>(gravity), stages);
+    else
+    {
+      // instruction not contained in the loop. Conservatively assume taht it is
+      // contained in all the stages
+      errs() << "Unknown stage for " << *gravity << "\n";
+      for (auto j = 0; j < strategy->getStageNum(); ++j)
+        stages.push_back(j);
+    }
+
+    // assign cost to the appropriate stage
+    for (unsigned i : stages) {
+      strategy->addRemedCostToStage(remed->cost, i);
+    }
+  }
 }
 
 void Selector::contextRenamedViaClone(
@@ -777,15 +837,15 @@ bool Selector::doSelection(
     const unsigned v = *i;
     Loop *loop = vertices[ v ];
 
-    double remediesCost = 0.0;
-    for (auto remed: *selectedRemedies[loop->getHeader()])
-      remediesCost += remed->cost;
+    auto *strat = strategies[loop->getHeader()].get();
+    populateRemedCostPerStage(strat, loop,
+                              *selectedRemedies[loop->getHeader()]);
 
     // 'loop' is a loop we will parallelize
     if (DebugFlag &&
         (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
       printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
-                           lpl, true, *perf, remediesCost);
+                           lpl, true, *perf);
 
     Vertices::iterator j = std::find(toDelete.begin(), toDelete.end(), loop);
     if( j != toDelete.end() )
@@ -798,16 +858,16 @@ bool Selector::doSelection(
   {
     Loop *deleteme = toDelete[i];
 
-    double remediesCost = 0.0;
-    for (auto remed: *selectedRemedies[deleteme->getHeader()])
-      remediesCost += remed->cost;
+    auto *strat = strategies[deleteme->getHeader()].get();
+    populateRemedCostPerStage(strat, deleteme,
+                              *selectedRemedies[deleteme->getHeader()]);
 
     // 'deleteme' is a loop we will NOT parallelize.
     if (DebugFlag &&
         (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
       printOneLoopStrategy(errs(), deleteme,
                            strategies[deleteme->getHeader()].get(), lpl, false,
-                           *perf, remediesCost);
+                           *perf);
 
     Loop2Strategy::iterator j = strategies.find( deleteme->getHeader() );
     if( j != strategies.end() )
