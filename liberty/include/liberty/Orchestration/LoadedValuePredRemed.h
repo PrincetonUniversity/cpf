@@ -18,6 +18,7 @@ class LoadedValuePredRemedy : public Remedy {
 public:
   const Value *ptr; // pointer of loop-invariant load instruction
   bool write;
+  const Instruction *loadI;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
@@ -62,6 +63,7 @@ private:
   std::unordered_set<const Value *> nonPredictableMemLocs;
   std::unordered_map<const Value *, const Value *>
       mustAliasWithPredictableMemLocMap;
+  std::unordered_map<const Value *, const Instruction *> mapPtrsToLoad;
 };
 
 } // namespace liberty
