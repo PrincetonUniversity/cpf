@@ -569,6 +569,7 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
       isNonEscapingLocalObject(Object)) {
     bool PassedAsArg = false;
     unsigned ArgNo = 0;
+    Remedies tmpR;
     for (ImmutableCallSite::arg_iterator CI = CS.arg_begin(), CE = CS.arg_end();
          CI != CE; ++CI, ++ArgNo) {
       // Only look at the no-capture pointer arguments.
@@ -581,14 +582,18 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
       // impossible to alias the pointer we're checking.  If not, we have to
       // assume that the call could touch the pointer, even though it doesn't
       // escape.
-      if (!isNoAlias(cast<Value>(CI), UnknownSize, Rel, V, UnknownSize, L, R)) {
+      if (!isNoAlias(cast<Value>(CI), UnknownSize, Rel, V, UnknownSize, L,
+                     tmpR)) {
         PassedAsArg = true;
         break;
       }
     }
 
-    if (!PassedAsArg)
+    if (!PassedAsArg) {
+      for (auto remed : tmpR)
+        R.insert(remed);
       return NoModRef;
+    }
   }
 
   // Finally, handle specific knowledge of intrinsics.
@@ -603,9 +608,17 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
         Len = LenCI->getZExtValue();
       Value *Dest = II->getArgOperand(0);
       Value *Src = II->getArgOperand(1);
-      if (isNoAlias(Dest, Len, Rel, V, Size, L, R)) {
-        if (isNoAlias(Src, Len, Rel, V, Size, L, R))
+      Remedies tmpR1, tmpR2;
+      if (isNoAlias(Dest, Len, Rel, V, Size, L, tmpR1)) {
+        if (isNoAlias(Src, Len, Rel, V, Size, L, tmpR2)) {
+          for (auto remed : tmpR1)
+            R.insert(remed);
+          for (auto remed : tmpR2)
+            R.insert(remed);
           return NoModRef;
+        }
+        for (auto remed : tmpR1)
+          R.insert(remed);
         return Ref;
       }
       break;
@@ -616,8 +629,12 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
       if (ConstantInt *LenCI = dyn_cast<ConstantInt>(II->getArgOperand(2))) {
         unsigned Len = LenCI->getZExtValue();
         Value *Dest = II->getArgOperand(0);
-        if (isNoAlias(Dest, Len, Rel, V, Size, L, R))
+        Remedies tmpR;
+        if (isNoAlias(Dest, Len, Rel, V, Size, L, tmpR)) {
+          for (auto remed : tmpR)
+            R.insert(remed);
           return NoModRef;
+        }
       }
       break;
     case Intrinsic::lifetime_start:
@@ -625,15 +642,23 @@ BasicLoopAA::getModRefInfo(CallSite CS, TemporalRelation Rel, const Pointer &P2,
     case Intrinsic::invariant_start: {
       unsigned PtrSize =
         cast<ConstantInt>(II->getArgOperand(0))->getZExtValue();
-      if (isNoAlias(II->getArgOperand(1), PtrSize, Rel, V, Size, L, R))
+      Remedies tmpR;
+      if (isNoAlias(II->getArgOperand(1), PtrSize, Rel, V, Size, L, tmpR)) {
+        for (auto remed : tmpR)
+          R.insert(remed);
         return NoModRef;
+      }
       break;
     }
     case Intrinsic::invariant_end: {
       unsigned PtrSize =
         cast<ConstantInt>(II->getArgOperand(1))->getZExtValue();
-      if (isNoAlias(II->getArgOperand(2), PtrSize, Rel, V, Size, L, R))
+      Remedies tmpR;
+      if (isNoAlias(II->getArgOperand(2), PtrSize, Rel, V, Size, L, tmpR)) {
+        for (auto remed : tmpR)
+          R.insert(remed);
         return NoModRef;
+      }
       break;
     }
     }
@@ -1022,22 +1047,46 @@ BasicLoopAA::aliasCommon(const Value *V1, unsigned V1Size,
     std::swap(O1, O2);
   }
 
-  if (const GEPOperator *GV1 = dyn_cast<GEPOperator>(V1))
-    return aliasGEP(GV1, V1Size, Rel, V2, V2Size, L, O1, O2, R);
+  if (const GEPOperator *GV1 = dyn_cast<GEPOperator>(V1)) {
+    Remedies tmpR;
+    liberty::LoopAA::AliasResult res =
+        aliasGEP(GV1, V1Size, Rel, V2, V2Size, L, O1, O2, tmpR);
+    if (res != MayAlias) {
+      for (auto remed : tmpR)
+        R.insert(remed);
+    }
+    return res;
+  }
 
   if (isa<PHINode>(V2) && !isa<PHINode>(V1)) {
     std::swap(V1, V2);
     std::swap(V1Size, V2Size);
   }
-  if (const PHINode *PN = dyn_cast<PHINode>(V1))
-    return aliasPHI(PN, V1Size, Rel, V2, V2Size, L, R);
+  if (const PHINode *PN = dyn_cast<PHINode>(V1)) {
+    Remedies tmpR;
+    liberty::LoopAA::AliasResult res =
+        aliasPHI(PN, V1Size, Rel, V2, V2Size, L, tmpR);
+    if (res != MayAlias) {
+      for (auto remed : tmpR)
+        R.insert(remed);
+    }
+    return res;
+  }
 
   if (isa<SelectInst>(V2) && !isa<SelectInst>(V1)) {
     std::swap(V1, V2);
     std::swap(V1Size, V2Size);
   }
-  if (const SelectInst *S1 = dyn_cast<SelectInst>(V1))
-    return aliasSelect(S1, V1Size, Rel, V2, V2Size, L, R);
+  if (const SelectInst *S1 = dyn_cast<SelectInst>(V1)) {
+    Remedies tmpR;
+    liberty::LoopAA::AliasResult res =
+        aliasSelect(S1, V1Size, Rel, V2, V2Size, L, tmpR);
+    if (res != MayAlias) {
+      for (auto remed : tmpR)
+        R.insert(remed);
+    }
+    return res;
+  }
 
   return MayAlias;
 }
