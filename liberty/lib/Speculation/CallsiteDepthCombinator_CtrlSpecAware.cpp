@@ -634,6 +634,11 @@ namespace liberty
     {
       DEBUG(errs() << "No flow from " << *src << " to " << *dst << '\n');
 
+      std::shared_ptr<CafRemedy> remedy =
+          std::shared_ptr<CafRemedy>(new CafRemedy());
+      remedy->cost = 0;
+      isFlowTmpR.insert(remedy);
+
       for (auto remed : isFlowTmpR)
         R.insert(remed);
 
