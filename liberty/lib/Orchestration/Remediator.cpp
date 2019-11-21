@@ -277,34 +277,61 @@ namespace liberty
       }
     }
 
+    Remedies tmpR1;
     LoopAA::LoopAA::ModRefResult result =
-        modref_with_ptrs(A, ptrA, rel, B, ptrB, L, R);
+        modref_with_ptrs(A, ptrA, rel, B, ptrB, L, tmpR1);
 
-    if (dstA && ptrA)
+    if (dstA && ptrA) {
+      if (result != LoopAA::Mod && result != LoopAA::ModRef) {
+        for (auto remed : tmpR1)
+          R.insert(remed);
+      }
       result = LoopAA::ModRefResult((~LoopAA::Ref) & result);
+    } else {
+      if (result != LoopAA::ModRef) {
+        for (auto remed : tmpR1)
+          R.insert(remed);
+      }
+    }
 
     if (!ptrA || !ptrB)
       return result;
 
-    if (ptrA2)
-      result = LoopAA::ModRefResult(
-          result |
-          LoopAA::ModRefResult((~LoopAA::Mod) &
-                               modref_with_ptrs(A, ptrA2, rel, B, ptrB, L, R)));
-    if (ptrB2)
+
+    if (ptrA2) {
+      Remedies tmpR2;
+      auto result2 = modref_with_ptrs(A, ptrA2, rel, B, ptrB, L, tmpR2);
+      if (result2 != LoopAA::Ref && result2 != LoopAA::ModRef) {
+        for (auto remed : tmpR2)
+          R.insert(remed);
+      }
+      result2 = LoopAA::ModRefResult((~LoopAA::Mod) & result2);
+      result = LoopAA::ModRefResult(result | result2);
+    }
+    if (ptrB2) {
+      Remedies tmpR2;
+      auto result2 = modref_with_ptrs(A, ptrA, rel, B, ptrB2, L, tmpR2);
+      if (((result2 != LoopAA::Mod && dstA) || !dstA) &&
+          result2 != LoopAA::ModRef) {
+        for (auto remed : tmpR2)
+          R.insert(remed);
+      }
       result =
-          (!dstA) ? LoopAA::ModRefResult(
-                        result | modref_with_ptrs(A, ptrA, rel, B, ptrB2, L, R))
-                  : LoopAA::ModRefResult(
-                        result |
-                        LoopAA::ModRefResult(
-                            (~LoopAA::Ref) &
-                            modref_with_ptrs(A, ptrA, rel, B, ptrB2, L, R)));
-    if (ptrA2 && ptrB2)
-      result = LoopAA::ModRefResult(
-          result | LoopAA::ModRefResult(
-                       (~LoopAA::Mod) &
-                       modref_with_ptrs(A, ptrA2, rel, B, ptrB2, L, R)));
+          (!dstA)
+              ? LoopAA::ModRefResult(result | result2)
+              : LoopAA::ModRefResult(
+                    result | (LoopAA::ModRefResult((~LoopAA::Ref) & result2)));
+    }
+    if (ptrA2 && ptrB2) {
+      Remedies tmpR2;
+      auto result2 = modref_with_ptrs(A, ptrA2, rel, B, ptrB2, L, tmpR2);
+      if (result2 != LoopAA::Ref && result2 != LoopAA::ModRef) {
+        for (auto remed : tmpR2)
+          R.insert(remed);
+      }
+      result2 = LoopAA::ModRefResult((~LoopAA::Mod) & result2);
+      result = LoopAA::ModRefResult(result | result2);
+    }
     return result;
   }
 
