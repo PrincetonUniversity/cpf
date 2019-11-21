@@ -47,11 +47,11 @@ namespace liberty
     KillFlow *killflow;
 
   protected:
-    virtual void uponStackChange() { iiCache.clear(); }
+    virtual void uponStackChange() { iiCache.clear(); iiCacheR.clear();}
 
   public:
     static char ID;
-    CallsiteDepthCombinator() : ModulePass(ID), iiCache() {}
+    CallsiteDepthCombinator() : ModulePass(ID), iiCache(), iiCacheR() {}
 
     virtual bool runOnModule(Module &M);
 
