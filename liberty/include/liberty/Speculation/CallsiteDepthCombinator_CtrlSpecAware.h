@@ -43,11 +43,12 @@ namespace liberty
     KillFlow_CtrlSpecAware *killflow;
 
   protected:
-    virtual void uponStackChange() { iiCache.clear(); }
+    virtual void uponStackChange() { iiCache.clear(); iiCacheR.clear();}
 
   public:
     static char ID;
-    CallsiteDepthCombinator_CtrlSpecAware() : ModulePass(ID), iiCache() {}
+    CallsiteDepthCombinator_CtrlSpecAware()
+        : ModulePass(ID), iiCache(), iiCacheR() {}
 
     virtual bool runOnModule(Module &M);
 
