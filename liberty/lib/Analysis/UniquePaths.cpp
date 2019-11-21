@@ -122,6 +122,7 @@ private:
   typedef DenseSet<const Value *> ValueSet;
   typedef generic_gep_type_iterator<User::const_op_iterator> GepTyIt;
   typedef DenseMap<PtrPtrKey, AliasResult> Cache;
+  typedef DenseMap<PtrPtrKey, Remedies> CacheR;
 
   // Which functions have we already analyzed?
   ValueSet alreadyAnalyzed;
@@ -134,10 +135,12 @@ private:
 
   // Speed up expensive queries, and avoids infinite recursions.
   Cache cache;
+  CacheR cacheR;
 
   void uponStackChange()
   {
     cache.clear();
+    cacheR.clear();
   }
 
   AccessPath *Unique(AccessPath *ap)
@@ -870,6 +873,8 @@ public:
     {
       ++numHits;
       AliasResult result = cache[key];
+      for (auto remed : cacheR[key])
+        R.insert(remed);
       INTROSPECT(EXIT(P1,Rel,P2,L, result));
       return result;
     }
@@ -882,6 +887,7 @@ public:
     // to avoid infinite recursion.
     // this will be fixed before we return.
     cache[key] = MayAlias;
+    cacheR[key] = tmpR;
 
     analyzeParent( P1.ptr );
     analyzeParent( P2.ptr );
@@ -943,6 +949,7 @@ public:
 
     INTROSPECT(EXIT(P1,Rel,P2,L, result));
     cache[key] = result; // fix the cache.
+    cacheR[key] = tmpR;
 
     if (result == NoAlias || result == MustAlias) {
       for (auto remed : tmpR)
