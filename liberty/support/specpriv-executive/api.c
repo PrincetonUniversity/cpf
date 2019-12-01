@@ -195,13 +195,15 @@ static void __specpriv_worker_setup(Wid wid)
 
   int r = sigsetjmp( jmpbuf, 1 );
 #if DEBUG_MISSPEC || DEBUGGING
-  if ( r == 0)
+#if DEBUGGING
+  if (r == 0)
     printf("Worker %d: First time setjmp was called\n", myWorkerId);
-  else if ( r == 42 )
+#endif
+  if ( r == 42 )
     printf("Worker %d: Misspeculated somewhere\n", myWorkerId);
   else if ( r == 43 )
     printf("Worker %d: Misspeculated by other worker?!?!\n", myWorkerId);
-  else
+  else if ( r != 0)
     printf("Worker %d: Misspeculated for some other reason\n", myWorkerId);
 #endif
 
