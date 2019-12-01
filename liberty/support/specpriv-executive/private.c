@@ -33,6 +33,7 @@ static uint64_t code64 = 0;
 static __m128i code128;
 #endif
 
+uint64_t last_read_live_in_ptr;
 
 //------------------------------------------------------------------
 // Privatization support
@@ -105,6 +106,8 @@ void __specpriv_advance_iter(Iteration i, uint32_t ckptUsed)
     return;
 
   __specpriv_set_iter(i);
+
+  last_read_live_in_ptr = 0;
 
   /*
   // cannot use __specpriv_get_ckpt_check unless we check if ckpt_check was
@@ -471,7 +474,8 @@ void __specpriv_private_write_4b(void *ptr)
   {
     uint32_t *shadow = (uint32_t*) ( SHADOW_ADDR | (uint64_t)ptr );
     // TODO: optimize
-    if( memchr(shadow, READ_LIVE_IN, sizeof(uint32_t) ) )
+    if ((uint64_t)ptr != last_read_live_in_ptr &&
+        memchr(shadow, READ_LIVE_IN, sizeof(uint32_t)))
       __specpriv_misspec("misspec during private write 4b");
     *shadow = code32;
 
@@ -517,6 +521,7 @@ void __specpriv_private_read_4b(void *ptr, const char *name)
     else if( meta == V32( LIVE_IN ) )
     {
       *shadow = V32( READ_LIVE_IN );
+      last_read_live_in_ptr = (uint64_t)ptr;
       TADD(worker_private_read_time,start);
       TIME(worker_pause_time);
       return;
@@ -580,7 +585,8 @@ void __specpriv_private_write_8b(void *ptr)
   {
     uint64_t *shadow = (uint64_t*) ( SHADOW_ADDR | (uint64_t)ptr );
     // TODO: optimize
-    if( memchr(shadow, READ_LIVE_IN, sizeof(uint64_t) ) )
+    if ((uint64_t)ptr != last_read_live_in_ptr &&
+        memchr(shadow, READ_LIVE_IN, sizeof(uint64_t)))
       __specpriv_misspec("misspec in private write 8b");
     *shadow = code64;
 
@@ -618,6 +624,7 @@ void __specpriv_private_read_8b(void *ptr, const char *name)
     if( meta == V64( LIVE_IN ) )
     {
       *shadow = V64( READ_LIVE_IN );
+      last_read_live_in_ptr = (uint64_t)ptr;
       TADD(worker_private_read_time,start);
       TIME(worker_pause_time);
       return;
