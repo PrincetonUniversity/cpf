@@ -1130,7 +1130,7 @@ Bool __specpriv_distill_committed_killprivate_into_main( Checkpoint *commit,
         printf("Distilling %u bytes from cimmitted to main\n", len);
         );
     /* memcpy( (void *) commit_killpriv->base, (void *) PRIV_ADDR, len ); */
-    memcpy( (void *) PRIV_ADDR, (void *) commit_killpriv->base, len );
+    memcpy( (void *) KILLPRIV_ADDR, (void *) commit_killpriv->base, len );
   }
 
   return 0;
