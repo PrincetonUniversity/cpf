@@ -26,7 +26,7 @@ namespace liberty {
 
   typedef DenseSet<Function *>                  FuncSet;
 
-  typedef std::pair<TerminatorInst *, unsigned> OutEdge;
+  typedef std::pair<Instruction *, unsigned>           OutEdge;
   typedef DenseSet<OutEdge>                     OutEdgeSet;
   typedef OutEdgeSet::const_iterator            OESI;
   typedef std::vector<OutEdge>                  OutEdgeList;

@@ -207,7 +207,7 @@ public:
       // If all the captures for the source are not known, mark the type joint.
       liberty::CaptureSet captures;
       if(!liberty::findAllCaptures(src, &captures)) {
-        DEBUG(errs() << structType->getName() << " incomplete capture!\n");
+        LLVM_DEBUG(errs() << structType->getName() << " incomplete capture!\n");
         return true;
       }
 
@@ -323,21 +323,21 @@ public:
 
     for(unsigned i = 0; i < S1.size(); ++i) {
       if(jointTypes.count(S1[i])) {
-        DEBUG(errs() << S1[i]->getName() << " sucks!\n");
-        DEBUG(errs() << "Done: " << *V1 << "\n" << *V2 << "\n\n");
+        LLVM_DEBUG(errs() << S1[i]->getName() << " sucks!\n");
+        LLVM_DEBUG(errs() << "Done: " << *V1 << "\n" << *V2 << "\n\n");
         return MayAlias;
       }
     }
 
     for(unsigned i = 0; i < S2.size(); ++i) {
       if(jointTypes.count(S2[i])) {
-        DEBUG(errs() << S2[i]->getName() << " sucks!\n");
-        DEBUG(errs() << "Done: " << *V1 << "\n" << *V2 << "\n\n");
+        LLVM_DEBUG(errs() << S2[i]->getName() << " sucks!\n");
+        LLVM_DEBUG(errs() << "Done: " << *V1 << "\n" << *V2 << "\n\n");
         return MayAlias;
       }
     }
 
-    DEBUG(errs()
+    LLVM_DEBUG(errs()
           << "Disjoint:\n"
           << *V1 << "\n"
           << *V2 << "\n\n");

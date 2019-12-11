@@ -133,7 +133,7 @@ namespace liberty {
           Instruction *nop = makeNonEmpty(bb);
           return After(nop);
 
-        } else if( ! isa<TerminatorInst>( bb->back() ) ) {
+        } else if( !bb->back().isTerminator() ) {
           if( isa<PHINode>(bb->back()) ) {
 
             // If the bb only contains PHIs, we should insert a "real"

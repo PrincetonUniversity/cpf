@@ -85,7 +85,7 @@ void ApplySeparationSpec::getAnalysisUsage(AnalysisUsage &au) const
 
 bool ApplySeparationSpec::runOnModule(Module &module)
 {
-  DEBUG(errs() << "#################################################\n"
+  LLVM_DEBUG(errs() << "#################################################\n"
                << " ApplySeparationSpec\n\n\n");
   mod = &module;
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
@@ -112,7 +112,7 @@ bool ApplySeparationSpec::runOnModule(Module &module)
     Loop *loop = loops[i];
     BasicBlock *header = loop->getHeader();
     Function *fcn = header->getParent();
-    DEBUG(errs() << "SpecPriv ApplySeparationSpec: Processing loop "
+    LLVM_DEBUG(errs() << "SpecPriv ApplySeparationSpec: Processing loop "
       << fcn->getName() << " :: " << header->getName() << "\n");
 
     modified |= runOnLoop(loop);
@@ -131,7 +131,7 @@ bool ApplySeparationSpec::runOnModule(Module &module)
       mloops.forget(*i);
 
     preprocess.assert_strategies_consistent_with_ir();
-    DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
+    LLVM_DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
   }
 
   return modified;
@@ -156,9 +156,9 @@ void ApplySeparationSpec::init(ModuleLoops &mloops, Preprocess &preprocess)
 
   const HeapAssignment &asgn = getHeapAssignment();
 
-  DEBUG(errs() << "SpecPriv ApplySeparationSpec: Processing parallel region, consisting of:\n");
+  LLVM_DEBUG(errs() << "SpecPriv ApplySeparationSpec: Processing parallel region, consisting of:\n");
 
-  DEBUG(errs() << asgn);
+  LLVM_DEBUG(errs() << asgn);
 
   // Identify loops we will parallelize
   const Selector &selector = getSelector();
@@ -173,7 +173,7 @@ void ApplySeparationSpec::init(ModuleLoops &mloops, Preprocess &preprocess)
 
     loops.push_back(loop);
 
-    DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName() << "\n");
+    LLVM_DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName() << "\n");
   }
 }
 
@@ -473,7 +473,7 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
         continue;
       }
 
-      DEBUG(errs() << "Instrumenting private load: " << *load << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting private load: " << *load << '\n');
 
       //DataLayout &td = getAnalysis< DataLayout >();
       const DataLayout &td = bb->getParent()->getParent()->getDataLayout();
@@ -500,7 +500,7 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
         continue;
       }
 
-      DEBUG(errs() << "Instrumenting private store: " << *store << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting private store: " << *store << '\n');
 
       const DataLayout &td = bb->getParent()->getParent()->getDataLayout();
       //DataLayout &td = getAnalysis< DataLayout >();
@@ -526,7 +526,7 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
 
       if( psrc )
       {
-        DEBUG(errs() << "Instrumenting private source of mti: " << *mti << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting private source of mti: " << *mti << '\n');
 
         insertPrivateRead(mti, InstInsertPt::Before(mti), src, sz );
         modified = true;
@@ -534,7 +534,7 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
 
       if( pdst )
       {
-        DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
 
         insertPrivateWrite(mti, InstInsertPt::Before(mti), dst, sz );
         modified = true;
@@ -543,7 +543,7 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
       bool pdst2 = isSharePrivate(loop, dst);
       if( pdst2 )
       {
-        DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
 
         insertSharePrivateWrite(mti, InstInsertPt::Before(mti), dst, sz );
         modified = true;
@@ -560,7 +560,7 @@ bool ApplySeparationSpec::replacePrivateLoadsStores(Loop *loop, BasicBlock *bb)
       if( !isPriv && !isSharePriv )
         continue;
 
-      DEBUG(errs() << "Instrumenting private dest of memset: " << *msi << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting private dest of memset: " << *msi << '\n');
 
       if (isPriv)
         insertPrivateWrite(msi, InstInsertPt::Before(msi), ptr, sz);
@@ -587,7 +587,7 @@ bool ApplySeparationSpec::replaceReduxStores(Loop *loop, BasicBlock *bb)
       if( !isRedux(loop,ptr) )
         continue;
 
-      DEBUG(errs() << "Instrumenting redux store: " << *store << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting redux store: " << *store << '\n');
 
       //DataLayout &td = getAnalysis< DataLayout >();
       const DataLayout &td = bb->getParent()->getParent()->getDataLayout();
@@ -764,11 +764,11 @@ bool ApplySeparationSpec::reallocateGlobals(const HeapAssignment &asgn, const He
     //if (gv->isExternallyInitialized()) {
     if (gv->hasExternalLinkage()) {
       // do not realllocate externally defined objects such as stdout or stderr
-      DEBUG(errs() << gv->getName() << " has external linkage -- not reallocating\n");
+      LLVM_DEBUG(errs() << gv->getName() << " has external linkage -- not reallocating\n");
       continue;
     }
 
-    DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
+    LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
     // create a new global pointer.
     PointerType *pty = cast< PointerType >( gv->getType() );
@@ -905,7 +905,7 @@ bool ApplySeparationSpec::reallocateGlobals(
 
       already.insert(au->value);
 
-      DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
+      LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
 
       // create a new global pointer.
       PointerType *pty = cast<PointerType>(gv->getType());
@@ -1055,10 +1055,10 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
 
   Preprocess &preprocess = getAnalysis< Preprocess >();
 /*
-  DEBUG(errs() << "\n\nReallocateInst " << heap_names[heap] << " will do this:\n");
+  LLVM_DEBUG(errs() << "\n\nReallocateInst " << heap_names[heap] << " will do this:\n");
   for(HeapAssignment::AUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
-    DEBUG(errs() << " - " << **i << " => " << heap_names[heap] << '\n');
-  DEBUG(errs() << "\nAnd now I'm gonna doit:\n\n");
+    LLVM_DEBUG(errs() << " - " << **i << " => " << heap_names[heap] << '\n');
+  LLVM_DEBUG(errs() << "\nAnd now I'm gonna doit:\n\n");
 */
   std::set<const Value*> already;
   for(HeapAssignment::AUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
@@ -1074,7 +1074,7 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
     assert( inst );
 
 
-    DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
+    LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
     Function *fcn = inst->getParent()->getParent();
     InstInsertPt where = InstInsertPt::After(inst);
@@ -1224,7 +1224,7 @@ bool ApplySeparationSpec::reallocateInst(
           const_cast<Instruction *>(dyn_cast<Instruction>(au->value));
       assert(inst);
 
-      DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap redux\n");
+      LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap redux\n");
 
       Function *fcn = inst->getParent()->getParent();
       InstInsertPt where = InstInsertPt::After(inst);
@@ -1365,7 +1365,7 @@ bool ApplySeparationSpec::addUOChecks(const HeapAssignment &asgn, Loop *loop, Ba
   if( objectsToInstrument.empty() )
     return false;
 
-//    DEBUG(errs() << "RoI contains " << objectsToInstrument.size() << " indeterminate objects.\n");
+//    LLVM_DEBUG(errs() << "RoI contains " << objectsToInstrument.size() << " indeterminate objects.\n");
 
   // Okay, we have a set of UOs.  Let's instrument them!
   bool modified = false;
@@ -1388,7 +1388,7 @@ bool ApplySeparationSpec::addUOChecks(const HeapAssignment &asgn, Loop *loop, Ba
     HeapAssignment::Type ty = selectHeap(obj,loop);
     if( ty == HeapAssignment::Unclassified )
     {
-      DEBUG(errs() << "Cannot check " << *obj << "!!!\n");
+      LLVM_DEBUG(errs() << "Cannot check " << *obj << "!!!\n");
       continue;
     }
 
@@ -1453,7 +1453,7 @@ void ApplySeparationSpec::insertUOCheck(const HeapAssignment &asgn, Loop *loop, 
   preprocess.addToLPS(call, inst_obj);
 
   ++numUOTests;
-  DEBUG(errs() << "Instrumented indet obj: " << *obj << '\n');
+  LLVM_DEBUG(errs() << "Instrumented indet obj: " << *obj << '\n');
 }
 
 // TODO This, as well as LocalityAA::fold(), should be merged into a single

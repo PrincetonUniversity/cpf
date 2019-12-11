@@ -82,11 +82,11 @@ LoopVariantAllocation::aliasCheck(const Pointer &P1, TemporalRelation Rel,
               *src2 = GetUnderlyingObject(P2.ptr, *DL, 0);
 
 
-  DEBUG(errs() << "LoopVariantAllocation(" << *src1 << ", " << *src2 << ")\n");
+  LLVM_DEBUG(errs() << "LoopVariantAllocation(" << *src1 << ", " << *src2 << ")\n");
 
   if (isNoaliasWithinLoop(src1, L, *tli) &&
       isNoaliasWithinLoop(src2, L, *tli)) {
-    DEBUG(errs() << "Yes.\n");
+    LLVM_DEBUG(errs() << "Yes.\n");
     return NoAlias;
   }
 
