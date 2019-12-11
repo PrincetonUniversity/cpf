@@ -231,7 +231,7 @@ bool PureFunAA::argumentsAlias(const ImmutableCallSite CS, const Value *P,
       }
     }
   }
-  DEBUG(errs() << "\t  Arguments do not alias\n");
+  LLVM_DEBUG(errs() << "\t  Arguments do not alias\n");
   return false;
 }
 
@@ -251,8 +251,8 @@ PureFunAA::PureFunAA() : ModulePass(ID), sccCount(0) {
     }
   }
 
-  DEBUG(errs() << "Known pure functions: "  << pureFunSet.size()  << "\n");
-  DEBUG(errs() << "Known local functions: " << localFunSet.size() << "\n");
+  LLVM_DEBUG(errs() << "Known pure functions: "  << pureFunSet.size()  << "\n");
+  LLVM_DEBUG(errs() << "Known local functions: " << localFunSet.size() << "\n");
 }
 
 bool PureFunAA::runOnModule(Module &M) {
@@ -296,7 +296,7 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
   const Function *fun1 = getCalledFunction(CS1);
   const Function *fun2 = getCalledFunction(CS2);
 
-  DEBUG(errs() << "\tpure-fun-aa looking at " << *(CS1.getInstruction()) << " to " << *(CS2.getInstruction()) << "\n");
+  LLVM_DEBUG(errs() << "\tpure-fun-aa looking at " << *(CS1.getInstruction()) << " to " << *(CS2.getInstruction()) << "\n");
 
   if(!fun1 || !fun2) {
     return ModRef;
@@ -318,7 +318,7 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS1,
   //   !argumentsAlias(CS2, CS1.getInstruction(), aa, TD)) {
   if (isLocal(fun1) && isLocal(fun2) && !argumentsAlias(CS1, CS2, aa, TD, tmpR) &&
       !argumentsAlias(CS2, CS1, aa, TD, tmpR)) {
-    DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 1\n");
+    LLVM_DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 1\n");
     for (auto remed : tmpR)
       R.insert(remed);
     return NoModRef;
@@ -353,17 +353,17 @@ PureFunAA::ModRefResult PureFunAA::getModRefInfo(CallSite CS,
 
   Remedies tmpR;
 
-  DEBUG(errs() << "\tpure-fun-aa looking at " << *(CS.getInstruction()) << " to " << *Ptr << "\n");
+  LLVM_DEBUG(errs() << "\tpure-fun-aa looking at " << *(CS.getInstruction()) << " to " << *Ptr << "\n");
 
   LoopAA *AA = getTopAA();
   const DataLayout *TD = getDataLayout();
   if(isLocal(fun) && !argumentsAlias(CS, Ptr, Size, AA, TD, tmpR) &&
      !AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, tmpR)) {
 
-    DEBUG(errs() << "\t    result of query "
+    LLVM_DEBUG(errs() << "\t    result of query "
                  << AA->alias(CS.getInstruction(), Size, Rel, Ptr, Size, L, tmpR)
                  << "\n");
-    DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 2\n");
+    LLVM_DEBUG(errs() << "\t    pure-fun-aa returning NoModRef 2\n");
     for (auto remed : tmpR)
       R.insert(remed);
     return NoModRef;

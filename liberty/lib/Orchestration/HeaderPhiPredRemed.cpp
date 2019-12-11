@@ -44,7 +44,7 @@ Remediator::RemedResp HeaderPhiPredRemediator::regdep(const Instruction *A,
            "HeaderPhiPredRemediator predicts only values of phi nodes");
     remedResp.depRes = DepResult::NoDep;
 
-    DEBUG(errs() << "HeaderPhiPredRemed removed reg dep between inst " << *A
+    LLVM_DEBUG(errs() << "HeaderPhiPredRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 

@@ -163,7 +163,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
 {
   errs() << "  . . - UpdateEdgeLoopProfilers::resetAfterInline: " << callee->getName() << '\n';
   // sot :remove sanity check for now
-  //DEBUG(sanity("before", callee));
+  //LLVM_DEBUG(sanity("before", callee));
 
   //sot update because new profile passes are Function passes and not ModulePass as was the case for ProfileInfo
 
@@ -433,7 +433,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
   }
 
   // sot :remove sanity check for now
-  //DEBUG(sanity("after", callee));
+  //LLVM_DEBUG(sanity("after", callee));
 }
 
 

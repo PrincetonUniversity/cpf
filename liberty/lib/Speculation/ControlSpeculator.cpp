@@ -129,7 +129,7 @@ bool ProfileGuidedControlSpeculator::dominatesTargetHeader(const BasicBlock* bb)
     return false;
   DominatorTree&  dt = this->mloops->getAnalysis_DominatorTree( fcn );
   if ( dt.dominates( bb, targetHeader ) ) {
-    DEBUG(errs() << "bb " << bb->getName() << " dominates target header "
+    LLVM_DEBUG(errs() << "bb " << bb->getName() << " dominates target header "
                  << targetHeader->getName() << "\n");
     return true;
   }
@@ -143,7 +143,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
     return;
   loops[getLoopHeaderOfInterest()].visited.insert(fcn);
 
-  DEBUG(errs() << "CtrlSpec: visit( " << fcn->getName() << " )\n");
+  LLVM_DEBUG(errs() << "CtrlSpec: visit( " << fcn->getName() << " )\n");
 
   // Evil, but okay because it won't modify the IR
   Function *non_const_fcn = const_cast<Function*>(fcn);
@@ -169,7 +169,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   //sot
   if (!fcn->getEntryCount().hasValue())
   {
-    DEBUG(errs() << "CtrlSpec: function does not have profile data avaiable\n");
+    LLVM_DEBUG(errs() << "CtrlSpec: function does not have profile data avaiable\n");
 
     // sot
     // In LLVM 5.0 getEntryCount will return none for zero counts. Thus no
@@ -190,7 +190,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
                  i != e; ++i) {
               const BasicBlock *bb = &*i;
 
-              DEBUG(errs() << "CtrlSpec " << fcn->getName() << ": block "
+              LLVM_DEBUG(errs() << "CtrlSpec " << fcn->getName() << ": block "
                            << bb->getName() << " is speculatively dead.\n");
 
               deadBlocks.insert(bb);
@@ -206,7 +206,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   uint64_t fcnt = fcn->getEntryCount().getValue();
   if( fcnt == 0 ) // not possible in LLVM 5.0
   {
-    DEBUG(errs() << "CtrlSpec: function never executed\n");
+    LLVM_DEBUG(errs() << "CtrlSpec: function never executed\n");
 
     // sot
     // When a function is never invoked make all its basic blocks speculatively
@@ -217,7 +217,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
          ++i) {
       const BasicBlock *bb = &*i;
 
-      DEBUG(errs() << "CtrlSpec " << fcn->getName() << ": block "
+      LLVM_DEBUG(errs() << "CtrlSpec " << fcn->getName() << ": block "
                    << bb->getName() << " is speculatively dead.\n");
 
       deadBlocks.insert(bb);
@@ -254,7 +254,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
     // Only HIGH CONFIDENCE speculation
     if(  pred_cnt < MinSamples ) // note: ProfileInfo::MissingValue < 0 < MinSamples
     {
-      DEBUG(
+      LLVM_DEBUG(
         errs() << "Skipping branch at "
                << fcn->getName() << " :: " << pred->getName()
                << " because too few samples.\n");
@@ -276,7 +276,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
       //if( rate < 0.0 )
       if( prob.isUnknown() )
       {
-        DEBUG(
+        LLVM_DEBUG(
           errs() << "Will not speculate: edge weight unknown at "
                  << fcn->getName() << " :: " << pred->getName() << "\n");
         continue;
@@ -284,7 +284,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
 
       if ( dominatesTargetHeader( succ ) )
       {
-        DEBUG(
+        LLVM_DEBUG(
           errs() << "Will not speculate: successor dominates target header for edge "
                  << pred->getName() << "->" << succ->getName() << "\n");
         continue;
@@ -312,7 +312,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
 
         if (!lpred->hasDedicatedExits())
         {
-          DEBUG(
+          LLVM_DEBUG(
             errs() << "Loop has not dedicated exits (not in canonical form). Avoid speculating this exit edge. Loop at "
                    << fcn->getName() << " :: " << pred->getName() << "\n");
           continue;
@@ -320,7 +320,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
 
         if( lpred->getUniqueExitBlock() == pred )
         {
-          DEBUG(
+          LLVM_DEBUG(
             errs() << "Will not speculate the unique exit of a loop at "
                    << fcn->getName() << " :: " << pred->getName() << "\n");
           continue;
@@ -328,7 +328,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
 
         if( rate > pred_cnt * MaxMisspecLoopExit )
         {
-          DEBUG(
+          LLVM_DEBUG(
             errs() << "Loop exit branch is too frequent (> " << MaxMisspecLoopExit << ") at "
                    << fcn->getName() << " :: " << pred->getName()
                    << ", " << (unsigned)rate << "/" << (unsigned)pred_cnt << "\n");
@@ -360,14 +360,14 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
         // Normal biasing threshhold for all branches
         // which are not loop exits.
         if (!loopOfInterestExit && rate > pred_cnt * MaxMisspec) {
-          DEBUG(errs() << pred->getName() << "->" << succ->getName() << ", "
+          LLVM_DEBUG(errs() << pred->getName() << "->" << succ->getName() << ", "
                        << (unsigned)rate << " > " << (unsigned)pred_cnt << " * "
                        << format("%f", MaxMisspec) << "\n");
           continue;
         }
       }
 
-      DEBUG(errs() << "CtrlSpec " << fcn->getName()
+      LLVM_DEBUG(errs() << "CtrlSpec " << fcn->getName()
         << ": speculating that " << pred->getName()
         << " never branches to " << succ->getName()
         << " [observed rate " << (unsigned)rate
@@ -416,7 +416,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
 
     if( ! reachable.count(bb) )
     {
-      DEBUG(errs() << "CtrlSpec " << fcn->getName()
+      LLVM_DEBUG(errs() << "CtrlSpec " << fcn->getName()
         << ": block " << bb->getName() << " is speculatively dead.\n");
 
       deadBlocks.insert(bb);

@@ -104,7 +104,7 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
   auto aaRes = aa->getModRefInfo(A, ptrB, sizeB);
 
   if (aaRes == llvm::MRI_NoModRef) {
-    // DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
+    // LLVM_DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }
@@ -150,14 +150,14 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
     //  case MustAlias:
     //    break;
     //  case NoAlias:
-    //    DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+    //    LLVM_DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
     //    ++numNoModRef;
     //    return LoopAA::NoModRef;
     //}
   }
 
   if (aaRes == llvm::MRI_NoModRef) {
-    // DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+    // LLVM_DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }

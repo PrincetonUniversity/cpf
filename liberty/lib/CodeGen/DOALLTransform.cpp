@@ -26,7 +26,7 @@ void DOALLTransform::reallocateEnvAsShared(Value *alloc, Ctx *fcn_ctx) {
 bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
                                           SelectedRemedies *selectedRemeds) {
 
-  DEBUG(errs() << "Parallelizer:  Try to parallelize the loop \""
+  LLVM_DEBUG(errs() << "Parallelizer:  Try to parallelize the loop \""
                << LDI->header->getName()
                << "::" << LDI->header->getParent()->getName() << "\"\n");
 
@@ -50,7 +50,7 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
         !remed->getRemedyName().equals("priv-remedy") &&
         !remed->getRemedyName().equals("redux-remedy") &&
         !remed->getRemedyName().equals("txio-remedy")) {
-      DEBUG(errs()
+      LLVM_DEBUG(errs()
             << "At least one selected remedy is not implemented fully yet\n");
       return false;
     }
@@ -94,12 +94,12 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
     /*
      * Apply DOALL.
      */
-    DEBUG(errs() << "DOALL is applicable\n");
+    LLVM_DEBUG(errs() << "DOALL is applicable\n");
     doall->reset();
     modified = doall->apply(LDI);
     //modified = doall->apply(LDI, memVerUsed);
   } else
-    DEBUG(errs() << "DOALL is not applicable\n");
+    LLVM_DEBUG(errs() << "DOALL is not applicable\n");
 
   assert(modified);
 
@@ -187,7 +187,7 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
    * Link the parallelized loop within the original function that includes the
    * sequential loop.
    */
-  DEBUG(errs() << "Parallelizer:  Link the parallelize loop\n");
+  LLVM_DEBUG(errs() << "Parallelizer:  Link the parallelize loop\n");
   auto exitIndex = cast<Value>(
       ConstantInt::get(int64, LDI->environment->indexOfExitBlock()));
   Parallelization::linkParallelizedLoopToOriginalFunction(
@@ -205,12 +205,12 @@ bool DOALLTransform::doallParallelizeLoop(LoopDependenceInfo *LDI,
   /*
    * Return
    */
-  DEBUG(errs() << "Parallelizer: Exit\n");
+  LLVM_DEBUG(errs() << "Parallelizer: Exit\n");
   return true;
 }
 
 bool DOALLTransform::runOnModule(Module &M) {
-  DEBUG(errs() << "#################################################\n"
+  LLVM_DEBUG(errs() << "#################################################\n"
                << " DOALLTransform\n\n\n");
   bool modified = false;
 

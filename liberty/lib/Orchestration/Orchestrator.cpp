@@ -140,14 +140,14 @@ std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
 }
 
 void Orchestrator::printRemediatorSelectionCnt() {
-  DEBUG(errs() << "Selected Remediators:\n\n");
+  LLVM_DEBUG(errs() << "Selected Remediators:\n\n");
   for (auto const &it : remediatorSelectionCnt) {
-    DEBUG(errs() << it.first << " was selected " << it.second << " times\n");
+    LLVM_DEBUG(errs() << it.first << " was selected " << it.second << " times\n");
   }
 }
 
 void Orchestrator::printRemedies(Remedies &rs, bool selected) {
-  DEBUG(errs() << "( ");
+  LLVM_DEBUG(errs() << "( ");
   auto itRs = rs.begin();
   while(itRs != rs.end()) {
     StringRef remedyName = (*itRs)->getRemedyName();
@@ -155,7 +155,7 @@ void Orchestrator::printRemedies(Remedies &rs, bool selected) {
       LocalityRemedy *localityRemed = (LocalityRemedy *)&*(*itRs);
       remedyName = localityRemed->getLocalityRemedyName();
     }
-    DEBUG(errs() << remedyName);
+    LLVM_DEBUG(errs() << remedyName);
     if (selected) {
       if (remediatorSelectionCnt.count(remedyName.str()))
         ++remediatorSelectionCnt[remedyName.str()];
@@ -163,16 +163,16 @@ void Orchestrator::printRemedies(Remedies &rs, bool selected) {
         remediatorSelectionCnt[remedyName.str()] = 1;
     }
     if ((++itRs) != rs.end())
-      DEBUG(errs() << ", ");
+      LLVM_DEBUG(errs() << ", ");
   }
-  DEBUG(errs() << " )");
+  LLVM_DEBUG(errs() << " )");
 }
 
 void Orchestrator::printSelected(const SetOfRemedies &sors,
                                  const Remedies_ptr &selected, Criticism &cr) {
-  DEBUG(errs() << "----------------------------------------------------\n");
+  LLVM_DEBUG(errs() << "----------------------------------------------------\n");
   printRemedies(*selected, true);
-  DEBUG(errs() << " chosen to address criticism ";
+  LLVM_DEBUG(errs() << " chosen to address criticism ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
             errs() << "(Mem, ";
@@ -198,7 +198,7 @@ void Orchestrator::printSelected(const SetOfRemedies &sors,
             liberty::printInstDebugInfo(incomingI);
         errs() << "\n";);
   if (sors.size() > 1) {
-    DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
+    LLVM_DEBUG(errs() << "\nAlternative remedies for the same criticism: ");
     auto itR = sors.begin();
     while (itR != sors.end()) {
       if (*itR == selected) {
@@ -207,25 +207,25 @@ void Orchestrator::printSelected(const SetOfRemedies &sors,
       }
       printRemedies(**itR, false);
       if ((++itR) != sors.end())
-        DEBUG(errs() << ", ");
+        LLVM_DEBUG(errs() << ", ");
       else
-        DEBUG(errs() << "\n");
+        LLVM_DEBUG(errs() << "\n");
     }
   }
-  DEBUG(errs() << "------------------------------------------------------\n\n");
+  LLVM_DEBUG(errs() << "------------------------------------------------------\n\n");
 }
 
 void Orchestrator::printAllRemedies(const SetOfRemedies &sors, Criticism &cr) {
   if (sors.empty())
     return;
-  DEBUG(errs() << "\nRemedies ");
+  LLVM_DEBUG(errs() << "\nRemedies ");
   auto itR = sors.begin();
   while (itR != sors.end()) {
     printRemedies(**itR, false);
     if ((++itR) != sors.end())
-      DEBUG(errs() << ", ");
+      LLVM_DEBUG(errs() << ", ");
   }
-  DEBUG(errs() << " can address criticism ";
+  LLVM_DEBUG(errs() << " can address criticism ";
         if (cr.isControlDependence()) errs() << "(Control, "; else {
           if (cr.isMemoryDependence())
             errs() << "(Mem, ";
@@ -258,8 +258,8 @@ void Orchestrator::printAllRemedies(const SetOfRemedies &sors, Criticism &cr) {
 void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
                                      unsigned long &selectedRemediesCost,
                                      Criticisms &criticisms) {
-  DEBUG(errs() << "\n-====================================================-\n");
-  DEBUG(errs() << "Selected Remedies:\n");
+  LLVM_DEBUG(errs() << "\n-====================================================-\n");
+  LLVM_DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
     //SetOfRemedies &sors = mapCriticismsToRemeds[cr];
     const SetOfRemedies &sors = cr->getRemedies();
@@ -272,9 +272,9 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
     }
     printSelected(sors, cheapestR, *cr);
   }
-  DEBUG(errs() << "-====================================================-\n\n");
+  LLVM_DEBUG(errs() << "-====================================================-\n\n");
   printRemediatorSelectionCnt();
-  DEBUG(errs() << "\n-====================================================-\n\n");
+  LLVM_DEBUG(errs() << "\n-====================================================-\n\n");
 }
 
 bool Orchestrator::findBestStrategy(
@@ -295,7 +295,7 @@ bool Orchestrator::findBestStrategy(
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
-  DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
+  LLVM_DEBUG(errs() << "Start of findBestStrategy for loop " << fcn->getName()
                << "::" << header->getName();
         Instruction *term = header->getTerminator();
         if (term) liberty::printInstDebugInfo(term);
@@ -416,13 +416,13 @@ bool Orchestrator::findBestStrategy(
   // receive actual criticisms from critics given the enhanced pdg
   std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
-    DEBUG(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
+    LLVM_DEBUG(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
     CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
     Criticisms &criticisms = res.criticisms;
     unsigned long expSpeedup = res.expSpeedup;
 
     if (!expSpeedup) {
-      DEBUG(errs() << (*criticIt)->getCriticName()
+      LLVM_DEBUG(errs() << (*criticIt)->getCriticName()
                    << " not applicable/profitable to " << fcn->getName()
                    << "::" << header->getName()
                    << ": not all criticisms are addressable\n");
@@ -433,9 +433,9 @@ bool Orchestrator::findBestStrategy(
         std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
     unsigned long selectedRemediesCost = 0;
     if (!criticisms.size()) {
-      DEBUG(errs() << "\nNo criticisms generated!\n\n");
+      LLVM_DEBUG(errs() << "\nNo criticisms generated!\n\n");
     } else {
-      DEBUG(errs() << "Addressible criticisms\n");
+      LLVM_DEBUG(errs() << "Addressible criticisms\n");
       // orchestrator selects set of remedies to address the given criticisms,
       // computes remedies' total cost
       addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
@@ -445,7 +445,7 @@ bool Orchestrator::findBestStrategy(
         (long)Critic::FixedPoint * selectedRemediesCost;
     unsigned long savings = expSpeedup - adjRemedCosts;
 
-    DEBUG(errs() << "Expected Savings from critic "
+    LLVM_DEBUG(errs() << "Expected Savings from critic "
                  << (*criticIt)->getCriticName()
                  << " (no remedies): " << expSpeedup
                  << "  and selected remedies cost: " << adjRemedCosts << "\n");

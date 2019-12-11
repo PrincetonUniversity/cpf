@@ -18,7 +18,7 @@ void BitMatrix::resize(unsigned n)
 // BitMatrix intended for a dense, asymmetric relation.
 BitMatrix::~BitMatrix()
 {
-  DEBUG(errs() << "BitMatrix " << bv.count() << " / " <<  N*N << " full.\n");
+  LLVM_DEBUG(errs() << "BitMatrix " << bv.count() << " / " <<  N*N << " full.\n");
 }
 
 unsigned BitMatrix::idx(unsigned row, unsigned col) const

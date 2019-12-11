@@ -101,7 +101,7 @@ void PreparedStrategy::gatherLiveIns()
 
 void PreparedStrategy::study(unsigned stageno)
 {
-  DEBUG(errs() << "-------------- Study Stage " << stageno << " -------------\n");
+  LLVM_DEBUG(errs() << "-------------- Study Stage " << stageno << " -------------\n");
 
   const PipelineStage &stage = lps->stages[stageno];
   assert( stage.type != PipelineStage::Replicable
@@ -216,7 +216,7 @@ bool PreparedStrategy::handleControlDeps(
       if( !insts.count(srcTerm) )
       {
         // Then so too must be (src)
-        DEBUG(errs() << "Relevant to stage " << stageno
+        LLVM_DEBUG(errs() << "Relevant to stage " << stageno
                      << " because transitive ctrl deps: "
                      << dep.src->getParent()->getName()
                      << " -> " << *dep.dst << '\n');
@@ -288,7 +288,7 @@ bool PreparedStrategy::rematerializeOnce(const PipelineStrategy::Stages &stages,
           isa<PHINode>(operand) && operand->getParent() == loop->getHeader())
         continue;
 
-      DEBUG(errs() << "rematerialized operand, used but not available: "
+      LLVM_DEBUG(errs() << "rematerialized operand, used but not available: "
                    << *operand << "\n");
 
       // This instruction may be rematerialized.
@@ -395,7 +395,7 @@ void PreparedStrategy::communicateValue(Instruction *operand,
                                         // Outputs
                                         ISet &insts, VSet &avail, BBSet &rel,
                                         ConsumeFrom &cons) {
-  DEBUG(errs() << "communicated operand, used but not available: " << *operand
+  LLVM_DEBUG(errs() << "communicated operand, used but not available: " << *operand
                << "\n");
 
   // Communicate it!
@@ -501,7 +501,7 @@ bool PreparedStrategy::communicateOnce(const PipelineStrategy::Stages &stages,
 
     for (Instruction *I : rematInsts) {
       addInstToStage(insts, avail, rel, I);
-      DEBUG(errs() << "rematerialized inst, used but not available: " << *I
+      LLVM_DEBUG(errs() << "rematerialized inst, used but not available: " << *I
                    << "\n");
     }
 

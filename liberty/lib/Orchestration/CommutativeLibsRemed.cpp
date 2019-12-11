@@ -85,7 +85,7 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
       CommFunNamesSet.count(CalledFunA->getName().str())) {
     ++numMemDepRemoved;
     ++numFunCallsMemDepRemoved;
-    DEBUG(errs() << "Removed dep with commutative library identification. Dep "
+    LLVM_DEBUG(errs() << "Removed dep with commutative library identification. Dep "
                     "between function calls. Called function that was "
                     "considered commutative was "
                  << CalledFunA->getName() << '\n');
@@ -102,7 +102,7 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
     if ((CalledFunA && CalledFunA == FunB &&
          CommFunNamesSet.count(FunB->getName().str()))) {
       ++numMemDepRemoved;
-      DEBUG(
+      LLVM_DEBUG(
           errs() << "Removed dep with commutative library identification. Dep "
                     "between different iterations. Function that was "
                     "considered commutative was "
@@ -113,7 +113,7 @@ Remediator::RemedResp CommutativeLibsRemediator::memdep(const Instruction *A,
                 CommFunNamesSet.count(FunA->getName().str())) ||
                (FunA == FunB && CommFunNamesSet.count(FunA->getName().str()))) {
       ++numMemDepRemoved;
-      DEBUG(
+      LLVM_DEBUG(
           errs() << "Removed dep with commutative library identification. Dep "
                     "between different iterations. Function that was "
                     "considered commutative was "
@@ -152,7 +152,7 @@ CommutativeLibsRemediator::regdep(const Instruction *A, const Instruction *B,
     if ((CalledFunA && CalledFunA == FunB &&
          CommFunNamesSet.count(FunB->getName().str()))) {
       ++numRegDepRemoved;
-      DEBUG(errs()
+      LLVM_DEBUG(errs()
             << "Removed reg dep with commutative library identification. Dep "
                "between different iterations. Function that was "
                "considered commutative was "
@@ -163,7 +163,7 @@ CommutativeLibsRemediator::regdep(const Instruction *A, const Instruction *B,
                 CommFunNamesSet.count(FunA->getName().str())) ||
                (FunA == FunB && CommFunNamesSet.count(FunA->getName().str()))) {
       ++numRegDepRemoved;
-      DEBUG(errs()
+      LLVM_DEBUG(errs()
             << "Removed reg dep with commutative library identification. Dep "
                "between different iterations. Function that was "
                "considered commutative was "

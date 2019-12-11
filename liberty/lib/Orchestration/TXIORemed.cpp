@@ -84,7 +84,7 @@ TXIORemediator::memdep(const Instruction *A, const Instruction *B,
     remedResp.depRes = DepResult::NoDep;
     remedy->printI = A;
 
-    DEBUG(errs() << "TXIORemed removed mem dep between inst " << *A << "  and  "
+    LLVM_DEBUG(errs() << "TXIORemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
   }
 
@@ -93,7 +93,7 @@ TXIORemediator::memdep(const Instruction *A, const Instruction *B,
     remedResp.depRes = DepResult::NoDep;
     remedy->printI = B;
 
-    DEBUG(errs() << "TXIORemed removed mem dep between inst " << *A << "  and  "
+    LLVM_DEBUG(errs() << "TXIORemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
   }
 

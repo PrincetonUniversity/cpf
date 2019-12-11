@@ -41,12 +41,12 @@ Loop *header_to_loop_mapping_iterator::operator*() const
 {
   BasicBlock *header = *i;
   Function *fcn = header->getParent();
-  DEBUG(errs() << "header is: " << *header);
-  DEBUG(errs() << "function name is: " << fcn->getName() << "\n");
+  LLVM_DEBUG(errs() << "header is: " << *header);
+  LLVM_DEBUG(errs() << "function name is: " << fcn->getName() << "\n");
   LoopInfo &li = mloops.getAnalysis_LoopInfo(fcn);
   Loop *loop = li.getLoopFor(header);
   assert( loop && "Specified header not within a loop???");
-  DEBUG(errs() << "Loop->getHeader is: " << *(loop->getHeader()));
+  LLVM_DEBUG(errs() << "Loop->getHeader is: " << *(loop->getHeader()));
   assert( loop->getHeader() == header && "The specified header is not the loop header???");
   return loop;
 }
@@ -116,7 +116,7 @@ bool Targets::expectsManyIterations(const Loop *loop)
 
   const double totalIterations = totalInvocations + totalBackedgeCount;
 
-  //DEBUG(errs() << "Loop edge profiling " << fname << "::" << hname << "\t totalIterations is : "  << totalIterations <<  ", totalInvocations is : " << totalInvocations <<  "\n");
+  //LLVM_DEBUG(errs() << "Loop edge profiling " << fname << "::" << hname << "\t totalIterations is : "  << totalIterations <<  ", totalInvocations is : " << totalInvocations <<  "\n");
   return (totalIterations > MinIterationsPerInvoc * totalInvocations);
 }
 
@@ -167,7 +167,7 @@ void Targets::addLoopByName(Module &mod, const std::string &fname, const std::st
       //if( !expectsManyIterations(loop, fname, hname) )
       if( !expectsManyIterations(loop) )
       {
-        DEBUG(errs() << "Ignoring loop " << fname << "::" << hname << "\t(wt "<< wt <<") because too few iters/invoc\n");
+        LLVM_DEBUG(errs() << "Ignoring loop " << fname << "::" << hname << "\t(wt "<< wt <<") because too few iters/invoc\n");
         return;
       }
 
@@ -246,7 +246,7 @@ bool Targets::runOnModule(Module &mod)
 
       if( i->second < min )
       {
-        DEBUG(errs() << "Ignoring loop " << fname << "::" << hname << "\tTime: " << i->second << " because too little weight\n");
+        LLVM_DEBUG(errs() << "Ignoring loop " << fname << "::" << hname << "\tTime: " << i->second << " because too little weight\n");
         continue;
       }
 

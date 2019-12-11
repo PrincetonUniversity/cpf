@@ -52,7 +52,7 @@ bool RefineCFG::runOnCallSite(const CallSite &CS) {
   const Function *F = call->getParent()->getParent();
 
   (*CG)[F]->addCalledFunction(CS, (*CG)[targetFun]);
-  DEBUG(errs()
+  LLVM_DEBUG(errs()
         << "RefineCFG: " << F->getName()
         << " calls " << targetFun->getName() << "\n");
 

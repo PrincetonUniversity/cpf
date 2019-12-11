@@ -128,7 +128,7 @@ bool LoopProfLoad::runOnLoop(Loop *Lp)
 
 bool LoopProfLoad::runOnModule(Module& M)
 {
-  DEBUG(errs() << "Starting LoopProfLoad\n");
+  LLVM_DEBUG(errs() << "Starting LoopProfLoad\n");
   valid = false;
   int loopNum;
 
@@ -172,7 +172,7 @@ bool LoopProfLoad::runOnModule(Module& M)
     loopTimesMap[F.getName()] = exTime;
 
     LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-//    DEBUG(errs() << "Got loop info\n");
+//    LLVM_DEBUG(errs() << "Got loop info\n");
 
     list<Loop*> loops( li.begin(), li.end() );
     while( !loops.empty() )
@@ -205,7 +205,7 @@ bool LoopProfLoad::runOnModule(Module& M)
     }
   }
 
-  DEBUG(errs() << "Finished gathering loop info\n");
+  LLVM_DEBUG(errs() << "Finished gathering loop info\n");
 
   if(profDump)
     profile_dump();

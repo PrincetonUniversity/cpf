@@ -309,7 +309,7 @@ struct MallocProfiler : public ModulePass
     for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i)
       runOnFunction(&*i, mloops);
 
-    DEBUG(errs() << "Instrumented all functions\n");
+    LLVM_DEBUG(errs() << "Instrumented all functions\n");
 
     do_init(mod, globals);
 
@@ -566,7 +566,7 @@ private:
         continue;
       already.insert(phi);
 
-      DEBUG(errs() << "Instrumenting loop-carried register of loop " << header->getName() << ": " << phi->getName() << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting loop-carried register of loop " << header->getName() << ": " << phi->getName() << '\n');
       Value *phi_name = getInstName(phi);
       instrumentPredictableValue(phi_name, phi, afterPHIs, interesting);
       modified = true;
@@ -619,7 +619,7 @@ private:
 
     if( !hasInterestingStructure(loop,interesting) )
     {
-      DEBUG(errs() << "Not instrumenting structure of non-interesting loop " << loop->getHeader()->getName() << '\n');
+      LLVM_DEBUG(errs() << "Not instrumenting structure of non-interesting loop " << loop->getHeader()->getName() << '\n');
       return false;
     }
 
@@ -721,7 +721,7 @@ private:
       if( ity->getBitWidth() > 64 )
       {
         // decline to instrument ;)
-        DEBUG(errs() << "I decline to instrument a large integer value: " << *value << '\n');
+        LLVM_DEBUG(errs() << "I decline to instrument a large integer value: " << *value << '\n');
         return;
       }
       else if( ity->getBitWidth() < 64 )
@@ -1127,7 +1127,7 @@ private:
           continue;
         already.insert(arg);
 
-        DEBUG(errs() << "Instrumenting indeterminate base object in function argument " << *arg << "\n");
+        LLVM_DEBUG(errs() << "Instrumenting indeterminate base object in function argument " << *arg << "\n");
         instrumentArgumentForIndeterminateBase(arg, interesting);
         modified = true;
       }
@@ -1141,7 +1141,7 @@ private:
         if (isa<AllocaInst>(inst))
           continue;
 
-        DEBUG(errs() << "Instrumenting indeterminate base object: " << *inst << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting indeterminate base object: " << *inst << '\n');
         instrumentInstructionForIndeterminateBase(inst, interesting, li);
         modified = true;
       }
@@ -1249,7 +1249,7 @@ private:
       if( arg->getType()->isIntegerTy() )
       {
         Value *arg_name = getArgName(arg);
-        DEBUG(errs() << "Instrumenting integer argument: " << *arg << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting integer argument: " << *arg << '\n');
         instrumentPredictableValue(arg_name, arg, where, interesting);
         modified = true;
       }
@@ -1479,7 +1479,7 @@ private:
         if( TraceBeforeUnsafe )
           insertPrintf(where, "/done\n", true);
 
-        DEBUG(errs() << "Instrumenting upward-exposed load: " << load->getName() << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting upward-exposed load: " << load->getName() << '\n');
         instrumentPredictableValue(load_name, new_load, where, interesting);
       }
       */
@@ -1500,7 +1500,7 @@ private:
     if( fcn->isDeclaration() )
       return false;
 
-    DEBUG(errs() << "Instrumenting function " << fcn->getName() << '\n');
+    LLVM_DEBUG(errs() << "Instrumenting function " << fcn->getName() << '\n');
 
     // Capture a list of all external function declarations,
     // loads, stores, etc, before we start adding any.

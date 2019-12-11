@@ -103,7 +103,7 @@ bool MTCG::runOnModule(Module &module)
 
 bool MTCG::runOnStrategy(PreparedStrategy &strategy)
 {
-  DEBUG(errs() << "-------------- Strategy "
+  LLVM_DEBUG(errs() << "-------------- Strategy "
                << strategy.loop->getHeader()->getName()
                << ' ' << *strategy.lps << " -------------\n");
   // PHASE 2 ------------- CREATE STAGES
@@ -132,7 +132,7 @@ bool MTCG::runOnStrategy(PreparedStrategy &strategy)
 
 Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const LoopDom &dt, const LoopPostDom &pdt)
 {
-  DEBUG(errs() << "-------------- Transform Stage " << stageno << " -------------\n");
+  LLVM_DEBUG(errs() << "-------------- Transform Stage " << stageno << " -------------\n");
   Loop *loop = strategy.loop;
   const PipelineStrategy::Stages &stages = strategy.lps->stages;
   const PipelineStage &stage = stages[stageno];
@@ -548,7 +548,7 @@ BasicBlock *MTCG::createOnIteration(
   const PreparedStrategy::ConsumeFrom &cons = strategy.consumes[stageno];
   const PreparedStrategy::ProduceTo &prods = strategy.produces[stageno];
 
-  DEBUG(errs() << "Stage has "
+  LLVM_DEBUG(errs() << "Stage has "
                << insts.size() << " instructions; "
                << rel.size() << " basic blocks; consumes "
                << cons.size() << " values\n");
@@ -587,7 +587,7 @@ BasicBlock *MTCG::createOffIteration(
     assert( off_cons.empty()
     && "Replicated off-iterations should not consume");
   */
-  DEBUG(errs() << "OFF-iteration of stage " << stageno << " has "
+  LLVM_DEBUG(errs() << "OFF-iteration of stage " << stageno << " has "
                << off_insts.size() << " instructions; "
                << off_rel.size() << " basic blocks; consumes "
                << off_cons.size() << " values\n");
@@ -1037,11 +1037,11 @@ BasicBlock *MTCG::copyInstructions(
              bbName.compare(bbName.length() - crit_edge_str.length(),
                             crit_edge_str.length(), crit_edge_str) == 0)) {
           vmap[term->getParent()] = vmap[header];
-          //DEBUG(errs() << "header bb use: " << *(term->getParent())
+          //LLVM_DEBUG(errs() << "header bb use: " << *(term->getParent())
           //             << " mapped with " << *vmap[header] << '\n');
         } else {
           vmap[term->getParent()] = preheader;
-          //DEBUG(errs() << "header bb use: " << *(term->getParent())
+          //LLVM_DEBUG(errs() << "header bb use: " << *(term->getParent())
           //             << " mapped with " << *preheader << '\n');
         }
       }
@@ -1440,7 +1440,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
       // if no locals then don't add produce/consume calls
       if ( !heaps.getLocalAUs().empty() )
       {
-        DEBUG( errs() << "Adding produces for local AUs" );
+        LLVM_DEBUG( errs() << "Adding produces for local AUs" );
         // add consumes if not first stage
         if ( stage.stageno != 0 )
         {
