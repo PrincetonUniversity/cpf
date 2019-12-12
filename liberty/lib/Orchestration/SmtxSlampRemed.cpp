@@ -176,7 +176,7 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
-      LLVM_LLVM_DEBUG(errs() << "No observed InterIterDep between " << *A << "  and  "
+      LLVM_DEBUG(errs() << "No observed InterIterDep between " << *A << "  and  "
                    << *B << "\n");
 
       // Keep track of this
@@ -190,7 +190,7 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
-      LLVM_LLVM_DEBUG(errs() << "PredictableInterIterDep between " << *A << "  and  "
+      LLVM_DEBUG(errs() << "PredictableInterIterDep between " << *A << "  and  "
                    << *B << "\n");
 
       slamp::PredMap predictions =
@@ -232,7 +232,7 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
-      LLVM_LLVM_DEBUG(errs() << "No observed IntraIter dep from " << *A << "  and  " << *B
+      LLVM_DEBUG(errs() << "No observed IntraIter dep from " << *A << "  and  " << *B
                    << "\n");
 
       // Keep track of this
@@ -244,7 +244,7 @@ Remediator::RemedResp SmtxSlampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
-      LLVM_LLVM_DEBUG(errs() << "PredictableIntraIterDep between " << *A << "  and  "
+      LLVM_DEBUG(errs() << "PredictableIntraIterDep between " << *A << "  and  "
                    << *B << "\n");
 
       slamp::PredMap predictions =

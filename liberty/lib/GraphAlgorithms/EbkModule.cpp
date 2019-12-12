@@ -169,12 +169,12 @@ void EbkModule::computeEdges(const Vertices& vertices, Edges& edges)
        * exclude one of the loops */
       if( mustBeSimultaneouslyActive(A, B) )
       {
-        LLVM_LLVM_DEBUG(errs() << "Loop " << nA << " is incompatible with loop "
+        LLVM_DEBUG(errs() << "Loop " << nA << " is incompatible with loop "
                      << nB << " because of simultaneous activation.\n");
         continue;
       }
 
-      LLVM_LLVM_DEBUG(errs() << "Loop " << nA << " is COMPATIBLE with loop "
+      LLVM_DEBUG(errs() << "Loop " << nA << " is COMPATIBLE with loop "
                    << nB << ".\n");
       edges.insert( Edge(i,j) );
       edges.insert( Edge(j,i) );

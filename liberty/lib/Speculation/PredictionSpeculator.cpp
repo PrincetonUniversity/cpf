@@ -50,7 +50,7 @@ bool ProfileGuidedPredictionSpeculator::isPredictable(const Instruction *inst, c
   const Ctx *ctx = read.getCtx(loop);
   const Value *ptr = load->getPointerOperand();
 
-  LLVM_LLVM_DEBUG(errs() << "Is predictable: " << *load << " at " << loop->getHeader()->getName() << "?\n");
+  LLVM_DEBUG(errs() << "Is predictable: " << *load << " at " << loop->getHeader()->getName() << "?\n");
 
   Function *fcn = loop->getHeader()->getParent();
   Remat remat;
@@ -61,7 +61,7 @@ bool ProfileGuidedPredictionSpeculator::isPredictable(const Instruction *inst, c
   if( read.predictIntAtLoop(load,ctx,ints) )
     if( ints.size() == 1 )
     {
-      LLVM_LLVM_DEBUG(errs() << "  + yes, predictable int\n");
+      LLVM_DEBUG(errs() << "  + yes, predictable int\n");
       predictedLoads.insert( key );
       return true;
     }
@@ -70,7 +70,7 @@ bool ProfileGuidedPredictionSpeculator::isPredictable(const Instruction *inst, c
   if( read.predictPtrAtLoop(load,ctx,ptrs) )
     if( ptrs.size() == 1 )
     {
-      LLVM_LLVM_DEBUG(errs() << "  + yes, predictable ptr\n");
+      LLVM_DEBUG(errs() << "  + yes, predictable ptr\n");
       predictedLoads.insert( key );
       return true;
     }

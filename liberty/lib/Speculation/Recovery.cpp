@@ -208,7 +208,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
       // live-ins. Now some of the args are liveouts transformed to allocas
       // (around the call sites)
       if (image && isa<AllocaInst>(image)) {
-        LLVM_LLVM_DEBUG(errs() << "preimage of arg in getRecovery " << *image
+        LLVM_DEBUG(errs() << "preimage of arg in getRecovery " << *image
                      << " is not found. Arg refers to a live-out.\n");
         continue;
       }
@@ -245,7 +245,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
     old_fty->param_begin(), old_fty->param_end() );
 
   /*
-  LLVM_LLVM_DEBUG(errs() << "formals.size: " << formals.size() << "\n";
+  LLVM_DEBUG(errs() << "formals.size: " << formals.size() << "\n";
         for (auto f
              : formals) errs()
         << "formal: " << *f << "\n";);

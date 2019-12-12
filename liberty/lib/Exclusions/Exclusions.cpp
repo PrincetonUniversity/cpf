@@ -34,9 +34,9 @@ namespace liberty {
   }
 
   void Exclusions::dump() const {
-    LLVM_LLVM_DEBUG(errs() << "Exclusions size is " << exclusions.size() << ".\n");
+    LLVM_DEBUG(errs() << "Exclusions size is " << exclusions.size() << ".\n");
     for(FcnSet::iterator i=exclusions.begin(), e=exclusions.end(); i!=e; ++i) {
-      LLVM_LLVM_DEBUG(errs() << "\t" << (*i)->getName() << "\n");
+      LLVM_DEBUG(errs() << "\t" << (*i)->getName() << "\n");
     }
   }
 

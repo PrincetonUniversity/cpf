@@ -224,7 +224,7 @@ private:
       }
       else
       {
-        LLVM_LLVM_DEBUG( errs() << "Gep is: " << *gep << '\n' );
+        LLVM_DEBUG( errs() << "Gep is: " << *gep << '\n' );
         assert(false && "Malformed gep?");
       }
     }
@@ -261,7 +261,7 @@ private:
 
         if( !fcn )
         {
-          LLVM_LLVM_DEBUG(errs() << "Passed to indirect call: " << *use << '\n');
+          LLVM_DEBUG(errs() << "Passed to indirect call: " << *use << '\n');
           attrs.isCaptured = true;
           break;
         }
@@ -276,7 +276,7 @@ private:
             {
               // In the case of variadic functions, there may be
               // more callsite args than function args.
-              LLVM_LLVM_DEBUG(errs() << "Passed as variadic argument: " << *use << '\n');
+              LLVM_DEBUG(errs() << "Passed as variadic argument: " << *use << '\n');
               attrs.isCaptured = true;
               break;
             }
@@ -288,7 +288,7 @@ private:
 
         else
         {
-          LLVM_LLVM_DEBUG(errs() << "Passed to non-capturing declaration: " << *use << '\n');
+          LLVM_DEBUG(errs() << "Passed to non-capturing declaration: " << *use << '\n');
         }
       }
 
@@ -318,7 +318,7 @@ private:
 
       else
       {
-        LLVM_LLVM_DEBUG(errs() << "Unknown use: " << *use << '\n');
+        LLVM_DEBUG(errs() << "Unknown use: " << *use << '\n');
       }
     }
   }
@@ -329,7 +329,7 @@ private:
       return;
     alreadyAnalyzed.insert(f);
 
-    LLVM_LLVM_DEBUG(errs() << "Analyzing " << f->getName() << "\n");
+    LLVM_DEBUG(errs() << "Analyzing " << f->getName() << "\n");
 
     ValueSet visited;
     for(const_inst_iterator i=inst_begin(f), e=inst_end(f); i!=e; ++i)
@@ -344,7 +344,7 @@ private:
       }
     }
 
-    LLVM_LLVM_DEBUG(
+    LLVM_DEBUG(
       for(const_inst_iterator i=inst_begin(f), e=inst_end(f); i!=e; ++i)
       {
         const Instruction *inst = &*i;
@@ -523,7 +523,7 @@ public:
         accessPath2Attrs[ap].isCaptured = true;
     }
 
-    LLVM_LLVM_DEBUG(
+    LLVM_DEBUG(
     for(AccessPathSet::iterator i=accessPaths.begin(), e=accessPaths.end(); i!=e; ++i)
     {
       const AccessPath *ap = &*i;
@@ -590,7 +590,7 @@ public:
       // (in 470.lbm, this is 72% of eligible queries...)
       if( ap1 == ap2 )
       {
-        LLVM_LLVM_DEBUG(errs() << "UAP:\n"
+        LLVM_DEBUG(errs() << "UAP:\n"
                      << " Pointers " << *P1.ptr << '\n'
                      << "      and " << *P2.ptr << '\n'
                      << " share the same access path " << *ap1 << '\n'
@@ -616,20 +616,20 @@ public:
       assert( &defs1 != &defs2
       && "Two distinct access paths physically share a collection of defs.");
 
-      LLVM_LLVM_DEBUG(errs() << *ap1 << " has " << defs1.size() << '\n');
+      LLVM_DEBUG(errs() << *ap1 << " has " << defs1.size() << '\n');
       for(AccessPathAttrs::Defs::iterator i=defs1.begin(), e=defs1.end(); i!=e; ++i)
       {
         const Value *def1 = *i;
-        LLVM_LLVM_DEBUG(errs() << '\t' << *def1 << '\n');
+        LLVM_DEBUG(errs() << '\t' << *def1 << '\n');
 
         if( isa< ConstantPointerNull >(def1)
         ||  isa< ConstantInt >(def1) )
         {
-          LLVM_LLVM_DEBUG(errs() << "\t\tSkip.\n");
+          LLVM_DEBUG(errs() << "\t\tSkip.\n");
           continue;
         }
 
-        LLVM_LLVM_DEBUG(errs() << "\t\t" << *ap2 << " has " << defs2.size() << '\n');
+        LLVM_DEBUG(errs() << "\t\t" << *ap2 << " has " << defs2.size() << '\n');
 
         const Instruction *defI1 = dyn_cast<Instruction>(def1);
         if (defI1 && objI1) {
@@ -649,12 +649,12 @@ public:
         for(AccessPathAttrs::Defs::iterator j=defs2.begin(), z=defs2.end(); j!=z; ++j)
         {
           const Value *def2 = *j;
-          LLVM_LLVM_DEBUG(errs() << "\t\t\t" << *def2 << '\n');
+          LLVM_DEBUG(errs() << "\t\t\t" << *def2 << '\n');
 
           if( isa< ConstantPointerNull >(def2)
           ||  isa< ConstantInt >(def2) )
           {
-            LLVM_LLVM_DEBUG(errs() << "\t\tSkip.\n");
+            LLVM_DEBUG(errs() << "\t\tSkip.\n");
             continue;
           }
 
@@ -697,7 +697,7 @@ public:
 
           if( result == MayAlias )
           {
-            LLVM_LLVM_DEBUG(errs() << "\t\t\t\thit bottom\n");
+            LLVM_DEBUG(errs() << "\t\t\t\thit bottom\n");
             return MayAlias;
           }
 
@@ -714,7 +714,7 @@ public:
         }
       }
 
-      LLVM_LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
+      LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
       return result;
     }
 
@@ -728,14 +728,14 @@ public:
 
       // we have a finite set of defs for P1
       AccessPathAttrs::Defs &defs1 = accessPath2Attrs[ap1].defs;
-      LLVM_LLVM_DEBUG(errs() << *ap1 << " has " << defs1.size() <<  '\n');
+      LLVM_DEBUG(errs() << *ap1 << " has " << defs1.size() <<  '\n');
       for(AccessPathAttrs::Defs::iterator i=defs1.begin(), e=defs1.end(); i!=e; ++i)
       {
         const Value *def1 = *i;
-        LLVM_LLVM_DEBUG(errs() << '\t' << *def1 << '\n');
+        LLVM_DEBUG(errs() << '\t' << *def1 << '\n');
         const unsigned size1 = ~0U; // TODO
 
-        LLVM_LLVM_DEBUG(errs() << "\t\tvs " << *P2.ptr << '\n');
+        LLVM_DEBUG(errs() << "\t\tvs " << *P2.ptr << '\n');
 
         const Instruction *defI1 = dyn_cast<Instruction>(def1);
         if (defI1 && objI1) {
@@ -766,7 +766,7 @@ public:
 
         if( result == MayAlias )
         {
-          LLVM_LLVM_DEBUG(errs() << "\t\t\thit bottom\n");
+          LLVM_DEBUG(errs() << "\t\t\thit bottom\n");
           return MayAlias;
         }
 
@@ -782,7 +782,7 @@ public:
         }
       }
 
-      LLVM_LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
+      LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
       return result;
     }
 
@@ -796,14 +796,14 @@ public:
 
       // we have a finite set of defs for P2
       AccessPathAttrs::Defs &defs2 = accessPath2Attrs[ap2].defs;
-      LLVM_LLVM_DEBUG(errs() << *ap2 << " has " << defs2.size() << '\n');
+      LLVM_DEBUG(errs() << *ap2 << " has " << defs2.size() << '\n');
       for(AccessPathAttrs::Defs::iterator i=defs2.begin(), e=defs2.end(); i!=e; ++i)
       {
         const Value *def2 = *i;
-        LLVM_LLVM_DEBUG(errs() << '\t' << *def2 << '\n');
+        LLVM_DEBUG(errs() << '\t' << *def2 << '\n');
         const unsigned size2 = ~0U; // TODO
 
-        LLVM_LLVM_DEBUG(errs() << "\t\tvs " << *P1.ptr << '\n');
+        LLVM_DEBUG(errs() << "\t\tvs " << *P1.ptr << '\n');
 
         const Instruction *defI2 = dyn_cast<Instruction>(def2);
         if (defI2 && objI2) {
@@ -833,7 +833,7 @@ public:
 
         if( result == MayAlias )
         {
-          LLVM_LLVM_DEBUG(errs() << "\t\t\thit bottom\n");
+          LLVM_DEBUG(errs() << "\t\t\thit bottom\n");
           return MayAlias;
         }
 
@@ -849,7 +849,7 @@ public:
         }
       }
 
-      LLVM_LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
+      LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
       return result;
     }
 

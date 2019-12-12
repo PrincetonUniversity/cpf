@@ -55,11 +55,11 @@ public:
     bool isNoAlias1 = isNoAlias(O1);
     bool isNoAlias2 = isNoAlias(O2);
 
-    LLVM_LLVM_DEBUG(errs() << "NoCapture " << *O1 << " to " << *O2 << "\n");
+    LLVM_DEBUG(errs() << "NoCapture " << *O1 << " to " << *O2 << "\n");
 
 
     if(isNoAlias1 && isNoAlias2 && O1 != O2) {
-      LLVM_LLVM_DEBUG(errs() << "NoCapture reporting NoAlias 1\n");
+      LLVM_DEBUG(errs() << "NoCapture reporting NoAlias 1\n");
       return NoAlias;
     }
 
@@ -67,7 +67,7 @@ public:
       ValueSet uses;
       liberty::findAllTransUses(O1, uses);
       if(!uses.count(O2)) {
-        LLVM_LLVM_DEBUG(errs() << "NoCapture reporting NoAlias 2\n");
+        LLVM_DEBUG(errs() << "NoCapture reporting NoAlias 2\n");
         return NoAlias;
       }
     }
@@ -76,7 +76,7 @@ public:
       ValueSet uses;
       liberty::findAllTransUses(O2, uses);
       if(!uses.count(O1)) {
-        LLVM_LLVM_DEBUG(errs() << "NoCapture reporting NoAlias 3\n");
+        LLVM_DEBUG(errs() << "NoCapture reporting NoAlias 3\n");
         return NoAlias;
       }
     }

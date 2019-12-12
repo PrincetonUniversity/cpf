@@ -479,7 +479,7 @@ namespace liberty
       //if (!isPrivate(loop, ptr))
       //  continue;
 
-      LLVM_LLVM_DEBUG(errs() << "Instrumenting private load: " << *load << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting private load: " << *load << '\n');
 
       PointerType *pty = cast<PointerType>(ptr->getType());
       Type *eltty = pty->getElementType();
@@ -494,7 +494,7 @@ namespace liberty
       //if (!isPrivate(loop, ptr))
       //  continue;
 
-      LLVM_LLVM_DEBUG(errs() << "Instrumenting private store: " << *store << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting private store: " << *store << '\n');
 
       PointerType *pty = cast<PointerType>(ptr->getType());
       Type *eltty = pty->getElementType();
@@ -510,7 +510,7 @@ namespace liberty
       bool psrc = isPrivate(src), pdst = isPrivate(dst);
 
       if (psrc) {
-        LLVM_LLVM_DEBUG(errs() << "Instrumenting private source of mti: " << *mti <<
+        LLVM_DEBUG(errs() << "Instrumenting private source of mti: " << *mti <<
   '\n');
 
         insertPrivateRead(mti, InstInsertPt::Before(mti), src, sz);
@@ -518,7 +518,7 @@ namespace liberty
       }
 
       if (pdst) {
-        LLVM_LLVM_DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
+        LLVM_DEBUG(errs() << "Instrumenting private dest of mti: " << *mti << '\n');
 
         insertPrivateWrite(mti, InstInsertPt::Before(mti), dst, sz);
         modified = true;
@@ -529,7 +529,7 @@ namespace liberty
       //if (!isPrivate(loop, ptr))
       //  continue;
 
-      LLVM_LLVM_DEBUG(errs() << "Instrumenting private dest of memset: " << *msi << '\n');
+      LLVM_DEBUG(errs() << "Instrumenting private dest of memset: " << *msi << '\n');
 
       insertPrivateWrite(msi, InstInsertPt::Before(msi), ptr, sz);
       modified = true;
@@ -550,7 +550,7 @@ namespace liberty
     // if (!isRedux(loop, ptr))
     //  continue;
 
-    LLVM_LLVM_DEBUG(errs() << "Instrumenting redux store: " << *store << '\n');
+    LLVM_DEBUG(errs() << "Instrumenting redux store: " << *store << '\n');
 
     PointerType *pty = cast<PointerType>(ptr->getType());
     Type *eltty = pty->getElementType();

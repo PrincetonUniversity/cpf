@@ -205,7 +205,7 @@ using namespace llvm;
 
     typedef Module::const_iterator ModuleIt;
     for(ModuleIt fun = M.begin(); fun != M.end(); ++fun) {
-      LLVM_LLVM_DEBUG(errs() << "SemiLocalFunAA: " << fun->getName());
+      LLVM_DEBUG(errs() << "SemiLocalFunAA: " << fun->getName());
       const Function *funP = &*fun;
       if(isSemiLocal(funP, pureFun)) {
         GlobalSet &mods = globalMod[funP];
@@ -213,7 +213,7 @@ using namespace llvm;
         initGlobalMod(funP, mods, refs, funcs);
         funcs.clear();
 
-        LLVM_LLVM_DEBUG(
+        LLVM_DEBUG(
           errs() << " mods: ";
           for(GlobalSet::iterator i=mods.begin(), e=mods.end(); i!=e; ++i)
             errs() << (*i)->getName() << ", ";
@@ -225,7 +225,7 @@ using namespace llvm;
 
         );
       } else {
-        LLVM_LLVM_DEBUG(errs() << " is not semi-local\n");
+        LLVM_DEBUG(errs() << " is not semi-local\n");
       }
     }
 

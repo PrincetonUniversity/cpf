@@ -78,7 +78,7 @@ static int computeConstantOffset(const DataLayout &td, const GetElementPtrInst *
 
     accum += lv * td.getTypeAllocSize(gi.getIndexedType());
   }
-  LLVM_LLVM_DEBUG(errs() << "In ``" << *gep << "'': result-base == " << accum << " bytes\n");
+  LLVM_DEBUG(errs() << "In ``" << *gep << "'': result-base == " << accum << " bytes\n");
   return accum;
 }
 
@@ -136,19 +136,19 @@ bool PtrResidueAA::may_alias(
   const Read &read = manager.getSpecPrivResult();
   const Ctx *ctx = read.getCtx(L);
 
-  LLVM_LLVM_DEBUG(errs() << "ptr-residue-aa(" << *P1 << ", " << *P2 << ")\n");
+  LLVM_DEBUG(errs() << "ptr-residue-aa(" << *P1 << ", " << *P2 << ")\n");
 
   const uint16_t residual1 = read.getPointerResiduals(ptr1, ctx);
-  LLVM_LLVM_DEBUG(errs() << " residue(" << *ptr1 << ") = " << residual1 << '\n');
+  LLVM_DEBUG(errs() << " residue(" << *ptr1 << ") = " << residual1 << '\n');
   if( residual1 == 0 || residual1 == 0x0ffffu )
     return true;
 
   const uint16_t residual2 = read.getPointerResiduals(ptr2, ctx);
-  LLVM_LLVM_DEBUG(errs() << " residue(" << *ptr2 << ") = " << residual2 << '\n');
+  LLVM_DEBUG(errs() << " residue(" << *ptr2 << ") = " << residual2 << '\n');
   if( residual2 == 0 || residual2 == 0x0ffffu )
     return true;
 
-  LLVM_LLVM_DEBUG(
+  LLVM_DEBUG(
     errs() << " Pointer ``" << *ptr1 << "'' has residuals " << residual1 << ", correction " << correction1 << '\n';
     errs() << " Pointer ``" << *ptr2 << "'' has residuals " << residual2 << ", correction " << correction2 << '\n';
   );
@@ -159,7 +159,7 @@ bool PtrResidueAA::may_alias(
   ass1_out = PtrResidueSpeculationManager::Assumption(ptr1,ctx);
   ass2_out = PtrResidueSpeculationManager::Assumption(ptr2,ctx);
 
-  LLVM_LLVM_DEBUG(errs() << " --> NoAlias\n");
+  LLVM_DEBUG(errs() << " --> NoAlias\n");
   ++numNoAlias;
   return false;
 }

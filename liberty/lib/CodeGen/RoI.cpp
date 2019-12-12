@@ -178,7 +178,7 @@ bool RoI::cloneRootsIfNecessary(UpdateOnClone &changes, FoldManager &fmgr, F2F &
     // fcn should be cloned
 
     roots_in_roi.insert(fcn);
-    LLVM_LLVM_DEBUG(
+    LLVM_DEBUG(
         errs() << "Function " << fcn->getName() << ", which is a parent of a root block"
         << ", is included in RoI\n";
     );
@@ -235,7 +235,7 @@ bool RoI::cloneRootsIfNecessary(UpdateOnClone &changes, FoldManager &fmgr, F2F &
         if ( isReachableFromOutsideOfRoI( callfcn ) && !isCloneOrCloned( callfcn, cloned) )
         {
           // clone the caller
-          LLVM_LLVM_DEBUG(
+          LLVM_DEBUG(
             errs() << "  . Function " << callfcn->getName() << ", which is a caller of a rootfcn "
             << ", is included in RoI and reachable from outside\n";
           );
@@ -294,7 +294,7 @@ bool RoI::resolveOneSideEntrance(UpdateOnClone &changes, FoldManager &fmgr, F2F 
       BasicBlock *callbb = inst->getParent();
       Function *callfcn = callbb->getParent();
 
-      LLVM_LLVM_DEBUG(
+      LLVM_DEBUG(
         errs() << "Function " << fcn->getName() << " is referenced by " << *use
                << ", outside of RoI at " << callfcn->getName() << " :: " << callbb->getName() << '\n';
       );
@@ -317,16 +317,16 @@ bool RoI::resolveOneSideEntrance(UpdateOnClone &changes, FoldManager &fmgr, F2F 
         //mod->getFunctionList().push_back(clone);
         vmap[fcn] = clone;
 
-        LLVM_LLVM_DEBUG(errs() << "  o Cloned function to eliminate side entrance\n");
+        LLVM_DEBUG(errs() << "  o Cloned function to eliminate side entrance\n");
 
         cloned[fcn] = clone;
         ++numSideCloned;
       }
 
-      LLVM_LLVM_DEBUG(errs() << "  o Changing " << *use << '\n');
+      LLVM_DEBUG(errs() << "  o Changing " << *use << '\n');
       Function *clone = cloned[fcn];
       use->replaceUsesOfWith(fcn, clone);
-      LLVM_LLVM_DEBUG(errs() << "  o       to " << *use << '\n');
+      LLVM_DEBUG(errs() << "  o       to " << *use << '\n');
 
 
       // Update the analyses.
@@ -342,7 +342,7 @@ bool RoI::resolveOneSideEntrance(UpdateOnClone &changes, FoldManager &fmgr, F2F 
         if( ctx->fcn != fcn )
           continue;
 
-//        LLVM_LLVM_DEBUG(errs() << "  meh? " << *ctx << '\n');
+//        LLVM_DEBUG(errs() << "  meh? " << *ctx << '\n');
 
         const Ctx *parent = ctx->parent;
         if( !parent )
@@ -354,19 +354,19 @@ bool RoI::resolveOneSideEntrance(UpdateOnClone &changes, FoldManager &fmgr, F2F 
       }
 
       // rename these contexts
-      LLVM_LLVM_DEBUG(errs() << "  . - Updating intermediate analyses...\n");
+      LLVM_DEBUG(errs() << "  . - Updating intermediate analyses...\n");
       const ValueToValueMapTy &vmap = *vmaps[ fcn ];
       for(Ctxs::const_iterator k=affectedContexts.begin(), z=affectedContexts.end(); k!=z; ++k)
       {
         const Ctx *ctx = *k;
-        LLVM_LLVM_DEBUG(errs() << "  . . - ctx: " << *ctx << '\n');
+        LLVM_DEBUG(errs() << "  . . - ctx: " << *ctx << '\n');
 
         CtxToCtxMap cmap;
         AuToAuMap amap;
         fmgr.cloneContext(ctx, vmap, cmap, amap);
         changes.contextRenamedViaClone(ctx, vmap, cmap, amap);
       }
-      LLVM_LLVM_DEBUG(errs() << "  . - done.\n");
+      LLVM_DEBUG(errs() << "  . - done.\n");
 
       return true;
     }
@@ -407,9 +407,9 @@ void RoI::swapRootFcnUses(UpdateOnClone &changes, FoldManager &fmgr, F2F &cloned
       if ( use_inst && roots_in_roi.count( use_inst->getParent()->getParent() ) )
         continue;
 
-      LLVM_LLVM_DEBUG(errs() << "  o Changing " << *use << '\n');
+      LLVM_DEBUG(errs() << "  o Changing " << *use << '\n');
       use->replaceUsesOfWith(fcn, clone);
-      LLVM_LLVM_DEBUG(errs() << "  o       to " << *use << '\n');
+      LLVM_DEBUG(errs() << "  o       to " << *use << '\n');
     }
 
     for (unsigned j = 0 ; j < clone_uses.size() ; j++)
@@ -421,9 +421,9 @@ void RoI::swapRootFcnUses(UpdateOnClone &changes, FoldManager &fmgr, F2F &cloned
       if ( use_inst && roots_in_roi.count( org ) )
         continue;
 
-      LLVM_LLVM_DEBUG(errs() << "  o Changing " << *use << '\n');
+      LLVM_DEBUG(errs() << "  o Changing " << *use << '\n');
       use->replaceUsesOfWith(clone, fcn);
-      LLVM_LLVM_DEBUG(errs() << "  o       to " << *use << '\n');
+      LLVM_DEBUG(errs() << "  o       to " << *use << '\n');
     }
 
     // replace callee of call instructions within blocks that was within parallel region before but
@@ -521,11 +521,11 @@ void RoI::swapRootFcnUses(UpdateOnClone &changes, FoldManager &fmgr, F2F &cloned
     }
 
     // rename these contexts
-    LLVM_LLVM_DEBUG(errs() << "  . - Updating intermediate analyses...\n");
+    LLVM_DEBUG(errs() << "  . - Updating intermediate analyses...\n");
     for(Ctxs::const_iterator k=affectedContexts.begin(), z=affectedContexts.end(); k!=z; ++k)
     {
       const Ctx *ctx = *k;
-      LLVM_LLVM_DEBUG(errs() << "  . . - ctx: " << *ctx << '\n');
+      LLVM_DEBUG(errs() << "  . . - ctx: " << *ctx << '\n');
 
       const ValueToValueMapTy *vmap;
       if ( ctx->fcn == fcn )
@@ -540,7 +540,7 @@ void RoI::swapRootFcnUses(UpdateOnClone &changes, FoldManager &fmgr, F2F &cloned
       fmgr.cloneContext(ctx, *vmap, cmap, amap);
       changes.contextRenamedViaClone(ctx, *vmap, cmap, amap);
     }
-    LLVM_LLVM_DEBUG(errs() << "  . - done.\n");
+    LLVM_DEBUG(errs() << "  . - done.\n");
   }
 }
 

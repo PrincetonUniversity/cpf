@@ -307,7 +307,7 @@ bool Read::getFootprint(const BlockIterator &begin, const BlockIterator &end, co
       if( !getFootprint(inst,exec_ctx,reads,writes,reductions, already) )
       {
         // can't reason about op within callee
-        LLVM_LLVM_DEBUG(
+        LLVM_DEBUG(
           errs() << "getFootprint: failed on " << *inst << " AT " << *exec_ctx << '\n'
                  << "          in: Function " << bb->getParent()->getName() << " :: block " << bb->getName() << '\n'
         );
@@ -439,7 +439,7 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
 
   if( !callee )
   {
-    LLVM_LLVM_DEBUG( errs() << "getFootprint: cannot determine indirect call " << *op << '\n');
+    LLVM_DEBUG( errs() << "getFootprint: cannot determine indirect call " << *op << '\n');
     return false;
   }
 
@@ -539,7 +539,7 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
   }
 
   // Worst case, we know nothing about this external function.
-  LLVM_LLVM_DEBUG(errs() << "getFootprint: cannot analyze external function " << *op << '\n');
+  LLVM_DEBUG(errs() << "getFootprint: cannot analyze external function " << *op << '\n');
   return false;
 }
 
@@ -839,13 +839,13 @@ bool Read::missingAUs(const Value *uo, const Ctx *ctx, Ptrs &aus) const
     return true;
 
   // All other cases.
-  LLVM_LLVM_DEBUG(errs() << "Read::getUnderlyingAUs: Unexpected failure on " << *uo);
+  LLVM_DEBUG(errs() << "Read::getUnderlyingAUs: Unexpected failure on " << *uo);
   if( const Instruction *iuo = dyn_cast<Instruction>(uo) )
   {
-    LLVM_LLVM_DEBUG(errs() << " in fcn " << iuo->getParent()->getParent()->getName()
+    LLVM_DEBUG(errs() << " in fcn " << iuo->getParent()->getParent()->getName()
            << ", bb " << iuo->getParent()->getName());
   }
-  LLVM_LLVM_DEBUG(errs() << "\n  In context " << *ctx << '\n');
+  LLVM_DEBUG(errs() << "\n  In context " << *ctx << '\n');
 
   if( AssertOnUnexpectedGetUOFailure )
     assert( false );
@@ -919,7 +919,7 @@ bool Read::getUnderlyingAUs(const Value *ptr, const Ctx *ctx, Ptrs &aus) const
       // context.
       if( j->first->matches( queryCtx )  )
       {
-//        LLVM_LLVM_DEBUG(
+//        LLVM_DEBUG(
 //          for(Ptrs::const_iterator x=j->second.begin(), q=j->second.end(); x!=q; ++x)
 //          {
 //            const Ptr &ptr = *x;
