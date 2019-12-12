@@ -128,7 +128,7 @@ static EdgeWeight maxFlowEdmondsKarp(
     total += additional;
   }
 
-  LLVM_LLVM_DEBUG(errs() << "\t\t- Edmonds-Karp: found a max-flow of " << total << ".\n");
+  LLVM_DEBUG(errs() << "\t\t- Edmonds-Karp: found a max-flow of " << total << ".\n");
   return total;
 }
 
@@ -138,12 +138,12 @@ void computeMinCut(
   VertexSet &minCut)
 {
 
-  LLVM_LLVM_DEBUG(errs() << "\t- Starting max-flow...\n");
+  LLVM_DEBUG(errs() << "\t- Starting max-flow...\n");
   EdgeWeights flow;
   EdgeWeight maxFlow = maxFlowEdmondsKarp(adj,cap,flow);
-  LLVM_LLVM_DEBUG(errs() << "\t- Max-flow is done; max_flow=" << maxFlow << ".\n");
+  LLVM_DEBUG(errs() << "\t- Max-flow is done; max_flow=" << maxFlow << ".\n");
 
-  LLVM_LLVM_DEBUG(errs() << "\t- Computing min-cut as those nodes reachable from root in residual graph.\n");
+  LLVM_DEBUG(errs() << "\t- Computing min-cut as those nodes reachable from root in residual graph.\n");
 
   std::set<Vertex> reachable;
   reachable.insert(Source);
@@ -214,7 +214,7 @@ void computeMinCut(
     }
   }
 
-  LLVM_LLVM_DEBUG(errs() << "\t- Done computing min-cut.\n");
+  LLVM_DEBUG(errs() << "\t- Done computing min-cut.\n");
 }
 
 }

@@ -165,7 +165,7 @@ namespace { static RegisterPass<LdStCallCounter> RP1(
           }
         }
       }
-    LLVM_LLVM_DEBUG(errs() << "Loads/Store/Intrinsics/Calls:" << num_loads << " " << num_stores
+    LLVM_DEBUG(errs() << "Loads/Store/Intrinsics/Calls:" << num_loads << " " << num_stores
         << " " << num_intrinsics << " " << num_calls << '\n');
     flag = true;
 
@@ -235,10 +235,10 @@ bool LAMPBuildLoopMap::runOnLoop(Loop* L, LPPassManager &LPM)
     IdInitFlag = true;
   }
   BasicBlock* BB = L->getHeader();
-  LLVM_LLVM_DEBUG(errs() << "Generating loop info\n");
+  LLVM_DEBUG(errs() << "Generating loop info\n");
   IdToLoopMap_global[++loop_id] = BB;
   LoopToIdMap_global[BB] = loop_id;
-  LLVM_LLVM_DEBUG(errs() << loop_id << " " << L << " " << BB << '\n');
+  LLVM_DEBUG(errs() << loop_id << " " << L << " " << BB << '\n');
 
   return true;
 }
@@ -275,7 +275,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
           { // count loads, stores, calls
 
             IdToInstMap[++lamp_id]= &*IB;
-            LLVM_LLVM_DEBUG(errs() << "Adding instruction -" << *IB << "- with ID:" << lamp_id << "\n");
+            LLVM_DEBUG(errs() << "Adding instruction -" << *IB << "- with ID:" << lamp_id << "\n");
             InstToIdMap[&*IB]=lamp_id;
           }
           else if( isa<MemIntrinsic>(IB) )
@@ -296,7 +296,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
   }
   /*
      for (unsigned int i = 0; i< lamp_id+1 ; i++){
-     LLVM_LLVM_DEBUG(errs() << i << * (IdToInstMap[i]) );
+     LLVM_DEBUG(errs() << i << * (IdToInstMap[i]) );
      }*/
   /*
      for (Module::iterator FB = M.begin(), FE = M.end(); FB != FE; FB++){
@@ -305,7 +305,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
      for (LoopInfo::iterator LB = LInfo.begin(), LE = LInfo.end(); LB != LE; LB++){
      IdToLoopMap[++lamp_id] = *LB;
      Loop *L = *LB;
-     LLVM_LLVM_DEBUG(errs() << lamp_id << *(L->getLoopPreheader()));
+     LLVM_DEBUG(errs() << lamp_id << *(L->getLoopPreheader()));
      }
      }
      }*/   // ID, Loop mismatch ... missing some Loops
@@ -315,10 +315,10 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 
      int i =0;
      for (iter2=IdToLoopMap_global.begin(); iter2!=IdToLoopMap_global.end();iter2++){
-     LLVM_LLVM_DEBUG(errs() << (*iter2).first << " "  << (*iter2).second  << '\n');
+     LLVM_DEBUG(errs() << (*iter2).first << " "  << (*iter2).second  << '\n');
      i++;
      }
-     LLVM_LLVM_DEBUG(errs() << i << '\n');
+     LLVM_DEBUG(errs() << i << '\n');
    */
   std::ifstream ifs;
   struct stat sInfo;
@@ -331,7 +331,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
   }
 
   ifs.open(ProfileFileName.c_str());
-  LLVM_LLVM_DEBUG(errs() << "Opened " << ProfileFileName << "\n");
+  LLVM_DEBUG(errs() << "Opened " << ProfileFileName << "\n");
 
   std::string s;
 
@@ -400,7 +400,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 
     ++num_cnt;
     num = str_to_int(s);
-    // LLVM_LLVM_DEBUG(errs() << "Read: " << num);
+    // LLVM_DEBUG(errs() << "Read: " << num);
 
     switch (num_cnt % 6) { //6  numbers in each line (result.lamp.profile)
       case 1:
@@ -458,12 +458,12 @@ bool LAMPLoadProfile::runOnModule(Module& M)
               if(DSI)
               {
                 ln1 = DSI.getLine();
-                // LLVM_LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " inst " << myV->getName().str() << "\n\n");
+                // LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " inst " << myV->getName().str() << "\n\n");
               }
               else
               {
                 ln1 = 0;
-                LLVM_LLVM_DEBUG(errs() << "No DSI\n");
+                LLVM_DEBUG(errs() << "No DSI\n");
               }
 
               while (myV->getName().str() == "")
@@ -491,7 +491,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
                     {  // should recurse in multiple directions here
                       // myV = myI->getOperand(0);  // try it anyway ???
                       //myI = dyn_cast<Instruction>(myI->getOperand(0));
-                      LLVM_LLVM_DEBUG(errs() << "attempting zrecurse" << i << "\t" << i1_id << "\n");
+                      LLVM_DEBUG(errs() << "attempting zrecurse" << i << "\t" << i1_id << "\n");
                       needCheck++;
                       globLoop = loop_id;
                       ISet avoidInfiniteRecursion;
@@ -544,12 +544,12 @@ bool LAMPLoadProfile::runOnModule(Module& M)
               if(DSI)
               {
                 ln2 = DSI.getLine();
-                //  LLVM_LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " inst " << myV->getName().str() << "\n\n");
+                //  LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " inst " << myV->getName().str() << "\n\n");
               }
               else
               {
                 ln2 = 0;
-                LLVM_LLVM_DEBUG(errs() << "No DSI\n");
+                LLVM_DEBUG(errs() << "No DSI\n");
               }
 
               while (myV->getName().str() == "")
@@ -577,7 +577,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
                     {  // should recurse in multiple directions here
                       //myV = myI->getOperand(0);  // try it anyway ???
                       //myI = dyn_cast<Instruction>(myI->getOperand(0));
-                      LLVM_LLVM_DEBUG(errs() << "attempting recurse" << i++ << "\t" << i2_id << "\n");
+                      LLVM_DEBUG(errs() << "attempting recurse" << i++ << "\t" << i2_id << "\n");
                       globLoop = loop_id;
                       ISet avoidInfiniteRecursion;
                       recurseOperands(myI, temp2->getParent()->getParent()->getName().str(),
@@ -640,29 +640,29 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 
             /*
                if(*dep_inst_pair_ptr == *dep_inst_pair_ptr2) {
-               LLVM_LLVM_DEBUG(errs() << "~I think the pair pointers are equal\n");
+               LLVM_DEBUG(errs() << "~I think the pair pointers are equal\n");
                } else {
-               LLVM_LLVM_DEBUG(errs() << "~The pointers are not equal\n");
-               LLVM_LLVM_DEBUG(errs() << "Ptr 1: " << dep_inst_pair_ptr->first  << " " << dep_inst_pair_ptr->second << "\n");
-               LLVM_LLVM_DEBUG(errs() << "Ptr 2: " << dep_inst_pair_ptr2->first << " " << dep_inst_pair_ptr2->second << "\n");
+               LLVM_DEBUG(errs() << "~The pointers are not equal\n");
+               LLVM_DEBUG(errs() << "Ptr 1: " << dep_inst_pair_ptr->first  << " " << dep_inst_pair_ptr->second << "\n");
+               LLVM_DEBUG(errs() << "Ptr 2: " << dep_inst_pair_ptr2->first << " " << dep_inst_pair_ptr2->second << "\n");
                }
 
                InstPairSet::iterator siter;
                siter = LoopToDepSetMap[BB].find(*dep_inst_pair_ptr);
                if(siter == LoopToDepSetMap[BB].end() ) {
-               LLVM_LLVM_DEBUG(errs() << "~~~did NOT find instruction pair we just inserted\n");
+               LLVM_DEBUG(errs() << "~~~did NOT find instruction pair we just inserted\n");
 
                } else {
-               LLVM_LLVM_DEBUG(errs() << "~~~FOUND instruction pair we just inserted\n");
+               LLVM_DEBUG(errs() << "~~~FOUND instruction pair we just inserted\n");
 
 
                }
                siter = LoopToDepSetMap[BB].find(*dep_inst_pair_ptr2);
                if(siter == LoopToDepSetMap[BB].end() ) {
-               LLVM_LLVM_DEBUG(errs() << "~~~did NOT find duplicate pair\n");
+               LLVM_DEBUG(errs() << "~~~did NOT find duplicate pair\n");
 
                } else {
-               LLVM_LLVM_DEBUG(errs() << "~~~FOUND duplicate pair\n");
+               LLVM_DEBUG(errs() << "~~~FOUND duplicate pair\n");
 
 
                }
@@ -719,12 +719,12 @@ bool LAMPLoadProfile::runOnModule(Module& M)
                   //                           std::string file;
                   ln1 = DSI.getLine();
                   //                           GetConstantStringInfo(DSI->getFileName(), file);
-                  //                           LLVM_LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " file " << file << "\n\n");
+                  //                           LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " file " << file << "\n\n");
                 }
                 else
                 {
                   ln1 = 0;
-                  LLVM_LLVM_DEBUG(errs() << "No DSI\n");
+                  LLVM_DEBUG(errs() << "No DSI\n");
                 }
 
                 while (myV->getName().str() == "")
@@ -753,15 +753,15 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 
 
 
-                        LLVM_LLVM_DEBUG(errs() << "DDOK" << i << "\t" << i1_id << "\n");
+                        LLVM_DEBUG(errs() << "DDOK" << i << "\t" << i1_id << "\n");
                       }
                       else
                       {  // should recurse in multiple directions here
                         //myV = myI->getOperand(0);  // try it anyway ???
                         //myI = dyn_cast<Instruction>(myI->getOperand(0));
-                        //LLVM_LLVM_DEBUG(errs() << "DDfail" << i << "\t" << i1_id << "\n");
+                        //LLVM_DEBUG(errs() << "DDfail" << i << "\t" << i1_id << "\n");
 
-                        LLVM_LLVM_DEBUG(errs() << "DDattempting recurse" << j++ << "\t" << i1_id << "\n");
+                        LLVM_DEBUG(errs() << "DDattempting recurse" << j++ << "\t" << i1_id << "\n");
                         globLoop = loop_id;
                         ISet avoidInfiniteRecursion;
                         recurseOperands(myI, temp1->getParent()->getParent()->getName().str(),
@@ -809,12 +809,12 @@ bool LAMPLoadProfile::runOnModule(Module& M)
                 if(DSI)
                 {
                   ln2 = DSI.getLine();
-                  // LLVM_LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " inst " << myV->getName().str() << "\n\n");
+                  // LLVM_DEBUG(errs() << "\n!!!! Line # is " << ln1 << " inst " << myV->getName().str() << "\n\n");
                 }
                 else
                 {
                   ln2 = 0;
-                  LLVM_LLVM_DEBUG(errs() << "No DSI\n");
+                  LLVM_DEBUG(errs() << "No DSI\n");
                 }
 
                 int i = 0;
@@ -838,15 +838,15 @@ bool LAMPLoadProfile::runOnModule(Module& M)
                       {
                         myV = myI->getOperand(0);  // try it anyway ???
                         myI = dyn_cast<Instruction>(myI->getOperand(0));
-                        LLVM_LLVM_DEBUG(errs() << "DDOK" << i << "\t" << i2_id << "\n");
+                        LLVM_DEBUG(errs() << "DDOK" << i << "\t" << i2_id << "\n");
                       }
                       else
                       {  // should recurse in multiple directions here
                         //myV = myI->getOperand(0);  // try it anyway ???
                         //myI = dyn_cast<Instruction>(myI->getOperand(0));
-                        //LLVM_LLVM_DEBUG(errs() << "DDfail" << i << "\t" << i2_id << "\n");
+                        //LLVM_DEBUG(errs() << "DDfail" << i << "\t" << i2_id << "\n");
 
-                        LLVM_LLVM_DEBUG(errs() << "attempting recurse" << j++ << "\t" << i2_id << "\n");
+                        LLVM_DEBUG(errs() << "attempting recurse" << j++ << "\t" << i2_id << "\n");
                         globLoop = loop_id;
                         ISet avoidInfiniteRecursion;
                         recurseOperands(myI, temp2->getParent()->getParent()->getName().str(),
@@ -959,7 +959,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
   InstPairSet :: iterator  Siter;
 
   //for (int i = lamp_id+1; i< ;i ++ )
-  LLVM_LLVM_DEBUG(errs() << "Num of cross-dep Loops: "<< LoopToDepSetMap.size() << '\n');
+  LLVM_DEBUG(errs() << "Num of cross-dep Loops: "<< LoopToDepSetMap.size() << '\n');
   /*
   // What is the point of all this?
   // Figuring out the max deps in the program and printing the two instruction #s?
@@ -974,8 +974,8 @@ bool LAMPLoadProfile::runOnModule(Module& M)
   }
   }
   LoopToMaxDepTimesMap[Liter->first] = max_times;
-  LLVM_LLVM_DEBUG(errs() << "LoopToIDMap_global[Liter->frist]   max_times   (Id1, Id2)\n");
-  LLVM_LLVM_DEBUG(errs() << LoopToIdMap_global[Liter->first] << " " << max_times
+  LLVM_DEBUG(errs() << "LoopToIDMap_global[Liter->frist]   max_times   (Id1, Id2)\n");
+  LLVM_DEBUG(errs() << LoopToIdMap_global[Liter->first] << " " << max_times
                << " ("  << Id1 << "," << Id2 << ")"<< '\n');
 
   }
@@ -1003,7 +1003,7 @@ void recurseOperands(Instruction * myI, std::string fnName, std::string bbName, 
 {
   if (!myI)
   {
-    LLVM_LLVM_DEBUG(errs() << "T@NI\n");
+    LLVM_DEBUG(errs() << "T@NI\n");
     return; // terminated at null instruction
   }
   if( avoidInfiniteRecursion.count(myI) )
@@ -1038,7 +1038,7 @@ void recurseOperands(Instruction * myI, std::string fnName, std::string bbName, 
   }
   else //if ((dyn_cast<User>(myI))->getNumOperands() == 2)
   {
-    LLVM_LLVM_DEBUG(errs() << "Crazy Recursion attempt " << (dyn_cast<User>(myI))->getNumOperands() << "\n\n");
+    LLVM_DEBUG(errs() << "Crazy Recursion attempt " << (dyn_cast<User>(myI))->getNumOperands() << "\n\n");
     for (unsigned int i = 0; i < (dyn_cast<User>(myI))->getNumOperands(); i++)
     {
       myV = myI->getOperand(i);
@@ -1051,7 +1051,7 @@ void recurseOperands(Instruction * myI, std::string fnName, std::string bbName, 
   }
   //   else
   //  {
-  //     LLVM_LLVM_DEBUG(errs() << "Recursion abortion\n\n");
+  //     LLVM_DEBUG(errs() << "Recursion abortion\n\n");
   // }
 }
 
@@ -1182,7 +1182,7 @@ void dumpListToFile(int lc)
 
 
           // auxfile << walk1->line << " # " << walk2->line << " # $$\n";
-          LLVM_LLVM_DEBUG(errs() << "FOUND: " << walk1->name << " -- " << walk2->name << "\n");
+          LLVM_DEBUG(errs() << "FOUND: " << walk1->name << " -- " << walk2->name << "\n");
         }
 
         walk2 = walk2->next;

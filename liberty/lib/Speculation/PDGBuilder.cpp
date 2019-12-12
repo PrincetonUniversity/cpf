@@ -53,7 +53,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>();
   pdg->populateNodesOf(loop);
 
-  LLVM_LLVM_DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   aa->dump();
@@ -61,25 +61,25 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 
   addSpecModulesToLoopAA();
   specModulesLoopSetup(loop);
-  LLVM_LLVM_DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
   removeSpecModulesFromLoopAA();
-  //LLVM_LLVM_DEBUG(errs() << "revert stack to CAF ...\n");
+  //LLVM_DEBUG(errs() << "revert stack to CAF ...\n");
   //aa->dump();
 
-  LLVM_LLVM_DEBUG(errs() << "constructEdgesFromControl ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromControl ...\n");
 
   //auto *F = loop->getHeader()->getParent();
   //auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(*F).getPostDomTree();
   constructEdgesFromControl(*pdg, loop);
 
-  LLVM_LLVM_DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
 
   // constructEdgesFromUseDefs adds external nodes for live-ins and live-outs
   constructEdgesFromUseDefs(*pdg, loop);
 
-  LLVM_LLVM_DEBUG(errs() << "PDG construction completed\n");
+  LLVM_DEBUG(errs() << "PDG construction completed\n");
 
   return pdg;
 }
@@ -420,7 +420,7 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
       queryIntraIterationMemoryDep(i, j, loop, aa, pdg);
     }
   }
-  LLVM_LLVM_DEBUG(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
+  LLVM_DEBUG(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
                << "\n");
 }
 

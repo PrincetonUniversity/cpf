@@ -70,7 +70,7 @@ public:
   // and 'P2' must NOT refer to a non-capture global.
   bool cannotAlias(const Value *P1, const Value *P2) const
   {
-    LLVM_LLVM_DEBUG(errs() << "NoCaptureGlobalAA::cannotAlias(\n"
+    LLVM_DEBUG(errs() << "NoCaptureGlobalAA::cannotAlias(\n"
                  << "  P1=" << *P1 << ",\n"
                  << "  P2=" << *P2 << ") ?\n");
     // Does 'P1' refer to a non-capture global variable?
@@ -82,13 +82,13 @@ public:
       const GlobalValue *gv = dyn_cast< GlobalValue >(object);
       if( ! gv )
       {
-        LLVM_LLVM_DEBUG(errs() << "=> NO: P1 may refer to " << *object << ", which is not a global variable.\n");
+        LLVM_DEBUG(errs() << "=> NO: P1 may refer to " << *object << ", which is not a global variable.\n");
         return false;
       }
 
       if( mayBeCaptured(gv) )
       {
-        LLVM_LLVM_DEBUG(errs() << "=> NO: P1 might refer to the may-capture global variable " << *gv << '\n');
+        LLVM_DEBUG(errs() << "=> NO: P1 might refer to the may-capture global variable " << *gv << '\n');
         return false;
       }
     }
@@ -107,7 +107,7 @@ public:
       {
         // Good: 'object' is a null.  P1 points to a global
         // variable, which cannot be null.
-        LLVM_LLVM_DEBUG(errs() << "   (Ok: P2 may be null)\n");
+        LLVM_DEBUG(errs() << "   (Ok: P2 may be null)\n");
         continue;
       }
 
@@ -117,7 +117,7 @@ public:
         // The address of no-capture globals is never saved to
         // memory, so the loaded pointer must be disjoint from
         // all non-capture globals.
-        LLVM_LLVM_DEBUG(errs() << "   (Ok: P2 may refer to a load)\n");
+        LLVM_DEBUG(errs() << "   (Ok: P2 may refer to a load)\n");
         continue;
       }
 
@@ -132,7 +132,7 @@ public:
           // to flow into a non-capture argument of a callsite;
           // So, this argument may alias with a global variable
           // in 'uo1'.
-          LLVM_LLVM_DEBUG(errs() << "=> NO: P2 may refer to no-capture argument " << *arg << '\n');
+          LLVM_DEBUG(errs() << "=> NO: P2 may refer to no-capture argument " << *arg << '\n');
           return false;
         }
 
@@ -142,7 +142,7 @@ public:
           // If a pointer flows to this argument, then that
           // pointer is NOT a non-capture pointer.
           // Thus, 'arg' and 'P1' must be disjoint.
-          LLVM_LLVM_DEBUG(errs() << "   (Ok: P2 may refer to a may-capture argument " << *arg << ")\n");
+          LLVM_DEBUG(errs() << "   (Ok: P2 may refer to a may-capture argument " << *arg << ")\n");
           continue;
         }
       }
@@ -152,7 +152,7 @@ public:
         if( isa<GlobalAlias>(gv) )
         {
           // 'P1' may also refer to 'gv'
-          LLVM_LLVM_DEBUG(errs() << "=> NO: Both P1,P2 may refer to " << *gv << '\n');
+          LLVM_DEBUG(errs() << "=> NO: Both P1,P2 may refer to " << *gv << '\n');
           return false;
         }
 
@@ -162,14 +162,14 @@ public:
           if( uo1.count(gv) )
           {
             // 'P1' may also refer to 'gv'
-            LLVM_LLVM_DEBUG(errs() << "=> NO: Both P1,P2 may refer to " << *gv << '\n');
+            LLVM_DEBUG(errs() << "=> NO: Both P1,P2 may refer to " << *gv << '\n');
             return false;
           }
 
           else
           {
             // 'P1' cannot refer to 'gv'
-            LLVM_LLVM_DEBUG(errs() << "   (Ok: P2 and not P1 may refer to no-capture global " << *gv << ")\n");
+            LLVM_DEBUG(errs() << "   (Ok: P2 and not P1 may refer to no-capture global " << *gv << ")\n");
             continue;
           }
         }
@@ -177,7 +177,7 @@ public:
         {
           // This is NOT a no capture global,
           // thus, it is disjoint from all no-capture globals in 'uo1'.
-          LLVM_LLVM_DEBUG(errs() << "   (Ok: P2 may refer to may-capture global " << *gv << ")\n");
+          LLVM_DEBUG(errs() << "   (Ok: P2 may refer to may-capture global " << *gv << ")\n");
           continue;
         }
       }
@@ -186,14 +186,14 @@ public:
       {
         // Everything else: we cannot say for sure that this
         // object
-        LLVM_LLVM_DEBUG(errs() << "=> NO: P2 may refer to " << *object << '\n');
+        LLVM_DEBUG(errs() << "=> NO: P2 may refer to " << *object << '\n');
         return false;
       }
     }
 
     // 'P1' definitely refers to a non-captured global, AND
     // 'P2' definitely does NOT refer to a non-captured global.
-    LLVM_LLVM_DEBUG(errs() << "=> YES: disjoint.\n");
+    LLVM_DEBUG(errs() << "=> YES: disjoint.\n");
     return true;
   }
 

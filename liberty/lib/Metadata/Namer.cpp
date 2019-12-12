@@ -58,7 +58,7 @@ namespace liberty {
 	bool Namer::runOnModule(Module &M) {
 		reset();
 		pM = &M;
-		LLVM_LLVM_DEBUG(errs() << "\n\n\nEntering Metadata-Namer.\n");
+		LLVM_DEBUG(errs() << "\n\n\nEntering Metadata-Namer.\n");
 
 		typedef Module::FunctionListType FunList;
 		typedef FunList::iterator FunListIt;
@@ -78,7 +78,7 @@ namespace liberty {
   const int PACKING_FACTOR = 16;
 
 	bool Namer::runOnFunction(Function &F) {
-		LLVM_LLVM_DEBUG(errs() << "function:" << F.getName() << "\n");
+		LLVM_DEBUG(errs() << "function:" << F.getName() << "\n");
 		LLVMContext &context = F.getContext();
 
     bool modified = false;
@@ -124,7 +124,7 @@ namespace liberty {
 			}
 			blkId++;
 		}
-		LLVM_LLVM_DEBUG(errs() << "function:" << F.getName() << " func: " << funcId << " blkId: " << blkId << " instrId: " << instrId << "\n");
+		LLVM_DEBUG(errs() << "function:" << F.getName() << " func: " << funcId << " blkId: " << blkId << " instrId: " << instrId << "\n");
 
 		return modified;
 	}

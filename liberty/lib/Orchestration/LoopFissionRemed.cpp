@@ -114,7 +114,7 @@ LoopFissionRemediator::removeCtrldep(const Instruction *A, const Instruction *B,
 
   if (remedResp.depRes == DepResult::NoDep) {
     ++numLoopFissionNoCtrlDep;
-    LLVM_LLVM_DEBUG(errs() << "LoopFissionRemed removed ctrl dep between inst " << *A
+    LLVM_DEBUG(errs() << "LoopFissionRemed removed ctrl dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
   return remedResp;
@@ -128,7 +128,7 @@ LoopFissionRemediator::removeRegDep(const Instruction *A, const Instruction *B,
 
   if (remedResp.depRes == DepResult::NoDep) {
     ++numLoopFissionNoRegDep;
-    LLVM_LLVM_DEBUG(errs() << "LoopFissionRemed removed reg dep between inst " << *A
+    LLVM_DEBUG(errs() << "LoopFissionRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
   return remedResp;

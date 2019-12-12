@@ -69,8 +69,8 @@ Remedies LoadedValuePredRemediator::satisfy(const PDG &pdg, Loop *loop,
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
 
   // print number
-  LLVM_LLVM_DEBUG(errs() << "Number of RAW collab deps handled by LoadedValuePredRemed: " << RAWcollabDepsHandled << '\n');
-  LLVM_LLVM_DEBUG(errs() << "Number of WAW collab deps handled by LoadedValuePredRemed: " << WAWcollabDepsHandled << '\n');
+  LLVM_DEBUG(errs() << "Number of RAW collab deps handled by LoadedValuePredRemed: " << RAWcollabDepsHandled << '\n');
+  LLVM_DEBUG(errs() << "Number of WAW collab deps handled by LoadedValuePredRemed: " << WAWcollabDepsHandled << '\n');
 
   return remedies;
 }
@@ -154,7 +154,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
 
     predictableI = true;
 
-    LLVM_LLVM_DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
+    LLVM_DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -185,7 +185,7 @@ Remediator::RemedResp LoadedValuePredRemediator::memdep(const Instruction *A,
     if ( loopCarried && dataDepTy == DataDepType::RAW && !predictableI)
       RAWcollabDepsHandled++;
 
-    LLVM_LLVM_DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
+    LLVM_DEBUG(errs() << "LoadedValuePredRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 

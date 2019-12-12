@@ -209,7 +209,7 @@ private:
     // Print the restricted functions
     for(ModuleIt fun = M.begin(); fun != M.end(); ++fun) {
       if(!tainted.count(&*fun)) {
-        LLVM_LLVM_DEBUG(errs() << fun->getName() << " is restricted\n");
+        LLVM_DEBUG(errs() << fun->getName() << " is restricted\n");
       }
     }
 

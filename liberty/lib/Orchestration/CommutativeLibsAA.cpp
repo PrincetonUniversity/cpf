@@ -80,7 +80,7 @@ LoopAA::ModRefResult CommutativeLibsAA::modref(const Instruction *A,
       CommFunNamesSet.count(CalledFunA->getName().str())) {
     ++numMemDepRemoved;
     ++numFunCallsMemDepRemoved;
-    //LLVM_LLVM_DEBUG(errs() << "Removed dep with commutative library identification. Dep "
+    //LLVM_DEBUG(errs() << "Removed dep with commutative library identification. Dep "
    //                 "between function calls. Called function that was "
    ///                 "considered commutative was "
    //              << CalledFunA->getName() << '\n');
@@ -99,7 +99,7 @@ LoopAA::ModRefResult CommutativeLibsAA::modref(const Instruction *A,
          CommFunNamesSet.count(FunB->getName().str()))) {
       ++numMemDepRemoved;
       /*
-      LLVM_LLVM_DEBUG(
+      LLVM_DEBUG(
           errs() << "Removed dep with commutative library identification. Dep "
                     "between different iterations. Function that was "
                     "considered commutative was "
@@ -113,7 +113,7 @@ LoopAA::ModRefResult CommutativeLibsAA::modref(const Instruction *A,
                (FunA == FunB && CommFunNamesSet.count(FunA->getName().str()))) {
       ++numMemDepRemoved;
       /*
-      LLVM_LLVM_DEBUG(
+      LLVM_DEBUG(
           errs() << "Removed dep with commutative library identification. Dep "
                     "between different iterations. Function that was "
                     "considered commutative was "

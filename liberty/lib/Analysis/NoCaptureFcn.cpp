@@ -30,7 +30,7 @@ bool NoCaptureFcn::runOnModule(Module &mod)
       setCaptured(fcn);
   }
 
-  LLVM_LLVM_DEBUG(
+  LLVM_DEBUG(
     errs() << "Captured functions:\n";
     unsigned total = 0;
     for(MinArity2FcnList::iterator i=captured.begin(), e=captured.end(); i!=e; ++i)

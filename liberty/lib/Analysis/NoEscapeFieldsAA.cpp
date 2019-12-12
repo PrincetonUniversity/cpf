@@ -381,7 +381,7 @@ namespace liberty
         escapingFields[ structBase ].set(f);
         eraseDefinitions(structBase,fieldno);
 
-        LLVM_LLVM_DEBUG(
+        LLVM_DEBUG(
           errs() << "\t- Field #" << f << " captured ";
           errs() << *structBase;
         );
@@ -394,7 +394,7 @@ namespace liberty
         escapingFields[ structBase ].set();
         eraseDefinitions(structBase);
 
-        LLVM_LLVM_DEBUG(
+        LLVM_DEBUG(
           errs() << "\t- All fields escape ";
           errs() << *structBase;
         );
@@ -411,7 +411,7 @@ namespace liberty
 
   bool NonCapturedFieldsAnalysis::runOnModule(Module &mod)
   {
-    LLVM_LLVM_DEBUG(errs() << "Begin NonCapturedFieldsAnalysis::runOnModule()\n");
+    LLVM_DEBUG(errs() << "Begin NonCapturedFieldsAnalysis::runOnModule()\n");
     currentModule = &mod;
 
     typedef Module::iterator FI;
@@ -430,7 +430,7 @@ namespace liberty
     numTypesWithDefs += fieldDefinitions.size();
 
     currentModule = 0;
-    LLVM_LLVM_DEBUG(errs() << "End NonCapturedFieldsAnalysis::runOnModule()\n");
+    LLVM_DEBUG(errs() << "End NonCapturedFieldsAnalysis::runOnModule()\n");
     return false;
   }
 
@@ -509,7 +509,7 @@ namespace liberty
     // We will update this value before we return.
     callsiteTouches[ cs.getInstruction() ] = NoModRef;
 
-    LLVM_LLVM_DEBUG(errs() << "callsiteTouchesNonEscapingField("
+    LLVM_DEBUG(errs() << "callsiteTouchesNonEscapingField("
       << *cs.getInstruction()
       << ", " << *struct2 << "->" << *field2 << '\n');
 
@@ -530,7 +530,7 @@ namespace liberty
           continue;
 
         // This formal may alias with the pointer.
-        LLVM_LLVM_DEBUG(errs() << "\tMay alias with formal " << *j << "(actual " << *i << ")\n");
+        LLVM_DEBUG(errs() << "\tMay alias with formal " << *j << "(actual " << *i << ")\n");
         aliasArgs.push_back(&*j);
       }
     }
@@ -615,7 +615,7 @@ namespace liberty
     // update the cache.
     callsiteTouches[ cs.getInstruction() ] = lowerBound;
 
-    LLVM_LLVM_DEBUG(errs() << "/callsiteTouchesNonEscapingField("
+    LLVM_DEBUG(errs() << "/callsiteTouchesNonEscapingField("
       << *cs.getInstruction()
       << ", " << *struct2 << " # " << *field2
       << " => " << lowerBound << '\n');
