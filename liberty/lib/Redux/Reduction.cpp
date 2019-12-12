@@ -509,7 +509,7 @@ bool Reduction::isRegisterReduction(
   if( phi0 == loop->getCanonicalInductionVariable() &&
       affectsLoopBackEdge(phi0, loop, pdg) )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 1; it's the canonical induction variable\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 1; it's the canonical induction variable\n");
     return false;
   }
 
@@ -517,7 +517,7 @@ bool Reduction::isRegisterReduction(
   &&  ! phi0->getType()->isFloatTy()
   &&  ! phi0->getType()->isDoubleTy() )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 2; not a reducible type\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 2; not a reducible type\n");
     // sot : causes false negatives in ks. 8,13,14,18 and final assertion causes false negatives as well
     // For ks, variables maxA, maxPrevA, maxB and maxPrevB that are pointers
     // won't be detected as reduction objects. Not exactly a classic reduction
@@ -537,7 +537,7 @@ bool Reduction::isRegisterReduction(
           if( isa< SCEVConstant >( induc->getStepRecurrence(scev) ) )
             if( affectsLoopBackEdge(phi0, loop, pdg) )
             {
-              LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 1b: it's a (non canonical) induction variable\n");
+              LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 1b: it's a (non canonical) induction variable\n");
               return false;
             }
   }
@@ -553,7 +553,7 @@ bool Reduction::isRegisterReduction(
 
     if( initial_value != v && initial_value != 0)
     {
-     LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 3 because inconsistent initial values:\n"
+     LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 3 because inconsistent initial values:\n"
                    << "  o def1: " << *initial_value << '\n'
                    << "  o def2: " << *v << '\n');
       return false;
@@ -563,7 +563,7 @@ bool Reduction::isRegisterReduction(
   }
   if( !initial_value )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 4 because no initial value\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 4 because no initial value\n");
     return false;
   }
 
@@ -585,7 +585,7 @@ bool Reduction::isRegisterReduction(
     if( PHINode *phi = dyn_cast< PHINode >(inst) )
     {
       u_phis.insert(phi);
-      //LLVM_DEBUG(errs() << "use PHI " << *phi << "\n");
+      //LLVM_LLVM_DEBUG(errs() << "use PHI " << *phi << "\n");
     }
 
     else if( BinaryOperator *binop = dyn_cast< BinaryOperator >(inst) )
@@ -594,13 +594,13 @@ bool Reduction::isRegisterReduction(
       Reduction::Type rt0 = Reduction::isAssocAndCommut(binop);
       if( rt0 == Reduction::NotReduction )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 5 because used by non-assoc/-commut: " << *binop << '\n');
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 5 because used by non-assoc/-commut: " << *binop << '\n');
         return false;
       }
 
       if( rt0 != rt && rt != Reduction::NotReduction )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 6 because inconcistent reduction type\n");
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 6 because inconcistent reduction type\n");
         return false;
       }
 
@@ -619,13 +619,13 @@ bool Reduction::isRegisterReduction(
       Reduction::Type rt0 = Reduction::isAssocAndCommut(cmp);
       if( rt0 == Reduction::NotReduction )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 5 because used by non-assoc/-commut: " << *cmp<< '\n');
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 5 because used by non-assoc/-commut: " << *cmp<< '\n');
         return false;
       }
 
       if( rt0 != rt && rt != Reduction::NotReduction )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 6 because inconcistent reduction type\n");
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 6 because inconcistent reduction type\n");
         return false;
       }
 
@@ -636,7 +636,7 @@ bool Reduction::isRegisterReduction(
 
     else
     {
-      LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 7 because used* by " << *inst << '\n');
+      LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 7 because used* by " << *inst << '\n');
       return false;
     }
 
@@ -668,7 +668,7 @@ bool Reduction::isRegisterReduction(
     {
       d_phis.insert(phi);
 
-      //LLVM_DEBUG(errs() << "def PHI " << *phi << "\n");
+      //LLVM_LLVM_DEBUG(errs() << "def PHI " << *phi << "\n");
 
       // add predecessors.
       for(unsigned i=0, N=phi->getNumIncomingValues(); i<N; ++i)
@@ -682,7 +682,7 @@ bool Reduction::isRegisterReduction(
         if( !def )
         {
           //sot: causing false negatives in ks
-          LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 8 because it has a non-instruction def from inside the loop\n");
+          LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 8 because it has a non-instruction def from inside the loop\n");
           return false;
         }
 
@@ -718,13 +718,13 @@ bool Reduction::isRegisterReduction(
                                     Reduction::isAssocAndCommut(cmp);
       if( rt0 == Reduction::NotReduction )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 9 because defined by non-assoc/-commut: " << *binop << '\n');
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 9 because defined by non-assoc/-commut: " << *binop << '\n');
         return false;
       }
 
       if( rt0 != rt )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 10 because inconcistent reduction type\n");
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 10 because inconcistent reduction type\n");
         return false;
       }
 
@@ -737,14 +737,14 @@ bool Reduction::isRegisterReduction(
                  u1_cmp = u_phis.count( op1 ) || u_cmps.count( op1 );
       if( (u0_bin && u1_bin) || (u0_cmp && u1_cmp) )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 11 because BOTH operands of binop are derived from phi:\n"
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 11 because BOTH operands of binop are derived from phi:\n"
                      << "  o op1: " << *op0 << '\n'
                      << "  o op2: " << *op1 << '\n');
         return false;
       }
       else if( (!u0_bin && !u1_bin) || (!u0_cmp && !u1_cmp) )
       {
-        LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 12 because NEITHER operand of binop is derived from phi:\n"
+        LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 12 because NEITHER operand of binop is derived from phi:\n"
                      << "  o op1: " << *op0 << '\n'
                      << "  o op2: " << *op1 << '\n');
         return false;
@@ -770,7 +770,7 @@ bool Reduction::isRegisterReduction(
     else
     {
       //sot: causing false negatives in ks
-      LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 13 because defined by " << *inst << '\n');
+      LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 13 because defined by " << *inst << '\n');
       return false;
     }
   }
@@ -780,38 +780,38 @@ bool Reduction::isRegisterReduction(
   //sot: causing false negatives in ks
   if( !(u_phis == d_phis) )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 14; PHI use/def mismatch\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 14; PHI use/def mismatch\n");
     return false;
   }
 
   if( !(u_binops == d_binops) )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 15; binop use/def mismatch\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 15; binop use/def mismatch\n");
     return false;
   }
   // FIXME
   /*
   if( !(u_cmps == d_cmps) )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 16; cmp use/def mismatch\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 16; cmp use/def mismatch\n");
     return false;
   }
   if( !(u_brs == d_brs) )
   {
-    LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 17; br use/def mismatch\n");
+    LLVM_LLVM_DEBUG(errs() << "PHI " << *phi0 << " is not a reduction 17; br use/def mismatch\n");
     return false;
   }*/
 
   //sot: causing false negatives in ks
   if( u_binops.empty() && u_cmps.empty() )
   {
-    LLVM_DEBUG(errs() <<"PHI " << *phi0 << " is not a reduction 18; neither binops nor cmps\n");
+    LLVM_LLVM_DEBUG(errs() <<"PHI " << *phi0 << " is not a reduction 18; neither binops nor cmps\n");
     return false;
   }
 
   if( !u_binops.empty() && !u_cmps.empty() )
   {
-    LLVM_DEBUG(errs() <<"PHI " << *phi0 << " is not a reduction 19; both binops and cmps\n");
+    LLVM_LLVM_DEBUG(errs() <<"PHI " << *phi0 << " is not a reduction 19; both binops and cmps\n");
     return false;
   }
 
@@ -858,7 +858,7 @@ bool Reduction::isRegisterReduction(
       }
       else
       {
-        LLVM_DEBUG(
+        LLVM_LLVM_DEBUG(
           errs() << "PHI " << *phi0 << " is not a reduction 16.2:\n"
                  << " its cycle includes v=" << *v << '\n'
                  << " which is used after the loop by " << *user << '\n'
@@ -1036,7 +1036,7 @@ struct ReduxPass : public ModulePass
     &&  TargetFcn != fcn.getName() )
       return false;
 
-    LLVM_DEBUG(errs() << "SpecPriv Redux: Processing function "
+    LLVM_LLVM_DEBUG(errs() << "SpecPriv Redux: Processing function "
       << fcn.getName() << ":\n");
 
     // Collect all loops
@@ -1095,7 +1095,7 @@ private:
 
     BasicBlock *header = loop->getHeader();
     Function *fcn = header->getParent();
-    LLVM_DEBUG(errs() << "SpecPriv Redux: Canonicalizeing memory reductions in loop "
+    LLVM_LLVM_DEBUG(errs() << "SpecPriv Redux: Canonicalizeing memory reductions in loop "
       << fcn->getName() << ":" << header->getName() << "\n");
 
     LoopAA *loopaa = getAnalysis< LoopAA >().getTopAA();
@@ -1255,7 +1255,7 @@ private:
       }
     }
 
-    LLVM_DEBUG(errs() << "- Accumulator " << *accumulator
+    LLVM_LLVM_DEBUG(errs() << "- Accumulator " << *accumulator
       << "=> " << *alloca << '\n');
     return alloca;
   }
@@ -1437,10 +1437,10 @@ private:
 
     BasicBlock *header = loop->getHeader();
     Function *fcn = header->getParent();
-    LLVM_DEBUG(errs() << "\nSpecPriv Redux: Processing register reductions in loop "
+    LLVM_LLVM_DEBUG(errs() << "\nSpecPriv Redux: Processing register reductions in loop "
       << fcn->getName() << ":" << header->getName() << "\n");
 
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       errs() << "Found a register reduction:\n"
              << "          PHI: " << *phi0 << '\n'
              << "      Initial: " << *initial_value << '\n'
@@ -1461,7 +1461,7 @@ private:
     AllocaInst *rphi = new AllocaInst(initial_value->getType(), 0, "reg_redux_R_phi");
     InstInsertPt::Beginning(fcn) << mphi << rphi;
 
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       errs() << "    New PHI Nodes:\n"
              << "            o " << mphi->getName() << '\n'
              << "            o " << rphi->getName() << '\n');

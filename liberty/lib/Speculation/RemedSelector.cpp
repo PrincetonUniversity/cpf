@@ -95,7 +95,7 @@ void RemedSelector::computeVertices(Vertices &vertices)
 
     const HeapAssignment &asgn = classify.getAssignmentFor(loop);
     if (!asgn.isValidFor(loop)) {
-      LLVM_DEBUG(errs() << "HeapAssignment invalid for loop "
+      LLVM_LLVM_DEBUG(errs() << "HeapAssignment invalid for loop "
                    << loop->getHeader()->getParent()->getName()
                    << "::" << loop->getHeader()->getName() << '\n');
       continue;

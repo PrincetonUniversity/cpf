@@ -657,7 +657,7 @@ void PipelineStrategy::addInstruction(Instruction *newInst,
     }
   }
 
-  LLVM_DEBUG(if( !added )
+  LLVM_LLVM_DEBUG(if( !added )
     errs() << "Warning: pipeline does not include gravity instruction " << *gravity << '\n';);
 }
 
@@ -723,7 +723,7 @@ void PipelineStrategy::replaceInstruction(Instruction *newInst, Instruction *old
     }
   }
 
-  LLVM_DEBUG(if( !replaced )
+  LLVM_LLVM_DEBUG(if( !replaced )
     errs() << "Warning: pipeline does not include old instruction " << *oldInst << '\n';);
 }
 
@@ -780,7 +780,7 @@ void PipelineStrategy::deleteInstruction(Instruction *inst)
       }
   }
 
-  LLVM_DEBUG(if( !deleted)
+  LLVM_LLVM_DEBUG(if( !deleted)
     errs() << "Warning: pipeline does not include inst instruction " << *inst << '\n';);
 }
 

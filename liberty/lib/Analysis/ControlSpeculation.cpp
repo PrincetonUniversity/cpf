@@ -428,7 +428,7 @@ bool ControlSpeculation::isReachable(BasicBlock *src, BasicBlock *dst, Loop *loo
     }
   }
 
-  LLVM_DEBUG(errs() << "Found unreachable (intra-iteration) basic blocks: src: "
+  LLVM_LLVM_DEBUG(errs() << "Found unreachable (intra-iteration) basic blocks: src: "
                << src->getName() << " , dst " << dst->getName() << "\n");
   return reachableCache[key] = false;
 }

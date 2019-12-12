@@ -41,13 +41,13 @@ struct PerformanceEstimator
   template <class InstIter>
   double estimate_weight(const InstIter &begin, const InstIter &end)
   {
-    DEBUG(errs() << "Estimated Weight Distribution\n");
+    LLVM_DEBUG(errs() << "Estimated Weight Distribution\n");
     double sum = 0;
     double wt = 0;
     for(InstIter i=begin; i!=end; ++i){
       wt = estimate_weight( MakePointer(*i) );
       sum += wt;
-      DEBUG(errs() << format("%.2f", wt) << "\t|\t" << *MakePointer(*i) << "\n");
+      LLVM_DEBUG(errs() << format("%.2f", wt) << "\t|\t" << *MakePointer(*i) << "\n");
     }
     return sum;
   }

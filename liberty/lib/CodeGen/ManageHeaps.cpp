@@ -135,7 +135,7 @@ bool DOALLTransform::reallocateGlobals(const HeapAssignment::AUSet &aus, const H
     assert( cgv );
     GlobalVariable *gv = const_cast< GlobalVariable* >( cgv );
 
-    LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
+    LLVM_LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
     // create a new global pointer.
     PointerType *pty = cast< PointerType >( gv->getType() );
@@ -219,7 +219,7 @@ bool DOALLTransform::reallocateGlobals(const HeapAssignment::ReduxAUSet &aus)
     if( gv->hasExternalLinkage() )
       continue;
 
-    LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
+    LLVM_LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
 
     // create a new global pointer.
     PointerType *pty = cast< PointerType >( gv->getType() );
@@ -363,10 +363,10 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::AUSet &aus, const Heap
 
   //Preprocess &preprocess = getAnalysis< Preprocess >();
 /*
-  LLVM_DEBUG(errs() << "\n\nReallocateInst " << heap_names[heap] << " will do this:\n");
+  LLVM_LLVM_DEBUG(errs() << "\n\nReallocateInst " << heap_names[heap] << " will do this:\n");
   for(HeapAssignment::AUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
-    LLVM_DEBUG(errs() << " - " << **i << " => " << heap_names[heap] << '\n');
-  LLVM_DEBUG(errs() << "\nAnd now I'm gonna doit:\n\n");
+    LLVM_LLVM_DEBUG(errs() << " - " << **i << " => " << heap_names[heap] << '\n');
+  LLVM_LLVM_DEBUG(errs() << "\nAnd now I'm gonna doit:\n\n");
 */
   std::set<const Value*> already;
   for(HeapAssignment::AUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
@@ -386,7 +386,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::AUSet &aus, const Heap
     if (task->instructionClones.find(origI) != task->instructionClones.end())
       inst = task->instructionClones[origI];
 
-    LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
+    LLVM_LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
     Function *fcn = inst->getParent()->getParent();
     InstInsertPt where = InstInsertPt::After(inst);
@@ -493,7 +493,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::ReduxAUSet &aus)
     if (task->instructionClones.find(origI) != task->instructionClones.end())
       inst = task->instructionClones[origI];
 
-    LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap redux\n");
+    LLVM_LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap redux\n");
 
     Function *fcn = inst->getParent()->getParent();
     InstInsertPt where = InstInsertPt::After(inst);

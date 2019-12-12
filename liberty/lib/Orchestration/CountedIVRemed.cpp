@@ -49,7 +49,7 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
     assert(phiB && "Dest inst in CountedIVRemediator::regdep not a phiNode??");
     remedy->ivPHI = phiB;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CountedIVRemed removed reg dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CountedIVRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -79,7 +79,7 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
     ++numNoCtrlDep;
     remedy->ivSCC = aSCC;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CountedIVRemed removed ctrl dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CountedIVRemed removed ctrl dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 

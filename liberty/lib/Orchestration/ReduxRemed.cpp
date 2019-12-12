@@ -261,8 +261,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
   if (reduxdet.isSumReduction(L, A, B, loopCarried, type)) {
     ++numRegDepsRemovedSumRedux;
-    LLVM_DEBUG(errs() << "Resolved by liberty sumRedux\n");
-    LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Resolved by liberty sumRedux\n");
+    LLVM_LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->liveOutV = B;
@@ -277,8 +277,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   if (reduxdet.isMinMaxReduction(L, A, B, loopCarried, type, &depInst,
                                  depType, &depUpdateInst)) {
     ++numRegDepsRemovedMinMaxRedux;
-    LLVM_DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
-    LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
+    LLVM_LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->liveOutV = B;
@@ -295,8 +295,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   auto bSCC = loopDepInfo->loopSCCDAG->sccOfValue(ncB);
   if (aSCC == bSCC && loopDepInfo->sccdagAttrs.canExecuteReducibly(aSCC)) {
     ++numRegDepsRemovedNoelleRedux;
-    LLVM_DEBUG(errs() << "Resolved by noelle Redux\n");
-    LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Resolved by noelle Redux\n");
+    LLVM_LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->reduxSCC = aSCC;
@@ -321,7 +321,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
           //       "More than 1 accoc & commut binops in redux SCC!!");
           foundAssocCommutBinOp = true;
           remedy->type = type;
-          LLVM_DEBUG(errs() << "Binop in redux SCC: " << *binop
+          LLVM_LLVM_DEBUG(errs() << "Binop in redux SCC: " << *binop
                        << " ,and redux type:" << type << '\n');
         }
       }
@@ -344,8 +344,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     // A: x1 = x0 + ..
     // Loop-carried dep removed
     ++numRegDepsRemovedRedux;
-    LLVM_DEBUG(errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (loop-carried)\n");
-    LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Resolved by liberty (specpriv but hopefully conservative) redux detection (loop-carried)\n");
+    LLVM_LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->liveOutV = B;
@@ -374,8 +374,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
         // A: x1 = x0 + ..
         // Loop-carried dep removed
         ++numRegDepsRemovedLLVMRedux;
-        LLVM_DEBUG(errs() << "Resolved by llvm redux detection (loop-carried)\n");
-        LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+        LLVM_LLVM_DEBUG(errs() << "Resolved by llvm redux detection (loop-carried)\n");
+        LLVM_LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                      << '\n');
         remedResp.depRes = DepResult::NoDep;
         remedy->liveOutV = B;
@@ -388,8 +388,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
   if (isConditionalReductionPHI(B, L)) {
     ++numCondRegDepsRemoved;
-    LLVM_DEBUG(errs() << "Resolved by cond redux detection\n");
-    LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Resolved by cond redux detection\n");
+    LLVM_LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->liveOutV = B;
@@ -421,7 +421,7 @@ Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
 
   if (isMemReduction(A)) {
     ++numMemDepsRemovedRedux;
-    LLVM_DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->liveOutV = A;
@@ -432,7 +432,7 @@ Remediator::RemedResp ReduxRemediator::memdep(const Instruction *A,
 
   if (isMemReduction(B)) {
     ++numMemDepsRemovedRedux;
-    LLVM_DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
+    LLVM_LLVM_DEBUG(errs() << "Removed mem dep between inst " << *A << "  and  " << *B
                  << '\n');
     remedResp.depRes = DepResult::NoDep;
     remedy->liveOutV = B;

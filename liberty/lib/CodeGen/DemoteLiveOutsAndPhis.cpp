@@ -73,7 +73,7 @@ bool DOALLTransform::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveout
   liveoutStructure.object = liveoutObject;
   InstInsertPt::Beginning(fcn) << liveoutObject;
 
-  LLVM_DEBUG(errs() << "Adding a liveout object " << *liveoutObject << " to function " << fcn->getName() << '\n');
+  LLVM_LLVM_DEBUG(errs() << "Adding a liveout object " << *liveoutObject << " to function " << fcn->getName() << '\n');
 
   // After each definition of a live-out value, store it into the structure.
   Value *zero = ConstantInt::get(int32,0);

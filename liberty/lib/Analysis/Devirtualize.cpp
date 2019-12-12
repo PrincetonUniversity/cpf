@@ -53,13 +53,13 @@ void DevirtualizationAnalysis::studyModule(Module &mod)
   for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i, ++numS)
   {
     studyFunction(&*i);
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       if( (numS % 25) == 0 )
         errs() << "Studied " << numS << " / " << mod.size() << " functions.\n";
     );
   }
 
-  LLVM_DEBUG(errs() << "There are " << candidates.size()
+  LLVM_LLVM_DEBUG(errs() << "There are " << candidates.size()
                << " callsites to transform.\n");
 }
 
@@ -160,7 +160,7 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
 
   if( flow_valid && flow.empty() )
   {
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       errs() << "At callsite ``" << *cs.getInstruction()
              << "'' in " << cs.getInstruction()->getParent()
                                                ->getParent()->getName()
@@ -177,7 +177,7 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
   if( flow_valid )
   {
     ++numFlowAnalyzed;
-    LLVM_DEBUG(errs() << "--> Flow-sensitive test found "
+    LLVM_LLVM_DEBUG(errs() << "--> Flow-sensitive test found "
                  << flow.size() << " candidates.\n");
   }
 
@@ -186,7 +186,7 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
   output.requiresDefaultCase =
     !flow_valid && !typeaa.isSane( cs.getCalledValue()->getType() );
 
-  LLVM_DEBUG(errs() << "Possible targets of ``" << *cs.getInstruction()
+  LLVM_LLVM_DEBUG(errs() << "Possible targets of ``" << *cs.getInstruction()
                << "'' include:\n");
 
   // The flow-insensitive analysis which restricts the set of
@@ -212,13 +212,13 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
           continue;
         }
 
-      LLVM_DEBUG(errs() << " - " << fcn->getName()
+      LLVM_LLVM_DEBUG(errs() << " - " << fcn->getName()
                    << " : " << *fcn->getFunctionType() << '\n');
       output.callees.push_back(fcn);
     }
   }
 
-  LLVM_DEBUG(
+  LLVM_LLVM_DEBUG(
     if( output.requiresDefaultCase )
       errs() << " - default case is necessary.\n";
   );
@@ -424,7 +424,7 @@ bool DevirtualizationAnalysis::recognizeLoadFromConstantTableIdiom(CallSite &cs,
   output.requiresDefaultCase = false;
   output.index = non_constant_index;
 
-  LLVM_DEBUG(
+  LLVM_LLVM_DEBUG(
     errs() << "Recognized table-call idiom for ``"
            << *cs.getInstruction()
            << "'' with " << num_non_null << " callees.\n";
@@ -486,7 +486,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
           seqty1->getElementType(),
           seqty2->getElementType() );
       if( !eq )
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (4)\n");
+        LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (4)\n");
       return equivalentTypes[key] = eq;
     }
 
@@ -497,7 +497,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
       const unsigned N=structty1->getNumElements();
       if( structty2->getNumElements() != N )
       {
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (1)\n");
+        LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (1)\n");
         return equivalentTypes[key] = false;
       }
 
@@ -508,7 +508,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
 
         if( !areStructurallyEquivalentTransitively(elt1,elt2) )
         {
-          LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (2)\n");
+          LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (2)\n");
           return equivalentTypes[key] = false;
         }
       }
@@ -525,12 +525,12 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
       const unsigned N = fty1->getNumParams();
       if( fty2->getNumParams() != N )
       {
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (7)\n");
+        LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (7)\n");
         return equivalentTypes[key] = false;
       }
       if( fty1->isVarArg() != fty2->isVarArg() )
       {
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (8)\n");
+        LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (8)\n");
         return equivalentTypes[key] = false;
       }
 
@@ -539,7 +539,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
         fty1->getReturnType(),
         fty2->getReturnType() ) )
       {
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (9)\n");
+        LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (9)\n");
         return equivalentTypes[key] = false;
       }
 
@@ -551,7 +551,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
 
         if( !areStructurallyEquivalentTransitively(pty1,pty2) )
         {
-          LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (10)\n");
+          LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (10)\n");
           return equivalentTypes[key] = false;
         }
       }
@@ -561,7 +561,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
     }
 
   // All other cases
-  LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (3)\n");
+  LLVM_LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (3)\n");
   return equivalentTypes[key] = false;
 }
 

@@ -178,7 +178,7 @@ public:
 
 					if (check) {
               ++numNoAliasMD;
-              LLVM_DEBUG(errs() << "stepGreaterThan:\n"
+              LLVM_LLVM_DEBUG(errs() << "stepGreaterThan:\n"
                            << *ptr1 << " and " << *ptr2 << "\n===> Disjoint\n");
               return true;
           }
@@ -547,14 +547,14 @@ public:
       //    bb2 = &(arg->getParent()->getEntryBlock());
 
       //if (bb1 && bb2 && !DT.dominates(bb1, bb2) && !DT.dominates(bb2, bb1)){
-      //    //LLVM_DEBUG(
+      //    //LLVM_LLVM_DEBUG(
       //      errs() << "P1 and P2 not dominate\n";
       //    //);
       //    return MayAlias;
       //}
       /*
       else{
-        LLVM_DEBUG(
+        LLVM_LLVM_DEBUG(
             if (!P1.inst)
               errs() << "P1 is not an instruction \n";
             if (!P2.inst)
@@ -640,7 +640,7 @@ public:
 
     // These are the most interesting: eligible queries
     // for which we can't say anything.
-    LLVM_DEBUG(errs()
+    LLVM_LLVM_DEBUG(errs()
       << "Eligible fallthrough:\n"
       << "  size " << size1 << " scev1 " << *s1 << " , ptr1: " << *P1.ptr << ", non-scoped SCEV: " << *SE->getSCEV(const_cast<Value*>(P1.ptr)) <<  '\n'
       << "(" << Rel << ", " << fcn->getName() << " :: " << header->getName() << ")\n"
