@@ -37,6 +37,7 @@
 #include "liberty/Utilities/GetSize.h"
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
+#include "llvm/Transforms/IPO/Attributor.h"
 
 #include <algorithm>
 using namespace llvm;

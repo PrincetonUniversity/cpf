@@ -1082,7 +1082,7 @@ void PSDSWPCritic::populateCrossStageDependences(PipelineStrategy &ps,
         Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
         assert(dst &&
                "dst of ctrl dep is not an instruction in crossStageDeps");
-        if (edge->isControlDependence() && isa<TerminatorInst>(src)) {
+        if (edge->isControlDependence() && isa<Instruction>(src)) {
           // Foreach control-dep successor of src
           // also useful to keep ctrl deps within a stage for parallel stage's
           // OFF iteration
@@ -1248,11 +1248,11 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
                                             PipelineStage *parallelStage,
                                             PipelineStage *lastSeqStage) {
   // identify loop exits
-  std::unordered_set<TerminatorInst *> loopBounds;
+  std::unordered_set<Instruction *> loopBounds;
   for (Loop::block_iterator i = loop->block_begin(), e = loop->block_end();
        i != e; ++i) {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for (unsigned sn = 0, N = term->getNumSuccessors(); sn < N; ++sn) {
       BasicBlock *dest = term->getSuccessor(sn);
 
@@ -1264,7 +1264,7 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
     }
   }
 
-  for (TerminatorInst *loopExitBr : loopBounds) {
+  for (Instruction *loopExitBr : loopBounds) {
 
     std::unordered_set<Instruction *> moveToFirstSeq;
 

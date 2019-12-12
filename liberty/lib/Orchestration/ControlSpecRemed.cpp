@@ -58,7 +58,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
     {
       ControlSpeculation::LoopBlock src = *j;
 
-      TerminatorInst *term = src.getBlock()->getTerminator();
+      Instruction *term = src.getBlock()->getTerminator();
       assert( !speculator->isSpeculativelyUnconditional(term)
       && "Unconditional branches do not source control deps (ii)");
 
@@ -92,7 +92,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     //Vertices::ID t = V.get(term);
 
     // no control dependence can be formulated around unconditional branches
@@ -142,7 +142,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
   for(Exitings::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
   {
     BasicBlock *exiting = *i;
-    TerminatorInst *term = exiting->getTerminator();
+    Instruction *term = exiting->getTerminator();
     assert( !speculator->isSpeculativelyUnconditional(term)
     && "Unconditional branches do not source control deps (lc)");
 
@@ -167,7 +167,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
         */
 
         /*
-        if( TerminatorInst *tt = dyn_cast< TerminatorInst >(idst) )
+        if( Instruction *tt = dyn_cast< Instruction >(idst) )
           if( ! speculator->mayExit(tt,loop) )
             continue;
         */
@@ -267,7 +267,7 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
   ++numCtrlDepRem;
   remedy->brI = A;
 
-  const TerminatorInst *tA = dyn_cast<TerminatorInst>(A);
+  const Instruction *tA = dyn_cast<Instruction>(A);
   assert(tA);
 
   if (speculator->misspecInProfLoopExit(tA))
