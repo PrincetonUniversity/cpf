@@ -31,7 +31,7 @@ bool Tracer::traceConcreteIntegerValues(Value *expr, IntSet &output) const
   ValueSet already;
   if( traceConcreteIntegerValues(expr,output,already) )
   {
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       if( !output.empty() )
       {
         errs() << "Value " << *expr << " can only take the values: ";
@@ -96,7 +96,7 @@ bool Tracer::traceConcreteIntegerValues(Value *expr, IntSet &output, ValueSet &a
     if( context->hasInternalLinkage() && ! nocap.isCaptured(context) )
     {
       if( context->use_empty() )
-        LLVM_DEBUG(errs() << "*** Integer expr is an argument to a "
+        LLVM_LLVM_DEBUG(errs() << "*** Integer expr is an argument to a "
                      << "function that is never called.  "
                      << "Don't be surprised if trace-int "
                      << "analysis reports no values (3)! ***\n");
@@ -217,7 +217,7 @@ bool Tracer::traceConcreteIntegerValues(Value *expr, IntSet &output, ValueSet &a
     return true;
   }
 
-  LLVM_DEBUG(errs() << "traceConcreteIntegerValues() failed on: ``"
+  LLVM_LLVM_DEBUG(errs() << "traceConcreteIntegerValues() failed on: ``"
                << *expr << "''\n");
   return false;
 }
@@ -276,7 +276,7 @@ bool Tracer::traceConcreteFunctionPointers(
     if( context->hasInternalLinkage() && ! nocap.isCaptured(context) )
     {
       if( context->use_empty() )
-        LLVM_DEBUG(errs() << "*** Called value is an argument to a "
+        LLVM_LLVM_DEBUG(errs() << "*** Called value is an argument to a "
                      << "function that is never called.  "
                      << "Don't be surprised if flow-sensitive "
                      << "analysis reports no callees! ***\n");
@@ -307,7 +307,7 @@ bool Tracer::traceConcreteFunctionPointers(
     return true;
   }
 
-  LLVM_DEBUG(errs() << "Flow-sensitive trace failed on: ``"
+  LLVM_LLVM_DEBUG(errs() << "Flow-sensitive trace failed on: ``"
                << *fcn_ptr << "''\n");
   return false;
 }
@@ -347,7 +347,7 @@ bool Tracer::traceConcreteFunctionPointersLoadedFrom(
     if( context->hasInternalLinkage() && ! nocap.isCaptured(context) )
     {
       if( context->use_empty() )
-        LLVM_DEBUG(errs() << "*** Called value is an argument to a "
+        LLVM_LLVM_DEBUG(errs() << "*** Called value is an argument to a "
                      << "function that is never called.  "
                      << "Don't be surprised if flow-sensitive "
                      << "analysis reports no callees (2)! ***\n");
@@ -436,7 +436,7 @@ bool Tracer::traceConcreteFunctionPointersLoadedFrom(
       {
         typedef NonCapturedFieldsAnalysis::Defs::const_iterator I;
 
-        LLVM_DEBUG(
+        LLVM_LLVM_DEBUG(
           errs()
             << "Load from non-escaping field:\n"
             << " GEP: " << *gep << '\n'
@@ -454,7 +454,7 @@ bool Tracer::traceConcreteFunctionPointersLoadedFrom(
     }
   }
 
-  LLVM_DEBUG(errs() << "Flow-sensitive trace load-from failed on: ``"
+  LLVM_LLVM_DEBUG(errs() << "Flow-sensitive trace load-from failed on: ``"
                << *ptr << "''\n");
   return false;
 }
@@ -539,7 +539,7 @@ bool Tracer::extractConcreteFunctionPointersFromConstantInitializer(
     }
   }
 
-  LLVM_DEBUG(errs() << "Flow-sensitive trace load-from-constant failed on: ``"
+  LLVM_LLVM_DEBUG(errs() << "Flow-sensitive trace load-from-constant failed on: ``"
                << *constant << "''\n");
   return false;
 }

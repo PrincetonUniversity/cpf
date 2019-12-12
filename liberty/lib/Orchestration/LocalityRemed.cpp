@@ -37,7 +37,7 @@ bool LocalityRemedy::addUOCheck(Value *ptr)
   if( objectsToInstrument.empty() )
     return false;
 
-//    LLVM_DEBUG(errs() << "RoI contains " << objectsToInstrument.size() << " indeterminate objects.\n");
+//    LLVM_LLVM_DEBUG(errs() << "RoI contains " << objectsToInstrument.size() << " indeterminate objects.\n");
 
   // Okay, we have a set of UOs.  Let's instrument them!
   bool modified = false;
@@ -53,7 +53,7 @@ bool LocalityRemedy::addUOCheck(Value *ptr)
     HeapAssignment::Type ty = selectHeap(obj,loop);
     if( ty == HeapAssignment::Unclassified )
     {
-      LLVM_DEBUG(errs() << "Cannot check " << *obj << "!!!\n");
+      LLVM_LLVM_DEBUG(errs() << "Cannot check " << *obj << "!!!\n");
       continue;
     }
 
@@ -128,7 +128,7 @@ void LocalityRemedy::insertUOCheck(Value *obj, HeapAssignment::Type heap)
   //preprocess.addToLPS(call, inst_obj);
 
   ++numUOTests;
-  LLVM_DEBUG(errs() << "Instrumented indet obj: " << *obj << '\n');
+  LLVM_LLVM_DEBUG(errs() << "Instrumented indet obj: " << *obj << '\n');
 }
 */
 
@@ -319,14 +319,14 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
     if (!unclassifiedPointers.count(ptr1)) {
       unclassifiedPointers.insert(ptr1);
       ++numUnclassifiedPtrs;
-      LLVM_DEBUG(errs() << "Pointer to unclassified heap: " << *ptr1 << "\n");
+      LLVM_LLVM_DEBUG(errs() << "Pointer to unclassified heap: " << *ptr1 << "\n");
     }
   }
   if (t2 == HeapAssignment::Unclassified) {
     if (!unclassifiedPointers.count(ptr2)) {
       unclassifiedPointers.insert(ptr2);
       ++numUnclassifiedPtrs;
-      LLVM_DEBUG(errs() << "Pointer to unclassified heap: " << *ptr2 << "\n");
+      LLVM_LLVM_DEBUG(errs() << "Pointer to unclassified heap: " << *ptr2 << "\n");
     }
   }
 

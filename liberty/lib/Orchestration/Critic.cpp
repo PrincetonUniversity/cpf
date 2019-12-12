@@ -20,7 +20,7 @@ Criticisms Critic::getAllCriticisms(const PDG &pdg) {
         !pdg.isInternal(edge->getOutgoingT()))
       continue;
 
-    //LLVM_DEBUG(errs() << "  Found new edge(s) from " << *edge->getOutgoingT()
+    //LLVM_LLVM_DEBUG(errs() << "  Found new edge(s) from " << *edge->getOutgoingT()
     //             << " to " << *edge->getIncomingT() << '\n');
 
     criticisms.insert(edge);
@@ -77,7 +77,7 @@ PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
   // removable loop-carried deps
   /*
   for (auto cr : criticisms) {
-    //LLVM_DEBUG(errs() << " Removing DOALL criticism loop-carried from "
+    //LLVM_LLVM_DEBUG(errs() << " Removing DOALL criticism loop-carried from "
     //             << *cr->getOutgoingT() << " to " << *cr->getIncomingT()
     //             << '\n');
 
@@ -98,7 +98,7 @@ PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {
   }
 
   for (auto edge : removableLCEdges) {
-    // LLVM_DEBUG(errs() << " Removing loop-carried dep from "
+    // LLVM_LLVM_DEBUG(errs() << " Removing loop-carried dep from "
     //             << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
     //             << '\n');
     expectedPDG->removeEdge(edge);
@@ -120,7 +120,7 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
       continue;
 
     if (edge->isLoopCarriedDependence()) {
-      LLVM_DEBUG(errs() << "No DOALL strategy possible since there is at least one "
+      LLVM_LLVM_DEBUG(errs() << "No DOALL strategy possible since there is at least one "
                       "loop carried edge."
                    << '\n');
 
@@ -163,17 +163,17 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
 CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
                                      LoopDependenceInfo &ldi) {
   // Produce criticisms using the applicability guard of DOALL
-  LLVM_DEBUG(errs() << "Begin criticisms generation for DOALL critic\n");
+  LLVM_LLVM_DEBUG(errs() << "Begin criticisms generation for DOALL critic\n");
 
   CriticRes res;
 
   /*
   if (ldi.numberOfExits() > 1) {
-  	LLVM_DEBUG(errs() << "DOALL:   More than 1 loop exit blocks\n");
+  	LLVM_LLVM_DEBUG(errs() << "DOALL:   More than 1 loop exit blocks\n");
   }
 
   if (!ldi.sccdagAttrs.areAllLiveOutValuesReducable(ldi.environment)) {
-  	LLVM_DEBUG(errs() << "DOALL:   Some post environment value is not reducable\n");
+  	LLVM_LLVM_DEBUG(errs() << "DOALL:   Some post environment value is not reducable\n");
   }
   */
 
@@ -190,14 +190,14 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
 
       ++criticismsTotal;
 
-      //LLVM_DEBUG(errs() << "  Found new DOALL criticism loop-carried from "
+      //LLVM_LLVM_DEBUG(errs() << "  Found new DOALL criticism loop-carried from "
       //             << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
       //             << '\n');
 
       // check if this edge is removable
       if (!edge->isRemovableDependence()) {
         // criticism cannot be remedied.
-        LLVM_DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
+        LLVM_LLVM_DEBUG(errs() << "Cannot remove loop-carried edge(s) from "
                      << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                      << '\n');
         //res.expSpeedup = -1;
@@ -212,7 +212,7 @@ CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
   BasicBlock *loopH = loop->getHeader();
   Function *loopF = loopH->getParent();
   double percentageCovered = (100.0 * criticismsCovered) / criticismsTotal;
-  LLVM_DEBUG(errs() << "\nCoverage of loop-carried dependences for hot loop "
+  LLVM_LLVM_DEBUG(errs() << "\nCoverage of loop-carried dependences for hot loop "
                << loopF->getName() << " :: " << loopH->getName() << " "
                << "covered=" << criticismsCovered
                << ", total=" << criticismsTotal << " , percentage="

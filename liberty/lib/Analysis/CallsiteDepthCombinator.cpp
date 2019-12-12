@@ -491,7 +491,7 @@ namespace liberty
           errs() << "Can't disprove flow\n"
                  << "\tfrom: " << write << '\n'
                  << "\t  to: " << read  << '\n');
-        LLVM_DEBUG(
+        LLVM_LLVM_DEBUG(
           errs() << "Can't disprove flow\n"
                  << "\tfrom: " << write << '\n'
                  << "\t  to: " << read  << '\n');
@@ -621,7 +621,7 @@ namespace liberty
     // Interpret the isFlow result w.r.t. LoopAA Before/After query semantics.
     if( !isFlow )
     {
-      LLVM_DEBUG(errs() << "No flow from " << *src << " to " << *dst << '\n');
+      LLVM_LLVM_DEBUG(errs() << "No flow from " << *src << " to " << *dst << '\n');
 
       for (auto remed : isFlowTmpR)
         R.insert(remed);

@@ -24,7 +24,7 @@ namespace liberty
     bool includeFcnArgs)
   : numbers(), revNumbers(), OUT()
   {
-    LLVM_DEBUG(errs() << "\t- Performing dataflow analysis");
+    LLVM_LLVM_DEBUG(errs() << "\t- Performing dataflow analysis");
 
     // Now we are going to do some data flow analysis
     // in order to identify the live values at each
@@ -112,7 +112,7 @@ namespace liberty
     BitVector newOUT(num_values);
     while( ! fringe.empty() )
     {
-      LLVM_DEBUG(errs() << '.');
+      LLVM_LLVM_DEBUG(errs() << '.');
       const BasicBlock *bb = fringe.back();
       fringe.pop_back();
 
@@ -129,7 +129,7 @@ namespace liberty
         OUT[bb].swap(newOUT);
       }
     }
-    LLVM_DEBUG(errs() << '\n');
+    LLVM_LLVM_DEBUG(errs() << '\n');
 
 /*
     errs() << "===================================================================\n\n\n";

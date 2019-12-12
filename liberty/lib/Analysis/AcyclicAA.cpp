@@ -97,7 +97,7 @@ namespace liberty
 
       if(containers.count(*object))
       {
-        LLVM_DEBUG(errs() << "\tNot a new object (containers.count="
+        LLVM_LLVM_DEBUG(errs() << "\tNot a new object (containers.count="
             << containers.count(*object) << "): " << *v << '\n'
             << "\t\t\tobject: " << **object << "\n");
         return false;
@@ -105,7 +105,7 @@ namespace liberty
 
       if(!isAlloc(*object, td, tli))
       {
-        LLVM_DEBUG(errs() << "\tNot a new object (notAlloc): " << *v << '\n');
+        LLVM_LLVM_DEBUG(errs() << "\tNot a new object (notAlloc): " << *v << '\n');
         return false;
       }
     }
@@ -138,20 +138,20 @@ namespace liberty
       GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptr);
       if( !gep )
       {
-        LLVM_DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
+        LLVM_LLVM_DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
         valuesAcyclic[tl] = false;
         return false;
       }
       if( gep->getPointerOperandType() != tl->getType() )
       {
-        LLVM_DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
+        LLVM_LLVM_DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
         valuesAcyclic[tl] = false;
         return false;
       }
 
       if( ! isAcyclic(gep->getPointerOperand(), valuesAcyclic, td, tli) )
       {
-        LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
+        LLVM_LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
         valuesAcyclic[tl] = false;
         return false;
       }
@@ -178,7 +178,7 @@ namespace liberty
       for(unsigned i=0; i<phi->getNumIncomingValues(); ++i)
         if( ! isAcyclic( phi->getIncomingValue(i), valuesAcyclic, td, tli) )
         {
-          LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
+          LLVM_LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
           valuesAcyclic[tl] = false;
           return false;
         }
@@ -197,7 +197,7 @@ namespace liberty
         return true;
       }
 
-      LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
+      LLVM_LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
       valuesAcyclic[tl] = false;
       return false;
     }
@@ -211,14 +211,14 @@ namespace liberty
         return true;
       }
 
-      LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
+      LLVM_LLVM_DEBUG(errs() << "\t             via: " << *tl << '\n');
       valuesAcyclic[tl] = false;
       return false;
     }
 
     if( !isNewObject(tl, 0, td, tli) )
     {
-      LLVM_DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
+      LLVM_LLVM_DEBUG(errs() << "\tNot acyclic tail: " << *tl << '\n');
       valuesAcyclic[tl] = false;
       return false;
     }
@@ -231,7 +231,7 @@ namespace liberty
                         const TargetLibraryInfo &tli) {
     if( f->isDeclaration() )
     {
-      LLVM_DEBUG(errs() << "\tNot acyclic tail: <external function>\n");
+      LLVM_LLVM_DEBUG(errs() << "\tNot acyclic tail: <external function>\n");
       // save our final result.
       valuesAcyclic[f] = false;
       return false;
@@ -260,7 +260,7 @@ namespace liberty
 
       if( !isAcyclic(ret->getReturnValue(), valuesAcyclic, td, tli) )
       {
-        LLVM_DEBUG(errs() << "\t             via: " << *ret << '\n');
+        LLVM_LLVM_DEBUG(errs() << "\t             via: " << *ret << '\n');
         // save our final result.
         valuesAcyclic[f] = false;
         return false;
@@ -303,34 +303,34 @@ namespace liberty
         continue;
       Value *hd = gep->getPointerOperand();
 
-      LLVM_DEBUG(errs() << "\tIn function '" <<
+      LLVM_LLVM_DEBUG(errs() << "\tIn function '" <<
           inst->getParent()->getParent()->getName()
           << "' Found a mutation " << *store << ".\n");
 
       // The head or the tail must be a single, new object
       if( isNewObject(hd, tl, td, tli) || isNewObject(tl, hd, td, tli) )
       {
-        LLVM_DEBUG(errs() << "\t\tHead " << *hd << " is new.\n");
+        LLVM_LLVM_DEBUG(errs() << "\t\tHead " << *hd << " is new.\n");
 
         // The tail must be acyclic
         if( tl != hd )
 //        if( isAcyclic(tl, valuesAcyclic) )
         {
-          LLVM_DEBUG(errs() << "\t\tAnd the tail " << *tl << " is acyclic.\n");
+          LLVM_LLVM_DEBUG(errs() << "\t\tAnd the tail " << *tl << " is acyclic.\n");
           continue;
         }
         else
         {
-          LLVM_DEBUG(errs() << "\t\tBut the tail " << *tl << " may be cyclic.\n");
+          LLVM_LLVM_DEBUG(errs() << "\t\tBut the tail " << *tl << " may be cyclic.\n");
         }
       }
       else
       {
-        LLVM_DEBUG(errs() << "\t\tHead " << *hd << " may be not new.\n");
+        LLVM_LLVM_DEBUG(errs() << "\t\tHead " << *hd << " may be not new.\n");
       }
 
             // All else fails
-      LLVM_DEBUG(errs() <<   "\t             via: " << *inst
+      LLVM_LLVM_DEBUG(errs() <<   "\t             via: " << *inst
                    << "\n\t              In: " << fcn.getName()
                    << "\n\t              At: " << inst->getParent()->getName()
                    << ".\n");
@@ -373,7 +373,7 @@ namespace liberty
     TypeSet &visited,
     Types &recTysOut) const
   {
-//    LLVM_DEBUG(errs() << "Scanning function " << fcn.getName()
+//    LLVM_LLVM_DEBUG(errs() << "Scanning function " << fcn.getName()
 //                 << " for recursive types.\n");
     TypeSanityAnalysis &typeaa = getAnalysis< TypeSanityAnalysis >();
     NonCapturedFieldsAnalysis &noEscape = getAnalysis< NonCapturedFieldsAnalysis >();
@@ -412,7 +412,7 @@ namespace liberty
       // which would match the usual scheme
 
       if (ptr == base && ptr == Type::getInt8PtrTy(fcn.getContext())) {
-        LLVM_DEBUG(errs() << "Found gep with i8* as result and pointer operand: " << *gep << '\n');
+        LLVM_LLVM_DEBUG(errs() << "Found gep with i8* as result and pointer operand: " << *gep << '\n');
 
         // find the user of gep and make sure it is only one, and it is a
         // bitcast to a pointer to a pointer
@@ -439,7 +439,7 @@ namespace liberty
                     if (new_base == bcI->getDestTy()) {
                       ptr = new_ptr;
                       base = new_base;
-                      LLVM_DEBUG(errs()
+                      LLVM_LLVM_DEBUG(errs()
                             << "Found potentially recursive GEP with weird "
                                "bitcasting disguise. The new base is "
                             << *base << " and the new ptr is " << *ptr << '\n');
@@ -461,17 +461,17 @@ namespace liberty
       visited.insert(base);
 
       if( ! typeaa.isSane( base ) ) {
-        LLVM_DEBUG(errs() << "Type " << *base << " is not sane\n");
+        LLVM_LLVM_DEBUG(errs() << "Type " << *base << " is not sane\n");
         continue;
       }
 
       if( noEscape.captured(gep) )
       {
-        LLVM_DEBUG(errs() << "Not safe because this field is captured: " << *gep << '\n');
+        LLVM_LLVM_DEBUG(errs() << "Not safe because this field is captured: " << *gep << '\n');
         continue;
       }
 
-//      LLVM_DEBUG(
+//      LLVM_LLVM_DEBUG(
 //        errs() << "\tRecursive: ";
 //        base->dump( fcn.getParent() );
 //      );
@@ -482,7 +482,7 @@ namespace liberty
 
     }
 
-//    LLVM_DEBUG(errs() << "Done scanning function "
+//    LLVM_LLVM_DEBUG(errs() << "Done scanning function "
 //                 << fcn.getName() << ".\n");
   }
 
@@ -503,7 +503,7 @@ namespace liberty
       for(unsigned i=0; i<phi->getNumIncomingValues(); ++i)
         if( !isChildOfTransitive(phi->getIncomingValue(i), v2, rel, L, noInfiniteLoops) )
         {
-          LLVM_DEBUG(errs() << "\to PHI : " << *phi << ".\n");
+          LLVM_LLVM_DEBUG(errs() << "\to PHI : " << *phi << ".\n");
 
           // If the value came from outside the loop and this is not a Same query,
           // then it is safe.
@@ -527,19 +527,19 @@ namespace liberty
               else if( isChildOfTransitive(base, v2, rel, L, noInfiniteLoops) )
                 return true;
 
-              LLVM_DEBUG(errs() << "\to GEP : " << *gep << ".\n");
-              LLVM_DEBUG(errs() << "\to Load: " << *load << ".\n");
+              LLVM_LLVM_DEBUG(errs() << "\to GEP : " << *gep << ".\n");
+              LLVM_LLVM_DEBUG(errs() << "\to Load: " << *load << ".\n");
               return false;
             }
 
-    LLVM_DEBUG(errs() << "\to Bad : " << *v1 << ".\n");
+    LLVM_LLVM_DEBUG(errs() << "\to Bad : " << *v1 << ".\n");
     return false;
   }
 
   bool AcyclicAA::isChildOfTransitive(const Value *v1, const Value *v2,
                                       TemporalRelation rel, const Loop *L) const
   {
-    LLVM_DEBUG(errs() << "isChildOfTransitive(" << *v1 << ", " << *v2 << ").\n");
+    LLVM_LLVM_DEBUG(errs() << "isChildOfTransitive(" << *v1 << ", " << *v2 << ").\n");
     SmallValueSet noInfiniteLoops;
     return isChildOfTransitive(v1,v2,rel,L,noInfiniteLoops);
   }
@@ -552,7 +552,7 @@ namespace liberty
     if (dAliasRes == DMustAlias)
       return MayAlias;
 
-    LLVM_DEBUG(errs() << "AcyclicAA\n" << " - " << *P1.ptr << "\n - " << *P2.ptr << '\n');
+    LLVM_LLVM_DEBUG(errs() << "AcyclicAA\n" << " - " << *P1.ptr << "\n - " << *P2.ptr << '\n');
     ++numQueries;
 
     Type *t = P1.ptr->getType();
@@ -562,7 +562,7 @@ namespace liberty
       if( isChildOfTransitive(P1.ptr,P2.ptr,rel,L)
       ||  isChildOfTransitive(P2.ptr,P1.ptr,rel,L) )
       {
-        LLVM_DEBUG(errs() << "AcyclicAA: noalias1 between " << *P1.ptr << " and " << *P2.ptr << "\n");
+        LLVM_LLVM_DEBUG(errs() << "AcyclicAA: noalias1 between " << *P1.ptr << " and " << *P2.ptr << "\n");
         ++numNoAliases;
         return NoAlias;
       }
@@ -587,7 +587,7 @@ namespace liberty
       if( isChildOfTransitive(UO1, UO2, rel, L) ||
           isChildOfTransitive(UO2, UO1, rel, L) )
       {
-        LLVM_DEBUG(errs() << "AcyclicAA: noalias2 between " << *P1.ptr << " and " << *P2.ptr << "\n");
+        LLVM_LLVM_DEBUG(errs() << "AcyclicAA: noalias2 between " << *P1.ptr << " and " << *P2.ptr << "\n");
         ++numNoAliases;
         return NoAlias;
       }
@@ -600,7 +600,7 @@ namespace liberty
   void AcyclicAA::accumulateRecursiveTypes(
     Types &recTysOut) const
   {
-    LLVM_DEBUG(errs() << "Scanning module for recursive types.\n");
+    LLVM_LLVM_DEBUG(errs() << "Scanning module for recursive types.\n");
     TypeSet visited;
     typedef Module::iterator FI;
     for(FI i=currentModule->begin(), e=currentModule->end(); i!=e; ++i)
@@ -609,9 +609,9 @@ namespace liberty
       accumulateRecursiveTypes(fcn, visited, recTysOut);
     }
 
-    LLVM_DEBUG(errs() << "Done scanning module.\n");
+    LLVM_LLVM_DEBUG(errs() << "Done scanning module.\n");
 
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       errs() << "Found " << recTysOut.size()
              << " sane, recursive types with restricted field access:\n";
       for(Types::iterator i=recTysOut.begin(), e=recTysOut.end(); i!=e; ++i)
@@ -627,7 +627,7 @@ namespace liberty
 
   bool AcyclicAA::runOnModule(Module &mod)
   {
-    LLVM_DEBUG(errs() << "Begin AcyclicAA::runOnModule()\n");
+    LLVM_LLVM_DEBUG(errs() << "Begin AcyclicAA::runOnModule()\n");
     const DataLayout &DL = mod.getDataLayout();
     InitializeLoopAA(this, DL);
     currentModule = &mod;
@@ -644,7 +644,7 @@ namespace liberty
     {
       Type *ty = *i;
 
-      LLVM_DEBUG(
+      LLVM_LLVM_DEBUG(
         errs() << "Checking cyclicity of ";
         errs() << *ty;
         errs() << '\n';
@@ -656,7 +656,7 @@ namespace liberty
 
     numAcyclic += acyclic.size();
 
-    LLVM_DEBUG(
+    LLVM_LLVM_DEBUG(
       errs() << "Found " << acyclic.size() << " acyclic types:\n";
       for(TypeSet::iterator i=acyclic.begin(), e=acyclic.end(); i!=e; ++i)
       {
@@ -667,7 +667,7 @@ namespace liberty
     );
 
     //currentModule = 0;
-    LLVM_DEBUG(errs() << "End AcyclicAA::runOnModule()\n");
+    LLVM_LLVM_DEBUG(errs() << "End AcyclicAA::runOnModule()\n");
     return false;
   }
 

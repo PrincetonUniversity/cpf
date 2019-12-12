@@ -77,7 +77,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
                                         const Instruction *dst,
                                         const bool loopCarried,
                                         SpecPriv::Reduction::Type &type) {
-  LLVM_DEBUG(errs() << "Testing PDG Edge for sum reduction: " << *src << " -> "
+  LLVM_LLVM_DEBUG(errs() << "Testing PDG Edge for sum reduction: " << *src << " -> "
                << *dst << "\n");
   if (!src || !dst)
     return false;
@@ -99,7 +99,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
       (addInst = findAddInstDefForPHI(dyn_cast<PHINode>(src), dst)) &&
       (isDefUseForPHI(dyn_cast<PHINode>(dst), addInst)) && dst->hasOneUse() &&
       src->hasOneUse()) {
-    LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
+    LLVM_LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
                  << *dst << "\naddInst: " << *addInst
                  << "\naccumValue: " << *dst << "\n");
 
@@ -116,7 +116,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
            (addInst = getAddInstDefForPHI(dyn_cast<PHINode>(src))) &&
            (isDefUseForPHI(dyn_cast<PHINode>(dst), addInst)) &&
            dst->hasOneUse() && src->hasOneUse()) {
-    LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
+    LLVM_LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
                  << *dst << "\naddInst: " << *addInst
                  << "\naccumValue: " << *dst << "\n");
     isSumRedux = true;
@@ -129,7 +129,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
            dst->getParent() == loop->getHeader() && loopCarried &&
            isAddInst(src) && (isDefUseForPHI(dyn_cast<PHINode>(dst), src)) &&
            dst->hasOneUse() && src->hasOneUse()) {
-    LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
+    LLVM_LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
                  << *dst << "\naddInst: " << *src << "\naccumValue: " << *dst
                  << "\n");
     addInst = src;
@@ -143,7 +143,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
   else if (src->getOpcode() == Instruction::PHI &&
            src->getParent() == loop->getHeader() && loopCarried &&
            isAddInst(dst) && (isDefUseForPHI(dyn_cast<PHINode>(src), dst))) {
-    LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
+    LLVM_LLVM_DEBUG(errs() << "\nSum Reduction:Found edge: " << *src << "\n            "
                  << *dst << "\naddInst: " << *src << "\naccumValue: " << *dst
                  << "\n");
     return true;
@@ -167,7 +167,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
   else if (dst->getOpcode() == Instruction::PHI &&
            src->getOpcode() == Instruction::PHI && loopCarried) {
 
-    LLVM_DEBUG(errs() << "a " << *src << " to " << *dst << "\n");
+    LLVM_LLVM_DEBUG(errs() << "a " << *src << " to " << *dst << "\n");
     const PHINode *srcPhi = dyn_cast<PHINode>(src);
 
     Value *op = 0;
@@ -179,11 +179,11 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
       op = srcPhi->getIncomingValue(0);
 
     if (op) {
-      LLVM_DEBUG(errs() << "b\n");
+      LLVM_LLVM_DEBUG(errs() << "b\n");
       if (BinaryOperator *binop = dyn_cast<BinaryOperator>(op)) {
-        LLVM_DEBUG(errs() << "c\n");
+        LLVM_LLVM_DEBUG(errs() << "c\n");
         if (binop->getOpcode() == Instruction::Add) {
-          LLVM_DEBUG(errs() << "d\n");
+          LLVM_LLVM_DEBUG(errs() << "d\n");
           bool good = false;
 
           PHINode *phi2 = 0;
@@ -200,7 +200,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
           }
 
           if (good) {
-            LLVM_DEBUG(errs() << "Sum Reduction:Found edge: " << *src
+            LLVM_LLVM_DEBUG(errs() << "Sum Reduction:Found edge: " << *src
                          << "\n            " << *dst << "\n"
                          << "PHI 1: " << *dst << '\n'
                          << "PHI 2: " << *phi2 << '\n'
@@ -220,7 +220,7 @@ bool ReductionDetection::isSumReduction(const Loop *loop,
     return true;
   }
 
-  LLVM_DEBUG(errs() << "\t- Finishing sum reduction check. Not found\n");
+  LLVM_LLVM_DEBUG(errs() << "\t- Finishing sum reduction check. Not found\n");
   return false;
 }
 
@@ -234,7 +234,7 @@ bool findDependenceCycle(
         &minMaxReductions,
     Loop *loop) {
 
-  // LLVM_DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
+  // LLVM_LLVM_DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
   // << *dst << "\n");
 
   std::vector<const Instruction *> stack;
@@ -250,7 +250,7 @@ bool findDependenceCycle(
     visited.insert(inst);
 
     if (inst == src) {
-      // LLVM_DEBUG(errs() << "FOUND: " << *inst << '\n');
+      // LLVM_LLVM_DEBUG(errs() << "FOUND: " << *inst << '\n');
       assert(cmpInst && "Cycle should contain a CmpInst");
 
       // Check that operands of the cmp are the same as those of the sel/phi
@@ -263,7 +263,7 @@ bool findDependenceCycle(
           return false;
       } else {
         const PHINode *phi = cast<PHINode>(dst);
-        // LLVM_DEBUG(errs() << "PHI: " << *phi << '\n');
+        // LLVM_LLVM_DEBUG(errs() << "PHI: " << *phi << '\n');
         bool found0 = false, found1 = false;
         for (unsigned val = 0; val < phi->getNumIncomingValues(); ++val) {
           if (cmpInst->getOperand(0) == phi->getIncomingValue(val))
@@ -275,7 +275,7 @@ bool findDependenceCycle(
           return false;
       }
 
-      LLVM_DEBUG(errs() << "Dependence cycle found for " << *src << " , " << *dst
+      LLVM_LLVM_DEBUG(errs() << "Dependence cycle found for " << *src << " , " << *dst
                    << "\n");
       return true;
     }
@@ -284,7 +284,7 @@ bool findDependenceCycle(
       continue;
 
     if (inst != dst && !isa<PHINode>(inst) && !isa<CmpInst>(inst)) {
-      LLVM_DEBUG(errs() << "Shouldn't have a non-PHI/cmp use: " << *inst << "\n");
+      LLVM_LLVM_DEBUG(errs() << "Shouldn't have a non-PHI/cmp use: " << *inst << "\n");
       return false;
   }
 
@@ -292,7 +292,7 @@ bool findDependenceCycle(
        U != E; ++U) {
     const Instruction *user = dyn_cast<Instruction>(*U);
     if (!user) {
-      LLVM_DEBUG(errs() << "User is not an instruction\n");
+      LLVM_LLVM_DEBUG(errs() << "User is not an instruction\n");
       return false;
     }
     if (!visited.count(user)) {
@@ -300,7 +300,7 @@ bool findDependenceCycle(
 
       if (isa<CmpInst>(user)) {
         if (cmpInst) {
-          LLVM_DEBUG(errs() << "More than one compare inst in the cycle\n");
+          LLVM_LLVM_DEBUG(errs() << "More than one compare inst in the cycle\n");
           return false; // there should only be one compare inst in the cycle
         }
         cmpInst = user;
@@ -374,7 +374,7 @@ bool sameBBMinMaxRedux(
         &minMaxReductions,
     Loop *loop, bool isMinMaxV) {
 
-  // LLVM_DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
+  // LLVM_LLVM_DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
   // << *dst << "\n");
 
   const SelectInst *sel = dyn_cast<SelectInst>(dst);
@@ -403,7 +403,7 @@ bool sameBBMinMaxRedux(
       continue;
 
     if (!isa<PHINode>(inst) && inst != dst ) {
-      LLVM_DEBUG(errs() << "Shouldn't have a non-PHI use: " << *inst << "\n");
+      LLVM_LLVM_DEBUG(errs() << "Shouldn't have a non-PHI use: " << *inst << "\n");
       return false;
     }
 
@@ -411,7 +411,7 @@ bool sameBBMinMaxRedux(
          ++U) {
       const Instruction *user = dyn_cast<Instruction>(*U);
       if (!user) {
-        LLVM_DEBUG(errs() << "User is not an instruction\n");
+        LLVM_LLVM_DEBUG(errs() << "User is not an instruction\n");
         return false;
       }
       if (!visited.count(user)) {
@@ -425,7 +425,7 @@ bool sameBBMinMaxRedux(
   }
 
   if (liveOutV && depCycleCompleted) {
-    LLVM_DEBUG(errs() << "MinMax redux for " << *liveOutV << "\n");
+    LLVM_LLVM_DEBUG(errs() << "MinMax redux for " << *liveOutV << "\n");
 
     if (isMinMaxV) {
       info->minMaxInst = liveOutV;
@@ -492,7 +492,7 @@ areCandidateInsts(const Instruction *src, const Instruction *dst,
     } else
       return NULL;
 
-    // LLVM_DEBUG(errs() << "CDEDGE: " << *src << "\n" << *dst << "\n");
+    // LLVM_LLVM_DEBUG(errs() << "CDEDGE: " << *src << "\n" << *dst << "\n");
 
     // 3. check def of dst is use of src
     // if (calTransitiveDependence(loopPDG, src, dst, cmpInst)) {
@@ -513,18 +513,18 @@ areCandidateInsts(const Instruction *src, const Instruction *dst,
       } else if (branchInst->getSuccessor(1) == dst->getParent()) {
         info->cmpTrueOnMinMax = true;
       } else {
-        // LLVM_DEBUG(errs() << "Could not determine sense of compare\n");
+        // LLVM_LLVM_DEBUG(errs() << "Could not determine sense of compare\n");
         delete info;
         return NULL;
       }
 
-      LLVM_DEBUG(errs() << " cmpInst:     " << *info->cmpInst
+      LLVM_LLVM_DEBUG(errs() << " cmpInst:     " << *info->cmpInst
                    << "\n minMaxValue: " << *info->minMaxValue
                    << "\n isFirstOperand: " << info->isFirstOperand
                    << "\n cmpTrueOnMinMax: " << info->cmpTrueOnMinMax << "\n");
       return info;
     } else {
-      LLVM_DEBUG(errs() << "findDependenceCycle() returned false\n");
+      LLVM_LLVM_DEBUG(errs() << "findDependenceCycle() returned false\n");
     }
   } else if (const SelectInst *sel = dyn_cast<SelectInst>(dst)) {
 
@@ -561,7 +561,7 @@ areCandidateInsts(const Instruction *src, const Instruction *dst,
       else
         info->cmpTrueOnMinMax = true;
 
-      LLVM_DEBUG(errs() << " cmpInst:     " << *info->cmpInst
+      LLVM_LLVM_DEBUG(errs() << " cmpInst:     " << *info->cmpInst
                    << "\n minMaxValue: " << *info->minMaxValue
                    << "\n isFirstOperand: " << info->isFirstOperand
                    << "\n cmpTrueOnMinMax: " << info->cmpTrueOnMinMax << "\n");
@@ -577,7 +577,7 @@ bool ReductionDetection::isMinMaxReduction(
     const bool loopCarried, SpecPriv::Reduction::Type &type,
     const Instruction **depInst, SpecPriv::Reduction::Type &depType,
     const Instruction **depUpdateInst) {
-  LLVM_DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
+  LLVM_LLVM_DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
                << *dst << "\n";);
 
   if (minMaxReductions.count(dst) && loopCarried) {
@@ -593,7 +593,7 @@ bool ReductionDetection::isMinMaxReduction(
 
 void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
   minMaxReductions.clear();
-  LLVM_DEBUG(errs() << "\t- Starting min/max reduction check.\n");
+  LLVM_LLVM_DEBUG(errs() << "\t- Starting min/max reduction check.\n");
   for (auto edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
     if (!pdg->isInternal(edge->getIncomingT()) ||
         !pdg->isInternal(edge->getOutgoingT()))
@@ -616,7 +616,7 @@ void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
     if (MinMaxReductionInfo *info =
             areCandidateInsts(src, dst, edge->isControlDependence(), pdg,
                               minMaxReductions, loop)) {
-      LLVM_DEBUG(errs() << "CandidateReduxInsts:"
+      LLVM_LLVM_DEBUG(errs() << "CandidateReduxInsts:"
                    << "\n      src = " << *src
                    << "\n      dst = " << *dst << "\n");
 
@@ -641,7 +641,7 @@ void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
         delete info;
     }
   }
-  LLVM_DEBUG(errs() << "\t- Finishing min/max reduction check.\n");
+  LLVM_LLVM_DEBUG(errs() << "\t- Finishing min/max reduction check.\n");
 }
 
 } // namespace liberty

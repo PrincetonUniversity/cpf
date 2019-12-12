@@ -125,7 +125,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
         //if ( !loop_carried )
         //  IICtrlCache.addIICtrl(t, p);
 
-        //LLVM_DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and phi " << *phi << '\n' );
+        //LLVM_LLVM_DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and phi " << *phi << '\n' );
       }
     }
   }
@@ -182,7 +182,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
 
         //E.addLCCtrl(t, s);
         unremovableCtrlDeps[term].insert(idst);
-        //LLVM_DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and idst " << *idst << '\n' );
+        //LLVM_LLVM_DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and idst " << *idst << '\n' );
       }
     }
   }
@@ -212,21 +212,21 @@ Remediator::RemedResp ControlSpecRemediator::memdep(const Instruction *A,
   if (speculator->isSpeculativelyDead(A)) {
     ++numMemDepRem;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
   else if (speculator->isSpeculativelyDead(B)) {
     ++numMemDepRem;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
   else if (!LoopCarried && speculator->isReachable(ncA, ncB, ncL) == false) {
     ++numMemDepRem;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -275,7 +275,7 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
     //remedy->cost = EXPENSIVE_CTRL_REMED_COST;
 
   remedResp.depRes = DepResult::NoDep;
-  LLVM_DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
+  LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
                << "  and  " << *B << '\n');
 
   remedResp.remedy = remedy;
@@ -301,7 +301,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
   if (speculator->isSpeculativelyDead(A)) {
     ++numRegDepRem;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -309,7 +309,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
   else if (speculator->isSpeculativelyDead(B)) {
     ++numRegDepRem;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
+    LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -318,7 +318,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
     if (phi && speculator->phiUseIsSpeculativelyDead(phi, A)) {
       ++numRegDepRem;
       remedResp.depRes = DepResult::NoDep;
-      LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
+      LLVM_LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
                    << "  and  " << *B << '\n');
     }
   }

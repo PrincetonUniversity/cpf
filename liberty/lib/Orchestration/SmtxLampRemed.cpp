@@ -152,7 +152,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
-      LLVM_DEBUG(errs() << "No observed InterIterDep between " << *A << "  and  "
+      LLVM_LLVM_DEBUG(errs() << "No observed InterIterDep between " << *A << "  and  "
                    << *B << "\n");
 
       // Keep track of this
@@ -171,7 +171,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
       ++numNoFlow;
       remedResp.depRes = DepResult::NoDep;
 
-      LLVM_DEBUG(errs() << "No observed IntraIter dep from " << *A << "  and  " << *B
+      LLVM_LLVM_DEBUG(errs() << "No observed IntraIter dep from " << *A << "  and  " << *B
                    << "\n");
 
       // Keep track of this
