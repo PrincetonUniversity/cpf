@@ -84,7 +84,7 @@ bool SLAMP::runOnModule(Module& m)
 
   if ( mayCallSetjmpLongjmp(this->target_loop) )
   {
-    LLVM_LLVM_DEBUG( errs() << "Warning! target loop may call setjmp/longjmp\n" );
+    LLVM_DEBUG( errs() << "Warning! target loop may call setjmp/longjmp\n" );
     //return false;
   }
 
@@ -310,7 +310,7 @@ void SLAMP::replaceExternalFunctionCalls(Module& m)
 
     if ( externs.find(name) == externs.end() )
     {
-      LLVM_LLVM_DEBUG( errs() << "WARNING: Wrapper for external function " << name << " not implemented.\n" );
+      LLVM_DEBUG( errs() << "WARNING: Wrapper for external function " << name << " not implemented.\n" );
     }
     else
     {
