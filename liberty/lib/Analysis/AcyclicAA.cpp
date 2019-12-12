@@ -252,7 +252,7 @@ namespace liberty
     for(BI i=f->begin(), e=f->end(); i!=e; ++i)
     {
       BasicBlock *bb = &*i;
-      TerminatorInst *term = bb->getTerminator();
+      Instruction *term = bb->getTerminator();
       ReturnInst *ret = dyn_cast<ReturnInst>( term );
 
       if( !ret )
