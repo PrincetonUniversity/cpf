@@ -128,50 +128,58 @@ struct Api
   Constant* getInit()
   {
     std::string name = (Twine(personality) + "_init").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getFini()
   {
     std::string name = (Twine(personality) + "_fini").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getDeclareNumLocalValues()
   {
     std::string name = (Twine(personality) + "_declare_num_lv").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getStoreLocalValue()
   {
     // (u32, u64) -> void
     std::string name = (Twine(personality) + "_store_lv").str();
-    return mod->getOrInsertFunction(name, fii2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fii2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getLoadLocalValue()
   {
     // u32 -> u64
     std::string name = (Twine(personality) + "_load_lv").str();
-    return mod->getOrInsertFunction(name, fi2i64);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2i64);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getRecoverDone()
   {
     std::string name = (Twine(personality) + "_recovery_finished").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getLastCommitted()
   {
     std::string name = (Twine(personality) + "_last_committed").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getMisspecIter()
   {
     std::string name = (Twine(personality) + "_misspec_iter").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getPredict()
@@ -182,14 +190,16 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_predict").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getIO(Function *callee)
   {
     FunctionType *fty = cast< FunctionType >( cast< PointerType >( callee->getType() ) ->getElementType()  );
     std::string name = (Twine(personality) + "_io_" + callee->getName()).str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getUO()
@@ -202,7 +212,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_uo").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getPtrResidue()
@@ -214,41 +225,47 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_ptr_residue").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getSetPstageReplica()
   {
     std::string name = (Twine(personality) + "_set_pstage_replica_id").str();
-    Function *cc = cast<Function>( mod->getOrInsertFunction(name, fi2v) );
-    return cc;
+    //Function *cc = cast<Function>( mod->getOrInsertFunction(name, fi2v) );
+    FunctionCallee cc = mod->getOrInsertFunction(name, fi2v);
+    return cast<Constant>(cc.getCallee());
   }
 
   Constant *getWorkerFinishes()
   {
     std::string name = (Twine(personality) + "_worker_finishes").str();
-    Function *cc = cast<Function>( mod->getOrInsertFunction(name, fi2v) );
+    //Function *cc = cast<Function>( mod->getOrInsertFunction(name, fi2v) );
+    FunctionCallee cc = mod->getOrInsertFunction(name, fi2v);
     // with spawning process just once worker_finishes returns
     //cc->setDoesNotReturn();
-    return cc;
+    return cast<Constant>(cc.getCallee());
   }
 
   Constant *getWorkerId()
   {
     std::string name = (Twine(personality) + "_my_worker_id").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getFinalIterCkptCheck()
   {
     std::string name = (Twine(personality) + "_final_iter_ckpt_check").str();
-    return mod->getOrInsertFunction(name, fi642v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi642v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getCkptCheck()
   {
     std::string name = (Twine(personality) + "_ckpt_check").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getMisspeculate()
@@ -257,15 +274,17 @@ struct Api
     formals[0] = voidptr;
     FunctionType *fty = FunctionType::get(voidty, formals, false);
     std::string name = (Twine(personality) + "_misspec").str();
-    Function *cc = cast<Function>( mod->getOrInsertFunction(name, fty) );
-    cc->setDoesNotReturn();
-    return cc;
+    AttributeList Attr;
+    Attr = Attr.addAttribute(mod->getContext(), 0, Attribute::NoReturn);
+    FunctionCallee cc = mod->getOrInsertFunction(name, fty, Attr);
+    return cast<Constant>(cc.getCallee());
   }
 
   Constant *getCurrentIter()
   {
     std::string name = (Twine(personality) + "_current_iter").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getAlloc(HeapAssignment::Type heap)
@@ -290,7 +309,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_private_read_range").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getPrivateReadRange(uint64_t fixed)
   {
@@ -302,7 +322,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     Twine name = Twine(personality) + "_private_read_" + Twine(fixed) + "b";
-    return mod->getOrInsertFunction(name.str(), fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name.str(),fty);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getPrivateReadRangeStride()
   {
@@ -315,7 +336,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_private_read_range_stride").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getPrivateWriteRange()
@@ -326,7 +348,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_private_write_range").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getSharePrivateWriteRange()
   {
@@ -336,7 +359,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_shareprivate_write_range").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getReduxWriteRange()
   {
@@ -346,7 +370,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_redux_write_range").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
 
@@ -359,7 +384,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     Twine name = Twine(personality) + "_private_write_" + Twine(fixed) + "b";
-    return mod->getOrInsertFunction(name.str(), fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name.str(),fty);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getPrivateWriteRangeStride()
   {
@@ -371,109 +397,128 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_private_write_range_stride").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getSpawn()
   {
     std::string name = (Twine(personality) + "_spawn_workers_callback").str();
     //return mod->getOrInsertFunction(name, ficvp2i);
-    return mod->getOrInsertFunction(name, fvpdisp);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpdisp);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getNumWorkers()
   {
     std::string name = (Twine(personality) + "_num_workers").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getNumAvailableWorkers()
   {
     std::string name = (Twine(personality) + "_num_available_workers").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getJoin()
   {
     std::string name = (Twine(personality) + "_join_children").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getSetLoopID()
   {
     std::string name = (Twine(personality) + "_set_loopID").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getGetLoopID()
   {
     std::string name = (Twine(personality) + "_get_loopID").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getBeginInvocation()
   {
     std::string name = (Twine(personality) + "_begin_invocation").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getEndInvocation()
   {
     std::string name = (Twine(personality) + "_end_invocation").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getBeginIter()
   {
     std::string name = (Twine(personality) + "_begin_iter").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getEndIter()
   {
     std::string name = (Twine(personality) + "_end_iter").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
    Constant *getSetLastReduxUpIter()
   {
     std::string name = (Twine(personality) + "_set_last_redux_update_iter").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getNumLocals()
   {
     std::string name = (Twine(personality) + "_num_local").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getAddNumLocals()
   {
     std::string name = (Twine(personality) + "_add_num_local").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getBegin()
   {
     std::string name = (Twine(personality) + "_begin").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getEnd()
   {
     std::string name = (Twine(personality) + "_end").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getGenericBegin()
   {
     std::string name = (Twine(genericPersonality) + "_begin").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
   Constant *getGenericEnd()
   {
     std::string name = (Twine(genericPersonality) + "_end").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getSpawnWorkersBegin()
   {
     std::string name = "__spawn_workers_begin";
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Type *getQueueType()
@@ -499,211 +544,246 @@ struct Api
   Constant *getProduce()
   {
     std::string name = (Twine(personality) + "_produce").str();
-    return mod->getOrInsertFunction(name, fqi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fqi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getProduceLocal()
   {
     std::string name = (Twine(personality) + "_produce_locals").str();
-    return mod->getOrInsertFunction(name, fq2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getFlushQueue()
   {
     std::string name = (Twine(personality) + "_flush").str();
-    return mod->getOrInsertFunction(name, fq2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getClearQueue()
   {
     std::string name = (Twine(personality) + "_clear").str();
-    return mod->getOrInsertFunction(name, fq2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getConsume()
   {
     std::string name = (Twine(personality) + "_consume").str();
-    return mod->getOrInsertFunction(name, fq2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getConsumeLocal()
   {
     std::string name = (Twine(personality) + "_consume_locals").str();
-    return mod->getOrInsertFunction(name, fq2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getProduceToReplicated()
   {
     std::string name = (Twine(personality) + "_produce_replicated").str();
-    return mod->getOrInsertFunction(name, fqi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fqi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getConsumeInReplicated()
   {
     std::string name = (Twine(personality) + "_consume_replicated").str();
-    return mod->getOrInsertFunction(name, fq2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getCreateQueue()
   {
     std::string name = (Twine(personality) + "_create_queue").str();
-    return mod->getOrInsertFunction(name, f4i2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,f4i2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getFetchQueue()
   {
     std::string name = (Twine(personality) + "_fetch_queue").str();
-    return mod->getOrInsertFunction(name, fii2q);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fii2q);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getAllocQueues()
   {
     std::string name = (Twine(personality) + "_alloc_queues").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getAllocStageQueues()
   {
     std::string name = (Twine(personality) + "_alloc_stage_queues").str();
-    return mod->getOrInsertFunction(name, f2i2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,f2i2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getResetQueue()
   {
     std::string name = (Twine(personality) + "_reset_queue").str();
-    return mod->getOrInsertFunction(name, fq2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getFreeQueue()
   {
     std::string name = (Twine(personality) + "_free_queue").str();
-    return mod->getOrInsertFunction(name, fq2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fq2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getFreeQueues()
   {
     std::string name = (Twine(personality) + "_free_queues").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getEnablePrivate()
   {
     std::string name = (Twine(personality) + "_enable_private").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerWrite()
   {
     std::string name = (Twine(personality) + "_ver_write").str();
-    return mod->getOrInsertFunction(name, fvpi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerWrite1()
   {
     std::string name = (Twine(personality) + "_ver_write1").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerWrite2()
   {
     std::string name = (Twine(personality) + "_ver_write2").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerWrite4()
   {
     std::string name = (Twine(personality) + "_ver_write4").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerWrite8()
   {
     std::string name = (Twine(personality) + "_ver_write8").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerRead()
   {
     std::string name = (Twine(personality) + "_ver_read").str();
-    return mod->getOrInsertFunction(name, fvpi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerRead1()
   {
     std::string name = (Twine(personality) + "_ver_read1").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerRead2()
   {
     std::string name = (Twine(personality) + "_ver_read2").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerRead4()
   {
     std::string name = (Twine(personality) + "_ver_read4").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerRead8()
   {
     std::string name = (Twine(personality) + "_ver_read8").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getVerMemMove()
   {
     std::string name = (Twine(personality) + "_ver_memmove").str();
-    return mod->getOrInsertFunction(name, fvpivp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpivp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerMalloc()
   {
     std::string name = (Twine(personality) + "_ver_malloc").str();
-    return mod->getOrInsertFunction(name, fi642vp);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi642vp);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerCalloc()
   {
     std::string name = (Twine(personality) + "_ver_calloc").str();
-    return mod->getOrInsertFunction(name, fi64i642vp);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi64i642vp);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerRealloc()
   {
     std::string name = (Twine(personality) + "_ver_realloc").str();
-    return mod->getOrInsertFunction(name, fvpi642vp);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpi642vp);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerFree()
   {
     std::string name = (Twine(personality) + "_ver_free").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getMalloc()
   {
     std::string name = (Twine(personality) + "_malloc").str();
-    return mod->getOrInsertFunction(name, fi642vp);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi642vp);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getCalloc()
   {
     std::string name = (Twine(personality) + "_calloc").str();
-    return mod->getOrInsertFunction(name, fi64i642vp);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi64i642vp);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRealloc()
   {
     std::string name = (Twine(personality) + "_realloc").str();
-    return mod->getOrInsertFunction(name, fvpi642vp);
+     FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpi642vp);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getFree()
   {
     std::string name = (Twine(personality) + "_free").str();
-    return mod->getOrInsertFunction(name, fvp2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvp2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSeparationInit()
@@ -714,7 +794,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_separation_init").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSeparationFini()
@@ -725,7 +806,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_separation_fini").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSepMalloc()
@@ -736,7 +818,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = (Twine(personality) + "_separation_malloc").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSepCalloc()
@@ -748,7 +831,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = (Twine(personality) + "_separation_calloc").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSepRealloc()
@@ -760,13 +844,15 @@ struct Api
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = (Twine(personality) + "_separation_realloc").str();
-    return mod->getOrInsertFunction(name, fty);
+     FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSepFree()
   {
     std::string name = (Twine(personality) + "_separation_free").str();
-    return mod->getOrInsertFunction(name, fvpi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerSepMalloc()
@@ -777,7 +863,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = (Twine(personality) + "_ver_separation_malloc").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerSepCalloc()
@@ -789,7 +876,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = (Twine(personality) + "_ver_separation_calloc").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerSepRealloc()
@@ -801,19 +889,22 @@ struct Api
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = (Twine(personality) + "_ver_separation_realloc").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getVerSepFree()
   {
     std::string name = (Twine(personality) + "_ver_separation_free").str();
-    return mod->getOrInsertFunction(name, fvpi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fvpi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getClearSeparationHeaps()
   {
     std::string name = (Twine(personality) + "_clear_separation_heaps").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterVRO()
@@ -823,7 +914,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_versioned_ro").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterNVRO()
@@ -833,7 +925,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_ro").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterVNRBW()
@@ -843,7 +936,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_versioned_nrbw").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterNVNRBW()
@@ -853,7 +947,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_nrbw").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterVSP()
@@ -864,7 +959,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_versioned_stage_private").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterNVSP()
@@ -875,7 +971,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_stage_private").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterVUC()
@@ -885,7 +982,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_versioned_unclassified").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getRegisterNVUC()
@@ -895,25 +993,29 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_register_unclassified").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getSeparationAllocContext()
   {
     std::string name = (Twine(personality) + "_get_separation_alloc_context").str();
-    return mod->getOrInsertFunction(name, fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getPushSeparationAllocContext()
   {
     std::string name = (Twine(personality) + "_push_separation_alloc_context").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getPopSeparationAllocContext()
   {
     std::string name = (Twine(personality) + "_pop_separation_alloc_context").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getInitPredictors()
@@ -925,13 +1027,15 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
     std::string name = (Twine(personality) + "_init_predictors").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant* getFiniPredictors()
   {
     std::string name = (Twine(personality) + "_fini_predictors").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getCheckLoopInvariant()
@@ -944,7 +1048,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_check_loop_invariant").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getRegisterLoopInvariantBuffer()
@@ -957,7 +1062,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_register_loop_invariant_buffer").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getCheckRegisterLinearPredictor()
@@ -971,7 +1077,8 @@ struct Api
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = (Twine(personality) + "_check_and_register_linear_predictor").str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getDebugPrintf()
@@ -982,7 +1089,8 @@ struct Api
     formals[0] = voidptr;
     FunctionType *fty = FunctionType::get(u32, formals, true);
 
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getInformStrategy()
@@ -995,49 +1103,57 @@ struct Api
     formals[2] = u32;
     FunctionType *fty = FunctionType::get(voidty, formals, true);
 
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getAllocStratInfo()
   {
     std::string name = (Twine(personality) + "_alloc_strategies_info").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getCleanupStrategy()
   {
     std::string name = (Twine(personality) + "_cleanup_strategy").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getSetCurLoopStrat()
   {
     std::string name = (Twine(personality) + "_set_current_loop_strategy").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getLoopInvocation()
   {
     std::string name = (Twine(personality) + "_loop_invocation").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getLoopExit()
   {
     std::string name = (Twine(personality) + "_loop_exit").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getPushContext()
   {
     std::string name = (Twine(personality) + "_push_context").str();
-    return mod->getOrInsertFunction(name, fi2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getPopContext()
   {
     std::string name = (Twine(personality) + "_pop_context").str();
-    return mod->getOrInsertFunction(name, fv2v);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2v);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getGetContext()
@@ -1046,7 +1162,8 @@ struct Api
 
     FunctionType* fty = FunctionType::get(u64, false);
 
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   static uint64_t getHeapCodeMask()
@@ -1129,7 +1246,8 @@ private:
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
 
     std::string name = ( Twine(personality) + "_alloc_" + suffix ).str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getAllocRedux()
@@ -1145,7 +1263,8 @@ private:
 
     FunctionType *fty = FunctionType::get(voidptr, formals, false);
     std::string name = (Twine(personality) + "_alloc_redux").str();
-    return mod->getOrInsertFunction(name, fty );
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
   Constant *getFree(StringRef suffix)
@@ -1155,7 +1274,8 @@ private:
     FunctionType *fty = FunctionType::get(voidty, formals, false);
 
     std::string name = ( Twine(personality) + "_free_" + suffix ).str();
-    return mod->getOrInsertFunction(name, fty);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fty);
+    return cast<Constant>(wrapper.getCallee());
   }
 
 };
