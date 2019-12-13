@@ -1082,7 +1082,7 @@ void PSDSWPCritic::populateCrossStageDependences(PipelineStrategy &ps,
         Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
         assert(dst &&
                "dst of ctrl dep is not an instruction in crossStageDeps");
-        if (edge->isControlDependence() && isa<Instruction>(src)) {
+        if (edge->isControlDependence() && src->isTerminator()) {
           // Foreach control-dep successor of src
           // also useful to keep ctrl deps within a stage for parallel stage's
           // OFF iteration

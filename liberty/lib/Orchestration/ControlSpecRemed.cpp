@@ -167,7 +167,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
         */
 
         /*
-        if( Instruction *tt = dyn_cast< Instruction >(idst) )
+        if( idst->isTerminator() )
           if( ! speculator->mayExit(tt,loop) )
             continue;
         */
@@ -267,10 +267,9 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
   ++numCtrlDepRem;
   remedy->brI = A;
 
-  const Instruction *tA = dyn_cast<Instruction>(A);
-  assert(tA);
+  assert(A->isTerminator());
 
-  if (speculator->misspecInProfLoopExit(tA))
+  if (speculator->misspecInProfLoopExit(A))
     remedy->cost = 0;
     //remedy->cost = EXPENSIVE_CTRL_REMED_COST;
 
