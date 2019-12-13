@@ -11,14 +11,14 @@ using namespace llvm;
 // --------------------- BB Succ Iterator ----------------------
 
 // Construct a begin iterator
-BBSuccIterator::BBSuccIterator(TerminatorInst *ti, ControlSpeculation &cs)
+BBSuccIterator::BBSuccIterator(Instruction *ti, ControlSpeculation &cs)
   : ctrlspec(&cs), term(ti), sn(0)
 {
   skipDead();
 }
 
 // Construnct an end iterator
-BBSuccIterator::BBSuccIterator(TerminatorInst *ti)
+BBSuccIterator::BBSuccIterator(Instruction *ti)
   : ctrlspec(0), term(ti), sn( term->getNumSuccessors() )
 {}
 
@@ -164,7 +164,7 @@ ControlSpeculation::LoopBlock LoopBBSuccIterator::operator*() const
   }
   else
   {
-    TerminatorInst *term = pred.getBlock()->getTerminator();
+    Instruction *term = pred.getBlock()->getTerminator();
     assert( sn < term->getNumSuccessors() && "Advance too far" );
 
     BasicBlock *succ = term->getSuccessor(sn);
@@ -198,7 +198,7 @@ void LoopBBSuccIterator::skipDead()
   if( ! pred.isBeforeIteration()
   &&  ! pred.isAfterIteration() )
   {
-    TerminatorInst *term = pred.getBlock()->getTerminator();
+    Instruction *term = pred.getBlock()->getTerminator();
 
     const unsigned N = term->getNumSuccessors();
     while( sn < N && ctrlspec->isSpeculativelyDead(term,sn) )
