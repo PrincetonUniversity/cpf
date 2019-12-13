@@ -275,7 +275,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
     {
       ControlSpeculation::LoopBlock src = *j;
 
-      TerminatorInst *term = src.getBlock()->getTerminator();
+      Instruction *term = src.getBlock()->getTerminator();
 
       for(BasicBlock::iterator k=dst.getBlock()->begin(), f=dst.getBlock()->end(); k!=f; ++k)
       {
@@ -303,7 +303,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     // no control dependence can be formulated around unconditional branches
 
@@ -352,7 +352,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   for(Exitings::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
   {
     BasicBlock *exiting = *i;
-    TerminatorInst *term = exiting->getTerminator();
+    Instruction *term = exiting->getTerminator();
 
     // Draw ctrl deps to:
     //  (1) Operations with side-effects
@@ -371,7 +371,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
           continue;
 
         /*
-        if( TerminatorInst *tt = dyn_cast< TerminatorInst >(idst) )
+        if( Instruction *tt = dyn_cast< TerminatorInst >(idst) )
           if( ! ctrlspec.mayExit(tt,loop) )
             continue;
         */
