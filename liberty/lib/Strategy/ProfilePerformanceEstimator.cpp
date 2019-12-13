@@ -67,7 +67,7 @@ unsigned long ProfilePerformanceEstimator::inst_count(const Instruction *inst)
   // getEntryCount returns -1 if no value in LLVM 7.0
   // in LLVM 5.0 it returns llvm::Optional<long unsigned int>
   auto fcnt = fcn->getEntryCount();
-  if ((fcnt.hasValue() && fcnt.getValue() < 1) || !fcnt.hasValue()) {
+  if ((fcnt.hasValue() && fcnt.getCount() < 1) || !fcnt.hasValue()) {
     // Function never executed or no profile info available, so we don't know
     // the relative weights of the blocks inside.  We will assign the same
     // relative weight to all blocks in this function.

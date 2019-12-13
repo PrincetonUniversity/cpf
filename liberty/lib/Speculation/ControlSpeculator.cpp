@@ -69,12 +69,12 @@ void ProfileGuidedControlSpeculator::contextRenamedViaClone(
     CtrlEdges newDeadEdges;
     for(CtrlEdges::const_iterator i=deadEdges.begin(), e=deadEdges.end(); i!=e; ++i)
     {
-      const TerminatorInst *term = i->first;
+      const Instruction *term = i->first;
       ValueToValueMapTy::const_iterator j = vmap.find(term);
       if( j == vmap_end )
         continue;
 
-      const TerminatorInst *newTerm = cast< TerminatorInst >( &*(j->second) );
+      const Instruction *newTerm = cast< Instruction >( &*(j->second) );
       newDeadEdges[ newTerm ] = i->second;
 
   //    errs() << "  - t  " << term->getParent()->getParent()->getName() << "::"
@@ -203,7 +203,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
     return;
   }
 
-  uint64_t fcnt = fcn->getEntryCount().getValue();
+  uint64_t fcnt = fcn->getEntryCount().getCount();
   if( fcnt == 0 ) // not possible in LLVM 5.0
   {
     LLVM_DEBUG(errs() << "CtrlSpec: function never executed\n");
@@ -239,7 +239,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   {
     const BasicBlock *pred = &*i;
 
-    const TerminatorInst *term = pred->getTerminator();
+    const Instruction *term = pred->getTerminator();
     const unsigned N = term->getNumSuccessors();
     if( N < 2 )
       continue;
@@ -395,7 +395,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
       continue;
     reachable.insert(bb);
 
-    const TerminatorInst *term = bb->getTerminator();
+    const Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       // Skip speculated edges
@@ -425,7 +425,7 @@ void ProfileGuidedControlSpeculator::visit(const Function *fcn)
   }
 }
 
-bool ProfileGuidedControlSpeculator::isSpeculativelyDead(const TerminatorInst *t, unsigned sn)
+bool ProfileGuidedControlSpeculator::isSpeculativelyDead(const Instruction *t, unsigned sn)
 {
   const BasicBlock *bb = t->getParent();
   const Function *fcn = bb->getParent();
@@ -448,7 +448,7 @@ bool ProfileGuidedControlSpeculator::isSpeculativelyDead(const BasicBlock *bb)
   return deadBlocks.count(bb);
 }
 
-bool ProfileGuidedControlSpeculator::misspecInProfLoopExit(const TerminatorInst *t)
+bool ProfileGuidedControlSpeculator::misspecInProfLoopExit(const Instruction *t)
 {
   const BasicBlock *bb = t->getParent();
   const Function *fcn = bb->getParent();
@@ -478,7 +478,7 @@ void  ProfileGuidedControlSpeculator::dot_block_label(const BasicBlock *bb, raw_
   }
 }
 
-void  ProfileGuidedControlSpeculator::dot_edge_label(const TerminatorInst *term, unsigned sn, raw_ostream &fout)
+void  ProfileGuidedControlSpeculator::dot_edge_label(const Instruction *term, unsigned sn, raw_ostream &fout)
 {
   // Evil, but okay because it won't modify the IR
   Function *non_const_fcn = const_cast<Function*>(term->getParent()->getParent());
