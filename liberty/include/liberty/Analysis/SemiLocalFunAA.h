@@ -1,7 +1,7 @@
 #ifndef LLVM_LIBERTY_SEMI_LOCAL_FUN_AA_H
 #define LLVM_LIBERTY_SEMI_LOCAL_FUN_AA_H
 
-#include "llvm/ADT/StringExtras.h"
+#include "llvm/Support/DJB.h"
 
 namespace liberty {
 
@@ -20,7 +20,7 @@ namespace llvm {
 
     static unsigned getHashValue(const liberty::Formal &F) {
       return
-        HashString(F.funName) ^
+        djbHash(F.funName) ^
         DenseMapInfo<unsigned>::getHashValue(F.argNo);
     }
 
