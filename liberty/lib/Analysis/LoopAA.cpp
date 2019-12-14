@@ -395,13 +395,13 @@ namespace liberty
   {
     switch(mr)
     {
-      case llvm::MRI_NoModRef:
+      case llvm::ModRefInfo::NoModRef:
         return LoopAA::NoModRef;
-      case llvm::MRI_Ref:
+      case llvm::ModRefInfo::Ref:
         return LoopAA::Ref;
-      case llvm::MRI_Mod:
+      case llvm::ModRefInfo::Mod:
         return LoopAA::Mod;
-      case llvm::MRI_ModRef:
+      case llvm::ModRefInfo::ModRef:
       default:
         return LoopAA::ModRef;
     }
@@ -522,15 +522,17 @@ namespace liberty
         CallSite csA = getCallSite(const_cast<Instruction*>(A));
         CallSite csB = getCallSite(const_cast<Instruction*>(B));
 
-        if( csA.getInstruction() && csB.getInstruction() )
+        const CallBase *cbA = dyn_cast<CallBase>(A);
+        const CallBase *cbB = dyn_cast<CallBase>(B);
+
+        if( csA.getInstruction() && csB.getInstruction() && cbA && cbB)
         {
-          ModRefResult r = Raise( AA->getModRefInfo(ImmutableCallSite(A),ImmutableCallSite(B)) );
+          ModRefResult r = Raise( AA->getModRefInfo(cbA,cbB) );
           if( r == NoModRef )
             return NoModRef;
 
-          else if( isa<IntrinsicInst>(A)
-          &&       isa<IntrinsicInst>(B)
-          &&       AA->getModRefInfo(ImmutableCallSite(B),ImmutableCallSite(A)) == llvm::MRI_NoModRef )
+          else if (isa<IntrinsicInst>(A) && isa<IntrinsicInst>(B) &&
+                   AA->getModRefInfo(cbB, cbA) == llvm::ModRefInfo::NoModRef)
             // Conservatively reverse the query (see note at top of fcn)
             return NoModRef;
 
