@@ -188,9 +188,10 @@ namespace liberty
       // sanity: ensure this is a definition
       if( isa<StoreInst>(lv) )
         continue;
-      if( isa<TerminatorInst>(lv) )
-        if( !isa<InvokeInst>(lv) )
-          continue;
+      if (const Instruction *lvi = dyn_cast<Instruction>(lv))
+        if (lvi->isTerminator())
+          if (!isa<InvokeInst>(lv))
+            continue;
       if( lv->getType()->isVoidTy() )
         continue;
 

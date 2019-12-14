@@ -59,7 +59,8 @@ namespace liberty
       FunctionType *sig_fflush = FunctionType::get(
         intty, formals, false);
 
-      Constant *fcn_fflush = module->getOrInsertFunction("fflush", sig_fflush);
+      FunctionCallee wrapper = module->getOrInsertFunction("fflush", sig_fflush);
+      Constant *fcn_fflush = cast<Constant>(wrapper.getCallee());
 
       Instruction *load = new LoadInst(gv_stdout);
       actuals.resize(1);
