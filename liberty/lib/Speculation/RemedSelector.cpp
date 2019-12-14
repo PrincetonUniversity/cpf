@@ -26,7 +26,6 @@
 //#include "RoI.h"
 #include "liberty/Speculation/RemedSelector.h"
 //#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
-#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 
 namespace liberty
 {
@@ -43,7 +42,6 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired< PtrResidueSpeculationManager >();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.addRequired< ProfileGuidedPredictionSpeculator >();
-  au.addRequired< HeaderPhiPredictionSpeculation >();
   au.addRequired<LoopAA>();
   au.addRequired<ReadPass>();
   au.addRequired<Classify>();

@@ -55,8 +55,7 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-    PredictionSpeculation *loadedValuePred,
-    PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+    PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
     TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
@@ -82,9 +81,6 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
 
   // memory speculation remediator 2 (with LAMP)
   //remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy, perf));
-
-  // header phi value prediction
-  //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
   // Loop-Invariant Loaded-Value Prediction
   //remeds.push_back(
@@ -280,8 +276,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-    PredictionSpeculation *loadedValuePred,
-    PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+    PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
     TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
     SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
@@ -317,10 +312,10 @@ bool Orchestrator::findBestStrategy(
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
 
   // address all possible criticisms
-  std::vector<Remediator_ptr> remeds = getRemediators(
-      loop, &pdg, ctrlspec, loadedValuePred, headerPhiPred, mloops, tli, ldi,
-      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
-      killflowA, callsiteA, &perf);
+  std::vector<Remediator_ptr> remeds =
+      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, ldi,
+                     smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
+                     loopAA, kill, killflowA, callsiteA, &perf);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);

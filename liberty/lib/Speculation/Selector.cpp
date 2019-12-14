@@ -35,7 +35,6 @@
 //#include "RoI.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
-#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 //#include "Transform.h"
 #include "liberty/Orchestration/LocalityAA.h"
 
@@ -153,8 +152,6 @@ unsigned Selector::computeWeights(
       &proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   ControlSpeculation *ctrlspec =
       proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-  PredictionSpeculation *headerPhiPred =
-      &proxy.getAnalysis<HeaderPhiPredictionSpeculation>();
   PredictionSpeculation *loadedValuePred =
       &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
   SmtxSlampSpeculationManager &smtxMan =
@@ -233,9 +230,9 @@ unsigned Selector::computeWeights(
       Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred,
-          mloops, tli, smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
-          loopAA, kill, killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
+          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, mloops, tli, smtxMan,
+          smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
+          killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
