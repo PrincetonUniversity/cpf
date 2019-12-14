@@ -58,8 +58,7 @@ public:
       // Inputs
       Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-      PredictionSpeculation *loadedValuePred,
-      PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+      PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
       TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
       SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
@@ -79,8 +78,7 @@ private:
 
   std::vector<Remediator_ptr> getRemediators(
       Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-      PredictionSpeculation *loadedValuePred,
-      PredictionSpeculation *headerPhiPred, ModuleLoops &mloops,
+      PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
       TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
       SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
