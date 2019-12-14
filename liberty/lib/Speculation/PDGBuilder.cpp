@@ -371,7 +371,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
           continue;
 
         /*
-        if( Instruction *tt = dyn_cast< TerminatorInst >(idst) )
+        if( idst->isTerminator() )
           if( ! ctrlspec.mayExit(tt,loop) )
             continue;
         */
