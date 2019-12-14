@@ -920,7 +920,7 @@ bool Reduction::isLastUpdate(Value *v, VSet &u_binops, Loop *loop)
     }
 
     // Add successors to fringe, stopping
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       BasicBlock *succ = term->getSuccessor(sn);
@@ -1310,7 +1310,7 @@ private:
           InstInsertPt where = InstInsertPt::Before(br);
 
           // Replace the *FIRST* use of 'usebb' in term
-          TerminatorInst *term = pred->getTerminator();
+          Instruction *term = pred->getTerminator();
           for(unsigned sn=0, SN=term->getNumSuccessors(); sn<SN; ++sn)
             if( term->getSuccessor(sn) == usebb )
             {
