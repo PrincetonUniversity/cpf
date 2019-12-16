@@ -112,7 +112,8 @@ void DOALLTransform::specDOALLInvocation(LoopDependenceInfo *LDI) {
 
   // Recovery not supported for now. Abort in case of misspec
   FunctionType *abortFTy = FunctionType::get(voidty, false);
-  Constant *abortF = mod->getOrInsertFunction("abort", abortFTy);
+  FunctionCallee wrapper_abortF = mod->getOrInsertFunction("abort", abortFTy);
+  Constant *abortF = cast<Constant>(wrapper_abortF.getCallee());
   Instruction *callabort = CallInst::Create(abortF);
   Instruction *unreachableinst = new UnreachableInst(ctx);
   InstInsertPt::End(perform_recovery_bb) << callabort
@@ -141,7 +142,7 @@ void DOALLTransform::markIterationBoundaries() {
 
   // Identify the edges at the end of an iteration
   // == loop backedges, loop exits.
-  typedef std::pair<TerminatorInst *, unsigned> CtrlEdge;
+  typedef std::pair<Instruction *, unsigned> CtrlEdge;
   typedef std::vector< CtrlEdge > CtrlEdgesV;
   typedef std::set< CtrlEdge > CtrlEdgesS;
   CtrlEdgesV iterationBounds;
@@ -149,7 +150,7 @@ void DOALLTransform::markIterationBoundaries() {
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       BasicBlock *dest = term->getSuccessor(sn);
@@ -169,7 +170,7 @@ void DOALLTransform::markIterationBoundaries() {
 
   for(unsigned i=0, N=iterationBounds.size(); i<N; ++i)
   {
-    TerminatorInst *term = iterationBounds[i].first;
+    Instruction *term = iterationBounds[i].first;
     BasicBlock *source = term->getParent();
     unsigned sn = iterationBounds[i].second;
     BasicBlock *dest = term->getSuccessor(sn);

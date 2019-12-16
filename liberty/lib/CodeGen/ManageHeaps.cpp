@@ -88,7 +88,8 @@ void DOALLTransform::insertMemcpy(InstInsertPt &where, Value *dst, Value *src, V
   formals[3] = u32;
   formals[4] = u1;
   FunctionType *fty = FunctionType::get(voidty, formals, false);
-  Constant *memcpy =  mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
+  FunctionCallee wrapper_memcpy =  mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
+  Constant *memcpy = cast<Constant> (wrapper_memcpy.getCallee());
 
   Value *one = ConstantInt::get(u32, 1);
   Value *fls = ConstantInt::getFalse(ctx);
@@ -426,7 +427,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::AUSet &aus, const Heap
       {
         BasicBlock *bb = &*j;
  //       errs() << "bb: " << *bb << "\n\n\n\n";
-        TerminatorInst *term = bb->getTerminator();
+        Instruction *term = bb->getTerminator();
         InstInsertPt where;
         if( isa<ReturnInst>(term) )
           where = InstInsertPt::Before(term);
@@ -529,7 +530,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::ReduxAUSet &aus)
       for(Function::iterator j=fcn->begin(), z=fcn->end(); j!=z; ++j)
       {
         BasicBlock *bb = &*j;
-        TerminatorInst *term = bb->getTerminator();
+        Instruction *term = bb->getTerminator();
         InstInsertPt where;
         if( isa<ReturnInst>(term) )
           where = InstInsertPt::Before(term);

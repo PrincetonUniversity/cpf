@@ -47,7 +47,7 @@ PreparedStrategy::PreparedStrategy(Loop *L, PipelineStrategy *strat,
     // Does this stage include an exiting terminator?
     for(unsigned i=0; i<M; ++i)
     {
-      TerminatorInst *exitingTerminator = exitingBlocks[i]->getTerminator();
+      Instruction *exitingTerminator = exitingBlocks[i]->getTerminator();
 
       if( sequential.instructions.count(exitingTerminator) )
       {

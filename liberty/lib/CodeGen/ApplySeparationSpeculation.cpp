@@ -717,8 +717,8 @@ void ApplySeparationSpec::insertMemcpy(InstInsertPt &where, Value *dst, Value *s
   formals[3] = u32;
   formals[4] = u1;
   FunctionType *fty = FunctionType::get(voidty, formals, false);
-  Constant *memcpy =  mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
-
+  FunctionCallee wrapper_memcpy = mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
+  Constant *memcpy = cast<Constant>(wrapper_memcpy.getCallee());
   Value *one = ConstantInt::get(u32, 1);
   Value *fls = ConstantInt::getFalse(ctx);
 
@@ -1113,7 +1113,7 @@ bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapA
       for(Function::iterator j=fcn->begin(), z=fcn->end(); j!=z; ++j)
       {
         BasicBlock *bb = &*j;
-        TerminatorInst *term = bb->getTerminator();
+        Instruction *term = bb->getTerminator();
         InstInsertPt where;
         if( isa<ReturnInst>(term) )
           where = InstInsertPt::Before(term);
@@ -1280,7 +1280,7 @@ bool ApplySeparationSpec::reallocateInst(
         // At each function exit (return, unwind, or unreachable...)
         for (Function::iterator j = fcn->begin(), z = fcn->end(); j != z; ++j) {
           BasicBlock *bb = &*j;
-          TerminatorInst *term = bb->getTerminator();
+          Instruction *term = bb->getTerminator();
           InstInsertPt where;
           if (isa<ReturnInst>(term))
             where = InstInsertPt::Before(term);

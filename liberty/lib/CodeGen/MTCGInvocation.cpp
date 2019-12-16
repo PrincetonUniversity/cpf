@@ -645,7 +645,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   // At each function exit (return, unwind, or unreachable...)
   for (Function::iterator j = fcn->begin(), z = fcn->end(); j != z; ++j) {
     BasicBlock *bb = &*j;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     InstInsertPt where;
     if (isa<ReturnInst>(term))
       where = InstInsertPt::Before(term);

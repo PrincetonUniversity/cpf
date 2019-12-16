@@ -49,7 +49,7 @@ namespace liberty
     for(Value::user_iterator i=to->user_begin(), e=to->user_end(); i!=e; ++i)
     {
       Instruction *pred_term = dyn_cast< Instruction >( &**i );
-      if( !pred_term->isTerminator() )
+      if( pred_term && !pred_term->isTerminator() )
         continue;
       BasicBlock *pred = pred_term->getParent();
 

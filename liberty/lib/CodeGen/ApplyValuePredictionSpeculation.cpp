@@ -227,7 +227,7 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
   for (Loop::block_iterator i = loop->block_begin(), e = loop->block_end();
        i != e; ++i) {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for (unsigned sn = 0, N = term->getNumSuccessors(); sn < N; ++sn) {
       BasicBlock *dest = term->getSuccessor(sn);
 
@@ -312,10 +312,12 @@ bool ApplyValuePredSpec::addValueSpecChecks(Loop *loop)
       // values if all other checks pass
       if (pred == header)
         continue;
-      TerminatorInst *predT = dyn_cast<TerminatorInst>(pred->getTerminator());
+
+      Instruction *predT = pred->getTerminator();
+      //Instruction *predT = dyn_cast<TerminatorInst>(pred->getTerminator());
 
       if (ctrlspec->isSpeculativelyDead(pred, header) && selectedCtrlSpecDeps &&
-          predT && selectedCtrlSpecDeps->count(predT))
+          predT && predT->isTerminator() && selectedCtrlSpecDeps->count(predT))
         continue;
 
       // look if there a BB that stores redux and other loop-carried variables

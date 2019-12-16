@@ -92,8 +92,10 @@ bool LoopProf::runOnLoop(Loop *Lp) {
 
   // insert invocation function at end of preheader (called once prior to loop)
   const char* InvocName = "loopProf_invocation";
-  Constant *InvocFn = M->getOrInsertFunction(InvocName,
+  FunctionCallee wrapper =  M->getOrInsertFunction(InvocName,
       Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+
+  Constant *InvocFn = cast<Constant>(wrapper.getCallee());
       //sot
       //Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()), (Type *)0);
   std::vector<Value*> Args(1);
@@ -138,8 +140,10 @@ bool LoopProf::runOnLoop(Loop *Lp) {
 
   // insert loop end at beginning of exit blocks
   const char* LoopEndName = "loop_exit";
-  Constant *LoopEndFn= M->getOrInsertFunction(LoopEndName,
+  FunctionCallee wrapper_end = M->getOrInsertFunction(LoopEndName,
       Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+
+  Constant *LoopEndFn= cast<Constant>(wrapper_end.getCallee());
       //sot
       //Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()), (Type *)0);
 
@@ -196,16 +200,17 @@ bool LoopProf::runOnModule(Module& M)
      **/
     ++numLoops;
     const char* InvocName = "loopProf_invocation";
-    Constant *InvocFn = M.getOrInsertFunction(InvocName,
+    FunctionCallee wrapper_Invoc =  M.getOrInsertFunction(InvocName,
         Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()));
-        //Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()), (Type *)0);
+    Constant *InvocFn = cast<Constant>(wrapper_Invoc.getCallee());
     std::vector<Value*> Args(1);
     Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops);
     CallInst::Create(InvocFn, Args, "", F.getEntryBlock().getFirstNonPHI() );
 
     const char* LoopEndName = "loop_exit";
-    Constant *LoopEndFn= M.getOrInsertFunction(LoopEndName,
+    FunctionCallee wrapper_LoopEndFn= M.getOrInsertFunction(LoopEndName,
       Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()));
+    Constant *LoopEndFn=cast<Constant>(wrapper_LoopEndFn.getCallee());
       //Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()), (Type *)0);
     set <BasicBlock *> BBSet;
     BBSet.clear();
@@ -266,9 +271,11 @@ bool LoopProf::runOnModule(Module& M)
     }
   }
 
-  Constant *InitFn = M.getOrInsertFunction("loopProfInit",
+  FunctionCallee wrapper_InitFn =  M.getOrInsertFunction("loopProfInit",
       Type::getVoidTy(M.getContext()),
       Type::getInt32Ty(M.getContext()));
+
+  Constant *InitFn = cast<Constant>(wrapper_InitFn.getCallee());
       //sot
       //(Type *)0);
 

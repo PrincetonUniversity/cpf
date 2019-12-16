@@ -25,7 +25,6 @@
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Discriminator.h"
 //#include "liberty/Speculation/PtrResidueManager.h"
-#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 #include "liberty/CodeGen/Preprocess.h"
 //#include "PrivateerSelector.h"
 #include "liberty/Speculation/RemedSelector.h"
@@ -61,7 +60,7 @@ void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
   au.addPreserved< ProfileGuidedPredictionSpeculator >();
   //au.addPreserved< PtrResidueSpeculationManager >();
   au.addPreserved< SmtxSpeculationManager >();
-  au.addPreserved< HeaderPhiPredictionSpeculation >();
+  //au.addPreserved< HeaderPhiPredictionSpeculation >();
   au.addPreserved< SmtxSlampSpeculationManager >();
   au.addPreserved< Selector >();
   //au.addPreserved< NoSpecSelector >();
@@ -580,8 +579,8 @@ void Preprocess::init(ModuleLoops &mloops)
         specUsedFlag = true; // checkpoint even if not for control-dep
         if (!ctrlSpecRemed->brI)
           continue;
-        if (const TerminatorInst *term =
-                dyn_cast<TerminatorInst>(ctrlSpecRemed->brI)) {
+        const Instruction *term = dyn_cast<Instruction>(ctrlSpecRemed->brI);
+        if ( term && term->isTerminator()) {
           selectedCtrlSpecDeps[header].insert(term);
         }
         specUsedFlag = true;
@@ -908,7 +907,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       BasicBlock *dest = term->getSuccessor(sn);
@@ -951,7 +950,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // values is not necessary
   if ((K > 0 || (M > 0)) && checkpointNeeded.count(header)) {
     for (unsigned i = 0, Nib = iterationBounds.size(); i < Nib; ++i) {
-      TerminatorInst *term = iterationBounds[i].first;
+      Instruction *term = iterationBounds[i].first;
       BasicBlock *source = term->getParent();
       unsigned sn = iterationBounds[i].second;
       BasicBlock *dest = term->getSuccessor(sn);
@@ -1082,7 +1081,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
   // store reducible live-outs on loop exits
   for (unsigned i = 0; i < loopBounds.size(); ++i) {
-    TerminatorInst *term = loopBounds[i].first;
+    Instruction *term = loopBounds[i].first;
     BasicBlock *source = term->getParent();
     unsigned sn = loopBounds[i].second;
     BasicBlock *dest = term->getSuccessor(sn);

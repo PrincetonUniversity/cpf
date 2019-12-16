@@ -225,7 +225,7 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
 
 static BasicBlock *getUniqueSuccessor(BasicBlock *pred)
 {
-  TerminatorInst *term = pred->getTerminator();
+  Instruction *term = pred->getTerminator();
   const unsigned N=term->getNumSuccessors();
   assert( N > 0 && "Cannot get unique successor: No successors");
   BasicBlock *succ = term->getSuccessor(0);
@@ -408,7 +408,7 @@ BasicBlock *MTCG::stitchLoops(
                   // add BBs to check for checkpoint and save redux,lc
                   BasicBlock *pred = BB;
 
-                  TerminatorInst *term = pred->getTerminator();
+                  Instruction *term = pred->getTerminator();
                   unsigned sn, N;
                   for (sn = 0, N = term->getNumSuccessors(); sn < N; ++sn)
                     if (term->getSuccessor(sn) == succ)
@@ -504,8 +504,8 @@ void MTCG::replaceIncomingEdgesExcept(BasicBlock *oldTarget, BasicBlock *exclude
 {
   for(Value::user_iterator i=oldTarget->user_begin(), e=oldTarget->user_end(); i!=e; ++i)
   {
-    TerminatorInst *term = dyn_cast< TerminatorInst >( &**i );
-    if( term && term->getParent() != excludePred )
+    Instruction *term = dyn_cast< Instruction >( &**i );
+    if( term && term->isTerminator() && term->getParent() != excludePred )
       term->replaceUsesOfWith(oldTarget, newTarget);
   }
 }
@@ -855,9 +855,9 @@ BasicBlock *MTCG::copyInstructions(
 
       // If this block did not get a terminator,
       // we add an unconditional branch.
-      if( cloneBB->empty() || ! isa<TerminatorInst>( cloneBB->back() ) )
+      if( cloneBB->empty() || ! isa<Instruction>( cloneBB->back() ) )
       {
-        TerminatorInst *oldTerm = bb->getTerminator();
+        Instruction *oldTerm = bb->getTerminator();
 //          assert( cs.isSpeculativelyUnconditional(oldTerm)
 //          && "Blocks with default branch must have unconditional branch");
 
@@ -897,7 +897,7 @@ BasicBlock *MTCG::copyInstructions(
     }
 
     // Next visit the basic blocks which follow 'bb'
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
       fringe.push_back( term->getSuccessor(sn) );
   }
@@ -923,7 +923,7 @@ BasicBlock *MTCG::copyInstructions(
     // Check if clone already exist for the exit block. If so, no need to create a new exit block
 
     BasicBlock           *clone = 0;
-    const TerminatorInst *term = i->first.first;
+    const Instruction *term = i->first.first;
 
     if ( vmap.find( term->getSuccessor(i->first.second) ) != vmap.end() )
       clone = dyn_cast<BasicBlock>( vmap[ term->getSuccessor(i->first.second) ] );
@@ -1009,8 +1009,8 @@ BasicBlock *MTCG::copyInstructions(
   // Loop entry
   for(Value::user_iterator i=header->user_begin(), e=header->user_end(); i!=e; ++i)
   {
-    if( TerminatorInst *term = dyn_cast< TerminatorInst >( &**i ) )
-      if( ! vmap.count( term->getParent() ) )
+    if( Instruction *term = dyn_cast< Instruction >( &**i ) )
+      if( ! vmap.count( term->getParent() ) && term && term->isTerminator() )
       {
         // sot: prevent issues due to broken critical edges.
         // If there is an loop entry from a backedge that goes through a dummy
@@ -1187,7 +1187,7 @@ BasicBlock *MTCG::copyInstructions(
         && "PHI has incoming block from a different function");
 
         bool predMayReachBB = false;
-        TerminatorInst *term = pred->getTerminator();
+        Instruction *term = pred->getTerminator();
         for(unsigned sn=0, SN=term->getNumSuccessors(); sn<SN; ++sn)
           if( term->getSuccessor(sn) == bb )
           {
@@ -1386,7 +1386,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       BasicBlock *dest = term->getSuccessor(sn);
@@ -1405,7 +1405,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
 
   for (unsigned i = 0, N = iterationBounds.size(), K = loopExitBounds.size();
        i < N + K; ++i) {
-    TerminatorInst *term;
+    Instruction *term;
     unsigned sn;
     if (i < N) {
       term = iterationBounds[i].first;
