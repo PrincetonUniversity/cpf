@@ -252,7 +252,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
 //      LLVM_DEBUG(errs() << "\t\tLoop Expand: ");
 
-      TerminatorInst *term = block->getTerminator();
+      Instruction *term = block->getTerminator();
       for(unsigned i=0; i<term->getNumSuccessors(); ++i)
       {
         BasicBlock *succ = term->getSuccessor(i);
@@ -287,7 +287,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
     {
 
 
-      TerminatorInst *term = block->getTerminator();
+      Instruction *term = block->getTerminator();
       bool fixedBranch = false;
 
       BranchInst *branch = dyn_cast< BranchInst >( term );
@@ -977,7 +977,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
       BasicBlock *exitingBlock = *i;
 
       // also find exit blocks
-      TerminatorInst *term = exitingBlock->getTerminator();
+      Instruction *term = exitingBlock->getTerminator();
       for(unsigned s=0; s<term->getNumSuccessors(); ++s)
       {
         BasicBlock *succ = term->getSuccessor(s);

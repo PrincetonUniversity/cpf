@@ -183,13 +183,16 @@ struct MallocProfiler : public ModulePass
     formals.push_back(charptr);
     formals.push_back(u64);
     FunctionType *mallocty = FunctionType::get(charptr, formals, false);
-    prof_malloc = mod.getOrInsertFunction("__prof_malloc", mallocty);
+    FunctionCallee wrapper_prof_malloc = mod.getOrInsertFunction("__prof_malloc", mallocty);
+    prof_malloc = cast<Constant>(wrapper_prof_malloc.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     FunctionType *allocstrty = FunctionType::get(charptr, formals, false);
-    prof_report_constant_string = mod.getOrInsertFunction("__prof_report_constant_string", allocstrty);
+    FunctionCallee wrapper_prof_report_constant_string = mod.getOrInsertFunction(
+                                      "__prof_report_constant_string", allocstrty);
+    prof_report_constant_string = cast<Constant>(wrapper_prof_report_constant_string.getCallee());
 
 
     formals.clear();
@@ -198,31 +201,39 @@ struct MallocProfiler : public ModulePass
     formals.push_back(charptr);
     formals.push_back(u64);
     FunctionType *reallocty = FunctionType::get(charptr, formals, false);
-    prof_realloc = mod.getOrInsertFunction("__prof_realloc", reallocty);
+    FunctionCallee wrapper_prof_realloc = mod.getOrInsertFunction("__prof_realloc", reallocty);
+    prof_realloc = cast<Constant>(wrapper_prof_realloc.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     FunctionType *freety = FunctionType::get(voidty, formals, false);
-    prof_free = mod.getOrInsertFunction("__prof_free", freety);
-    prof_free_alloca = mod.getOrInsertFunction("__prof_free_stack", freety);
-    find_underlying = mod.getOrInsertFunction("__prof_find_underlying_object", freety);
+    FunctionCallee wrapper_prof_free = mod.getOrInsertFunction("__prof_free", freety);
+    prof_free = cast<Constant>(wrapper_prof_free.getCallee());
+    FunctionCallee wrapper_prof_free_alloca = mod.getOrInsertFunction("__prof_free_stack", freety);
+    prof_free_alloca = cast<Constant>(wrapper_prof_free_alloca.getCallee());
+    FunctionCallee wrapper_find_underlying = mod.getOrInsertFunction(
+                                             "__prof_find_underlying_object", freety);
+    find_underlying = cast<Constant>(wrapper_find_underlying.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     FunctionType *beginty = FunctionType::get(voidty, formals, false);
-    prof_begin_iter = mod.getOrInsertFunction("__prof_begin_iter", beginty);
+    FunctionCallee wrapper_prof_begin_iter = mod.getOrInsertFunction("__prof_begin_iter", beginty);
+    prof_begin_iter = cast<Constant>(wrapper_prof_begin_iter.getCallee());
 
     FunctionType *endty = beginty;
-    prof_end_iter = mod.getOrInsertFunction("__prof_end_iter", endty);
+    FunctionCallee wrapper_prof_end_iter = mod.getOrInsertFunction("__prof_end_iter", endty);
+    prof_end_iter = cast<Constant>(wrapper_prof_end_iter.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     formals.push_back(u64);
     FunctionType *reportglobalty = FunctionType::get(voidty, formals, false);
-    report_constant = mod.getOrInsertFunction("__prof_report_constant", reportglobalty);
-    report_global = mod.getOrInsertFunction("__prof_report_global", reportglobalty);
+    FunctionCallee wrapper_report_constant = mod.getOrInsertFunction(
+                                             "__prof_report_constant", reportglobalty);
+    report_global = cast<Constant>(wrapper_report_constant.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
@@ -230,81 +241,104 @@ struct MallocProfiler : public ModulePass
     formals.push_back(u64);
     formals.push_back(u64);
     FunctionType *reportstackty = FunctionType::get(voidty, formals, false);
-    report_stack = mod.getOrInsertFunction("__prof_report_stack", reportstackty);
+    FunctionCallee wrapper_report_stack = mod.getOrInsertFunction("__prof_report_stack", reportstackty);
+    report_stack = cast<Constant>(wrapper_report_stack.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     FunctionType *endfcnty = FunctionType::get(voidty, formals, false);
-    begin_fcn = mod.getOrInsertFunction("__prof_begin_function", endfcnty);
-    end_fcn = mod.getOrInsertFunction("__prof_end_function", endfcnty);
+    FunctionCallee wrapper_begin_fcn = mod.getOrInsertFunction("__prof_begin_function", endfcnty);
+    begin_fcn = cast<Constant>(wrapper_begin_fcn.getCallee());
+    FunctionCallee wrapper_end_fcn = mod.getOrInsertFunction("__prof_end_function", endfcnty);
+    end_fcn = cast<Constant>(wrapper_end_fcn.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(u64);
     FunctionType *predictable_int_ty = FunctionType::get(voidty, formals, false);
-    predictable_int_value = mod.getOrInsertFunction("__prof_predict_int", predictable_int_ty);
+    FunctionCallee wrapper_predictable_int_value = mod.getOrInsertFunction(
+                                                  "__prof_predict_int", predictable_int_ty);
+    predictable_int_value = cast<Constant>(wrapper_predictable_int_value.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     formals.push_back(u32);
     FunctionType *load_and_pred_int_ty = FunctionType::get(voidty, formals, false);
-    load_and_predict_int = mod.getOrInsertFunction("__prof_predict_int_load", load_and_pred_int_ty);
-
+    FunctionCallee wrapper_load_and_predict_int = mod.getOrInsertFunction(
+                                        "__prof_predict_int_load", load_and_pred_int_ty);
+    load_and_predict_int = cast<Constant>(wrapper_load_and_predict_int.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     FunctionType *predictable_ptr_ty = FunctionType::get(voidty, formals, false);
-    predictable_ptr_value = mod.getOrInsertFunction("__prof_predict_ptr", predictable_ptr_ty);
-    residue_fcn = mod.getOrInsertFunction("__prof_pointer_residue", predictable_ptr_ty);
+    FunctionCallee wrapper_predictable_ptr_value = mod.getOrInsertFunction(
+                                                    "__prof_predict_ptr", predictable_ptr_ty);
+    predictable_ptr_value = cast<Constant>(wrapper_predictable_ptr_value.getCallee());
+    FunctionCallee wrapper_residue_fcn = mod.getOrInsertFunction(
+                                         "__prof_pointer_residue", predictable_ptr_ty);
+    residue_fcn = cast<Constant>(wrapper_residue_fcn.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     FunctionType *load_and_pred_ptr_ty = FunctionType::get(voidty, formals, false);
-    load_and_predict_ptr = mod.getOrInsertFunction("__prof_predict_ptr_load", load_and_pred_ptr_ty);
+    FunctionCallee wrapper_load_and_predict_ptr = mod.getOrInsertFunction(
+                                              "__prof_predict_ptr_load", load_and_pred_ptr_ty);
+    load_and_predict_ptr = cast<Constant>(wrapper_load_and_predict_ptr.getCallee());
 
 
     formals.clear();
     FunctionType *startty = FunctionType::get(voidty, formals,false);
-    begin_profiling = mod.getOrInsertFunction("__prof_begin", startty);
+    FunctionCallee wrapper_begin_profiling = mod.getOrInsertFunction("__prof_begin", startty);
+    begin_profiling = cast<Constant>(wrapper_begin_profiling.getCallee());
 
     formals.clear();
     formals.push_back(u32);
     formals.push_back(charptrptr);
     FunctionType *argvty = FunctionType::get(voidty, formals, false);
-    manage_argv = mod.getOrInsertFunction("__prof_manage_argv", argvty);
-    unmanage_argv = mod.getOrInsertFunction("__prof_unmanage_argv", argvty);
+    FunctionCallee wrapper_manage_argv = mod.getOrInsertFunction("__prof_manage_argv", argvty);
+    manage_argv = cast<Constant>(wrapper_manage_argv.getCallee());
+    FunctionCallee wrapper_unmanage_argv = mod.getOrInsertFunction("__prof_unmanage_argv", argvty);
+    unmanage_argv = cast<Constant>(wrapper_unmanage_argv.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(charptr);
     formals.push_back(charptr);
     FunctionType *assert_in_bounds_ty = FunctionType::get(voidty, formals, false);
-    assert_in_bounds = mod.getOrInsertFunction("__prof_assert_in_bounds", assert_in_bounds_ty);
+    FunctionCallee wrapper_assert_in_bounds = mod.getOrInsertFunction(
+                                              "__prof_assert_in_bounds", assert_in_bounds_ty);
+    assert_in_bounds = cast<Constant>(wrapper_assert_in_bounds.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     FunctionType *possible_leak_ty = FunctionType::get(voidty, formals, false);
-    possible_leak = mod.getOrInsertFunction("__prof_possible_allocation_leak", possible_leak_ty);
+    FunctionCallee wrapper_possible_leak = mod.getOrInsertFunction(
+                                            "__prof_possible_allocation_leak", possible_leak_ty);
+    possible_leak = cast<Constant>(wrapper_possible_leak.getCallee());
 
     formals.clear();
     formals.push_back(u64);
     FunctionType *malloc16_ty = FunctionType::get(charptr, formals, false);
-    malloc16 = mod.getOrInsertFunction("__prof_malloc_align16", malloc16_ty);
+    FunctionCallee wrapper_malloc16 = mod.getOrInsertFunction("__prof_malloc_align16", malloc16_ty);
+    malloc16 = cast<Constant>(wrapper_malloc16.getCallee());
 
     formals.clear();
     formals.push_back(u64);
     formals.push_back(u64);
     FunctionType *calloc16_ty = FunctionType::get(charptr, formals, false);
-    calloc16 = mod.getOrInsertFunction("__prof_calloc_align16", calloc16_ty);
+    FunctionCallee wrapper_calloc16 = mod.getOrInsertFunction("__prof_calloc_align16", calloc16_ty);
+    calloc16 = cast<Constant>(wrapper_calloc16.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
     formals.push_back(u64);
     FunctionType *realloc16_ty = FunctionType::get(charptr, formals, false);
-    realloc16 = mod.getOrInsertFunction("__prof_realloc_align16", realloc16_ty);
+    FunctionCallee wrapper_realloc16 = mod.getOrInsertFunction("__prof_realloc_align16", realloc16_ty);
+    realloc16 = cast<Constant>(wrapper_realloc16.getCallee());
+
 
     for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i)
       runOnFunction(&*i, mloops);
@@ -633,7 +667,7 @@ private:
     for(SVB::iterator i=exiting.begin(), e=exiting.end(); i!=e; ++i)
     {
       BasicBlock *exiter = *i;
-      TerminatorInst *term = exiter->getTerminator();
+      Instruction *term = exiter->getTerminator();
       std::set<BasicBlock*> notAnExit;
       for(unsigned sn=0; sn < term->getNumSuccessors(); ++sn)
       {
@@ -662,7 +696,7 @@ private:
       {
         // loop back edge.
 
-        TerminatorInst *term = pred->getTerminator();
+        Instruction *term = pred->getTerminator();
         for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
         {
           if( term->getSuccessor(sn) == header )
@@ -1648,7 +1682,7 @@ private:
       for(Function::iterator i=fcn->begin(), e=fcn->end(); i!=e; ++i)
       {
         BasicBlock *bb = &*i;
-        TerminatorInst *term = bb->getTerminator();
+        Instruction *term = bb->getTerminator();
         if(term && (isa< ReturnInst >(term) || isa< ResumeInst >(term)) )
         {
           // Mark end of function, so that we can clear stack
@@ -1788,7 +1822,7 @@ private:
       }
 
       // Ensure empty context at function exit.
-      TerminatorInst *term = bb->getTerminator();
+      Instruction *term = bb->getTerminator();
       if( isa<ReturnInst>( term ) || isa<ResumeInst>( term ) )
       {
         if( !ctx.empty() )
