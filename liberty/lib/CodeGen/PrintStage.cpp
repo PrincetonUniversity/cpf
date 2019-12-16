@@ -90,7 +90,7 @@ using namespace llvm;
         fout << ">,shape=box];\n";
       }
 
-      const TerminatorInst *term = bb->getTerminator();
+      const Instruction *term = bb->getTerminator();
       for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
       {
         const BasicBlock *dest = term->getSuccessor(sn);
@@ -115,7 +115,7 @@ using namespace llvm;
 
     //std::string error;
     std::error_code ec;
-    raw_fd_ostream fout(filename.c_str(), ec, sys::fs::F_RW);
+    raw_fd_ostream fout(filename.c_str(), ec, sys::fs::FA_Read | sys::fs::FA_Write);
     stageCFGtoDOT(fout, loop, rel, insts, prod, cons, stageno, type);
   }
 

@@ -40,7 +40,7 @@ private:
   bool applyControlSpec(ModuleLoops &mloops);
   bool applyControlSpecToLoop(
       const BasicBlock *loop_header,
-      std::set<std::pair<TerminatorInst *, unsigned>> &processed,
+      std::set<std::pair<Instruction *, unsigned>> &processed,
       ModuleLoops &mloops);
 };
 

@@ -145,7 +145,7 @@ private:
       BBList killed;
       killOne(killed, bb);
 */
-      TerminatorInst *term = bb->getTerminator();
+      Instruction *term = bb->getTerminator();
       for(unsigned j=0; j<term->getNumSuccessors(); ++j)
         term->getSuccessor(j)->removePredecessor(bb);
       term->eraseFromParent();
@@ -178,7 +178,7 @@ private:
 
   void killOne(BBList &killed, BasicBlock *dead)
   {
-    TerminatorInst *term = dead->getTerminator();
+    Instruction *term = dead->getTerminator();
 
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
@@ -1086,7 +1086,7 @@ private:
         for(SmallVector<BasicBlock*,1>::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
         {
           BasicBlock *src = *i;
-          TerminatorInst *term = src->getTerminator();
+          Instruction *term = src->getTerminator();
           for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
           {
             BasicBlock *dst = term->getSuccessor(sn);
@@ -1205,7 +1205,7 @@ private:
           for(SmallVector<BasicBlock*,1>::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
           {
             BasicBlock *src = *i;
-            TerminatorInst *term = src->getTerminator();
+            Instruction *term = src->getTerminator();
             for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
             {
               BasicBlock *dst = term->getSuccessor(sn);
@@ -1345,7 +1345,7 @@ private:
           for(SmallVector<BasicBlock*,1>::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
           {
             BasicBlock *src = *i;
-            TerminatorInst *term = src->getTerminator();
+            Instruction *term = src->getTerminator();
             for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
             {
               BasicBlock *dst = term->getSuccessor(sn);
