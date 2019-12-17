@@ -26,7 +26,7 @@ namespace llvm {
     int cross_iter;
   };
 
-  template <> struct isPodLike< biikey_t > { static const bool value = true; };
+  // template <> struct isPodLike< biikey_t > { static const bool value = true; };
 
   template <>
     struct DenseMapInfo< biikey_t >

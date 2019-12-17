@@ -109,7 +109,7 @@ namespace liberty
     assert(prevAA != this);
     assert(nextAA != this);
 
-    DEBUG( getRealTopAA()->print(errs()) );
+    LLVM_DEBUG( getRealTopAA()->print(errs()) );
   }
 
   // find top of stack.
@@ -323,7 +323,7 @@ namespace liberty
                                       unsigned sizeB, const Loop *L,
                                       Remedies &R,
                                       DesiredAliasResult dAliasRes) {
-    DEBUG(errs() << "NoLoopAA\n");
+    LLVM_DEBUG(errs() << "NoLoopAA\n");
     return MayAlias;
   }
 
@@ -334,7 +334,7 @@ namespace liberty
     const Value *ptrB, unsigned sizeB,
     const Loop *L, Remedies &R)
   {
-    DEBUG(errs() << "NoLoopAA\n");
+    LLVM_DEBUG(errs() << "NoLoopAA\n");
     if( ! A->mayReadOrWriteMemory() )
       return NoModRef;
     else if( ! A->mayReadFromMemory() )
@@ -352,7 +352,7 @@ namespace liberty
     const Instruction *B,
     const Loop *L, Remedies &R)
   {
-    DEBUG(errs() << "NoLoopAA\n");
+    LLVM_DEBUG(errs() << "NoLoopAA\n");
 
     if( ! A->mayReadOrWriteMemory() || ! B->mayReadOrWriteMemory() )
       return NoModRef;
@@ -395,13 +395,13 @@ namespace liberty
   {
     switch(mr)
     {
-      case llvm::MRI_NoModRef:
+      case llvm::ModRefInfo::NoModRef:
         return LoopAA::NoModRef;
-      case llvm::MRI_Ref:
+      case llvm::ModRefInfo::Ref:
         return LoopAA::Ref;
-      case llvm::MRI_Mod:
+      case llvm::ModRefInfo::Mod:
         return LoopAA::Mod;
-      case llvm::MRI_ModRef:
+      case llvm::ModRefInfo::ModRef:
       default:
         return LoopAA::ModRef;
     }
@@ -463,7 +463,7 @@ namespace liberty
                                         unsigned sizeB, const Loop *L,
                                         Remedies &R,
                                         DesiredAliasResult dAliasRes) {
-    DEBUG(errs() << "AAToLoopAA\n");
+    LLVM_DEBUG(errs() << "AAToLoopAA\n");
     if( rel == Same && isValid(L, ptrA) && isValid(L, ptrB) )
     {
       AliasResult r = Raise( AA->alias(ptrA,sizeA, ptrB,sizeB) );
@@ -480,7 +480,7 @@ namespace liberty
     const Value *ptrB, unsigned sizeB,
     const Loop *L, Remedies &R)
   {
-    DEBUG(errs() << "AAToLoopAA\n");
+    LLVM_DEBUG(errs() << "AAToLoopAA\n");
     // llvm::AliasAnalysis is only valid for innermost
     // loop!
     if( rel == Same && isValid(L,A) && isValid(L,ptrB) )
@@ -512,7 +512,7 @@ namespace liberty
     // llvm::AliasAnalysis is very asymmetric.
     // You always get better results with call vs load/store than load/store vs call.
 
-    DEBUG(errs() << "AAToLoopAA\n");
+    LLVM_DEBUG(errs() << "AAToLoopAA\n");
     // llvm::AliasAnalysis is only valid for innermost
     // loop!
     if( rel == Same )
@@ -522,15 +522,17 @@ namespace liberty
         CallSite csA = getCallSite(const_cast<Instruction*>(A));
         CallSite csB = getCallSite(const_cast<Instruction*>(B));
 
-        if( csA.getInstruction() && csB.getInstruction() )
+        const CallBase *cbA = dyn_cast<CallBase>(A);
+        const CallBase *cbB = dyn_cast<CallBase>(B);
+
+        if( csA.getInstruction() && csB.getInstruction() && cbA && cbB)
         {
-          ModRefResult r = Raise( AA->getModRefInfo(ImmutableCallSite(A),ImmutableCallSite(B)) );
+          ModRefResult r = Raise( AA->getModRefInfo(cbA,cbB) );
           if( r == NoModRef )
             return NoModRef;
 
-          else if( isa<IntrinsicInst>(A)
-          &&       isa<IntrinsicInst>(B)
-          &&       AA->getModRefInfo(ImmutableCallSite(B),ImmutableCallSite(A)) == llvm::MRI_NoModRef )
+          else if (isa<IntrinsicInst>(A) && isa<IntrinsicInst>(B) &&
+                   AA->getModRefInfo(cbB, cbA) == llvm::ModRefInfo::NoModRef)
             // Conservatively reverse the query (see note at top of fcn)
             return NoModRef;
 
@@ -637,7 +639,7 @@ namespace liberty
         loop->getSubLoops().end() );
     }
 
-    DEBUG(
+    LLVM_DEBUG(
       errs() << "Results of LoopAA on function: "
              << fcn.getName() << ":\n";
       printStats(fcn.getName().str().c_str(), "INTRA", fcnTotals[0]);
@@ -676,7 +678,7 @@ namespace liberty
             if( !i2->mayReadFromMemory() && !i2->mayWriteToMemory() )
               continue;
 
-            DEBUG(errs() << "Query:\n\t" << *i1
+            LLVM_DEBUG(errs() << "Query:\n\t" << *i1
                          <<       "\n\t" << *i2 << '\n');
 
             // don't ask reflexive, intra-iteration queries.
@@ -685,25 +687,25 @@ namespace liberty
               switch( loopaa->modref(i1,LoopAA::Same,i2,L,R) )
               {
                 case LoopAA::NoModRef:
-                  DEBUG(errs() << "\tIntra: NoModRef\n");
+                  LLVM_DEBUG(errs() << "\tIntra: NoModRef\n");
                   ++loopTotals[0][0];
                   ++fcnTotals[0][0];
                   ++totals[0][0];
                   break;
                 case LoopAA::Mod:
-                  DEBUG(errs() << "\tIntra: Mod\n");
+                  LLVM_DEBUG(errs() << "\tIntra: Mod\n");
                   ++loopTotals[0][1];
                   ++fcnTotals[0][1];
                   ++totals[0][1];
                   break;
                 case LoopAA::Ref:
-                  DEBUG(errs() << "\tIntra: Ref\n");
+                  LLVM_DEBUG(errs() << "\tIntra: Ref\n");
                   ++loopTotals[0][2];
                   ++fcnTotals[0][2];
                   ++totals[0][2];
                   break;
                 case LoopAA::ModRef:
-                  DEBUG(errs() << "\tIntra: ModRef\n");
+                  LLVM_DEBUG(errs() << "\tIntra: ModRef\n");
                   ++loopTotals[0][3];
                   ++fcnTotals[0][3];
                   ++totals[0][3];
@@ -714,25 +716,25 @@ namespace liberty
             switch( loopaa->modref(i1,LoopAA::Before,i2,L,R) )
             {
               case LoopAA::NoModRef:
-                DEBUG(errs() << "\tInter: NoModRef\n");
+                LLVM_DEBUG(errs() << "\tInter: NoModRef\n");
                 ++loopTotals[1][0];
                 ++fcnTotals[1][0];
                 ++totals[1][0];
                 break;
               case LoopAA::Mod:
-                DEBUG(errs() << "\tInter: Mod\n");
+                LLVM_DEBUG(errs() << "\tInter: Mod\n");
                 ++loopTotals[1][1];
                 ++fcnTotals[1][1];
                 ++totals[1][1];
                 break;
               case LoopAA::Ref:
-                DEBUG(errs() << "\tInter: Ref\n");
+                LLVM_DEBUG(errs() << "\tInter: Ref\n");
                 ++loopTotals[1][2];
                 ++fcnTotals[1][2];
                 ++totals[1][2];
                 break;
               case LoopAA::ModRef:
-                DEBUG(errs() << "\tInter: ModRef\n");
+                LLVM_DEBUG(errs() << "\tInter: ModRef\n");
                 ++loopTotals[1][3];
                 ++fcnTotals[1][3];
                 ++totals[1][3];
@@ -744,7 +746,7 @@ namespace liberty
       }
     }
 
-    DEBUG(
+    LLVM_DEBUG(
       BasicBlock *header = L->getHeader();
       StringRef loopName = header->getName().str().c_str();
       errs() << "Results of LoopAA on loop: "

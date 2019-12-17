@@ -84,7 +84,7 @@ bool SLAMP::runOnModule(Module& m)
 
   if ( mayCallSetjmpLongjmp(this->target_loop) )
   {
-    DEBUG( errs() << "Warning! target loop may call setjmp/longjmp\n" );
+    LLVM_DEBUG( errs() << "Warning! target loop may call setjmp/longjmp\n" );
     //return false;
   }
 
@@ -310,7 +310,7 @@ void SLAMP::replaceExternalFunctionCalls(Module& m)
 
     if ( externs.find(name) == externs.end() )
     {
-      DEBUG( errs() << "WARNING: Wrapper for external function " << name << " not implemented.\n" );
+      LLVM_DEBUG( errs() << "WARNING: Wrapper for external function " << name << " not implemented.\n" );
     }
     else
     {
@@ -321,10 +321,11 @@ void SLAMP::replaceExternalFunctionCalls(Module& m)
         name = "free";
 
       string    wrapper_name = "SLAMP_" + name;
-      Function* wrapper = cast<Function>( m.getOrInsertFunction(wrapper_name, func->getFunctionType() ) );
+      /* Function* wrapper = cast<Function>( m.getOrInsertFunction(wrapper_name, func->getFunctionType() ) ); */
+      FunctionCallee wrapper = m.getOrInsertFunction(wrapper_name, func->getFunctionType() );
 
       // replace 'func' to 'wrapper' in uses
-      func->replaceAllUsesWith(wrapper);
+      func->replaceAllUsesWith(wrapper.getCallee());
     }
   }
 }
@@ -337,7 +338,7 @@ Function* SLAMP::instrumentConstructor(Module& m)
   LLVMContext& c = m.getContext();
   //sot
   //Function* ctor = cast<Function>( m.getOrInsertFunction( "___SLAMP_ctor", Void, (Type*)0 ) );
-  Function* ctor = cast<Function>( m.getOrInsertFunction( "___SLAMP_ctor", Void) );
+  Function* ctor = cast<Function>( m.getOrInsertFunction( "___SLAMP_ctor", Void).getCallee() );
   BasicBlock* entry = BasicBlock::Create(c, "entry", ctor, NULL);
   ReturnInst::Create(c, entry);
   callBeforeMain(ctor, 65534);
@@ -345,7 +346,7 @@ Function* SLAMP::instrumentConstructor(Module& m)
   // call SLAMP_init function
 
   //Function* init = cast<Function>( m.getOrInsertFunction( "SLAMP_init", Void, I32, I32, (Type*)0) );
-  Function* init = cast<Function>( m.getOrInsertFunction( "SLAMP_init", Void, I32, I32) );
+  Function* init = cast<Function>( m.getOrInsertFunction( "SLAMP_init", Void, I32, I32).getCallee() );
   Value*    args[] = {
       ConstantInt::get(I32, sid->getID(this->target_fn)),
       ConstantInt::get(I32, sid->getID(this->target_loop->getHeader()))
@@ -359,14 +360,14 @@ void SLAMP::instrumentDestructor(Module& m)
 {
   LLVMContext& c = m.getContext();
   //Function* dtor = cast<Function>( m.getOrInsertFunction( "___SLAMP_dtor", Void, (Type*)0 ) );
-  Function* dtor = cast<Function>( m.getOrInsertFunction( "___SLAMP_dtor", Void) );
+  Function* dtor = cast<Function>( m.getOrInsertFunction( "___SLAMP_dtor", Void).getCallee() );
   BasicBlock* entry = BasicBlock::Create(c, "entry", dtor, NULL);
   ReturnInst::Create(c, entry);
   callAfterMain(dtor, 65534);
 
   // call SLAMP_fini function
   //Function* fini = cast<Function>( m.getOrInsertFunction( "SLAMP_fini", Void, I8Ptr, (Type*)0 ) );
-  Function* fini = cast<Function>( m.getOrInsertFunction( "SLAMP_fini", Void, I8Ptr) );
+  Function* fini = cast<Function>( m.getOrInsertFunction( "SLAMP_fini", Void, I8Ptr).getCallee() );
   Constant* filename = getStringLiteralExpression(m, outfile);
   Value*    args[] = { filename };
 
@@ -382,7 +383,7 @@ void SLAMP::instrumentGlobalVars(Module& m, Function* ctor)
   // call SLAMP_init_global_vars function to initialize shadow memory for global variables
 
   //Function* init_gvars = cast<Function>( m.getOrInsertFunction( "SLAMP_init_global_vars", Void, I64, I64, (Type*)0 ) );
-  Function* init_gvars = cast<Function>( m.getOrInsertFunction( "SLAMP_init_global_vars", Void, I64, I64) );
+  Function* init_gvars = cast<Function>( m.getOrInsertFunction( "SLAMP_init_global_vars", Void, I64, I64).getCallee() );
 
   for (Module::global_iterator gi = m.global_begin() ; gi != m.global_end() ; gi++)
   {
@@ -431,11 +432,11 @@ void SLAMP::allocErrnoLocation(Module& m, Function* ctor)
 
   // Call dummy __errno_location to allocate a shadow memory for the location
   //Function* f = cast<Function>( m.getOrInsertFunction("SLAMP___errno_location_alloc", Void, (Type*)0) );
-  Function* f = cast<Function>( m.getOrInsertFunction("SLAMP___errno_location_alloc", Void) );
+  Function* f = cast<Function>( m.getOrInsertFunction("SLAMP___errno_location_alloc", Void).getCallee() );
 
   BasicBlock* entry = BasicBlock::Create(c, "entry", f, NULL);
   //Function* c0 = cast<Function>( m.getOrInsertFunction("__errno_location", I32->getPointerTo(), (Type*)0) );
-  Function* c0 = cast<Function>( m.getOrInsertFunction("__errno_location", I32->getPointerTo()) );
+  Function* c0 = cast<Function>( m.getOrInsertFunction("__errno_location", I32->getPointerTo()).getCallee() );
   InstInsertPt pt = InstInsertPt::Beginning(entry);
   CallInst* ci = CallInst::Create(c0, "");
   pt << ci;
@@ -447,7 +448,7 @@ void SLAMP::allocErrnoLocation(Module& m, Function* ctor)
 
   // reuse SLAMP_init_global_vars
   Function* init_gvars = dyn_cast<Function>(
-      m.getOrInsertFunction( "SLAMP_init_global_vars", Void, I64, I64) );
+      m.getOrInsertFunction( "SLAMP_init_global_vars", Void, I64, I64).getCallee() );
       //m.getOrInsertFunction( "SLAMP_init_global_vars", Void, I64, I64, (Type*)0 ) );
   assert(init_gvars);
 
@@ -475,7 +476,7 @@ void SLAMP::instrumentMainFunction(Module& m)
     // if the function is a main function, add special instrumentation to handle command line arguments
     Function* f_main_entry = cast<Function>(
         m.getOrInsertFunction("SLAMP_main_entry",
-          Void, I32, I8Ptr->getPointerTo(), I8Ptr->getPointerTo(), I64) );
+          Void, I32, I8Ptr->getPointerTo(), I8Ptr->getPointerTo(), I64).getCallee() );
           //Void, I32, I8Ptr->getPointerTo(), I8Ptr->getPointerTo(), I64, (Type*)0) );
 
     vector<Value*> main_args;
@@ -539,9 +540,9 @@ void SLAMP::instrumentLoopStartStop(Module& m, Loop* loop)
   //Function* f_loop_invoke = cast<Function>( m.getOrInsertFunction("SLAMP_loop_invocation", Void, (Type*)0) );
   //Function* f_loop_iter = cast<Function>( m.getOrInsertFunction("SLAMP_loop_iteration", Void, (Type*)0) );
   //Function* f_loop_exit = cast<Function>( m.getOrInsertFunction("SLAMP_loop_exit", Void, (Type*)0) );
-  Function* f_loop_invoke = cast<Function>( m.getOrInsertFunction("SLAMP_loop_invocation", Void) );
-  Function* f_loop_iter = cast<Function>( m.getOrInsertFunction("SLAMP_loop_iteration", Void) );
-  Function* f_loop_exit = cast<Function>( m.getOrInsertFunction("SLAMP_loop_exit", Void) );
+  Function* f_loop_invoke = cast<Function>( m.getOrInsertFunction("SLAMP_loop_invocation", Void).getCallee() );
+  Function* f_loop_iter = cast<Function>( m.getOrInsertFunction("SLAMP_loop_iteration", Void).getCallee() );
+  Function* f_loop_exit = cast<Function>( m.getOrInsertFunction("SLAMP_loop_exit", Void).getCallee() );
 
   PHINode*  funcphi = PHINode::Create(f_loop_invoke->getType(), 2, "funcphi");
   InstInsertPt pt;
@@ -797,7 +798,7 @@ void SLAMP::instrumentLoopInst(Module& m, Instruction* inst, uint32_t id)
 
   for (unsigned i = 0 ; i < 5; i++)
   {
-    lf[i] = cast<Function>( m.getOrInsertFunction(lf_name[i], Void, I32, I64, I32, I64) );
+    lf[i] = cast<Function>( m.getOrInsertFunction(lf_name[i], Void, I32, I64, I32, I64).getCallee() );
     //lf[i] = cast<Function>( m.getOrInsertFunction(lf_name[i], Void, I32, I64, I32, I64, (Type*)0) );
   }
 
@@ -809,17 +810,17 @@ void SLAMP::instrumentLoopInst(Module& m, Instruction* inst, uint32_t id)
   for (unsigned i = 0 ; i < 4; i++)
   {
     //sf[i] = cast<Function>( m.getOrInsertFunction(sf_name[i], Void, I32, I64, (Type*)0) );
-    sf[i] = cast<Function>( m.getOrInsertFunction(sf_name[i], Void, I32, I64) );
+    sf[i] = cast<Function>( m.getOrInsertFunction(sf_name[i], Void, I32, I64).getCallee() );
   }
   //sf[4] = cast<Function>( m.getOrInsertFunction(sf_name[4], Void, I32, I64, I64, (Type*)0) );
-  sf[4] = cast<Function>( m.getOrInsertFunction(sf_name[4], Void, I32, I64, I64) );
+  sf[4] = cast<Function>( m.getOrInsertFunction(sf_name[4], Void, I32, I64, I64).getCallee() );
 
   // --- calls
 
   //Function* push = cast<Function>( m.getOrInsertFunction("SLAMP_push", Void, I32, (Type*)0) );
   //Function* pop = cast<Function>( m.getOrInsertFunction("SLAMP_pop", Void, (Type*)0) );
-  Function* push = cast<Function>( m.getOrInsertFunction("SLAMP_push", Void, I32) );
-  Function* pop = cast<Function>( m.getOrInsertFunction("SLAMP_pop", Void) );
+  Function* push = cast<Function>( m.getOrInsertFunction("SLAMP_push", Void, I32).getCallee() );
+  Function* pop = cast<Function>( m.getOrInsertFunction("SLAMP_pop", Void).getCallee() );
 
   if ( LoadInst* li = dyn_cast<LoadInst>(inst) )
   {
@@ -893,7 +894,7 @@ void SLAMP::instrumentExtInst(Module& m, Instruction* inst, uint32_t id)
   for (unsigned i = 0 ; i < 5; i++)
   {
     //lf[i] = cast<Function>( m.getOrInsertFunction(lf_name[i], Void, I64, I32, I64, (Type*)0) );
-    lf[i] = cast<Function>( m.getOrInsertFunction(lf_name[i], Void, I64, I32, I64) );
+    lf[i] = cast<Function>( m.getOrInsertFunction(lf_name[i], Void, I64, I32, I64).getCallee() );
   }
 
   // --- stores
@@ -905,10 +906,10 @@ void SLAMP::instrumentExtInst(Module& m, Instruction* inst, uint32_t id)
   for (unsigned i = 0 ; i < 4; i++)
   {
     //sf[i] = cast<Function>( m.getOrInsertFunction(sf_name[i], Void, I64, I32, (Type*)0) );
-    sf[i] = cast<Function>( m.getOrInsertFunction(sf_name[i], Void, I64, I32) );
+    sf[i] = cast<Function>( m.getOrInsertFunction(sf_name[i], Void, I64, I32).getCallee() );
   }
   //sf[4] = cast<Function>( m.getOrInsertFunction(sf_name[4], Void, I64, I32, I64, (Type*)0) );
-  sf[4] = cast<Function>( m.getOrInsertFunction(sf_name[4], Void, I64, I32, I64) );
+  sf[4] = cast<Function>( m.getOrInsertFunction(sf_name[4], Void, I64, I32, I64).getCallee() );
 
   if ( LoadInst* li = dyn_cast<LoadInst>(inst) )
   {
@@ -965,10 +966,10 @@ void SLAMP::addWrapperImplementations(Module& m)
 
   // --- SLAMP___errno_location
   //Function* f0 = cast<Function>( m.getOrInsertFunction("SLAMP___errno_location", I32->getPointerTo(), (Type*)0) );
-  Function* f0 = cast<Function>( m.getOrInsertFunction("SLAMP___errno_location", I32->getPointerTo()) );
+  Function* f0 = cast<Function>( m.getOrInsertFunction("SLAMP___errno_location", I32->getPointerTo()).getCallee() );
   BasicBlock* entry = BasicBlock::Create(c, "entry", f0, NULL);
   //Function* c0 = cast<Function>( m.getOrInsertFunction("__errno_location", I32->getPointerTo(), (Type*)0) );
-  Function* c0 = cast<Function>( m.getOrInsertFunction("__errno_location", I32->getPointerTo()) );
+  Function* c0 = cast<Function>( m.getOrInsertFunction("__errno_location", I32->getPointerTo()).getCallee() );
   InstInsertPt pt = InstInsertPt::Beginning(entry);
   CallInst* ci = CallInst::Create(c0, "");
   pt << ci;

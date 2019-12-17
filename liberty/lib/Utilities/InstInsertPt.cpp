@@ -82,7 +82,7 @@ namespace liberty {
         //sot
         //while( PHINode *next = dyn_cast<PHINode>( ilist_nextprev_traits<Instruction>::getNext(pos) ) ) {
         while ( pos->getNextNode() && isa<PHINode>( pos->getNextNode() ) ) {
-          DEBUG(errs() << "InstInsertPt: skipping PHIs\n");
+          LLVM_DEBUG(errs() << "InstInsertPt: skipping PHIs\n");
           pos = dyn_cast<PHINode>( pos->getNextNode() );
         }
       }

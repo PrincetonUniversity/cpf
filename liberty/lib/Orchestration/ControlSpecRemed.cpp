@@ -58,7 +58,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
     {
       ControlSpeculation::LoopBlock src = *j;
 
-      TerminatorInst *term = src.getBlock()->getTerminator();
+      Instruction *term = src.getBlock()->getTerminator();
       assert( !speculator->isSpeculativelyUnconditional(term)
       && "Unconditional branches do not source control deps (ii)");
 
@@ -92,7 +92,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     //Vertices::ID t = V.get(term);
 
     // no control dependence can be formulated around unconditional branches
@@ -125,7 +125,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
         //if ( !loop_carried )
         //  IICtrlCache.addIICtrl(t, p);
 
-        //DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and phi " << *phi << '\n' );
+        //LLVM_DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and phi " << *phi << '\n' );
       }
     }
   }
@@ -142,7 +142,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
   for(Exitings::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
   {
     BasicBlock *exiting = *i;
-    TerminatorInst *term = exiting->getTerminator();
+    Instruction *term = exiting->getTerminator();
     assert( !speculator->isSpeculativelyUnconditional(term)
     && "Unconditional branches do not source control deps (lc)");
 
@@ -167,7 +167,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
         */
 
         /*
-        if( TerminatorInst *tt = dyn_cast< TerminatorInst >(idst) )
+        if( idst->isTerminator() )
           if( ! speculator->mayExit(tt,loop) )
             continue;
         */
@@ -182,7 +182,7 @@ void ControlSpecRemediator::processLoopOfInterest(Loop *l) {
 
         //E.addLCCtrl(t, s);
         unremovableCtrlDeps[term].insert(idst);
-        //DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and idst " << *idst << '\n' );
+        //LLVM_DEBUG(errs() << "Unremovable ctrl dep between term " << *term << " and idst " << *idst << '\n' );
       }
     }
   }
@@ -212,21 +212,21 @@ Remediator::RemedResp ControlSpecRemediator::memdep(const Instruction *A,
   if (speculator->isSpeculativelyDead(A)) {
     ++numMemDepRem;
     remedResp.depRes = DepResult::NoDep;
-    DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
+    LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
   else if (speculator->isSpeculativelyDead(B)) {
     ++numMemDepRem;
     remedResp.depRes = DepResult::NoDep;
-    DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
+    LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
   else if (!LoopCarried && speculator->isReachable(ncA, ncB, ncL) == false) {
     ++numMemDepRem;
     remedResp.depRes = DepResult::NoDep;
-    DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
+    LLVM_DEBUG(errs() << "CtrlSpecRemed removed mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -267,15 +267,14 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
   ++numCtrlDepRem;
   remedy->brI = A;
 
-  const TerminatorInst *tA = dyn_cast<TerminatorInst>(A);
-  assert(tA);
+  assert(A->isTerminator());
 
-  if (speculator->misspecInProfLoopExit(tA))
+  if (speculator->misspecInProfLoopExit(A))
     remedy->cost = 0;
     //remedy->cost = EXPENSIVE_CTRL_REMED_COST;
 
   remedResp.depRes = DepResult::NoDep;
-  DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
+  LLVM_DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
                << "  and  " << *B << '\n');
 
   remedResp.remedy = remedy;
@@ -301,7 +300,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
   if (speculator->isSpeculativelyDead(A)) {
     ++numRegDepRem;
     remedResp.depRes = DepResult::NoDep;
-    DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
+    LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -309,7 +308,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
   else if (speculator->isSpeculativelyDead(B)) {
     ++numRegDepRem;
     remedResp.depRes = DepResult::NoDep;
-    DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
+    LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 
@@ -318,7 +317,7 @@ Remediator::RemedResp ControlSpecRemediator::regdep(const Instruction *A,
     if (phi && speculator->phiUseIsSpeculativelyDead(phi, A)) {
       ++numRegDepRem;
       remedResp.depRes = DepResult::NoDep;
-      DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
+      LLVM_DEBUG(errs() << "CtrlSpecRemed removed reg dep between inst " << *A
                    << "  and  " << *B << '\n');
     }
   }

@@ -49,7 +49,7 @@ unsigned Discriminator::determineShortestSuffix(const HeapGivenContext &heapGive
         const HeapSpec &hsj = j->first;
         const Ctx *ctxj = j->second;
 
-        DEBUG(
+        LLVM_DEBUG(
         errs() << "  The two heap|ctx:\n"
                << "    " << (hsi.first) << '.' << (hsi.second) << " | " << *ctxi << '\n'
                << "    " << (hsj.first) << '.' << (hsj.second) << " | " << *ctxj << '\n');
@@ -61,7 +61,7 @@ unsigned Discriminator::determineShortestSuffix(const HeapGivenContext &heapGive
         {
           if( ci == 0 || cj == 0 )
           {
-            DEBUG(errs() << "  Suffix longer than one/both context!\n");
+            LLVM_DEBUG(errs() << "  Suffix longer than one/both context!\n");
             bottomedOut = true;
             break;
           }
@@ -73,7 +73,7 @@ unsigned Discriminator::determineShortestSuffix(const HeapGivenContext &heapGive
           }
         }
 
-        DEBUG(
+        LLVM_DEBUG(
         errs() << "    "  << (pair_distinguishable ? "Can" : "CANNOT")
                << " be distinguished with a ctx-suffix of length " << suffix << "\n\n");
 
@@ -131,7 +131,7 @@ const Discriminator::HeapGivenContext &Discriminator::classify(const Value *ptr)
 void Discriminator::resolveGroupAmbiguity(unsigned sfx, const group_iterator &begin, const group_iterator &end, UpdateOnClone &changes, FoldManager &fmgr)
 {
   const HeapSpec &hs = begin->first;
-  DEBUG(errs() << "  - Group" << hs.first << "." << hs.second << '\n');
+  LLVM_DEBUG(errs() << "  - Group" << hs.first << "." << hs.second << '\n');
 
   // Clone the tail for this group.
   ValueToValueMapTy vmap;
@@ -156,7 +156,7 @@ void Discriminator::resolveGroupAmbiguity(unsigned sfx, const group_iterator &be
     //Module *mod = const_cast< Module* >( fcn->getParent() );
     //mod->getFunctionList().push_back(clone);
 
-    DEBUG(errs() << "  . - Clone tail " << fcn->getName() << " => " << clone->getName() << '\n');
+    LLVM_DEBUG(errs() << "  . - Clone tail " << fcn->getName() << " => " << clone->getName() << '\n');
 
     vmap[fcn] = clone;
     enterTail = fcn;
@@ -168,7 +168,7 @@ void Discriminator::resolveGroupAmbiguity(unsigned sfx, const group_iterator &be
     for(unsigned q=0; q<sfx-1; ++q)
       ctx = ctx->parent;
 
-    DEBUG(
+    LLVM_DEBUG(
     errs() << "  . - Discriminator ";
     ctx->print_step( errs() );
     errs() << '\n';
@@ -192,20 +192,20 @@ void Discriminator::resolveGroupAmbiguity(unsigned sfx, const group_iterator &be
       if( Instruction *user = dyn_cast< Instruction >( *j ) )
         if( user->getParent()->getParent() == discriminator_fcn )
         {
-          DEBUG(
+          LLVM_DEBUG(
           errs() << "  . . - Replacing:\n"
                  << "        " << *user << '\n');
           for(unsigned k=0; k<user->getNumOperands(); ++k)
             if( enterTail == user->getOperand(k) )
               user->setOperand(k, &*vmap[ enterTail ] );
 
-          DEBUG(
+          LLVM_DEBUG(
           errs() << "        " << *user << '\n');
         }
   }
 
   // Now do all sorts of magic to update all other data in the program ;)
-  DEBUG(errs() << "  . - Updating intermediate analyses...\n");
+  LLVM_DEBUG(errs() << "  . - Updating intermediate analyses...\n");
   CtxToCtxMap cmap;
   AuToAuMap amap;
   for(group_iterator i=begin; i!=end; ++i)
@@ -217,7 +217,7 @@ void Discriminator::resolveGroupAmbiguity(unsigned sfx, const group_iterator &be
       changes.contextRenamedViaClone(ctx, vmap, cmap, amap);
     }
   }
-  DEBUG(errs() << "  . - done.\n");
+  LLVM_DEBUG(errs() << "  . - done.\n");
 }
 
 
@@ -248,7 +248,7 @@ bool Discriminator::resolveOneAmbiguityViaCloning(UpdateOnClone &changes, FoldMa
     // Yes, we can distinguish them.
 
     // Identify the discriminator contexts
-    DEBUG(errs() << "Discriminator groups:\n");
+    LLVM_DEBUG(errs() << "Discriminator groups:\n");
     unsigned groupNumber = 0;
     for(group_iterator j=heapGivenCtx.begin(), z=heapGivenCtx.end(); j!=z; ++groupNumber)
     {
@@ -256,7 +256,7 @@ bool Discriminator::resolveOneAmbiguityViaCloning(UpdateOnClone &changes, FoldMa
       group_iterator end = heapGivenCtx.upper_bound( hs );
 
       if( groupNumber == 0 )
-        DEBUG(errs() << "  - (skipping first group " << hs.first << '.' << hs.second << ")\n");
+        LLVM_DEBUG(errs() << "  - (skipping first group " << hs.first << '.' << hs.second << ")\n");
       else
       {
         resolveGroupAmbiguity(sfx, j, end, changes, fmgr);

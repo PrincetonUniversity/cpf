@@ -25,7 +25,6 @@
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Discriminator.h"
 //#include "liberty/Speculation/PtrResidueManager.h"
-#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 #include "liberty/CodeGen/Preprocess.h"
 //#include "PrivateerSelector.h"
 #include "liberty/Speculation/RemedSelector.h"
@@ -61,7 +60,7 @@ void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
   au.addPreserved< ProfileGuidedPredictionSpeculator >();
   //au.addPreserved< PtrResidueSpeculationManager >();
   au.addPreserved< SmtxSpeculationManager >();
-  au.addPreserved< HeaderPhiPredictionSpeculation >();
+  //au.addPreserved< HeaderPhiPredictionSpeculation >();
   au.addPreserved< SmtxSlampSpeculationManager >();
   au.addPreserved< Selector >();
   //au.addPreserved< NoSpecSelector >();
@@ -214,7 +213,7 @@ void Preprocess::assert_strategies_consistent_with_ir()
 
 bool Preprocess::runOnModule(Module &module)
 {
-  DEBUG(errs() << "#################################################\n"
+  LLVM_DEBUG(errs() << "#################################################\n"
                << " Preprocess\n\n\n");
   mod = &module;
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
@@ -262,7 +261,7 @@ bool Preprocess::runOnModule(Module &module)
       mloops.forget(*i);
 
     assert_strategies_consistent_with_ir();
-    DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
+    LLVM_DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
   }
 
   return modified;
@@ -320,7 +319,7 @@ bool Preprocess::fixStaticContexts()
     Discriminator discrim(asgn);
     modified |= discrim.resolveAmbiguitiesViaCloning(group, *fmgr);
 
-    DEBUG(errs() << asgn);
+    LLVM_DEBUG(errs() << asgn);
   }
 
   // RoI: collect set of fcns/bbs reachable from the
@@ -348,7 +347,7 @@ bool Preprocess::fixStaticContexts()
   for(unsigned i=0; i<loops.size(); ++i)
     roi.fcns.insert( loops[i]->getHeader()->getParent() );
 
-  DEBUG(
+  LLVM_DEBUG(
     errs() << "RoI consists of " << roi.bbs.size() << " bbs across " << roi.fcns.size() << " functions\n";
     for(RoI::FSet::const_iterator i=roi.fcns.begin(), e=roi.fcns.end(); i!=e; ++i)
       errs() << "  - " << (*i)->getName() << '\n';
@@ -394,7 +393,7 @@ bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
     if (!L->contains(lifetimeStart) || !L->contains(lifetimeEnd))
       return false;
 
-    DEBUG(errs() << "Alloca found to be local: " << *alloca << "\n");
+    LLVM_DEBUG(errs() << "Alloca found to be local: " << *alloca << "\n");
     return true;
   }
   return false;
@@ -563,7 +562,7 @@ void Preprocess::init(ModuleLoops &mloops)
 
     loops.push_back(loop);
 
-    DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName()
+    LLVM_DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName()
                  << "\n");
 
     // populate selectedCtrlSpecDeps
@@ -580,8 +579,8 @@ void Preprocess::init(ModuleLoops &mloops)
         specUsedFlag = true; // checkpoint even if not for control-dep
         if (!ctrlSpecRemed->brI)
           continue;
-        if (const TerminatorInst *term =
-                dyn_cast<TerminatorInst>(ctrlSpecRemed->brI)) {
+        const Instruction *term = dyn_cast<Instruction>(ctrlSpecRemed->brI);
+        if ( term && term->isTerminator()) {
           selectedCtrlSpecDeps[header].insert(term);
         }
         specUsedFlag = true;
@@ -738,12 +737,12 @@ void Preprocess::init(ModuleLoops &mloops)
     }
   }
 
-  DEBUG(errs() << "normalPrivAUs: " << normalPrivAUs.size() << '\n');
-  //DEBUG(errs() << "localPrivAUs: " << localCount << '\n');
-  //DEBUG(errs() << "new killPrivAUs: " << killCount << '\n');
-  DEBUG(errs() << "predPrivAUs: " << predCount << '\n');
-  DEBUG(errs() << "privateerPrivAUs: " << privateerPrivAUs.size() << '\n');
-  DEBUG(errs() << "sharedPrivAUs: " << sharedCount << '\n');
+  LLVM_DEBUG(errs() << "normalPrivAUs: " << normalPrivAUs.size() << '\n');
+  //LLVM_DEBUG(errs() << "localPrivAUs: " << localCount << '\n');
+  //LLVM_DEBUG(errs() << "new killPrivAUs: " << killCount << '\n');
+  LLVM_DEBUG(errs() << "predPrivAUs: " << predCount << '\n');
+  LLVM_DEBUG(errs() << "privateerPrivAUs: " << privateerPrivAUs.size() << '\n');
+  LLVM_DEBUG(errs() << "sharedPrivAUs: " << sharedCount << '\n');
 }
 
 void Preprocess::replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
@@ -883,7 +882,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   liveoutStructure.object = liveoutObject;
   InstInsertPt::Beginning(fcn) << liveoutObject;
 
-  DEBUG(errs() << "Adding a liveout object " << *liveoutObject
+  LLVM_DEBUG(errs() << "Adding a liveout object " << *liveoutObject
                << " to function " << fcn->getName() << '\n');
 
   // Allocate a local variable to hold each reducible live-out
@@ -896,7 +895,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     liveoutStructure.reduxObjects.push_back(reduxObject);
     InstInsertPt::Beginning(fcn) << reduxObject;
 
-    DEBUG(errs() << "Adding a reducible liveout object " << *reduxObject
+    LLVM_DEBUG(errs() << "Adding a reducible liveout object " << *reduxObject
                  << " to function " << fcn->getName() << '\n');
   }
 
@@ -908,7 +907,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       BasicBlock *dest = term->getSuccessor(sn);
@@ -951,7 +950,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
   // values is not necessary
   if ((K > 0 || (M > 0)) && checkpointNeeded.count(header)) {
     for (unsigned i = 0, Nib = iterationBounds.size(); i < Nib; ++i) {
-      TerminatorInst *term = iterationBounds[i].first;
+      Instruction *term = iterationBounds[i].first;
       BasicBlock *source = term->getParent();
       unsigned sn = iterationBounds[i].second;
       BasicBlock *dest = term->getSuccessor(sn);
@@ -1082,7 +1081,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
 
   // store reducible live-outs on loop exits
   for (unsigned i = 0; i < loopBounds.size(); ++i) {
-    TerminatorInst *term = loopBounds[i].first;
+    Instruction *term = loopBounds[i].first;
     BasicBlock *source = term->getParent();
     unsigned sn = loopBounds[i].second;
     BasicBlock *dest = term->getSuccessor(sn);

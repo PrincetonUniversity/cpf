@@ -52,7 +52,7 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
 
     if( cexpr->getOpcode() == Instruction::BitCast )
     {
-      DEBUG(errs() << "Lowering constant bitcast to instruction: " << *cexpr << '\n');
+      LLVM_DEBUG(errs() << "Lowering constant bitcast to instruction: " << *cexpr << '\n');
 
       Value *operand = cexpr->getOperand(0);
       assert( operand == gv );
@@ -61,7 +61,7 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
       for(UserList::iterator i=users.begin(), e=users.end(); i!=e; ++i)
       {
         Instruction *inst = *i;
-        DEBUG(errs() << "Changing " << *inst << '\n');
+        LLVM_DEBUG(errs() << "Changing " << *inst << '\n');
 
         if( PHINode *phi = dyn_cast< PHINode >(inst) )
         {
@@ -94,7 +94,7 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
           observer.addInstruction(cast, inst);
         }
 
-        DEBUG(errs() << "      to " << *inst << '\n');
+        LLVM_DEBUG(errs() << "      to " << *inst << '\n');
       }
 
       // Kill this constant expr... sort-of
@@ -106,12 +106,12 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
 
     else if( GEPOperator *oper = dyn_cast< GEPOperator >(cexpr) )
     {
-      DEBUG(errs() << "Lowering constant GEP to instruction: " << *cexpr << '\n');
+      LLVM_DEBUG(errs() << "Lowering constant GEP to instruction: " << *cexpr << '\n');
 
       for(UserList::iterator i=users.begin(), e=users.end(); i!=e; ++i)
       {
         Instruction *inst = *i;
-        DEBUG(errs() << "Changing " << *inst << '\n');
+        LLVM_DEBUG(errs() << "Changing " << *inst << '\n');
 
         Value *base = oper->getPointerOperand();
         std::vector<Value*> idx( oper->idx_begin(), oper->idx_end() );
@@ -163,7 +163,7 @@ static bool eliminateConstantUsers(Constant *gv, ReplaceConstantObserver &observ
           observer.addInstruction(gep, inst);
         }
 
-        DEBUG(errs() << "      to " << *inst << '\n');
+        LLVM_DEBUG(errs() << "      to " << *inst << '\n');
       }
 
       // Kill this constant expr... sort-of

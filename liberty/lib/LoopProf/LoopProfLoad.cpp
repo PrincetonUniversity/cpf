@@ -4,19 +4,19 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/CallSite.h"
 
+#include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
-#include "llvm/IR/IntrinsicInst.h"
-#include "llvm/ADT/Statistic.h"
-#include "llvm/Target/TargetInstrInfo.h"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/Support/Compiler.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Support/Compiler.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/ADT/SmallVector.h"
@@ -128,7 +128,7 @@ bool LoopProfLoad::runOnLoop(Loop *Lp)
 
 bool LoopProfLoad::runOnModule(Module& M)
 {
-  DEBUG(errs() << "Starting LoopProfLoad\n");
+  LLVM_DEBUG(errs() << "Starting LoopProfLoad\n");
   valid = false;
   int loopNum;
 
@@ -172,7 +172,7 @@ bool LoopProfLoad::runOnModule(Module& M)
     loopTimesMap[F.getName()] = exTime;
 
     LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-//    DEBUG(errs() << "Got loop info\n");
+//    LLVM_DEBUG(errs() << "Got loop info\n");
 
     list<Loop*> loops( li.begin(), li.end() );
     while( !loops.empty() )
@@ -205,7 +205,7 @@ bool LoopProfLoad::runOnModule(Module& M)
     }
   }
 
-  DEBUG(errs() << "Finished gathering loop info\n");
+  LLVM_DEBUG(errs() << "Finished gathering loop info\n");
 
   if(profDump)
     profile_dump();

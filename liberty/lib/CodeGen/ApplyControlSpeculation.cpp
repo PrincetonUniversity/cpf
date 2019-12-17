@@ -65,7 +65,7 @@ void ApplyControlSpec::getAnalysisUsage(AnalysisUsage &au) const
 
 bool ApplyControlSpec::runOnModule(Module &module)
 {
-  DEBUG(errs() << "#################################################\n"
+  LLVM_DEBUG(errs() << "#################################################\n"
                << " ApplyControlSpec\n\n\n");
   mod = &module;
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
@@ -97,7 +97,7 @@ bool ApplyControlSpec::runOnModule(Module &module)
 
       //std::string errinfo;
       std::error_code ec;
-      raw_fd_ostream fout(filename.str().c_str(), ec, sys::fs::F_RW);
+      raw_fd_ostream fout(filename.str().c_str(), ec, sys::fs::FA_Read|sys::fs::FA_Write);
       ctrlspec->setLoopOfInterest(header);
       ctrlspec->to_dot( fcn, mloops.getAnalysis_LoopInfo(fcn), fout );
       ctrlspec->setLoopOfInterest(0);
@@ -119,7 +119,7 @@ bool ApplyControlSpec::runOnModule(Module &module)
       mloops.forget(*i);
 
     preprocess.assert_strategies_consistent_with_ir();
-    DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
+    LLVM_DEBUG(errs() << "Successfully applied speculation to sequential IR\n");
   }
 
   return modified;
@@ -131,7 +131,7 @@ void ApplyControlSpec::init(ModuleLoops &mloops)
   std::vector<Type *> formals;
 
 
-  DEBUG(errs() << "SpecPriv ApplyControlSpec: Processing parallel region, consisting of:\n");
+  LLVM_DEBUG(errs() << "SpecPriv ApplyControlSpec: Processing parallel region, consisting of:\n");
 
 
   // Identify loops we will parallelize
@@ -147,7 +147,7 @@ void ApplyControlSpec::init(ModuleLoops &mloops)
 
     loops.push_back(loop);
 
-    DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName() << "\n");
+    LLVM_DEBUG(errs() << " - loop " << fcn->getName() << " :: " << header->getName() << "\n");
   }
 }
 
@@ -155,7 +155,7 @@ void ApplyControlSpec::init(ModuleLoops &mloops)
 bool ApplyControlSpec::applyControlSpec(ModuleLoops &mloops)
 {
   bool modified = false;
-  std::set< std::pair<TerminatorInst*, unsigned> > processed;
+  std::set< std::pair<Instruction*, unsigned> > processed;
 
   Selector &selector = getAnalysis<Selector>();
   for(Selector::strat_iterator i=selector.strat_begin(), e=selector.strat_end(); i!=e; ++i)
@@ -169,7 +169,7 @@ bool ApplyControlSpec::applyControlSpec(ModuleLoops &mloops)
 }
 
 bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
-  std::set< std::pair<TerminatorInst*, unsigned> >& processed, ModuleLoops &mloops)
+  std::set< std::pair<Instruction*, unsigned> >& processed, ModuleLoops &mloops)
 {
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ctrlspec->setLoopOfInterest(loop_header);
@@ -217,7 +217,7 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
   for(RoI::BBSet::iterator i=roi.bbs.begin(), e=roi.bbs.end(); i!=e; ++i)
   {
     BasicBlock *pred = *i;
-    TerminatorInst *term = pred->getTerminator();
+    Instruction *term = pred->getTerminator();
     const unsigned N = term->getNumSuccessors();
     if( N < 2 )
       continue;
@@ -247,7 +247,7 @@ bool ApplyControlSpec::applyControlSpecToLoop(const BasicBlock *loop_header,
         if (loopOfInterestExit && !selectedCtrlSpecDep)
           continue;
 
-        DEBUG(errs() << "Speculating edge is dead: " << fcn->getName() << " :: " << pred->getName()  << " successor " << sn << '\n');
+        LLVM_DEBUG(errs() << "Speculating edge is dead: " << fcn->getName() << " :: " << pred->getName()  << " successor " << sn << '\n');
         std::string message = ("Control misspeculation at " + fcn->getName() + " :: " + pred->getName() + " successor " + succ->getName()).str();
         Value *msg = getStringLiteralExpression(*mod, message);
 

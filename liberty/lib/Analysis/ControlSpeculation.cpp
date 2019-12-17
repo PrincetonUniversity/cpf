@@ -89,7 +89,7 @@ bool ControlSpeculation::LoopBlock::operator<(const ControlSpeculation::LoopBloc
 
 bool ControlSpeculation::isSpeculativelyDead(const BasicBlock *A, const BasicBlock *B)
 {
-  const TerminatorInst *term = A->getTerminator();
+  const Instruction *term = A->getTerminator();
   for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
   {
     if( term->getSuccessor(sn) == B )
@@ -128,7 +128,7 @@ void ControlSpeculation::getExitingBlocks(Loop *loop, ExitingBlocks &exitingBloc
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     if( mayExit(term,loop) )
       exitingBlocks.push_back(bb);
@@ -141,7 +141,7 @@ bool  ControlSpeculation::isInfinite(Loop *loop)
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     if( mayExit(term,loop) )
       return false;
@@ -156,8 +156,9 @@ bool ControlSpeculation::isNotLoop(Loop *loop)
   BasicBlock *header = loop->getHeader();
   for(Value::user_iterator i=header->user_begin(), e=header->user_end(); i!=e; ++i)
   {
-    TerminatorInst *term = dyn_cast< TerminatorInst >( &**i );
-    if( !term )
+    Instruction *term = dyn_cast< Instruction >( &**i );
+    bool isTerm = term->isTerminator();
+    if( term && !isTerm )
       continue;
     BasicBlock *termbb = term->getParent();
     if( ! loop->contains( termbb ) )
@@ -179,7 +180,7 @@ BasicBlock *ControlSpeculation::getExitingBlock(Loop *loop)
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     if( !mayExit(term,loop) )
       continue;
@@ -196,7 +197,7 @@ BasicBlock *ControlSpeculation::getExitingBlock(Loop *loop)
   return uniqueExitingBlock;
 }
 
-bool ControlSpeculation::mayExit(TerminatorInst *term, Loop *loop)
+bool ControlSpeculation::mayExit(Instruction *term, Loop *loop)
 {
   if( isSpeculativelyDead(term) )
     return false;
@@ -219,7 +220,7 @@ void ControlSpeculation::getExitBlocks(Loop *loop, ControlSpeculation::ExitBlock
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     if( isSpeculativelyDead(term) )
       continue;
@@ -247,7 +248,7 @@ BasicBlock *ControlSpeculation::getUniqueExitBlock(Loop *loop)
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     if( isSpeculativelyDead(term) )
       continue;
@@ -275,7 +276,7 @@ BasicBlock *ControlSpeculation::getUniqueExitBlock(Loop *loop)
   return uniqueExitBlock;
 }
 
-bool ControlSpeculation::isSpeculativelyUnconditional(const TerminatorInst *term)
+bool ControlSpeculation::isSpeculativelyUnconditional(const Instruction *term)
 {
   const unsigned N = term->getNumSuccessors();
   if( N < 2 )
@@ -428,7 +429,7 @@ bool ControlSpeculation::isReachable(BasicBlock *src, BasicBlock *dst, Loop *loo
     }
   }
 
-  DEBUG(errs() << "Found unreachable (intra-iteration) basic blocks: src: "
+  LLVM_DEBUG(errs() << "Found unreachable (intra-iteration) basic blocks: src: "
                << src->getName() << " , dst " << dst->getName() << "\n");
   return reachableCache[key] = false;
 }
@@ -438,7 +439,7 @@ void ControlSpeculation::dot_block_label(const BasicBlock *bb, raw_ostream &fout
   fout << bb->getName();
 }
 
-void ControlSpeculation::dot_edge_label(const TerminatorInst *term, unsigned sn, raw_ostream &fout) const {}
+void ControlSpeculation::dot_edge_label(const Instruction *term, unsigned sn, raw_ostream &fout) const {}
 
 void ControlSpeculation::to_dot_group_by_loop(Loop *loop, raw_ostream &fout, std::set<BasicBlock*> &already, unsigned depth)
 {
@@ -505,7 +506,7 @@ void ControlSpeculation::to_dot(const Function *fcn, LoopInfo &li, raw_ostream &
   for(Function::const_iterator i=fcn->begin(), e=fcn->end(); i!=e; ++i)
   {
     const BasicBlock *bb = &*i;
-    const TerminatorInst *term = bb->getTerminator();
+    const Instruction *term = bb->getTerminator();
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
       const BasicBlock *dest = term->getSuccessor(sn);

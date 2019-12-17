@@ -23,13 +23,11 @@ void runTred(const char *infile, const char *outfile, unsigned timeout)
   StringRef  output(outfile);
   StringRef  devnull;
 
-  //sot
-  //StringRef args[] = {PATH_TO_TRED, 0};
-  const char *args[] = {PATH_TO_TRED, ""};
-  const StringRef  *redirects[] = { &input, &output, &devnull };
+  ArrayRef<StringRef> args = {PATH_TO_TRED, ""};
+  ArrayRef<Optional<StringRef>> redirects = {Optional<StringRef>(input),
+                                             Optional<StringRef>(output),
+                                             Optional<StringRef>(devnull)};
   std::string errMsg;
-
-  //sot
-  sys::ExecuteAndWait(binary,args,(const char**)0,redirects,timeout,0U,&errMsg);
+  sys::ExecuteAndWait(binary, args, None, redirects, timeout, 0U, &errMsg);
 }
 }

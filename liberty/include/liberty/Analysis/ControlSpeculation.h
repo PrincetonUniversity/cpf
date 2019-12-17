@@ -107,14 +107,14 @@ struct ControlSpeculation
 
   // Determine if the provided control flow edge
   // is speculated to not run.
-  virtual bool isSpeculativelyDead(const TerminatorInst *term, unsigned succNo) = 0;
+  virtual bool isSpeculativelyDead(const Instruction *term, unsigned succNo) = 0;
 
   // Determine if the given basic block is speculatively dead.
   virtual bool isSpeculativelyDead(const BasicBlock *bb) = 0;
 
   // speculatively dead edge sourcing from this term, rare misspec but observed
   // at least once in profiling
-  virtual bool misspecInProfLoopExit(const TerminatorInst *term) = 0;
+  virtual bool misspecInProfLoopExit(const Instruction *term) = 0;
 
   // ------------------- CFG inspection methods
 
@@ -140,7 +140,7 @@ struct ControlSpeculation
 
   // Determine if the terminator instruction has a single
   // successor under the speculative assumption
-  bool isSpeculativelyUnconditional(const TerminatorInst *term);
+  bool isSpeculativelyUnconditional(const Instruction *term);
 
   // Iterate over successors of a basic block.
   typedef BBSuccIterator succ_iterator;
@@ -200,7 +200,7 @@ struct ControlSpeculation
   BasicBlock *getUniqueExitBlock(Loop *loop);
 
   // Determine if this conditional branch may exit the loop
-  bool mayExit(TerminatorInst *term, Loop *loop);
+  bool mayExit(Instruction *term, Loop *loop);
 
   // Iterator over successors of a basic block in a LOOP CFG
   typedef LoopBBSuccIterator loop_succ_iterator;
@@ -221,7 +221,7 @@ struct ControlSpeculation
 
   void to_dot_group_by_loop(Loop *loop, raw_ostream &fout, std::set<BasicBlock*> &already, unsigned depth);
   virtual void dot_block_label(const BasicBlock *bb, raw_ostream &fout) const;
-  virtual void dot_edge_label(const TerminatorInst *term, unsigned sn, raw_ostream &fout) const;
+  virtual void dot_edge_label(const Instruction *term, unsigned sn, raw_ostream &fout) const;
 
   virtual void reset() { reachableCache.clear(); }
 
@@ -262,14 +262,14 @@ struct NoControlSpeculation : public ControlSpeculation
 {
   // Determine if the provided control flow edge
   // is speculated to not run.
-  virtual bool isSpeculativelyDead(const TerminatorInst *term, unsigned succNo) { return false; }
+  virtual bool isSpeculativelyDead(const Instruction *term, unsigned succNo) { return false; }
 
   // Determine if the given basic block is speculatively dead.
   virtual bool isSpeculativelyDead(const BasicBlock *bb) { return false; }
 
   // speculatively dead edge sourcing from this term, rare misspec but observed
   // at least once in profiling
-  virtual bool misspecInProfLoopExit(const TerminatorInst *term) {
+  virtual bool misspecInProfLoopExit(const Instruction *term) {
     return false;
   };
 };

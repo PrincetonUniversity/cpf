@@ -30,10 +30,10 @@ struct ControlSpeculation;
 struct BBSuccIterator
 {
   // Construct a begin iterator
-  BBSuccIterator(TerminatorInst *ti, ControlSpeculation &cs);
+  BBSuccIterator(Instruction *ti, ControlSpeculation &cs);
 
   // Construnct an end iterator
-  BBSuccIterator(TerminatorInst *ti);
+  BBSuccIterator(Instruction *ti);
 
   BasicBlock *operator*() const;
   BasicBlock *operator->() const;
@@ -45,7 +45,7 @@ struct BBSuccIterator
 
 private:
   ControlSpeculation *ctrlspec;
-  TerminatorInst *term;
+  Instruction *term;
   unsigned sn;
 
   void skipDead();

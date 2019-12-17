@@ -95,7 +95,7 @@ LoopAA::AliasResult StdInOutErr::aliasCheck(const Pointer &P1,
   if( definitelyDifferent(P1,P2,DL) )
   {
     INTROSPECT(EXIT(P1,Rel,P2,L,NoAlias));
-    DEBUG(errs() << "StdInOutErr: alias(" << *P1.ptr << ", " << *P2.ptr << ")\n");
+    LLVM_DEBUG(errs() << "StdInOutErr: alias(" << *P1.ptr << ", " << *P2.ptr << ")\n");
     return NoAlias;
   }
 
@@ -138,7 +138,7 @@ LoopAA::ModRefResult StdInOutErr::getModRefInfo(
       ||  isL(P,"stdout",*DL)
       ||  isL(P,"stderr",*DL) ) ) )
   {
-    DEBUG(errs() << "StdInOutErr: getModRefInfo(" << *CS1.getInstruction() << ", " << *P.ptr << ")\n");
+    LLVM_DEBUG(errs() << "StdInOutErr: getModRefInfo(" << *CS1.getInstruction() << ", " << *P.ptr << ")\n");
     INTROSPECT(EXIT(CS1,Rel,P,L,Ref));
     return Ref;
   }

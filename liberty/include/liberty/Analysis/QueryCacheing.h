@@ -72,11 +72,11 @@ namespace llvm
 {
   using namespace liberty;
 
-  template <> struct isPodLike< IIKey > { static const bool value = true; };
+  /*template <> struct isPodLike< IIKey > { static const bool value = true; };
   template <> struct isPodLike< InstFcnKey > { static const bool value = true; };
   template <> struct isPodLike< FcnInstKey > { static const bool value = true; };
   template <> struct isPodLike< FcnPtrKey > { static const bool value = true; };
-  template <> struct isPodLike< PtrPtrKey > { static const bool value = true; };
+  template <> struct isPodLike< PtrPtrKey > { static const bool value = true; };*/
 
   template <>
   struct DenseMapInfo< IIKey >

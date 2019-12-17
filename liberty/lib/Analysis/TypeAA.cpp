@@ -99,7 +99,7 @@ namespace liberty
 
   bool TypeSanityAnalysis::runOnModule(Module &mod)
   {
-    DEBUG(errs() << "Begin TypeAA::runOnModule()\n");
+    LLVM_DEBUG(errs() << "Begin TypeAA::runOnModule()\n");
 
     currentMod = &mod;
 
@@ -122,7 +122,7 @@ namespace liberty
     }
 
     currentMod = 0;
-    DEBUG(errs() << "End TypeAA::runOnModule()\n");
+    LLVM_DEBUG(errs() << "End TypeAA::runOnModule()\n");
     return false;
   }
 
@@ -247,14 +247,14 @@ namespace liberty
     // Comparing with NULL or other pointers should not pessimize analysis
     // results. Free a void * is also safe.
     if( src->getNumUses() - cmpCount - freeCount != 1 ) {
-      DEBUG(errs() << "Use count not equal to 1\n");
+      LLVM_DEBUG(errs() << "Use count not equal to 1\n");
       return false;
     }
 
     if( isCallToMalloc(src) )
       return true;
 
-    DEBUG(errs() << "Wasn't considered a call to malloc\n");
+    LLVM_DEBUG(errs() << "Wasn't considered a call to malloc\n");
     return false;
   }
 
@@ -279,7 +279,7 @@ namespace liberty
     }
 
     if( !isCallToMalloc(src) ) {
-      DEBUG(errs() << "Wasn't considered a call to malloc\n");
+      LLVM_DEBUG(errs() << "Wasn't considered a call to malloc\n");
       return false;
     }
 
@@ -298,7 +298,7 @@ namespace liberty
       liberty::count(isCastInst, src->user_begin(), src->user_end());
 
     if (castCount > 2) {
-      DEBUG(errs() << "More than 2 casts for the malloc result\n");
+      LLVM_DEBUG(errs() << "More than 2 casts for the malloc result\n");
       return false;
     }
     --castCount; // dont count the current cast inst we are examining
@@ -308,7 +308,7 @@ namespace liberty
       liberty::count(isGEPInst, src->user_begin(), src->user_end());
 
     if (src->getNumUses() - cmpCount - freeCount - castCount - gepCount != 1) {
-      DEBUG(errs() << "Use count not equal to 1\n");
+      LLVM_DEBUG(errs() << "Use count not equal to 1\n");
       return false;
     }
 
@@ -365,7 +365,7 @@ namespace liberty
     if( insane.count(t) )
       return false;
 
-    DEBUG(
+    LLVM_DEBUG(
       errs() << "\tInsane: ";
       errs() << *t << "\n";
     );
@@ -456,7 +456,7 @@ namespace liberty
       {
         for(Function::arg_iterator i=fcn.arg_begin(), e=fcn.arg_end(); i!=e; ++i)
         {
-          DEBUG(errs() << "Conservative 1: " << fcn.getName() << " :: " <<  *fcn.getType() << '\n');
+          LLVM_DEBUG(errs() << "Conservative 1: " << fcn.getName() << " :: " <<  *fcn.getType() << '\n');
           addInsane( i->getType() );
         }
       }
@@ -467,7 +467,7 @@ namespace liberty
     {
       if( !isStupidSimpleCase(fcn) )
       {
-        DEBUG(errs() << "Conservative 2: " << fcn.getName() << " :: " << *fcn.getType() << '\n');
+        LLVM_DEBUG(errs() << "Conservative 2: " << fcn.getName() << " :: " << *fcn.getType() << '\n');
         addInsane( fcn.getReturnType() );
       }
     }
@@ -482,14 +482,14 @@ namespace liberty
         if( isSingleCastFromMalloc( inst ) )
         {
           // We let casting from malloc slide.
-          DEBUG(errs() << "Is a single cast from malloc\n");
+          LLVM_DEBUG(errs() << "Is a single cast from malloc\n");
         }
         // sot
         else if( isCastFromMalloc ( inst ) )
         {
           // sot: We let slide late casting of someone originating from malloc
           //TODO: maybe this makes the analysis more unsound that we would like
-          DEBUG(errs() << "Inst " <<  *inst << "is a cast originating from malloc\n");
+          LLVM_DEBUG(errs() << "Inst " <<  *inst << "is a cast originating from malloc\n");
         }
         else if( isSingleCastToFree( inst ) )
         {
@@ -505,7 +505,7 @@ namespace liberty
           Type *ta = inst->getOperand(0)->getType();
           Type *tb = inst->getType();
 
-          DEBUG(errs() << "Cast: " << *inst
+          LLVM_DEBUG(errs() << "Cast: " << *inst
                        << " at " << fcn.getName()
                        << ':' << inst->getParent()->getName() << '\n');
 
@@ -516,7 +516,7 @@ namespace liberty
 
       else if( isa<VAArgInst>( inst ) )
       {
-        DEBUG(errs() << "VAArg: " << *inst << '\n');
+        LLVM_DEBUG(errs() << "VAArg: " << *inst << '\n');
         // There is no way to verify that the i-th
         // parameter is the right type.
         addInsane( inst->getType() );
@@ -530,7 +530,7 @@ namespace liberty
 
         for(unsigned j=fty->getNumParams(); j<cs.arg_size(); ++j)
         {
-          DEBUG(errs() << "Variadic call: " << *inst << '\n');
+          LLVM_DEBUG(errs() << "Variadic call: " << *inst << '\n');
           Type *pty = cs.getArgument(j)->getType();
           if( addInsane(pty) )
           {

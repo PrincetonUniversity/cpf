@@ -48,8 +48,8 @@ namespace liberty
     BB2BB new_tos;
     for(Value::user_iterator i=to->user_begin(), e=to->user_end(); i!=e; ++i)
     {
-      TerminatorInst *pred_term = dyn_cast< TerminatorInst >( &**i );
-      if( !pred_term )
+      Instruction *pred_term = dyn_cast< Instruction >( &**i );
+      if( pred_term && !pred_term->isTerminator() )
         continue;
       BasicBlock *pred = pred_term->getParent();
 
@@ -184,7 +184,7 @@ namespace liberty
     // If this is an exceptional return from an invoke instruction,
     // then the destination's first non-phi must be a landing pad instruction.
     // Splitting the edge will break that invariant.
-    TerminatorInst *term = from->getTerminator();
+    Instruction *term = from->getTerminator();
     if( InvokeInst *invoke = dyn_cast< InvokeInst >(term) )
       if( invoke->getUnwindDest() == to )
         return fixLandingPad(from,to,prefix,invoke);
@@ -224,7 +224,7 @@ namespace liberty
     if( prefix.empty() )
       prefix = "split.";
 
-    TerminatorInst *term = from->getTerminator();
+    Instruction *term = from->getTerminator();
     BasicBlock *to = term->getSuccessor(succno);
 
     Loop *destination_loop = 0;

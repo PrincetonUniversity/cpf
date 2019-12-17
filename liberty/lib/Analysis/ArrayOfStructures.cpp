@@ -317,7 +317,7 @@ public:
       return NoAlias;
     }
 
-    DEBUG(errs() << "Last minute failure " << *v1 << " vs " << *v2 << "\n");
+    LLVM_DEBUG(errs() << "Last minute failure " << *v1 << " vs " << *v2 << "\n");
     return MayAlias;
   }
 

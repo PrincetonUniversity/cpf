@@ -15,7 +15,7 @@ using namespace llvm;
 /// recovery.
 void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
 {
-  DEBUG(errs() << "-------------- Transform main entry -------------\n");
+  LLVM_DEBUG(errs() << "-------------- Transform main entry -------------\n");
   Loop *loop = strategy.loop;
   const PipelineStrategy::Stages &stages = strategy.lps->stages;
   const VSet &liveIns = strategy.liveIns;
@@ -485,7 +485,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   }
 
   /*
-  DEBUG(errs() << "actuals.size: " << actuals.size() << "\n";
+  LLVM_DEBUG(errs() << "actuals.size: " << actuals.size() << "\n";
         for (auto f
              : actuals) errs()
         << "actual: " << *f->getType() << "\n";);
@@ -645,7 +645,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   // At each function exit (return, unwind, or unreachable...)
   for (Function::iterator j = fcn->begin(), z = fcn->end(); j != z; ++j) {
     BasicBlock *bb = &*j;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
     InstInsertPt where;
     if (isa<ReturnInst>(term))
       where = InstInsertPt::Before(term);

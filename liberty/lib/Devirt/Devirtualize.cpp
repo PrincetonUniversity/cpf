@@ -244,7 +244,7 @@ private:
       if( SkipAlternativesPerCallsite > 0
       &&  callees.size() > SkipAlternativesPerCallsite )
       {
-        DEBUG(errs() << "Skipping callsite because too many alternatives\n");
+        LLVM_DEBUG(errs() << "Skipping callsite because too many alternatives\n");
         ++numSkipped;
         return false;
       }
@@ -258,7 +258,7 @@ private:
       if( TruncateAlternativesPerCallsite > 0
       &&  callees.size() > TruncateAlternativesPerCallsite )
       {
-        DEBUG(errs() << "Truncating callee list to "
+        LLVM_DEBUG(errs() << "Truncating callee list to "
                      << TruncateAlternativesPerCallsite << '\n');
 
         ++numTruncatedCalls;
@@ -279,12 +279,12 @@ private:
     const unsigned N=callees.size();
     const unsigned N_alternatives = alts.requiresDefaultCase ? (N+1) : N;
 
-    DEBUG(errs() << "Transforming callsite (" << N_alternatives
+    LLVM_DEBUG(errs() << "Transforming callsite (" << N_alternatives
                  << ") ``" << *cs.getInstruction() << "'':\n");
 
     if( N == 0 )
     {
-      DEBUG(errs() << "-- No candidates found :(\n");
+      LLVM_DEBUG(errs() << "-- No candidates found :(\n");
       ++numFail;
       return false;
     }
