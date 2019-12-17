@@ -1012,10 +1012,13 @@ BasicLoopAA::aliasCommon(const Value *V1, unsigned V1Size,
          (isa<Argument>(O2) && (isa<AllocaInst>(O1) || isNoAliasCall(O1)))))
       return NoAlias;
 
-    // Most objects can't alias null.
-    if ((isa<ConstantPointerNull>(O2) && isKnownNonNull(O1)) ||
-        (isa<ConstantPointerNull>(O1) && isKnownNonNull(O2)))
-      return NoAlias;
+    if (L) {
+      const DataLayout &DL = L->getHeader()->getModule()->getDataLayout();
+      // Most objects can't alias null.
+      if ((isa<ConstantPointerNull>(O2) && isKnownNonZero(O1, DL)) ||
+          (isa<ConstantPointerNull>(O1) && isKnownNonZero(O2, DL)))
+        return NoAlias;
+    }
 
     // If one pointer is the result of a call/invoke or load and the other is a
     // non-escaping local object within the same function, then we know the

@@ -407,7 +407,7 @@ public:
 
   virtual bool runOnModule(Module &M)
   {
-    DEBUG(errs() << "callsite breadth comb callsites " << WatchCallsitePair << " "
+    LLVM_DEBUG(errs() << "callsite breadth comb callsites " << WatchCallsitePair << " "
       << FirstCallee << " "
       << SecondCallee << "\n");
 

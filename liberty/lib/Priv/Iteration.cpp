@@ -156,12 +156,12 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
     //  if( TargetLoopName != "" && TargetLoopName != header->getName() )
     //    continue;
 
-      DEBUG(errs() << "Entering loop "
+      LLVM_DEBUG(errs() << "Entering loop "
                    << F.getName() << ":" << header->getName() << ".\n");
 
       bool modified = runOnLoop(&F, li, loop);
 
-      DEBUG(errs() << "Done loop "
+      LLVM_DEBUG(errs() << "Done loop "
                    << F.getName() << ":" << header->getName() << ".\n\n\n\n");
 
       if( modified )
@@ -239,7 +239,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
     Loop *subloop = getOutermostEnclosingSubloop(loop,block);
     if( subloop && subloop != loop && alwaysLoopsAtLeastOnce(subloop,scev) )
     {
-//      DEBUG(errs() << "\tThe subloop " << subloop->getHeader()->getName() << " must iterate at least once!\n");
+//      LLVM_DEBUG(errs() << "\tThe subloop " << subloop->getHeader()->getName() << " must iterate at least once!\n");
 
       // Then, gather successors in a funny way.
       // (2) When we find a block in this loop which is a predecessor to the header,
@@ -250,9 +250,9 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
       EB exitBlocks;
       subloop->getExitBlocks(exitBlocks);
 
-//      DEBUG(errs() << "\t\tLoop Expand: ");
+//      LLVM_DEBUG(errs() << "\t\tLoop Expand: ");
 
-      TerminatorInst *term = block->getTerminator();
+      Instruction *term = block->getTerminator();
       for(unsigned i=0; i<term->getNumSuccessors(); ++i)
       {
         BasicBlock *succ = term->getSuccessor(i);
@@ -265,14 +265,14 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
             path2.Block = *j;
             fringe.push_back(path2);
 
-//            DEBUG( errs() << (*j)->getName() << ", " );
+//            LLVM_DEBUG( errs() << (*j)->getName() << ", " );
           }
 
         }
 
         else if( std::find(exitBlocks.begin(), exitBlocks.end(), succ) == exitBlocks.end() )
         {
-//          DEBUG(errs() << succ->getName() << ", ");
+//          LLVM_DEBUG(errs() << succ->getName() << ", ");
 
           Path path2 = path;
           path2.Block = succ;
@@ -281,13 +281,13 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
       }
 
-//      DEBUG(errs() << ".\n");
+//      LLVM_DEBUG(errs() << ".\n");
     }
     else
     {
 
 
-      TerminatorInst *term = block->getTerminator();
+      Instruction *term = block->getTerminator();
       bool fixedBranch = false;
 
       BranchInst *branch = dyn_cast< BranchInst >( term );
@@ -309,12 +309,12 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
           path2.Block = succ;
 
           fringe.push_back(path2);
-//          DEBUG(errs() << "\tFixed branch: " << succ->getName() << ".\n");
+//          LLVM_DEBUG(errs() << "\tFixed branch: " << succ->getName() << ".\n");
         }
       }
       else if( branch && branch->isConditional() )
       {
-//        DEBUG(errs() << "\tConditional Branch Expand: ");
+//        LLVM_DEBUG(errs() << "\tConditional Branch Expand: ");
 
         Value *cond = branch->getCondition();
 
@@ -329,7 +329,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
               if( ! truePath.AssumeTrue.count(cond) && truePath.AssumeTrue.size() < MaxConditionsToMaintain)
                 truePath.AssumeTrue.insert(cond);
 
-//            DEBUG(
+//            LLVM_DEBUG(
 //              errs() << "(";
 //              if( cond->hasName() )
 //                errs() << cond->getName();
@@ -353,7 +353,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
               if( !falsePath.AssumeFalse.count(cond) && falsePath.AssumeFalse.size() < MaxConditionsToMaintain)
                 falsePath.AssumeFalse.insert(cond);
 
-//            DEBUG(
+//            LLVM_DEBUG(
 //              errs() << "(";
 //              if( cond->hasName() )
 //                errs() << cond->getName();
@@ -366,12 +366,12 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
           }
         }
 
-//        DEBUG(errs() << ".\n");
+//        LLVM_DEBUG(errs() << ".\n");
       }
       else
       {
         // Expand fringe as normal
-//        DEBUG(errs() << "\tNormal Expand: ");
+//        LLVM_DEBUG(errs() << "\tNormal Expand: ");
         for(unsigned i=0; i<term->getNumSuccessors(); ++i)
         {
           BasicBlock *succ = term->getSuccessor(i);
@@ -380,11 +380,11 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
             Path path2 = path;
             path2.Block = succ;
             fringe.push_back(path2);
-//            DEBUG(errs() << succ->getName() << ", ");
+//            LLVM_DEBUG(errs() << succ->getName() << ", ");
           }
         }
 
-//        DEBUG(errs() << ".\n");
+//        LLVM_DEBUG(errs() << ".\n");
       }
 
     }
@@ -575,11 +575,11 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
   // modulo differences in base.  I.e. take as an axoim that baseP==baseQ.
   static bool equalModBase(const SCEV *P, const SCEV *Q, Value *baseP, Value *baseQ, ScalarEvolution &scev)
   {
-//    DEBUG(errs()
+//    LLVM_DEBUG(errs()
 //      << "emb(" << *P << " == " << *Q << " | " << *baseP << " == " << *baseQ << ") ");
     if( P == Q )
     {
-//      DEBUG(errs() << " ==> YES\n");
+//      LLVM_DEBUG(errs() << " ==> YES\n");
       return true;
     }
 
@@ -589,7 +589,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
     {
       if( recP->getNumOperands() != recQ->getNumOperands() )
       {
-//        DEBUG(errs() << " ==> NO\n");
+//        LLVM_DEBUG(errs() << " ==> NO\n");
         return false;
       }
 
@@ -597,11 +597,11 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
       {
         if( !equalModBase( recP->getOperand(op), recQ->getOperand(op), baseP, baseQ, scev ) )
         {
-//          DEBUG(errs() << " ==> NO\n");
+//          LLVM_DEBUG(errs() << " ==> NO\n");
           return false;
         }
 
-//        DEBUG(errs() << " ==> YES\n");
+//        LLVM_DEBUG(errs() << " ==> YES\n");
         return true;
       }
     }
@@ -613,18 +613,18 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
     {
       if( vP->getValue() == baseP  && vQ->getValue() == baseQ )
       {
-//        DEBUG(errs() << " ==> YES\n");
+//        LLVM_DEBUG(errs() << " ==> YES\n");
         return true;
       }
 
       if( vP->getValue() == baseQ  && vQ->getValue() == baseP )
       {
-//        DEBUG(errs() << " ==> YES\n");
+//        LLVM_DEBUG(errs() << " ==> YES\n");
         return true;
       }
     }
 
-//    DEBUG(errs() << " ==> NO\n");
+//    LLVM_DEBUG(errs() << " ==> NO\n");
     return false;
   }
 
@@ -713,7 +713,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
     if( !base )
       return false;
 
-    DEBUG(
+    LLVM_DEBUG(
     errs() << "** Consider aggregate base ";
 
     LoadInst *lb = dyn_cast< LoadInst >( base );
@@ -748,7 +748,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
       BasicBlock *block = path.Block;
 
-//      DEBUG(errs() << "\tSearch at block " << block->getName() << ".\n");
+//      LLVM_DEBUG(errs() << "\tSearch at block " << block->getName() << ".\n");
 
       // do not re-visit basic blocks
       if( visited.count(path) )
@@ -773,7 +773,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
           ||  ptr2->getName() == "arrayidx24216"
           )
           {
-            DEBUG(errs() << "\t- Is a STRONG def (hack).\n");
+            LLVM_DEBUG(errs() << "\t- Is a STRONG def (hack).\n");
             thisPathHasADef = true;
             break;
           }
@@ -788,7 +788,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
           if( AA.alias(ptr,sz, ptr2, sz2) != AliasResult::NoAlias )
           {
-            DEBUG(
+            LLVM_DEBUG(
               errs() << "\t\tFound a def " << *def;
 
               if( ind2 )
@@ -814,13 +814,13 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
             if( superset(ind2, induction, scev,loadBases) )
             {
-              DEBUG(errs() << "\t- Is a STRONG def.\n");
+              LLVM_DEBUG(errs() << "\t- Is a STRONG def.\n");
               thisPathHasADef = true;
               break;
             }
 //            else
 //            {
-//              DEBUG(errs() << "\t\t\t- Is a weak def.\n");
+//              LLVM_DEBUG(errs() << "\t\t\t- Is a weak def.\n");
 //            }
           }
         }
@@ -859,7 +859,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
           ||  ptr2->getName() == "arrayidx165"              //ImagOut
           )
           {
-            DEBUG(errs() << "\t- NOT a use (hack).\n");
+            LLVM_DEBUG(errs() << "\t- NOT a use (hack).\n");
             continue;
           }
 
@@ -868,7 +868,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
           if( base == base2 )
           {
-            DEBUG(errs() << "\t\tFound a use "
+            LLVM_DEBUG(errs() << "\t\tFound a use "
                          << *use << "; ind="
                          << *( ind2 ? ind2 : scev.getCouldNotCompute() ) << "; base="
                          << ( base2 ? base2->getName() : "null") << ".\n");
@@ -977,7 +977,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
       BasicBlock *exitingBlock = *i;
 
       // also find exit blocks
-      TerminatorInst *term = exitingBlock->getTerminator();
+      Instruction *term = exitingBlock->getTerminator();
       for(unsigned s=0; s<term->getNumSuccessors(); ++s)
       {
         BasicBlock *succ = term->getSuccessor(s);
@@ -1019,11 +1019,11 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
           if( isScalar(load) )
           {
-            DEBUG( errs() << "Scalar Load instruction: " << *inst << ".\n");
+            LLVM_DEBUG( errs() << "Scalar Load instruction: " << *inst << ".\n");
 
             if( allPathsDefineScalar(loop, load, AA, DL,scev) )
             {
-              DEBUG( errs() << "\t- Looks iteration private.\n");
+              LLVM_DEBUG( errs() << "\t- Looks iteration private.\n");
 
               scalarsToPrivatize.insert(load);
             }
@@ -1046,11 +1046,11 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
           if( isAggregate(loop,scev,load,loadBases) )
           {
-            DEBUG( errs() << "Aggregate Load instruction: " << *inst << ".\n");
+            LLVM_DEBUG( errs() << "Aggregate Load instruction: " << *inst << ".\n");
 
             if( allPathsDefineAggregate(loop, scev, load, AA, DL, loadBases) )
             {
-              DEBUG( errs() << "\t- Looks iteration private.\n");
+              LLVM_DEBUG( errs() << "\t- Looks iteration private.\n");
 
               aggregatesToPrivatize.insert(load);
             }
@@ -1103,7 +1103,7 @@ STATISTIC(numAggregatessPrivatized, "Number of aggregates privatized");
 
       if( its+1 < MaxIts )
       {
-        DEBUG(errs() << "#### Recompute loop info for next iteration ####\n");
+        LLVM_DEBUG(errs() << "#### Recompute loop info for next iteration ####\n");
         scevp->releaseMemory();
         scevp->runOnFunction(*f);
         scev = &scevp->getSE();

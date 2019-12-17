@@ -81,7 +81,7 @@ struct RecoveryFunction
 
   // We need a canonical numbering for all
   // exiting edges.
-  typedef std::pair<TerminatorInst*,unsigned> CtrlEdge;
+  typedef std::pair<Instruction*,unsigned> CtrlEdge;
   typedef std::map<CtrlEdge,unsigned> CtrlEdgeNumbers;
   typedef std::map<CtrlEdge,BasicBlock*> CtrlEdgeDestinations;
 

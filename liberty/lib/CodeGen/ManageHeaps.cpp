@@ -88,7 +88,8 @@ void DOALLTransform::insertMemcpy(InstInsertPt &where, Value *dst, Value *src, V
   formals[3] = u32;
   formals[4] = u1;
   FunctionType *fty = FunctionType::get(voidty, formals, false);
-  Constant *memcpy =  mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
+  FunctionCallee wrapper_memcpy =  mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
+  Constant *memcpy = cast<Constant> (wrapper_memcpy.getCallee());
 
   Value *one = ConstantInt::get(u32, 1);
   Value *fls = ConstantInt::getFalse(ctx);
@@ -135,7 +136,7 @@ bool DOALLTransform::reallocateGlobals(const HeapAssignment::AUSet &aus, const H
     assert( cgv );
     GlobalVariable *gv = const_cast< GlobalVariable* >( cgv );
 
-    DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
+    LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
     // create a new global pointer.
     PointerType *pty = cast< PointerType >( gv->getType() );
@@ -219,7 +220,7 @@ bool DOALLTransform::reallocateGlobals(const HeapAssignment::ReduxAUSet &aus)
     if( gv->hasExternalLinkage() )
       continue;
 
-    DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
+    LLVM_DEBUG(errs() << "Static AU: " << gv->getName() << " ==> heap redux\n");
 
     // create a new global pointer.
     PointerType *pty = cast< PointerType >( gv->getType() );
@@ -363,10 +364,10 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::AUSet &aus, const Heap
 
   //Preprocess &preprocess = getAnalysis< Preprocess >();
 /*
-  DEBUG(errs() << "\n\nReallocateInst " << heap_names[heap] << " will do this:\n");
+  LLVM_DEBUG(errs() << "\n\nReallocateInst " << heap_names[heap] << " will do this:\n");
   for(HeapAssignment::AUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
-    DEBUG(errs() << " - " << **i << " => " << heap_names[heap] << '\n');
-  DEBUG(errs() << "\nAnd now I'm gonna doit:\n\n");
+    LLVM_DEBUG(errs() << " - " << **i << " => " << heap_names[heap] << '\n');
+  LLVM_DEBUG(errs() << "\nAnd now I'm gonna doit:\n\n");
 */
   std::set<const Value*> already;
   for(HeapAssignment::AUSet::const_iterator i=aus.begin(), e=aus.end(); i!=e; ++i)
@@ -386,7 +387,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::AUSet &aus, const Heap
     if (task->instructionClones.find(origI) != task->instructionClones.end())
       inst = task->instructionClones[origI];
 
-    DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
+    LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap " << Api::getNameForHeap( heap ) << '\n');
 
     Function *fcn = inst->getParent()->getParent();
     InstInsertPt where = InstInsertPt::After(inst);
@@ -426,7 +427,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::AUSet &aus, const Heap
       {
         BasicBlock *bb = &*j;
  //       errs() << "bb: " << *bb << "\n\n\n\n";
-        TerminatorInst *term = bb->getTerminator();
+        Instruction *term = bb->getTerminator();
         InstInsertPt where;
         if( isa<ReturnInst>(term) )
           where = InstInsertPt::Before(term);
@@ -493,7 +494,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::ReduxAUSet &aus)
     if (task->instructionClones.find(origI) != task->instructionClones.end())
       inst = task->instructionClones[origI];
 
-    DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap redux\n");
+    LLVM_DEBUG(errs() << "Dynamic AU: " << *inst << " ==> heap redux\n");
 
     Function *fcn = inst->getParent()->getParent();
     InstInsertPt where = InstInsertPt::After(inst);
@@ -529,7 +530,7 @@ bool DOALLTransform::reallocateInst(const HeapAssignment::ReduxAUSet &aus)
       for(Function::iterator j=fcn->begin(), z=fcn->end(); j!=z; ++j)
       {
         BasicBlock *bb = &*j;
-        TerminatorInst *term = bb->getTerminator();
+        Instruction *term = bb->getTerminator();
         InstInsertPt where;
         if( isa<ReturnInst>(term) )
           where = InstInsertPt::Before(term);

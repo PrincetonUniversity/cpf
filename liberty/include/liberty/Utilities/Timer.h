@@ -23,12 +23,12 @@
   do                                                \
   {                                                 \
     struct timeval start, stop;                     \
-    DEBUG(                                          \
+    LLVM_DEBUG(                                          \
       errs() << "Starting task " << name << ".\n";  \
       gettimeofday(&start,0);                       \
     );                                              \
     __VA_ARGS__;                                    \
-    DEBUG(                                          \
+    LLVM_DEBUG(                                          \
       gettimeofday(&stop,0);                        \
       double latency = (stop.tv_sec - start.tv_sec) \
            + 1.e-6 * (stop.tv_usec - start.tv_usec);\

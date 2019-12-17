@@ -35,7 +35,6 @@
 //#include "RoI.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
-#include "liberty/Speculation/HeaderPhiPredictionSpeculation.h"
 //#include "Transform.h"
 #include "liberty/Orchestration/LocalityAA.h"
 
@@ -115,7 +114,7 @@ void writeGraph(const std::string &filename, GT *graph) {
   if (!EC) {
     WriteGraph(File, graph, false, Title);
   } else {
-    DEBUG(errs() << "Error opening file for writing!\n");
+    LLVM_DEBUG(errs() << "Error opening file for writing!\n");
     abort();
   }
 }
@@ -153,8 +152,6 @@ unsigned Selector::computeWeights(
       &proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   ControlSpeculation *ctrlspec =
       proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-  PredictionSpeculation *headerPhiPred =
-      &proxy.getAnalysis<HeaderPhiPredictionSpeculation>();
   PredictionSpeculation *loadedValuePred =
       &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
   SmtxSlampSpeculationManager &smtxMan =
@@ -185,7 +182,7 @@ unsigned Selector::computeWeights(
     Function *fA = hA->getParent();
     //const Twine nA = fA->getName() + " :: " + hA->getName();
 
-    DEBUG(errs()
+    LLVM_DEBUG(errs()
           << "\n\n=--------------------------------------------------------"
              "----------------------=\nCompute weight for loop "
           << fA->getName() << " :: " << hA->getName() << "...\n");
@@ -221,7 +218,7 @@ unsigned Selector::computeWeights(
 
       // trying to find the best parallelization strategy for this loop
 
-      DEBUG(
+      LLVM_DEBUG(
           errs() << "Run Orchestrator:: find best parallelization strategy for "
                  << fA->getName() << " :: " << hA->getName() << "...\n");
 
@@ -233,9 +230,9 @@ unsigned Selector::computeWeights(
       Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, headerPhiPred,
-          mloops, tli, smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
-          loopAA, kill, killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
+          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, mloops, tli, smtxMan,
+          smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
+          killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
@@ -270,7 +267,7 @@ unsigned Selector::computeWeights(
           scaledweights[i] = scaledwt;
         }
 
-        DEBUG(errs() << "Parallelizable Loop " << fA->getName()
+        LLVM_DEBUG(errs() << "Parallelizable Loop " << fA->getName()
                      << " :: " << hA->getName() << " has expected savings "
                      << weights[i] << '\n');
 
@@ -283,7 +280,7 @@ unsigned Selector::computeWeights(
         selectedLoops.insert(hA);
 
       } else {
-        DEBUG(errs() << "No parallelizing transform applicable to "
+        LLVM_DEBUG(errs() << "No parallelizing transform applicable to "
                      << fA->getName() << " :: " << hA->getName() << '\n';);
 
         weights[i] = 0;
@@ -373,7 +370,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
        * exclude one of the loops */
       if( mustBeSimultaneouslyActive(A, B, loopTransCallGraph,callGraph) )
       {
-        DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+        LLVM_DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                      << " is incompatible with loop " << fB->getName()
                      << " :: " << hB->getName()
                      << " because of simultaneous activation.\n");
@@ -381,14 +378,14 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
       }
 
       if (!compatibleParallelizations(A, B)) {
-        DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+        LLVM_DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                      << " is incompatible with loop " << fB->getName()
                      << " :: " << hB->getName()
                      << " because of incompatible assignments.\n");
         continue;
       }
 
-      DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+      LLVM_DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                    << " is COMPATIBLE with loop " << fB->getName()
                    << " :: " << hB->getName() << ".\n");
       edges.insert(Edge(i, j));

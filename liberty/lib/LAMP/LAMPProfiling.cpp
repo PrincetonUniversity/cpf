@@ -41,17 +41,17 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/CallSite.h"
 
+#include "LAMP/LAMPInstrumentation.h"
+#include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
-#include "llvm/IR/IntrinsicInst.h"
-#include "llvm/Target/TargetInstrInfo.h"
-#include "llvm/IR/DataLayout.h"
 #include "llvm/Support/Compiler.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
-#include "LAMP/LAMPInstrumentation.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "llvm/Support/CommandLine.h" // For cl
 
@@ -175,7 +175,7 @@ ModulePass *llvm::createLdStCallCounter() {
           }
         }
       }
-    DEBUG(errs() << "Loads/Store/Intrinsics/Calls:" << num_loads << " " << num_stores
+    LLVM_DEBUG(errs() << "Loads/Store/Intrinsics/Calls:" << num_loads << " " << num_stores
         << " " << num_intrinsics << " " << num_calls << '\n');
     flag = true;
 
@@ -233,7 +233,7 @@ namespace {
 
     LAMPProfiler() : FunctionPass(ID)
     {
-      DEBUG(errs() << "In LAMPProfiler ctor\n");
+      LLVM_DEBUG(errs() << "In LAMPProfiler ctor\n");
 
       lampFuncs[0] = NULL;
       TD = NULL;
@@ -241,7 +241,7 @@ namespace {
       lim = NULL;
 #endif
       GlobalCtorMap = NULL;
-      DEBUG(errs() << "\n\n");
+      LLVM_DEBUG(errs() << "\n\n");
     }
   };
 }
@@ -338,25 +338,30 @@ void LAMPProfiler::createLampDeclarations(Module* M)
     // there seems no need for the last arg
     //lampFuncs[i] = M->getOrInsertFunction(f[i], vty, i32, i64, (Type*)0);
     //lampFuncs[i+4] = M->getOrInsertFunction(f[i+4], vty, i32, i64, i64, (Type*)0);
-    lampFuncs[i] = M->getOrInsertFunction(f[i], vty, i32, i64);
-    lampFuncs[i+4] = M->getOrInsertFunction(f[i+4], vty, i32, i64, i64);
+    FunctionCallee wrapperi = M->getOrInsertFunction(f[i], vty, i32, i64);
+    FunctionCallee wrapperi4 = M->getOrInsertFunction(f[i+4], vty, i32, i64, i64);
+    lampFuncs[i] = cast<Constant>(wrapperi.getCallee());
+    lampFuncs[i+4] = cast<Constant>(wrapperi4.getCallee());
   }
 
   //CallFn = M->getOrInsertFunction(FnName, vty, i32, (Type*)0);
-  CallFn = M->getOrInsertFunction(FnName, vty, i32);
+  FunctionCallee wrapper = M->getOrInsertFunction(FnName, vty, i32);
+  CallFn = cast<Constant>(wrapper.getCallee());
 
   // args are unsigned32, void*, size_t ... seems to translate as these  TRM 7/25/08
   // should be 32, 8?, 32 -- currently defined as 32 64 64
 
   //sot
   //AllocFn = M->getOrInsertFunction(AllocName, vty, i32, pi8, i32, (Type*)0);
-  AllocFn = M->getOrInsertFunction(AllocName, vty, i32, i8, i32);
+  wrapper = M->getOrInsertFunction(AllocName, vty, i32, i8, i32);
+  AllocFn = cast<Constant>(wrapper.getCallee());
 
   //DeallocFn = M->getOrInsertFunction(DeallocName, vty, i32, i8, i32, (Type*)0);
 
   //sot
   //DeallocFn = M->getOrInsertFunction(DeallocName, vty, i32, pi8, (Type*)0);
-  DeallocFn = M->getOrInsertFunction(DeallocName, vty, i32, i8);
+  wrapper = M->getOrInsertFunction(DeallocName, vty, i32, i8);
+  DeallocFn = cast<Constant>(wrapper.getCallee());
 
   //sot
   /*
@@ -418,13 +423,13 @@ bool LAMPProfiler::runOnFunction(Function &F)
   // Correction just for PhysicsBench. This function is called before main function (LAMP_init). -PC 3/16/2009
   // Correction for specialized programs. - TO 12/06/2012
   if (F.getName().str() == "_GLOBAL__I_step_number" || F.getName().str() == "___tspec_destructor" ) {
-    DEBUG(errs() << "Skipping Function " << F.getName().str() << " beginning ID: " << instruction_id << '\n');
+    LLVM_DEBUG(errs() << "Skipping Function " << F.getName().str() << " beginning ID: " << instruction_id << '\n');
     return true;
   }
 
 
 
-  DEBUG(errs() << "\nInstrumenting Function " << F.getName().str() << " beginning ID: " << instruction_id << '\n');
+  LLVM_DEBUG(errs() << "\nInstrumenting Function " << F.getName().str() << " beginning ID: " << instruction_id << '\n');
 
   if (TD == NULL)
     TD = &M->getDataLayout();
@@ -462,7 +467,7 @@ bool LAMPProfiler::runOnFunction(Function &F)
         // tLAMP - only instrument required instructions
         CHECK_INST(I, lim)
         {
-          DEBUG(errs() << "tLAMP skipping inst: " << I << ":" << *I << "\n");
+          LLVM_DEBUG(errs() << "tLAMP skipping inst: " << I << ":" << *I << "\n");
           continue;
         }
 #endif
@@ -498,7 +503,7 @@ bool LAMPProfiler::runOnFunction(Function &F)
         // tLAMP - only instrument required instructions
         CHECK_INST(I, lim)
         {
-          DEBUG(errs() << "tLAMP skipping inst: " << I << ":" << *I << "\n");
+          LLVM_DEBUG(errs() << "tLAMP skipping inst: " << I << ":" << *I << "\n");
           continue;
         }
 #endif
@@ -508,7 +513,7 @@ bool LAMPProfiler::runOnFunction(Function &F)
         Args[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), instruction_id);
 
         Value* ptr= (dyn_cast<StoreInst>(I))->getPointerOperand();
-        DEBUG(errs() << ptr->getName().str() << "\n");
+        LLVM_DEBUG(errs() << ptr->getName().str() << "\n");
         Args[1] = new PtrToIntInst(ptr, Type::getInt64Ty(M->getContext()), "addr_var", &*I);
 
         Value* v = (dyn_cast<StoreInst>(I))->getOperand(0);
@@ -571,7 +576,7 @@ bool LAMPProfiler::runOnFunction(Function &F)
         // tLAMP - only instrument required instructions
         CHECK_INST(I, lim)
         {
-          DEBUG(errs() << "tLAMP skipping inst: " << I << ":" << *I << "\n");
+          LLVM_DEBUG(errs() << "tLAMP skipping inst: " << I << ":" << *I << "\n");
           continue;
         }
 #endif
@@ -701,7 +706,7 @@ bool LAMPProfiler::runOnFunction(Function &F)
 
       //Value* ptr= (III.getOperand(0));
       //Type *SrcTy = ptr->getType();
-      //DEBUG(errs() << "Source: " << *SrcTy);
+      //LLVM_DEBUG(errs() << "Source: " << *SrcTy);
       //Args[1] = new SExtInst(ptr, Type::getInt32Ty(getGlobalContext()), "addr_var", I);
 
       Value* tempaddr = new PtrToIntInst(I, Type::getInt64Ty(getGlobalContext()), "taddr_var", I);
@@ -713,14 +718,14 @@ bool LAMPProfiler::runOnFunction(Function &F)
       Args[2] = new TruncInst(tempval, Type::getInt32Ty(getGlobalContext()), "size_var", I);
 
       CallInst::Create(DeallocFn, Args, "", I);
-      DEBUG(errs() << instruction_id << *I);
+      LLVM_DEBUG(errs() << instruction_id << *I);
 
       // possibly insert LAMP_deallocate call here -- u32 lampID, void * memory, size_t size
       }*/
     }
   }
 
-  DEBUG(errs() << "Instrumentation of " << F.getName().str() << " complete.  Ending ID: " << instruction_id << '\n');
+  LLVM_DEBUG(errs() << "Instrumentation of " << F.getName().str() << " complete.  Ending ID: " << instruction_id << '\n');
 
   if (PRINTID == "enable")
   {
@@ -773,15 +778,14 @@ bool LAMPInit::runOnModule(Module& M)
       unsigned int cnt = lscnts.getCountInsts();
       unsigned int lps = lscnts.num_loops;
 
-      DEBUG(errs() << "LAMP-- Ld/St/Intrinsic/Call Count:" << cnt << " Loop Count:" << lps <<'\n');
+      LLVM_DEBUG(errs() << "LAMP-- Ld/St/Intrinsic/Call Count:" << cnt << " Loop Count:" << lps <<'\n');
 
-      Constant *InitFn = M.getOrInsertFunction(FnName,
-          Type::getVoidTy(M.getContext()),
-          Type::getInt32Ty(M.getContext()),
-          Type::getInt32Ty(M.getContext()),
-          Type::getInt64Ty(M.getContext()),
-          Type::getInt64Ty(M.getContext()));
-          //(Type *)0);   //sot
+      FunctionCallee wrapper = M.getOrInsertFunction(
+          FnName, Type::getVoidTy(M.getContext()),
+          Type::getInt32Ty(M.getContext()), Type::getInt32Ty(M.getContext()),
+          Type::getInt64Ty(M.getContext()), Type::getInt64Ty(M.getContext()));
+      //(Type *)0);   //sot
+      Constant *InitFn = cast<Constant>(wrapper.getCallee());
 
       std::vector<Value*> Args(4);
       Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), cnt, false);
@@ -991,7 +995,7 @@ bool LAMPInit::runOnModule(Module& M)
 
         if (!lim->isLoopLimiting(header->getName()))
         {
-          DEBUG(errs() << "Loop " << header->getName() << " is not limiting\n");
+          LLVM_DEBUG(errs() << "Loop " << header->getName() << " is not limiting\n");
           //errs() << "Loop " << header->getName() << " is not limiting\n";
           ++loop_id;
           return false;
@@ -1002,7 +1006,8 @@ bool LAMPInit::runOnModule(Module& M)
       // insert invocation function at end of preheader (called once prior to loop)
       const char* InvocName = "LAMP_loop_invocation";
       //Constant *InvocFn = M->getOrInsertFunction(InvocName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()), (Type *)0);
-      Constant *InvocFn = M->getOrInsertFunction(InvocName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      FunctionCallee wrapper = M->getOrInsertFunction(InvocName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      Constant *InvocFn = cast<Constant>(wrapper.getCallee());
       std::vector<Value*> Args(1);
       Args[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), ++loop_id);
       //dbgs() << "Loop: ID = " << loop_id << " Header = " << header->getName() << "\n";
@@ -1045,14 +1050,16 @@ bool LAMPInit::runOnModule(Module& M)
       const char* IterBeginName = "LAMP_loop_iteration_begin";
       //sot
       //Constant *IterBeginFn = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()), (Type *)0);
-      Constant *IterBeginFn = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()));
+      wrapper = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()));
+      Constant *IterBeginFn = cast<Constant>(wrapper.getCallee());
       CallInst::Create(IterBeginFn, "", &*(header->getFirstInsertionPt()));
 
       // insert iteration at cannonical backedge.  exiting block insertions removed in favor of exit block
       const char* IterEndName = "LAMP_loop_iteration_end";
       //sot
       //Constant *IterEndFn = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()), (Type *)0);
-      Constant *IterEndFn = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()));
+      wrapper = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()));
+      Constant *IterEndFn = cast<Constant>(wrapper.getCallee());
 
       // cannonical backedge
       if (!latch->empty())
@@ -1067,7 +1074,8 @@ bool LAMPInit::runOnModule(Module& M)
       //Constant *LoopEndFn = M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), (Type *)0);
       //const char* LoopEndName = "LAMP_loop_exit2";
       //Constant *LoopEndFn= M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()), (Type *)0);
-      Constant *LoopEndFn= M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      wrapper = M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      Constant *LoopEndFn = cast<Constant>(wrapper.getCallee());
       //std::vector<Value*> Args2(1);
       //Args2[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), loop_id);
 
@@ -1089,7 +1097,7 @@ bool LAMPInit::runOnModule(Module& M)
         //CallInst::Create(LoopEndFn, "", ii);  // loop exiting
       }
 
-      DEBUG(errs() << "Num Loops Processed: " << numLoops << "  Loop ID: " << loop_id << '\n');
+      LLVM_DEBUG(errs() << "Num Loops Processed: " << numLoops << "  Loop ID: " << loop_id << '\n');
 
       return true;
 

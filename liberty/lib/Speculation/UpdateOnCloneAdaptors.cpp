@@ -163,7 +163,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
 {
   errs() << "  . . - UpdateEdgeLoopProfilers::resetAfterInline: " << callee->getName() << '\n';
   // sot :remove sanity check for now
-  //DEBUG(sanity("before", callee));
+  //LLVM_DEBUG(sanity("before", callee));
 
   //sot update because new profile passes are Function passes and not ModulePass as was the case for ProfileInfo
 
@@ -211,7 +211,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
   // for the inlined function just need to copy over the freqs for the basic blocks
   // and the probabilities for the edges from the old_function
   // new_old_fn_entry_count is bbcnt - site_count
-  uint64_t new_old_fn_entry_count = old_fcn->getEntryCount().getValue() * other_scale;
+  uint64_t new_old_fn_entry_count = old_fcn->getEntryCount().getCount() * other_scale;
   old_fcn->setEntryCount( new_old_fn_entry_count );
 
 
@@ -227,7 +227,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
     assert(old_bb->getParent() == old_fcn);
     assert(new_bb->getParent() == caller_fcn);
 
-    const TerminatorInst *old_term = old_bb->getTerminator(),
+    const Instruction *old_term = old_bb->getTerminator(),
                          *new_term = new_bb->getTerminator();
 
     if( const InvokeInst *invoke = dyn_cast<InvokeInst>( new_term ) )
@@ -336,7 +336,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
     for(Function::const_iterator i=old_fcn->begin(), e=old_fcn->end(); i!=e; ++i)
     {
       const BasicBlock *old_bb = &*i;
-      const TerminatorInst *old_term = old_bb->getTerminator();
+      const Instruction *old_term = old_bb->getTerminator();
       if( ! isa<ReturnInst>(old_term) )
         continue;
 
@@ -344,7 +344,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
       assert( maybe_map(new_bb,vmap)
       && "Can't find the image of a return block");
 
-      const TerminatorInst *new_term = new_bb->getTerminator();
+      const Instruction *new_term = new_bb->getTerminator();
       assert( new_term->getNumSuccessors() == 1
       && "Terminator in image of return block should have a single successor");
 
@@ -433,7 +433,7 @@ void UpdateEdgeLoopProfilers::resetAfterInline(
   }
 
   // sot :remove sanity check for now
-  //DEBUG(sanity("after", callee));
+  //LLVM_DEBUG(sanity("after", callee));
 }
 
 

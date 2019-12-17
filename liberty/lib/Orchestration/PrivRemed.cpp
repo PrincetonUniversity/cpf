@@ -54,8 +54,8 @@ Remedies PrivRemediator::satisfy(const PDG &pdg, Loop *loop,
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
 
   // print number
-  DEBUG(errs() << "Number of RAW collab deps handled by PrivRemed: " << RAWcollabDepsHandled << '\n');
-  DEBUG(errs() << "Number of WAW collab deps handled by PrivRemed: " << WAWcollabDepsHandled << '\n');
+  LLVM_DEBUG(errs() << "Number of RAW collab deps handled by PrivRemed: " << RAWcollabDepsHandled << '\n');
+  LLVM_DEBUG(errs() << "Number of WAW collab deps handled by PrivRemed: " << WAWcollabDepsHandled << '\n');
 
   return remedies;
 }
@@ -87,7 +87,7 @@ bool PrivRemediator::instMustKill(const Instruction *inst, const Value *ptr,
     return false;
 
   if (mustAlias(killptr, ptr)) {
-    DEBUG(errs() << "There can be no loop-carried flow mem deps to because "
+    LLVM_DEBUG(errs() << "There can be no loop-carried flow mem deps to because "
                     "killed by "
                  << *inst << " (Provided that control spec is validated)\n");
     return true;
@@ -140,7 +140,7 @@ bool PrivRemediator::blockMustKill(const BasicBlock *bb, const Value *ptr,
       bbKills.erase(key);
 
     if (iKill) {
-      DEBUG(errs() << "\t(in inst " << *inst << ")\n");
+      LLVM_DEBUG(errs() << "\t(in inst " << *inst << ")\n");
       bbKills[key] = true;
 
       return true;
@@ -296,7 +296,7 @@ bool PrivRemediator::isLocalPrivate(const Instruction *I, const Value *ptr,
       if (!isGlobalLocalToLoop(gv, L))
         return false;
       localGVs.insert(gv);
-      DEBUG(errs() << "Global found to be local: " << *gv << "\n");
+      LLVM_DEBUG(errs() << "Global found to be local: " << *gv << "\n");
     }
 
     // need to check for private because globals are always initialized. Thus,
@@ -304,10 +304,10 @@ bool PrivRemediator::isLocalPrivate(const Instruction *I, const Value *ptr,
     // value and at some/all iterations read before writing leading to real RAW
     // deps.
     if (isPrivate(I, L, ctrlSpecUsed)) {
-      DEBUG(errs() << "Private store to global: " << *I << "\n");
+      LLVM_DEBUG(errs() << "Private store to global: " << *I << "\n");
       return true;
     }
-    DEBUG(errs() << "Private check failed for inst: " << *I << "\n");
+    LLVM_DEBUG(errs() << "Private check failed for inst: " << *I << "\n");
     return false;
   }
   return false;
@@ -486,7 +486,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     if (remedy->ctrlSpecUsed)
       RAWcollabDepsHandled++;
 
-    DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
+    LLVM_DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
 
     remedResp.remedy = remedy;
@@ -514,7 +514,7 @@ PrivRemediator::memdep(const Instruction *A, const Instruction *B,
     if (remedy->ctrlSpecUsed)
       WAWcollabDepsHandled++;
 
-    DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
+    LLVM_DEBUG(errs() << "PrivRemed removed mem dep between inst " << *A << "  and  "
                  << *B << '\n');
 
     if (A != B) {

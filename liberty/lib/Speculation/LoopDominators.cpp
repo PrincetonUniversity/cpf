@@ -70,7 +70,7 @@ void LoopDom::computeDT()
   for(unsigned i=0, N=exits.size(); i<N; ++i)
     all.push_back( ControlSpeculation::LoopBlock::LoopExit( exits[i] ) );
 
-  sort(all.begin(), all.end());
+  std::sort(all.begin(), all.end());
   for(BBList::const_iterator i=all.begin(), e=all.end(); i!=e; ++i)
   {
     ControlSpeculation::LoopBlock lb = *i;
@@ -277,7 +277,7 @@ void LoopPostDom::computePD()
     all_nodes.push_back( ControlSpeculation::LoopBlock::LoopExit( exits[i] ) );
 
 
-  sort(all_nodes.begin(), all_nodes.end());
+  std::sort(all_nodes.begin(), all_nodes.end());
   for(BBList::const_iterator i=all_nodes.begin(), e=all_nodes.end(); i!=e; ++i)
   {
     ControlSpeculation::LoopBlock bb = *i;

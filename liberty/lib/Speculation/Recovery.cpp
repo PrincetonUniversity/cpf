@@ -208,7 +208,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
       // live-ins. Now some of the args are liveouts transformed to allocas
       // (around the call sites)
       if (image && isa<AllocaInst>(image)) {
-        DEBUG(errs() << "preimage of arg in getRecovery " << *image
+        LLVM_DEBUG(errs() << "preimage of arg in getRecovery " << *image
                      << " is not found. Arg refers to a live-out.\n");
         continue;
       }
@@ -245,7 +245,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
     old_fty->param_begin(), old_fty->param_end() );
 
   /*
-  DEBUG(errs() << "formals.size: " << formals.size() << "\n";
+  LLVM_DEBUG(errs() << "formals.size: " << formals.size() << "\n";
         for (auto f
              : formals) errs()
         << "formal: " << *f << "\n";);
@@ -303,7 +303,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
   for(unsigned i=0; i<exitingBlocks.size(); ++i)
   {
     BasicBlock *exiting = exitingBlocks[i];
-    TerminatorInst *term = exiting->getTerminator();
+    Instruction *term = exiting->getTerminator();
 
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
@@ -322,7 +322,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
       BasicBlock *exitingInRecovery = dyn_cast< BasicBlock >( &*clone2recovery[ exitingInClone ] );
       assert( exitingInRecovery && "Exiting block didn't get copied to recovery!?");
 
-      TerminatorInst *termInRecovery = exitingInRecovery->getTerminator();
+      Instruction *termInRecovery = exitingInRecovery->getTerminator();
       assert( termInRecovery->getNumSuccessors() == N && "Cloning messed up exiting edges?!");
       BasicBlock *succInRecovery = termInRecovery->getSuccessor(sn);
 
@@ -425,7 +425,7 @@ RecoveryFunction &Recovery::getRecoveryFunction(Loop *loop, ModuleLoops &mloops,
   BasicBlock *body = rcvy_header->splitBasicBlock( rcvy_header->getFirstNonPHI(), "body.");
   Instruction *cmp = new ICmpInst( CmpInst::ICMP_UGT, civ, high );
   Instruction *br = BranchInst::Create( reachedHigh, body, cmp );
-  TerminatorInst *old_term = rcvy_header->getTerminator();
+  Instruction *old_term = rcvy_header->getTerminator();
 
   old_term->eraseFromParent();
   InstInsertPt::End( rcvy_header ) << cmp << br;

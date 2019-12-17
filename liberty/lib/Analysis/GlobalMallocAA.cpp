@@ -69,7 +69,7 @@ private:
       }
     }
 
-    DEBUG(errs() << "Exclusive global: " << *global << "\n");
+    LLVM_DEBUG(errs() << "Exclusive global: " << *global << "\n");
 
     return true;
   }

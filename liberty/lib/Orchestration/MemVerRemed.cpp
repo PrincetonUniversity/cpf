@@ -61,7 +61,7 @@ Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
       //remedy->cost = WAR_MEM_VER_REMED_COST;
       remedy->cost = 0;
     }
-    DEBUG(errs() << "MemVerRemed removed false mem dep between inst " << *A
+    LLVM_DEBUG(errs() << "MemVerRemed removed false mem dep between inst " << *A
                  << "  and  " << *B << '\n');
   }
 

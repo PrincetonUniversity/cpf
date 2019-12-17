@@ -101,7 +101,7 @@ struct Postprocess1 : public ModulePass
 
   bool runOnModule(Module &mod)
   {
-    DEBUG(errs() << "#################################################\n"
+    LLVM_DEBUG(errs() << "#################################################\n"
                  << " Post-Process 1\n\n\n");
     DEBUG_WITH_TYPE("specpriv-transform",
       errs() << "SpecPriv Postprocess-1: performing peephole optimizations.\n");
@@ -145,7 +145,7 @@ private:
       BBList killed;
       killOne(killed, bb);
 */
-      TerminatorInst *term = bb->getTerminator();
+      Instruction *term = bb->getTerminator();
       for(unsigned j=0; j<term->getNumSuccessors(); ++j)
         term->getSuccessor(j)->removePredecessor(bb);
       term->eraseFromParent();
@@ -178,7 +178,7 @@ private:
 
   void killOne(BBList &killed, BasicBlock *dead)
   {
-    TerminatorInst *term = dead->getTerminator();
+    Instruction *term = dead->getTerminator();
 
     for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
     {
@@ -238,7 +238,7 @@ struct Postprocess2 : public ModulePass
 
   bool runOnModule(Module &mod)
   {
-    DEBUG(errs() << "#################################################\n"
+    LLVM_DEBUG(errs() << "#################################################\n"
                  << " Post-Process 2\n\n\n");
     DEBUG_WITH_TYPE("specpriv-transform",
       errs() << "SpecPriv Postprocess-2: performing peephole optimizations.\n");
@@ -425,13 +425,13 @@ private:
 
         if( heapMustBeCorrect && -1 != heap )
         {
-          DEBUG(errs() << "Heap must be correct in " << *check << '\n');
+          LLVM_DEBUG(errs() << "Heap must be correct in " << *check << '\n');
           cs.setArgument(1, ConstantInt::get(u8,-1));
           ++numHeapCorrectUO;
         }
         if( subheapMustBeCorrect && -1 != subheap )
         {
-          DEBUG(errs() << "Sub-heap must be correct in " << *check << '\n');
+          LLVM_DEBUG(errs() << "Sub-heap must be correct in " << *check << '\n');
           cs.setArgument(2, ConstantInt::get(u8,-1));
           ++numSubHeapCorrectUO;
         }
@@ -441,7 +441,7 @@ private:
         // the check
         if( uoCheckDoesNothing(cs) )
         {
-          DEBUG(errs() << "Removing a trivially satisfied check.\n  " << *check << '\n');
+          LLVM_DEBUG(errs() << "Removing a trivially satisfied check.\n  " << *check << '\n');
           check->eraseFromParent();
           CallsByBlock::iterator toErase = j;
           ++j;
@@ -584,7 +584,7 @@ private:
 
           if( areBackToback(obj1, size1, obj2) )
           {
-            DEBUG(errs() << '\n'
+            LLVM_DEBUG(errs() << '\n'
                    << "Joining adjacent ops:\n"
                    << " cs1: " << *cs1.getInstruction() << '\n'
                    << " cs2: " << *cs2.getInstruction() << '\n');
@@ -595,7 +595,7 @@ private:
             Instruction *dead = cs2.getInstruction();
             dead->eraseFromParent();
 
-            DEBUG(errs() << "  ==> " << *cs1.getInstruction() << '\n');
+            LLVM_DEBUG(errs() << "  ==> " << *cs1.getInstruction() << '\n');
 
             modified = true;
             ++numJoined;
@@ -607,7 +607,7 @@ private:
           }
           else if( areBackToback(obj2, size2, obj1) )
           {
-            DEBUG(errs() << '\n'
+            LLVM_DEBUG(errs() << '\n'
                    << "Joining adjacent ops:\n"
                    << " cs2: " << *cs2.getInstruction() << '\n'
                    << " cs1: " << *cs1.getInstruction() << '\n');
@@ -618,7 +618,7 @@ private:
             Instruction *dead = cs1.getInstruction();
             dead->eraseFromParent();
 
-            DEBUG(errs() << "  ==> " << *cs2.getInstruction() << '\n');
+            LLVM_DEBUG(errs() << "  ==> " << *cs2.getInstruction() << '\n');
 
             modified = true;
             ++numJoined;
@@ -715,7 +715,7 @@ private:
   {
     bool modified = false;
 
-    DEBUG(
+    LLVM_DEBUG(
       errs() << "Block " << A->getParent()->getName() << "::" << A->getName() << " vs block " << B->getParent()->getName() << "::" << B->getName();
       if( loop )
       {
@@ -727,12 +727,12 @@ private:
 
     if( writes.count(A) == 0 )
     {
-      DEBUG(errs() << "  No op1s in block A\n");
+      LLVM_DEBUG(errs() << "  No op1s in block A\n");
       return false;
     }
     else if( reads.count(B) == 0 )
     {
-      DEBUG(errs() << "  No op2s in block B\n");
+      LLVM_DEBUG(errs() << "  No op2s in block B\n");
       return false;
     }
 
@@ -744,7 +744,7 @@ private:
     {
       Instruction *write = k->second;
 
-      DEBUG(errs() << "   first: " << *write << '\n');
+      LLVM_DEBUG(errs() << "   first: " << *write << '\n');
 
       CallSite cs(write);
       Value *wobj = cs.getArgument(0);
@@ -771,7 +771,7 @@ private:
             if( offsetWithinBlock(A,write) >= offsetWithinBlock(A,read) )
               continue;
 
-          DEBUG(errs() << "  second: " << *read << '\n');
+          LLVM_DEBUG(errs() << "  second: " << *read << '\n');
 
           CallSite cs(read);
           Value *robj = cs.getArgument(0);
@@ -791,10 +791,10 @@ private:
           LoopAA::AliasResult res =
               aa->alias(wobj, size1 - size2 + 1, LoopAA::Same, robj, 1, loop, R,
                         LoopAA::DMustAlias);
-          DEBUG(errs() << "    result => " << res << '\n');
+          LLVM_DEBUG(errs() << "    result => " << res << '\n');
           if( res == LoopAA::MustAlias )
           {
-            DEBUG(errs() << '\n'
+            LLVM_DEBUG(errs() << '\n'
                    << "Eliminating dominated op:\n"
                    << "     write: " << *write << '\n'
                    << " dominates: " << *read << '\n');
@@ -912,21 +912,21 @@ private:
     bool modified = false;
 
     // Writes make reads succeed
-    DEBUG(errs() << "write-vs-read\n");
+    LLVM_DEBUG(errs() << "write-vs-read\n");
     modified |= eliminateBetweenBlocks(writes, reads,  A,B, loop);
 
     // Writes are idempotent
-    DEBUG(errs() << "write-vs-write\n");
+    LLVM_DEBUG(errs() << "write-vs-write\n");
     modified |= eliminateBetweenBlocks(writes, writes, A,B, loop);
 
     // Successful reads are idempotent
     // (the second can only fail if the first failed too)
-    DEBUG(errs() << "read-vs-read\n");
+    LLVM_DEBUG(errs() << "read-vs-read\n");
     modified |= eliminateBetweenBlocks(reads,  reads,  A,B, loop);
 
 /* -- No longer true: if the read occurs before any write.
     // Successful read implies and earlier write, which is idempotent with later writes
-    DEBUG(errs() << "read-vs-write\n");
+    LLVM_DEBUG(errs() << "read-vs-write\n");
     modified |= eliminateBetweenBlocks(reads, writes,  A,B, loop);
 */
 
@@ -956,7 +956,7 @@ private:
 
         if( !dt.dominates(A,B) )
           continue;
-        DEBUG(
+        LLVM_DEBUG(
           errs() << "Block "
           << A->getParent()->getName() << "::" << A->getName()
           << " dominates  block "
@@ -1086,7 +1086,7 @@ private:
         for(SmallVector<BasicBlock*,1>::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
         {
           BasicBlock *src = *i;
-          TerminatorInst *term = src->getTerminator();
+          Instruction *term = src->getTerminator();
           for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
           {
             BasicBlock *dst = term->getSuccessor(sn);
@@ -1187,7 +1187,7 @@ private:
           Value *civ = loop->getCanonicalInductionVariable();
           assert( civ && "No CIV?!");
 
-          DEBUG(
+          LLVM_DEBUG(
           errs() << '\n'
                  << "  ...Performing DENSE Private-Store Promotion...\n"
                  << "         Loop: " << fcn->getName() << " :: " << loop->getHeader()->getName() << '\n'
@@ -1205,7 +1205,7 @@ private:
           for(SmallVector<BasicBlock*,1>::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
           {
             BasicBlock *src = *i;
-            TerminatorInst *term = src->getTerminator();
+            Instruction *term = src->getTerminator();
             for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
             {
               BasicBlock *dst = term->getSuccessor(sn);
@@ -1253,7 +1253,7 @@ private:
           {
             const SCEV *lastIteration  = scev.getBackedgeTakenCount(loop);
 
-            DEBUG(
+            LLVM_DEBUG(
             errs() << '\n'
                    << "  ...Performing DENSE Private-Load Promotion...\n"
                    << "         Loop: " << fcn->getName() << " :: " << loop->getHeader()->getName() << '\n'
@@ -1326,7 +1326,7 @@ private:
           Value *civ = loop->getCanonicalInductionVariable();
           assert( civ && "No CIV?!");
 
-          DEBUG(
+          LLVM_DEBUG(
           errs() << '\n'
                  << "  ...Performing Sparse Private-Store Promotion...\n"
                  << "         Loop: " << fcn->getName() << " :: " << loop->getHeader()->getName() << '\n'
@@ -1345,7 +1345,7 @@ private:
           for(SmallVector<BasicBlock*,1>::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
           {
             BasicBlock *src = *i;
-            TerminatorInst *term = src->getTerminator();
+            Instruction *term = src->getTerminator();
             for(unsigned sn=0, N=term->getNumSuccessors(); sn<N; ++sn)
             {
               BasicBlock *dst = term->getSuccessor(sn);
@@ -1392,7 +1392,7 @@ private:
           {
             const SCEV *lastIteration  = scev.getBackedgeTakenCount(loop);
 
-            DEBUG(
+            LLVM_DEBUG(
             errs() << '\n'
                    << "  ...Performing Sparse Private-Load Promotion...\n"
                    << "         Loop: " << fcn->getName() << " :: " << loop->getHeader()->getName() << '\n'
@@ -1654,7 +1654,7 @@ struct Postprocess3 : public ModulePass
 
   bool runOnModule(Module &mod)
   {
-    DEBUG(errs() << "#################################################\n"
+    LLVM_DEBUG(errs() << "#################################################\n"
                  << " Post-Process 3\n\n\n");
 
     DEBUG_WITH_TYPE("specpriv-transform",

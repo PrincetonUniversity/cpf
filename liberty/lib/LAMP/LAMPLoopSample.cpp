@@ -204,7 +204,7 @@ namespace liberty {
                 cname.find("LAMP_loop_exit") == std::string::npos)
             {
               /*
-                 DEBUG( errs() << "~~~Removing " << cname << " from the cloned loop "
+                 LLVM_DEBUG( errs() << "~~~Removing " << cname << " from the cloned loop "
                  << loop->getHeader()->getName() << " in "
                  << call.getCaller()->getName() << "\n");
                  */
@@ -244,7 +244,7 @@ namespace liberty {
           // We have already modified this function, ignore
           continue;
         }
-        //DEBUG(errs() << "~Considering function " << nstr << "\n");
+        //LLVM_DEBUG(errs() << "~Considering function " << nstr << "\n");
 
         ValueToValueMapTy VMap;
         Function *clone = CloneFunction(orig, VMap);
@@ -252,7 +252,7 @@ namespace liberty {
         clone->setName("__nolamp_" + orig->getName());
         // sot: CloneFunction in LLVM 5.0 inserts the cloned function in the function's module
         //I->getParent()->getFunctionList().push_back(clone);
-        //DEBUG(errs() << "~~Created cloned version " << clone->getName() << "\n");
+        //LLVM_DEBUG(errs() << "~~Created cloned version " << clone->getName() << "\n");
 
         funcMap[orig] = clone;
 
@@ -276,7 +276,7 @@ namespace liberty {
               // Calls to LAMP that need to be removed
               if( cname.find("LAMP") != std::string::npos )
               {
-                //DEBUG( errs() << "~~~Removing " << cname << " from the function "
+                //LLVM_DEBUG( errs() << "~~~Removing " << cname << " from the function "
                 //              << clone->getName() << "\n");
 
                 delList.push_front(&*IB);
@@ -306,7 +306,7 @@ namespace liberty {
       SmallVector<BasicBlock *, 16> &ClonedBlocks)
   {
     // Create New Loop structure
-    Loop *NewLoop = new Loop();
+    Loop *NewLoop = LI->AllocateLoop();
 
     // Clone Basic Blocks.
     for (Loop::block_iterator I = OrigL->block_begin(), E = OrigL->block_end();
@@ -319,7 +319,7 @@ namespace liberty {
       for (BasicBlock::iterator ii = NewBB->begin(), ee = NewBB->end();
           ii != ee; ++ii)
       {
-        //DEBUG(errs() << *ii << "\n");
+        //LLVM_DEBUG(errs() << *ii << "\n");
       }
       /// Remember clonedHeader and clonedLoopExitingBB
 
@@ -370,7 +370,7 @@ namespace liberty {
   void LAMPLoopSample::fixBackEdge(BasicBlock *latch, BasicBlock *header,
       BasicBlock *branchBlock)
   {
-    TerminatorInst *jmp = latch->getTerminator();
+    Instruction *jmp = latch->getTerminator();
     unsigned numSucc = jmp->getNumSuccessors();
     for(unsigned i=0; i<numSucc; ++i)
     {
@@ -387,7 +387,7 @@ namespace liberty {
    */
   bool LAMPLoopSample::runOnModule(Module &M)
   {
-    DEBUG(errs() << "\n\nEntering LAMPLoopSampler\n");
+    LLVM_DEBUG(errs() << "\n\nEntering LAMPLoopSampler\n");
 
 
     //CallGraph *cg = getAnalysisIfAvailable< CallGraph >();
@@ -395,11 +395,11 @@ namespace liberty {
     //ProfileInfo &PI = getAnalysis<ProfileInfo>();
     //SimpleProfReader &PR = getAnalysis<SimpleProfReader>();
 
-    DEBUG(errs() << "Sanitizing functions\n");
+    LLVM_DEBUG(errs() << "Sanitizing functions\n");
     sanitizeFunctions(M);
 
     /*
-       DEBUG(
+       LLVM_DEBUG(
        errs() << "\n\n";
        for(Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
        if(!I->isDeclaration())
@@ -414,7 +414,7 @@ namespace liberty {
        */
 
 
-    DEBUG(errs() << "Cloning the loops\n");
+    LLVM_DEBUG(errs() << "Cloning the loops\n");
     // Create the cloned loops
     for(Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
       if(!I->isDeclaration())

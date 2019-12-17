@@ -53,7 +53,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>();
   pdg->populateNodesOf(loop);
 
-  DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   aa->dump();
@@ -61,25 +61,25 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 
   addSpecModulesToLoopAA();
   specModulesLoopSetup(loop);
-  DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
   removeSpecModulesFromLoopAA();
-  //DEBUG(errs() << "revert stack to CAF ...\n");
+  //LLVM_DEBUG(errs() << "revert stack to CAF ...\n");
   //aa->dump();
 
-  DEBUG(errs() << "constructEdgesFromControl ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromControl ...\n");
 
   //auto *F = loop->getHeader()->getParent();
   //auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(*F).getPostDomTree();
   constructEdgesFromControl(*pdg, loop);
 
-  DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
+  LLVM_DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
 
   // constructEdgesFromUseDefs adds external nodes for live-ins and live-outs
   constructEdgesFromUseDefs(*pdg, loop);
 
-  DEBUG(errs() << "PDG construction completed\n");
+  LLVM_DEBUG(errs() << "PDG construction completed\n");
 
   return pdg;
 }
@@ -275,7 +275,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
     {
       ControlSpeculation::LoopBlock src = *j;
 
-      TerminatorInst *term = src.getBlock()->getTerminator();
+      Instruction *term = src.getBlock()->getTerminator();
 
       for(BasicBlock::iterator k=dst.getBlock()->begin(), f=dst.getBlock()->end(); k!=f; ++k)
       {
@@ -303,7 +303,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   for(Loop::block_iterator i=loop->block_begin(), e=loop->block_end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    TerminatorInst *term = bb->getTerminator();
+    Instruction *term = bb->getTerminator();
 
     // no control dependence can be formulated around unconditional branches
 
@@ -352,7 +352,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   for(Exitings::iterator i=exitings.begin(), e=exitings.end(); i!=e; ++i)
   {
     BasicBlock *exiting = *i;
-    TerminatorInst *term = exiting->getTerminator();
+    Instruction *term = exiting->getTerminator();
 
     // Draw ctrl deps to:
     //  (1) Operations with side-effects
@@ -371,7 +371,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
           continue;
 
         /*
-        if( TerminatorInst *tt = dyn_cast< TerminatorInst >(idst) )
+        if( idst->isTerminator() )
           if( ! ctrlspec.mayExit(tt,loop) )
             continue;
         */
@@ -420,7 +420,7 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
       queryIntraIterationMemoryDep(i, j, loop, aa, pdg);
     }
   }
-  DEBUG(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
+  LLVM_DEBUG(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
                << "\n");
 }
 

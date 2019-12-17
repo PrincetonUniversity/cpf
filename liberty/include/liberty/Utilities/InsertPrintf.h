@@ -38,7 +38,8 @@ namespace liberty
     FunctionType *sig_printf = FunctionType::get(
       intty, formals, true);
 
-    Constant *fcn_printf = module->getOrInsertFunction("printf", sig_printf);
+    FunctionCallee wrapper = module->getOrInsertFunction("printf", sig_printf);
+    Constant *fcn_printf = cast<Constant>(wrapper.getCallee());
 
     std::vector<Value*> actuals;
     actuals.push_back( getStringLiteralExpression(*module, format) );
@@ -58,7 +59,8 @@ namespace liberty
       FunctionType *sig_fflush = FunctionType::get(
         intty, formals, false);
 
-      Constant *fcn_fflush = module->getOrInsertFunction("fflush", sig_fflush);
+      FunctionCallee wrapper = module->getOrInsertFunction("fflush", sig_fflush);
+      Constant *fcn_fflush = cast<Constant>(wrapper.getCallee());
 
       Instruction *load = new LoadInst(gv_stdout);
       actuals.resize(1);

@@ -24,7 +24,7 @@ namespace liberty
     bool includeFcnArgs)
   : numbers(), revNumbers(), OUT()
   {
-    DEBUG(errs() << "\t- Performing dataflow analysis");
+    LLVM_DEBUG(errs() << "\t- Performing dataflow analysis");
 
     // Now we are going to do some data flow analysis
     // in order to identify the live values at each
@@ -112,7 +112,7 @@ namespace liberty
     BitVector newOUT(num_values);
     while( ! fringe.empty() )
     {
-      DEBUG(errs() << '.');
+      LLVM_DEBUG(errs() << '.');
       const BasicBlock *bb = fringe.back();
       fringe.pop_back();
 
@@ -129,7 +129,7 @@ namespace liberty
         OUT[bb].swap(newOUT);
       }
     }
-    DEBUG(errs() << '\n');
+    LLVM_DEBUG(errs() << '\n');
 
 /*
     errs() << "===================================================================\n\n\n";
@@ -188,9 +188,10 @@ namespace liberty
       // sanity: ensure this is a definition
       if( isa<StoreInst>(lv) )
         continue;
-      if( isa<TerminatorInst>(lv) )
-        if( !isa<InvokeInst>(lv) )
-          continue;
+      if (const Instruction *lvi = dyn_cast<Instruction>(lv))
+        if (lvi->isTerminator())
+          if (!isa<InvokeInst>(lv))
+            continue;
       if( lv->getType()->isVoidTy() )
         continue;
 

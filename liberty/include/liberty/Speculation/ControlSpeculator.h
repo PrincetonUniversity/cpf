@@ -46,14 +46,14 @@ struct ProfileGuidedControlSpeculator : public ModulePass, public ControlSpecula
 
   // Determine if the provided control flow edge
   // is speculated to not run.
-  virtual bool isSpeculativelyDead(const TerminatorInst *term, unsigned succNo);
+  virtual bool isSpeculativelyDead(const Instruction *term, unsigned succNo);
 
   // Determine if the given basic block is speculatively dead.
   virtual bool isSpeculativelyDead(const BasicBlock *bb);
 
   // speculatively dead edge sourcing from this term, rare misspec but observed
   // at least once in profiling
-  virtual bool misspecInProfLoopExit(const TerminatorInst *term);
+  virtual bool misspecInProfLoopExit(const Instruction *term);
 
   // ---------------------- for UpdateOnClone interface
 
@@ -71,15 +71,15 @@ struct ProfileGuidedControlSpeculator : public ModulePass, public ControlSpecula
   virtual void reset();
 
   virtual void dot_block_label(const BasicBlock *bb, raw_ostream &fout);
-  virtual void dot_edge_label(const TerminatorInst *term, unsigned sn, raw_ostream &fout);
+  virtual void dot_edge_label(const Instruction *term, unsigned sn, raw_ostream &fout);
 
 private:
   ModuleLoops *mloops;
 
-  typedef std::map<const TerminatorInst *, SmallBitVector> CtrlEdges;
+  typedef std::map<const Instruction *, SmallBitVector> CtrlEdges;
   typedef std::set<const BasicBlock*> BlockSet;
   typedef std::set<const Function *> FcnSet;
-  typedef std::set<const TerminatorInst *> TermISet;
+  typedef std::set<const Instruction *> TermISet;
 
   struct LoopSpeculation
   {

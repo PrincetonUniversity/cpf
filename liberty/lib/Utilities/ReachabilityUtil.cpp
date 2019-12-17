@@ -23,7 +23,8 @@ bool liberty::isReachableIntraprocedural(const Instruction *src,
   DominatorTree *dt = &mloops.getAnalysis_DominatorTree(src->getFunction());
   LoopInfo *li = &mloops.getAnalysis_LoopInfo(dst->getFunction());
 
-  return llvm::isPotentiallyReachable(src, dst, dt, li);
+  return llvm::isPotentiallyReachable(src->getParent(), dst->getParent(), dt,
+                                      li);
 }
 
 bool liberty::isReachableIntraprocedural(RelInstsV &srcInsts,
@@ -116,5 +117,6 @@ bool liberty::noStoreInBetween(const Instruction *firstI,
   // even if there is a path from firstI to src, could check if there is at
   // least one path that does not pass through secondI (e.g. using exclusionSet
   // of LLVM 9.0 version of isPotentiallyReachable)
+  // TODO: make it less conservative using exclusionSet
   return !isReachableInterProcedural(firstI, defs, mloops);
 }

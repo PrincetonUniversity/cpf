@@ -103,14 +103,15 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
 
   auto aaRes = aa->getModRefInfo(A, ptrB, sizeB);
 
-  if (aaRes == llvm::MRI_NoModRef) {
-    // DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
+  if (aaRes == llvm::ModRefInfo::NoModRef) {
+    // LLVM_DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }
 
-  return LoopAA::ModRefResult(aaRes &
-                              LoopAA::modref(A, rel, ptrB, sizeB, L, R));
+  //return LoopAA::ModRefResult(aaRes &
+  //                            LoopAA::modref(A, rel, ptrB, sizeB, L, R));
+  return LoopAA::modref(A, rel, ptrB, sizeB, L, R);
 }
 
 LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
@@ -139,9 +140,9 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
 
   if (callA && callB)
     aaRes =
-        aa->getModRefInfo(ImmutableCallSite(callA), ImmutableCallSite(callB));
+        aa->getModRefInfo(callA, callB);
   else if (callB)
-    aaRes = aa->getModRefInfo(nA, ImmutableCallSite(callB));
+    aaRes = aa->getModRefInfo(nA, callB);
   else{
     aaRes = aa->getModRefInfo(A, MemoryLocation::get(B));
     //switch (aa->alias(MemoryLocation::get(A), MemoryLocation::get(B))) {
@@ -150,20 +151,20 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
     //  case MustAlias:
     //    break;
     //  case NoAlias:
-    //    DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+    //    LLVM_DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
     //    ++numNoModRef;
     //    return LoopAA::NoModRef;
     //}
   }
 
-  if (aaRes == llvm::MRI_NoModRef) {
-    // DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+  if (aaRes == llvm::ModRefInfo::NoModRef) {
+    // LLVM_DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }
 
-  //return LoopAA::ModRefResult(LoopAA::modref(A, rel, B, L));
-  return LoopAA::ModRefResult(aaRes & LoopAA::modref(A, rel, B, L, R));
+  return LoopAA::modref(A, rel, B, L, R);
+  //return LoopAA::ModRefResult(aaRes & LoopAA::modref(A, rel, B, L, R));
 }
 
 static RegisterPass<LLVMAAResults>
