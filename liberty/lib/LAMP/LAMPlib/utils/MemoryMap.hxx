@@ -735,7 +735,7 @@ namespace Memory {
             if (node == NULL) {
               fprintf(stderr, "Illegal read\n");
             }
-            return node->read_value<T>(addr);
+            return node->read_value(addr);
           }
 
         template <class T>
@@ -761,7 +761,7 @@ namespace Memory {
           void write_aligned_value(void * addr, const T &value) {
             PageType::check_addr_range(addr, sizeof(T));
             PageType *node = this->get_or_create_node(addr);
-            node->write_value<T>(addr, value);
+            node->write_value(addr, value);
           }
 
         template <class T>
@@ -793,7 +793,7 @@ namespace Memory {
               return *((const T *) addr);
             }
 
-            return node->read_value_committed<T>(addr);
+            return node->read_value_committed(addr);
           }
 
         void merge(const MapType *mm_version) {
