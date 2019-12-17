@@ -306,7 +306,7 @@ namespace liberty {
       SmallVector<BasicBlock *, 16> &ClonedBlocks)
   {
     // Create New Loop structure
-    Loop *NewLoop = new Loop();
+    Loop *NewLoop = LI->AllocateLoop();
 
     // Clone Basic Blocks.
     for (Loop::block_iterator I = OrigL->block_begin(), E = OrigL->block_end();
