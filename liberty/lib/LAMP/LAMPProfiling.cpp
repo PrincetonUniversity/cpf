@@ -338,25 +338,30 @@ void LAMPProfiler::createLampDeclarations(Module* M)
     // there seems no need for the last arg
     //lampFuncs[i] = M->getOrInsertFunction(f[i], vty, i32, i64, (Type*)0);
     //lampFuncs[i+4] = M->getOrInsertFunction(f[i+4], vty, i32, i64, i64, (Type*)0);
-    lampFuncs[i] = M->getOrInsertFunction(f[i], vty, i32, i64);
-    lampFuncs[i+4] = M->getOrInsertFunction(f[i+4], vty, i32, i64, i64);
+    FunctionCallee wrapperi = M->getOrInsertFunction(f[i], vty, i32, i64);
+    FunctionCallee wrapperi4 = M->getOrInsertFunction(f[i+4], vty, i32, i64, i64);
+    lampFuncs[i] = cast<Constant>(wrapperi.getCallee());
+    lampFuncs[i+4] = cast<Constant>(wrapperi4.getCallee());
   }
 
   //CallFn = M->getOrInsertFunction(FnName, vty, i32, (Type*)0);
-  CallFn = M->getOrInsertFunction(FnName, vty, i32);
+  FunctionCallee wrapper = M->getOrInsertFunction(FnName, vty, i32);
+  CallFn = cast<Constant>(wrapper.getCallee());
 
   // args are unsigned32, void*, size_t ... seems to translate as these  TRM 7/25/08
   // should be 32, 8?, 32 -- currently defined as 32 64 64
 
   //sot
   //AllocFn = M->getOrInsertFunction(AllocName, vty, i32, pi8, i32, (Type*)0);
-  AllocFn = M->getOrInsertFunction(AllocName, vty, i32, i8, i32);
+  wrapper = M->getOrInsertFunction(AllocName, vty, i32, i8, i32);
+  AllocFn = cast<Constant>(wrapper.getCallee());
 
   //DeallocFn = M->getOrInsertFunction(DeallocName, vty, i32, i8, i32, (Type*)0);
 
   //sot
   //DeallocFn = M->getOrInsertFunction(DeallocName, vty, i32, pi8, (Type*)0);
-  DeallocFn = M->getOrInsertFunction(DeallocName, vty, i32, i8);
+  wrapper = M->getOrInsertFunction(DeallocName, vty, i32, i8);
+  DeallocFn = cast<Constant>(wrapper.getCallee());
 
   //sot
   /*
@@ -775,13 +780,12 @@ bool LAMPInit::runOnModule(Module& M)
 
       LLVM_DEBUG(errs() << "LAMP-- Ld/St/Intrinsic/Call Count:" << cnt << " Loop Count:" << lps <<'\n');
 
-      Constant *InitFn = M.getOrInsertFunction(FnName,
-          Type::getVoidTy(M.getContext()),
-          Type::getInt32Ty(M.getContext()),
-          Type::getInt32Ty(M.getContext()),
-          Type::getInt64Ty(M.getContext()),
-          Type::getInt64Ty(M.getContext()));
-          //(Type *)0);   //sot
+      FunctionCallee wrapper = M.getOrInsertFunction(
+          FnName, Type::getVoidTy(M.getContext()),
+          Type::getInt32Ty(M.getContext()), Type::getInt32Ty(M.getContext()),
+          Type::getInt64Ty(M.getContext()), Type::getInt64Ty(M.getContext()));
+      //(Type *)0);   //sot
+      Constant *InitFn = cast<Constant>(wrapper.getCallee());
 
       std::vector<Value*> Args(4);
       Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), cnt, false);
@@ -1002,7 +1006,8 @@ bool LAMPInit::runOnModule(Module& M)
       // insert invocation function at end of preheader (called once prior to loop)
       const char* InvocName = "LAMP_loop_invocation";
       //Constant *InvocFn = M->getOrInsertFunction(InvocName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()), (Type *)0);
-      Constant *InvocFn = M->getOrInsertFunction(InvocName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      FunctionCallee wrapper = M->getOrInsertFunction(InvocName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      Constant *InvocFn = cast<Constant>(wrapper.getCallee());
       std::vector<Value*> Args(1);
       Args[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), ++loop_id);
       //dbgs() << "Loop: ID = " << loop_id << " Header = " << header->getName() << "\n";
@@ -1045,14 +1050,16 @@ bool LAMPInit::runOnModule(Module& M)
       const char* IterBeginName = "LAMP_loop_iteration_begin";
       //sot
       //Constant *IterBeginFn = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()), (Type *)0);
-      Constant *IterBeginFn = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()));
+      wrapper = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()));
+      Constant *IterBeginFn = cast<Constant>(wrapper.getCallee());
       CallInst::Create(IterBeginFn, "", &*(header->getFirstInsertionPt()));
 
       // insert iteration at cannonical backedge.  exiting block insertions removed in favor of exit block
       const char* IterEndName = "LAMP_loop_iteration_end";
       //sot
       //Constant *IterEndFn = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()), (Type *)0);
-      Constant *IterEndFn = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()));
+      wrapper = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()));
+      Constant *IterEndFn = cast<Constant>(wrapper.getCallee());
 
       // cannonical backedge
       if (!latch->empty())
@@ -1067,7 +1074,8 @@ bool LAMPInit::runOnModule(Module& M)
       //Constant *LoopEndFn = M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), (Type *)0);
       //const char* LoopEndName = "LAMP_loop_exit2";
       //Constant *LoopEndFn= M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()), (Type *)0);
-      Constant *LoopEndFn= M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      wrapper = M->getOrInsertFunction(LoopEndName, Type::getVoidTy(M->getContext()), Type::getInt32Ty(M->getContext()));
+      Constant *LoopEndFn = cast<Constant>(wrapper.getCallee());
       //std::vector<Value*> Args2(1);
       //Args2[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), loop_id);
 
