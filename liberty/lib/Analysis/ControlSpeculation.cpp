@@ -157,8 +157,7 @@ bool ControlSpeculation::isNotLoop(Loop *loop)
   for(Value::user_iterator i=header->user_begin(), e=header->user_end(); i!=e; ++i)
   {
     Instruction *term = dyn_cast< Instruction >( &**i );
-    bool isTerm = term->isTerminator();
-    if( term && !isTerm )
+    if( term && !term->isTerminator() )
       continue;
     BasicBlock *termbb = term->getParent();
     if( ! loop->contains( termbb ) )

@@ -233,7 +233,10 @@ struct MallocProfiler : public ModulePass
     FunctionType *reportglobalty = FunctionType::get(voidty, formals, false);
     FunctionCallee wrapper_report_constant = mod.getOrInsertFunction(
                                              "__prof_report_constant", reportglobalty);
-    report_global = cast<Constant>(wrapper_report_constant.getCallee());
+    FunctionCallee wrapper_report_global = mod.getOrInsertFunction(
+                                             "__prof_report_global", reportglobalty);
+    report_constant = cast<Constant>(wrapper_report_constant.getCallee());
+    report_global = cast<Constant>(wrapper_report_global.getCallee());
 
     formals.clear();
     formals.push_back(charptr);
