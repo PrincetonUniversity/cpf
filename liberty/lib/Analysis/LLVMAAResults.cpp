@@ -135,12 +135,17 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
   Instruction *nB = const_cast<Instruction *>(B);
   auto *callA = dyn_cast<CallInst>(nA);
   auto *callB = dyn_cast<CallInst>(nB);
+  auto *invokeA = dyn_cast<InvokeInst>(nA);
+  auto *invokeB = dyn_cast<InvokeInst>(nB);
 
-  if (callA && callB)
+  auto csA = ImmutableCallSite(nA);
+  auto csB = ImmutableCallSite(nB);
+
+  if ((callA || invokeA) && (callB || invokeB))
     aaRes =
-        aa->getModRefInfo(ImmutableCallSite(callA), ImmutableCallSite(callB));
-  else if (callB)
-    aaRes = aa->getModRefInfo(nA, ImmutableCallSite(callB));
+        aa->getModRefInfo(csA, csB);
+  else if (callB || invokeB)
+    aaRes = aa->getModRefInfo(nA, csB);
   else{
     aaRes = aa->getModRefInfo(A, MemoryLocation::get(B));
     //switch (aa->alias(MemoryLocation::get(A), MemoryLocation::get(B))) {
