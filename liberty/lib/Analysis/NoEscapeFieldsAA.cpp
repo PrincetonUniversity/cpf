@@ -279,6 +279,11 @@ namespace liberty
           if (PointerType *dstT = dyn_cast<PointerType>(bcI->getDestTy())) {
             if (StructType *structTy =
                     dyn_cast<StructType>(dstT->getElementType())) {
+
+              // Ziyang: make sure there is a first element
+              // TODO: consider the logic here
+              unsigned sz = structTy->getNumElements();
+              if (sz == 0) continue;
               // check that the type of the first element of the struct matches
               // with the pointer type of the destTy of the bitcast
               if (structTy->getElementType(0) !=
