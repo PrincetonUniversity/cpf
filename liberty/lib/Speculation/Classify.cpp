@@ -1,4 +1,5 @@
 #define DEBUG_TYPE "classify"
+#define BOGUSASSN
 
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/ADT/Statistic.h"
@@ -369,8 +370,15 @@ bool Classify::runOnLoop(Loop *loop)
   Function *fcn = header->getParent();
 
   const Read &spresults = getAnalysis< ReadPass >().getProfileInfo();
+
+// Ziyang: generate bogus assignment
+#ifdef BOGUSASSN
+  if( !spresults.resultsValid() )
+    DEBUG(errs() << "This loop doesn't have specpriv result, but I continue with bogus(0) assignment!\n");
+#else
   if( !spresults.resultsValid() )
     return false;
+#endif
 
   DEBUG(errs() << "***************** Classify: "
     << fcn->getName() << " :: " << header->getName()
@@ -398,6 +406,27 @@ bool Classify::runOnLoop(Loop *loop)
   // Find all AUs which are read,written,reduced...
   AUs reads, writes;
   ReduxAUs reductions;
+
+//generate bogus assignment
+#ifdef BOGUSASSN
+  if (!spresults.resultsValid() ){
+    // Strip the undefined AU
+    strip_undefined_objects( sharedAUs );
+    strip_undefined_objects( localAUs );
+    strip_undefined_objects( privateAUs );
+    strip_undefined_objects( readOnlyAUs );
+    strip_undefined_objects( reductionAUs );
+
+    assignment.assignSubHeaps();
+
+    assignment.setValidFor(loop);
+    ++numClassified;
+    DEBUG( errs() << assignment );
+
+    return false;
+  }
+#endif
+
   if( !spresults.getFootprint(loop, ctx, reads, writes, reductions) )
   {
     DEBUG(errs() << "Classify: Failed to get write footprint of loop; abort\n");

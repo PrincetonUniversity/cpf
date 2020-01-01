@@ -41,6 +41,7 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   lampaa = new LampOracle(lamp);
   lampaa->InitializeLoopAA(&proxy, DL);
 
+  /*
   // Points-to
   pointstoaa = new PointsToAA(spresults);
   pointstoaa->InitializeLoopAA(&proxy, DL);
@@ -53,15 +54,16 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   // Value prediction
   predaa = new PredictionAA(predspec);
   predaa->InitializeLoopAA(&proxy, DL);
+  */
 
   Remedies remedies = Remediator::satisfy(pdg, loop, criticisms);
 
   // remove these four AAs from the stack by destroying them
   delete edgeaa;
   delete lampaa;
-  delete pointstoaa;
-  delete localityaa;
-  delete predaa;
+  //delete pointstoaa;
+  //delete localityaa;
+  //delete predaa;
 
   return remedies;
 }
@@ -94,7 +96,8 @@ Remediator::RemedResp MemSpecAARemediator::memdep(const Instruction *A,
 
   // This AA stack includes static analysis, flow dependence speculation,
   // locality, value prediction and control speculation.
-  LoopAA *aa = predaa->getTopAA();
+  LoopAA *aa = lampaa->getTopAA(); //Ziyang: the last one is lamp now
+  //LoopAA *aa = predaa->getTopAA();
   //aa->dump();
 
   bool RAW = dataDepTy == DataDepType::RAW;

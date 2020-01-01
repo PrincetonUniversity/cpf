@@ -1,4 +1,8 @@
 #define DEBUG_TYPE "selector"
+#ifndef BOGUSASSN
+#define BOGUSASSN
+#endif
+
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
@@ -94,7 +98,9 @@ void RemedSelector::computeVertices(Vertices &vertices)
       DEBUG(errs() << "HeapAssignment invalid for loop "
                    << loop->getHeader()->getParent()->getName()
                    << "::" << loop->getHeader()->getName() << '\n');
-      continue;
+//#ifndef BOGUSASSN
+     continue;
+//#endif
     }
 
     vertices.push_back(loop);

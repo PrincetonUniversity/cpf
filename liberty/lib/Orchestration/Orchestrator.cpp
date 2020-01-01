@@ -69,6 +69,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   reduxRemed->setLoopOfInterest(A);
   remeds.push_back(std::move(reduxRemed));
 
+  /*
   // separation logic remediator (Privateer PLDI '12)
   remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
 
@@ -77,6 +78,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
 
   // memory specualation remediator (with SLAMP)
   //remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
+  */
 
   // memory speculation remediator 2 (with LAMP)
   remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy));
@@ -84,9 +86,11 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   // header phi value prediction
   //remeds.push_back(std::make_unique<HeaderPhiPredRemediator>(headerPhiPred));
 
+  /*
   // Loop-Invariant Loaded-Value Prediction
   remeds.push_back(
       std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
+  */
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
@@ -94,10 +98,12 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   ctrlSpecRemed->processLoopOfInterest(A);
   remeds.push_back(std::move(ctrlSpecRemed));
 
+  /*
   // privitization remediator
   auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
       ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
   remeds.push_back(std::move(privRemed));
+  */
 
   // counted induction variable remediator
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage

@@ -1,5 +1,5 @@
 #define DEBUG_TYPE "ps-dswp-critic"
-#define AVOID_DSWP
+//#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
 
