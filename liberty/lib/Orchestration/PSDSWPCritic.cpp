@@ -614,6 +614,14 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   unsigned long lcWARMemDepTotal = 0;
   unsigned long lcRegDepTotal = 0;
   unsigned long lcCtrlDepTotal = 0;
+  unsigned long iiDepTotal = 0;
+  unsigned long iiDepNotCovered = 0;
+  unsigned long iiRAWMemDepTotal = 0;
+  unsigned long iiWAWMemDepTotal = 0;
+  unsigned long iiWARMemDepTotal = 0;
+  unsigned long iiRegDepTotal = 0;
+  unsigned long iiCtrlDepTotal = 0;
+
 
   // remove all the removable edges and produce optimistic pdg
   std::vector<DGEdge<Value> *> toBeRemovedEdges;
@@ -661,6 +669,51 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
         ++lcDepNotCovered;
       }
     }
+    else {
+      ++iiDepTotal;
+
+      if (edge->isControlDependence())
+        ++iiCtrlDepTotal;
+      else if (edge->isMemoryDependence()) {
+        if (edge->isRAWDependence())
+          ++iiRAWMemDepTotal;
+        else if (edge->isWAWDependence())
+          ++iiWAWMemDepTotal;
+        else if (edge->isWARDependence())
+          ++iiWARMemDepTotal;
+      }
+      else
+        ++iiRegDepTotal;
+
+      /*
+      if (!edge->isRemovableDependence()) {
+        DEBUG(errs() << "Cannot remove intra-iteration";
+              if (edge->isControlDependence()) errs() << "(Control)"; else {
+                if (edge->isMemoryDependence())
+                  errs() << "(Mem, ";
+                else
+                  errs() << "(Reg, ";
+                if (edge->isWARDependence())
+                  errs() << "WAR)";
+                else if (edge->isWAWDependence())
+                  errs() << "WAW)";
+                else if (edge->isRAWDependence())
+                  errs() << "RAW)";
+              } errs() << " edge(s) from "
+                       << *edge->getOutgoingT();
+              if (Instruction *outgoingI =
+                      dyn_cast<Instruction>(edge->getOutgoingT()))
+                  liberty::printInstDebugInfo(outgoingI);
+              errs() << "\n    to " << *edge->getIncomingT();
+              if (Instruction *incomingI =
+                      dyn_cast<Instruction>(edge->getIncomingT()))
+                  liberty::printInstDebugInfo(incomingI);
+              errs() << '\n';);
+
+        ++iiDepNotCovered;
+      }
+      */
+    }
 
     if (edge->isRemovableDependence())
       toBeRemovedEdges.push_back(edge);
@@ -692,6 +745,11 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
                << "\nWAR Memory Loop-Carried Deps Count: " << lcWARMemDepTotal
                << "\nRegister Loop-Carried Deps Count: " << lcRegDepTotal
                << "\nControl Loop-Carried Deps Count: " << lcCtrlDepTotal
+               << "\nRAW Memory Intra-Iteration Deps Count: " << iiRAWMemDepTotal
+               << "\nWAW Memory Intra-Iteration Deps Count: " << iiWAWMemDepTotal
+               << "\nWAR Memory Intra-Iteration Deps Count: " << iiWARMemDepTotal
+               << "\nRegister Intra-Iteration Deps Count: " << iiRegDepTotal
+               << "\nControl Intra-Iteration Deps Count: " << iiCtrlDepTotal
                << "\n");
 
   unsigned long lcDepCovered = lcDepTotal - lcDepNotCovered;

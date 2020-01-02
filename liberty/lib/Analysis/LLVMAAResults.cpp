@@ -5,6 +5,7 @@
 #include "liberty/Analysis/LLVMAAResults.h"
 #include "liberty/Utilities/GetMemOper.h"
 #include "liberty/Utilities/CallSiteFactory.h"
+#include "liberty/Utilities/PrintDebugInfo.h"
 
 #include <vector>
 
@@ -55,8 +56,11 @@ LoopAA::AliasResult LLVMAAResults::alias(
 
   // ZY: LLVM AA seems only applicable for II deps
   // sot: mustAlias from standard LLVM AA could be misleading for loop carried deps
-  if (rel != LoopAA::Same)
-    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L);
+  
+
+  // ZY: TBAA only
+  //if (rel != LoopAA::Same)
+  //  return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L);
 
 
   // only handles intra-iteration mem queries
@@ -104,7 +108,9 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
   auto aaRes = aa->getModRefInfo(A, ptrB, sizeB);
 
   if (aaRes == llvm::MRI_NoModRef) {
-    // DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A << " --> " << *B << "\n");
+    DEBUG(errs()<<"NoModRef 1 by LLVM AA" << *A; 
+          liberty::printInstDebugInfo(const_cast<Instruction*>(A));
+          errs() << " --> " << *ptrB << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }
@@ -148,20 +154,24 @@ LoopAA::ModRefResult LLVMAAResults::modref(const Instruction *A,
     aaRes = aa->getModRefInfo(nA, csB);
   else{
     aaRes = aa->getModRefInfo(A, MemoryLocation::get(B));
-    //switch (aa->alias(MemoryLocation::get(A), MemoryLocation::get(B))) {
-    //  case PartialAlias:
-    //  case MayAlias:
-    //  case MustAlias:
-    //    break;
-    //  case NoAlias:
-    //    DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
-    //    ++numNoModRef;
-    //    return LoopAA::NoModRef;
-    //}
+    // switch (aa->alias(MemoryLocation::get(A), MemoryLocation::get(B))) {
+    //   case PartialAlias:
+    //   case MayAlias:
+    //   case MustAlias:
+    //     break;
+    //   case NoAlias:
+    //     DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+    //     ++numNoModRef;
+    //     return LoopAA::NoModRef;
+    // }
   }
 
   if (aaRes == llvm::MRI_NoModRef) {
-    // DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A << " --> " << *B << "\n");
+    DEBUG(errs()<<"NoModRef 2 by LLVM AA" << *A;
+        liberty::printInstDebugInfo(nA);
+        errs() << " --> " << *B;
+        liberty::printInstDebugInfo(nB);
+        errs() << "\n");
     ++numNoModRef;
     return LoopAA::NoModRef;
   }

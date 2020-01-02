@@ -33,7 +33,7 @@ namespace liberty
       return false;
     }
 
-    StringRef getLoopAAName() const { return "llvm-results-aa"; }
+    StringRef getLoopAAName() const { return "llvm-aa-results"; }
 
     virtual SchedulingPreference getSchedulingPreference() const {
       return SchedulingPreference(Bottom + 1);
