@@ -245,8 +245,14 @@ bool PrivRemediator::isPrivate(const Instruction *I, const Loop *L,
       if (isPointerKillBefore(L, loadPtr, loadI))
         ctrlSpecUsed = true;
 
-      if (!isPointerKillBefore(L, loadPtr, loadI) &&
-          !isSpecSeparated(I, loadI, L))
+
+      // Ziyang: Original one with speculative privitzation on
+      // if (!isPointerKillBefore(L, loadPtr, loadI) &&
+      //     !isSpecSeparated(I, loadI, L))
+      //   return false;
+
+      // Ziyang: Turn off speculation for privatization
+      if (!isPointerKillBefore(L, loadPtr, loadI))
         return false;
 
       // TODO: change all ctrlSpecUsed to specUsed
