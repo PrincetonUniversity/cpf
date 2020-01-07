@@ -103,6 +103,11 @@ namespace liberty
       proxy = p;
     }
     */
+    virtual SchedulingPreference getSchedulingPreference() const {
+      return SchedulingPreference(Normal - 7);
+      // return SchedulingPreference(Bottom + 1);
+    }
+
 
     StringRef getLoopAAName() const { return "kill-flow-aa"; }
 
