@@ -456,13 +456,14 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
     return success;
   }
 
+
   // externally defined function.
   // Look it up in the pure,semi-local database.
 
-  else if( pure->isReadOnly(callee) )
+  else if( pure && pure->isReadOnly(callee) )
     return true; // write-none
 
-  else if( pure->isLocal(callee) )
+  else if( pure && pure->isLocal(callee) )
   {
     // footprint == the actual parameters
     for(CallSite::arg_iterator i=cs.arg_begin(),  e=cs.arg_end(); i!=e; ++i)
@@ -486,7 +487,7 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
     return true;
   }
 
-  else if( semi->isSemiLocal(callee,*pure) )
+  else if( semi && semi->isSemiLocal(callee,*pure) )
   {
     // footprint == the actual parameters + hidden state
     unsigned argno = 0;
@@ -1099,8 +1100,8 @@ static cl::opt<std::string> ProfileFileName("specpriv-profile-filename",
 
 void ReadPass::getAnalysisUsage(AnalysisUsage &au) const
 {
-  au.addRequired< PureFunAA >();
-  au.addRequired< SemiLocalFunAA >();
+  // au.addRequired< PureFunAA >();
+  // au.addRequired< SemiLocalFunAA >();
   au.addRequired< ProfileGuidedControlSpeculator >();
   au.setPreservesAll();
 }
@@ -1119,11 +1120,11 @@ bool ReadPass::runOnModule(Module &mod)
   Parse parser(mod);
   parser.parse(ProfileFileName.c_str(), read);
 
-  const PureFunAA &pure = getAnalysis< PureFunAA >();
-  read->setPureFunAA(&pure);
+  if (PureFunAA* pure = getAnalysisIfAvailable< PureFunAA >())
+    read->setPureFunAA(pure);
 
-  const SemiLocalFunAA &semi = getAnalysis< SemiLocalFunAA >();
-  read->setSemiLocalFunAA( &semi );
+  if (SemiLocalFunAA *semi = getAnalysisIfAvailable< SemiLocalFunAA >())
+    read->setSemiLocalFunAA( semi );
 
   read->setControlSpeculator( getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr() );
 
