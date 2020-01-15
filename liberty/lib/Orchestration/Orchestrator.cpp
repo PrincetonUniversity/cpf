@@ -268,7 +268,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
         selectedRemedies.insert(r);
       }
     }
-    printSelected(sors, cheapestR, *cr);
+    // printSelected(sors, cheapestR, *cr);
   }
   DEBUG(errs() << "-====================================================-\n\n");
   printRemediatorSelectionCnt();

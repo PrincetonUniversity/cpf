@@ -643,28 +643,28 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
         ++lcRegDepTotal;
 
       if (!edge->isRemovableDependence()) {
-        DEBUG(errs() << "Cannot remove loop-carried ";
-              if (edge->isControlDependence()) errs() << "(Control)"; else {
-                if (edge->isMemoryDependence())
-                  errs() << "(Mem, ";
-                else
-                  errs() << "(Reg, ";
-                if (edge->isWARDependence())
-                  errs() << "WAR)";
-                else if (edge->isWAWDependence())
-                  errs() << "WAW)";
-                else if (edge->isRAWDependence())
-                  errs() << "RAW)";
-              } errs() << " edge(s) from "
-                       << *edge->getOutgoingT();
-              if (Instruction *outgoingI =
-                      dyn_cast<Instruction>(edge->getOutgoingT()))
-                  liberty::printInstDebugInfo(outgoingI);
-              errs() << "\n    to " << *edge->getIncomingT();
-              if (Instruction *incomingI =
-                      dyn_cast<Instruction>(edge->getIncomingT()))
-                  liberty::printInstDebugInfo(incomingI);
-              errs() << '\n';);
+        // DEBUG(errs() << "Cannot remove loop-carried ";
+        //       if (edge->isControlDependence()) errs() << "(Control)"; else {
+        //         if (edge->isMemoryDependence())
+        //           errs() << "(Mem, ";
+        //         else
+        //           errs() << "(Reg, ";
+        //         if (edge->isWARDependence())
+        //           errs() << "WAR)";
+        //         else if (edge->isWAWDependence())
+        //           errs() << "WAW)";
+        //         else if (edge->isRAWDependence())
+        //           errs() << "RAW)";
+        //       } errs() << " edge(s) from "
+        //                << *edge->getOutgoingT();
+        //       if (Instruction *outgoingI =
+        //               dyn_cast<Instruction>(edge->getOutgoingT()))
+        //           liberty::printInstDebugInfo(outgoingI);
+        //       errs() << "\n    to " << *edge->getIncomingT();
+        //       if (Instruction *incomingI =
+        //               dyn_cast<Instruction>(edge->getIncomingT()))
+        //           liberty::printInstDebugInfo(incomingI);
+        //       errs() << '\n';);
 
         ++lcDepNotCovered;
       }
@@ -1266,17 +1266,17 @@ void PSDSWPCritic::moveIOToLastSeqStage(PipelineStrategy &ps, PDG &pdg,
 
       if (moveBackCost != ULONG_MAX) {
         tmpOffPStageWeight += moveBackCost;
-        DEBUG(errs() << "Movable output I/O inst along with dependent insts to "
-                        "last sequential stage, "
-                     << *inst << '\n');
+        // DEBUG(errs() << "Movable output I/O inst along with dependent insts to "
+        //                 "last sequential stage, "
+        //              << *inst << '\n');
         for (auto *inst : tmpInstsMovedToBack) {
           moveIOToLastSeq.insert(inst);
         }
       } else {
-        DEBUG(errs()
-              << "Not movable output I/O inst along with dependent insts to "
-                 "last sequential stage, "
-              << *inst << '\n');
+        // DEBUG(errs()
+        //       << "Not movable output I/O inst along with dependent insts to "
+        //          "last sequential stage, "
+        //       << *inst << '\n');
         for (auto *inst : tmpInstsMovedToBack) {
           DEBUG(errs() << "Part of non-movable insts: " << *inst << "\n";);
         }
@@ -1388,22 +1388,22 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
 
         if (firstStage && firstStage->type == PipelineStage::Sequential) {
           firstStage->instructions.insert(I);
-          DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
-                          "branch inst to first sequential stage: "
-                       << *I << '\n');
+          // DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+          //                 "branch inst to first sequential stage: "
+          //              << *I << '\n');
         } else {
           parallelStage->replicated.insert(I);
-          DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
-                          "branch inst to replicable stage: "
-                       << *I << '\n');
+          // DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+          //                 "branch inst to replicable stage: "
+          //              << *I << '\n');
         }
       }
     } else {
-      DEBUG(errs() << "\nNot movable loop exit branch inst along with "
-                      "dependent insts to first sequential/replicable stage, "
-                   << *loopExitBr << '\n');
+      // DEBUG(errs() << "\nNot movable loop exit branch inst along with "
+      //                 "dependent insts to first sequential/replicable stage, "
+      //              << *loopExitBr << '\n');
       for (auto *I : tmpInstsMovedToFront) {
-        DEBUG(errs() << "Part of non-movable insts: " << *I << "\n";);
+        //DEBUG(errs() << "Part of non-movable insts: " << *I << "\n";);
       }
     }
   }
