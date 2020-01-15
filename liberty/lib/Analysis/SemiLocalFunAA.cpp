@@ -1,5 +1,6 @@
 #define DEBUG_TYPE "semi-local-fun-aa"
 
+#include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/InstIterator.h"
@@ -11,14 +12,23 @@
 
 
 namespace liberty {
-
 using namespace llvm;
+STATISTIC(numNoAliasRead,  "Num no-alias/no-modref by ReadOnly");
+static cl::opt<bool> EnableReadOnlyAttr(
+  "enable-readonly-attr", cl::init(false), cl::Hidden,
+  cl::desc("Enable Readonly Function Attribute"));
+
+static cl::opt<bool> EnableNoAliasAttr(
+  "enable-noalias-attr", cl::init(false), cl::Hidden,
+  cl::desc("Enable NoAlias Function Attribute"));
+
 
   bool SemiLocalFunAA::isSemiLocalProp(const Instruction *inst) {
     return true;
   }
 
   bool SemiLocalFunAA::isSemiLocal(const Function *fun, const PureFunAA &pureFun) const {
+    return true;
     return pureFun.isRecursiveProperty(fun, semiLocalSet, globalSet,
                                        semiLocalFunSet, isSemiLocalProp);
   }
@@ -307,9 +317,20 @@ using namespace llvm;
 
               // Unless this is a read-only formal,
               // callsite 1 may write it.
-              if( ! readOnlyFormalArg(formal1) )
-                join = ModRefResult(join | Mod);
-
+              //
+              if (EnableReadOnlyAttr) {
+                if( ! readOnlyFormalArg(f1, arg1no) )
+                  join = ModRefResult(join | Mod);
+                else{
+                  numNoAliasRead++;
+                  DEBUG(errs() << "SemiLocalFun: Num. " << arg1no << " of Fun " <<
+                      f1->getName() << " is ReadOnly\n");
+                }
+              }
+              else {
+                if( ! readOnlyFormalArg(formal1) )
+                  join = ModRefResult(join | Mod);
+              }
               // go on to the next actual of callsite 1
               break;
             }

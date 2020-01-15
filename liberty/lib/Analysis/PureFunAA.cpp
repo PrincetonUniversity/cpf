@@ -275,6 +275,8 @@ bool PureFunAA::isReadOnly(const Function *fun) const {
 bool PureFunAA::isLocal(const Function *fun) const {
   if (fun->hasFnAttribute(Attribute::ArgMemOnly))
     return true;
+
+  return true;
   return isRecursiveProperty(fun, localSet, globalSet, localFunSet, isLocalProp);
 }
 
