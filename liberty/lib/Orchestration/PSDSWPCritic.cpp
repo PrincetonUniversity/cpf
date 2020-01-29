@@ -706,7 +706,7 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
                            fcn->getName().str() + ".dot";
   writeGraph<PDG>(pdgDotName, optimisticPDG);
 
-  optimisticSCCDAG = SCCDAG::createSCCDAGFrom(optimisticPDG);
+  optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
   std::string sccdagDotName = "optimistic_sccdag_" + header->getName().str() +
                               "_" + fcn->getName().str() + ".dot";

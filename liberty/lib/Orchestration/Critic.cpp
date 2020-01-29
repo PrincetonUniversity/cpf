@@ -111,7 +111,7 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
   std::unique_ptr<ParallelizationPlan> ps =
       std::unique_ptr<ParallelizationPlan>(new ParallelizationPlan());
 
-  //SCCDAG *loopSCCDAG = SCCDAG::createSCCDAGFrom(&pdg);
+  //SCCDAG *loopSCCDAG = new SCCDAG(&pdg);
 
   for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
 
