@@ -212,9 +212,7 @@ unsigned Selector::computeWeights(
       writeGraph<PDG>(pdgDotName, pdg);
 
       std::unique_ptr<LoopDependenceInfo> ldi =
-          std::make_unique<LoopDependenceInfo>(pdg, A, li, pdt);
-
-      ldi->sccdagAttrs.populate(ldi->loopSCCDAG, ldi->liSummary, se);
+          std::make_unique<LoopDependenceInfo>(fA, pdg, A, li, se, pdt);
 
       // trying to find the best parallelization strategy for this loop
 
