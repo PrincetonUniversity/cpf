@@ -36,10 +36,11 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
   //remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
   remedy->cost = 0;
 
-  auto aSCC = loopDepInfo->loopSCCDAG->sccOfValue(const_cast<Instruction *>(A));
-  auto bSCC = loopDepInfo->loopSCCDAG->sccOfValue(const_cast<Instruction *>(B));
+  auto aSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(const_cast<Instruction *>(A));
+  auto bSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(const_cast<Instruction *>(B));
 
-  if (aSCC == bSCC && loopDepInfo->sccdagAttrs.isInductionVariableSCC(aSCC) &&
+  if (aSCC == bSCC &&
+      loopDepInfo->sccdagAttrs.getSCCAttrs(aSCC)->isInductionVariableSCC() &&
       loopDepInfo->sccdagAttrs.isLoopGovernedByIV() &&
       loopDepInfo->sccdagAttrs.sccIVBounds.find(aSCC) !=
           loopDepInfo->sccdagAttrs.sccIVBounds.end()) {
@@ -69,10 +70,10 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
   //remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
   remedy->cost = 0;
 
-  auto aSCC = loopDepInfo->loopSCCDAG->sccOfValue(const_cast<Instruction *>(A));
+  auto aSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(const_cast<Instruction *>(A));
 
   // remove all ctrl edges originating from branch controlled by a bounded IV
-  if (loopDepInfo->sccdagAttrs.isInductionVariableSCC(aSCC) &&
+  if (loopDepInfo->sccdagAttrs.getSCCAttrs(aSCC)->isInductionVariableSCC() &&
       loopDepInfo->sccdagAttrs.isLoopGovernedByIV() &&
       loopDepInfo->sccdagAttrs.sccIVBounds.find(aSCC) !=
           loopDepInfo->sccdagAttrs.sccIVBounds.end()) {
