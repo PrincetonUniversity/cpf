@@ -50,8 +50,7 @@ bool llvm::PDGBuilder::runOnModule (Module &M){
 }
 
 std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
-  auto pdg = std::make_unique<llvm::PDG>();
-  pdg->populateNodesOf(loop);
+  auto pdg = std::make_unique<llvm::PDG>(loop);
 
   LLVM_DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
@@ -342,8 +341,7 @@ void llvm::PDGBuilder::constructEdgesFromControl(
   std::unordered_map<const Instruction *,
                      std::unordered_set<const Instruction *>>
       IICtrlCache;
-  PDG IICtrlPDG;
-  IICtrlPDG.populateNodesOf(loop);
+  PDG IICtrlPDG(loop);
   buildTransitiveIntraIterationControlDependenceCache(loop, pdg, IICtrlPDG, IICtrlCache);
   */
 
