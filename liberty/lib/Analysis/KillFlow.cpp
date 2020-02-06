@@ -26,6 +26,11 @@ namespace liberty
 
 using namespace llvm;
 
+static cl::opt<bool> DisableKillFlow(
+  "disable-kill-flow", cl::init(false), cl::Hidden,
+  cl::desc("Disable Kill Flow"));
+
+
 STATISTIC(numQueriesReceived,              "Num queries passed to KillFlow");
 
 STATISTIC(numEligibleBackwardLoadQueries,  "Num eligible BACKWARD LOAD");
@@ -80,8 +85,10 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
   bool KillFlow::mustAlias(const Value *storeptr, const Value *loadptr)
   {
     // Very easy case
-    if( storeptr == loadptr && isa< GlobalValue >(storeptr) )
-      return true;
+    if (!DisableKillFlow){
+      if( storeptr == loadptr && isa< GlobalValue >(storeptr) )
+        return true;
+    }
 
     LoopAA *top = getEffectiveTopAA();
     ++numSubQueries;
@@ -834,6 +841,9 @@ STATISTIC(numBBSummaryHits,                "Number of block summary hits");
 
     ModRefResult res = getEffectiveNextAA()->modref(i1,Rel,i2,L);
     INTROSPECT(errs() << "lower in the stack reports res=" << res << '\n');
+    if (DisableKillFlow)
+      return res;
+
     if( res == Ref || res == NoModRef )
     {
       INTROSPECT(EXIT(i1,Rel,i2,L,res));
