@@ -77,7 +77,7 @@ void getFunctionExits(Function &F,set<BasicBlock*> &bbSet)
   }
 }
 
-
+// TODO: should this be changed to not profile llvm.dbg.*() calls?
 bool LoopProf::runOnLoop(Loop *Lp) {
   BasicBlock *preHeader;
   BasicBlock *header;
@@ -112,7 +112,12 @@ bool LoopProf::runOnLoop(Loop *Lp) {
   {
     CallInst::Create(InvocFn, Args, "", (preHeader));
   }
-
+  LLVM_DEBUG( errs() << "Loop with preheader " << preHeader->getName() << ": " << numLoops << "\n" );
+  LLVM_DEBUG( errs() << "Exit blocks for loop with preheader " << preHeader->getName() << ":\n" );
+  for ( auto bb : exitBlocks )
+    LLVM_DEBUG( errs() << "\t" << bb->getName() << "\n" );
+  LLVM_DEBUG( errs() << *Lp );
+  LLVM_DEBUG( errs() << "\n" );
 
   /*
   // insert iteration begin function at beginning of header (called each loop)
@@ -153,9 +158,11 @@ bool LoopProf::runOnLoop(Loop *Lp) {
   for(unsigned int i = 0; i != exitBlocks.size(); i++){
     // this ordering places iteration end before loop exit
     // make sure not inserting the same exit block more than once for a loop -PC 2/5/2009
-    if (BBSet.find(exitBlocks[i])!=BBSet.end()) continue;
+    if (BBSet.find(exitBlocks[i])!=BBSet.end())
+      continue;
     BBSet.insert(exitBlocks[i]);
-    BasicBlock::iterator ii = exitBlocks[i]->getFirstInsertionPt(); exitBlocks[i]->begin();
+    BasicBlock::iterator ii = exitBlocks[i]->getFirstInsertionPt();
+    exitBlocks[i]->begin();
     //while (isa<PHINode>(ii)) { ii++; }
     //while (isaLAMP(ii)) { ii++; }
 
@@ -206,6 +213,7 @@ bool LoopProf::runOnModule(Module& M)
     std::vector<Value*> Args(1);
     Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops);
     CallInst::Create(InvocFn, Args, "", F.getEntryBlock().getFirstNonPHI() );
+    LLVM_DEBUG( errs() << "Function " << IF->getName() << ": " << numLoops << "\n" );
 
     const char* LoopEndName = "loop_exit";
     FunctionCallee wrapper_LoopEndFn= M.getOrInsertFunction(LoopEndName,
@@ -263,10 +271,14 @@ bool LoopProf::runOnModule(Module& M)
         // Unwind
         BasicBlock *upon_exception = split(invoke->getParent(), invoke->getUnwindDest(), "after.invoke.exception.");
         InstInsertPt::Beginning(upon_exception) << CallInst::Create(LoopEndFn,Args);
+        LLVM_DEBUG( errs() << "Invokesite " << *inst << ": " << numLoops << "\n" );
       }
       else
+      {
         // CallInst
         InstInsertPt::After(inst) << CallInst::Create(LoopEndFn, Args);
+        LLVM_DEBUG( errs() << "Callsite " << *inst << ": " << numLoops << "\n" );
+      }
 
     }
   }
