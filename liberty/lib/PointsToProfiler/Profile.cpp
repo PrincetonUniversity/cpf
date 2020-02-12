@@ -921,7 +921,14 @@ private:
     for(IList::iterator i=fopens.begin(), e=fopens.end(); i!=e; ++i)
     {
       Instruction *inst = *i;
-      InstInsertPt where = InstInsertPt::After(inst);
+      //errs() << "tracking fopens fclose at " << *inst << '\n';
+      InstInsertPt where;
+      if( InvokeInst *invoke = dyn_cast< InvokeInst >(inst) )
+      {
+        BasicBlock *not_exception = split( invoke->getParent(), 0u, "non-exceptional-return-malloc", &li);
+        where = InstInsertPt::Beginning( not_exception );
+      }
+      else where = InstInsertPt::After(inst);
 
       ConstantInt *sz = ConstantInt::get(u64, 1UL);
 
@@ -1116,6 +1123,7 @@ private:
     InstInsertPt where;
     if( InvokeInst *invoke = dyn_cast< InvokeInst >(inst) )
     {
+      //errs() << "indeterminate base object " << *inst << "is invoke" << "\n";
       BasicBlock *not_exception = split( invoke->getParent(), 0u, "non-exceptional-return",  &li);
       where = InstInsertPt::Beginning( not_exception );
     }
@@ -1558,6 +1566,7 @@ private:
         else if( StoreInst *store = dyn_cast<StoreInst>(inst) )
         {
           stores.push_back(store);
+          //errs() << "SpecPriv: Inserting store at Basic Block: " << bb->getName() << '\n';
           continue;
         }
 
@@ -1583,9 +1592,10 @@ private:
             continue;
 
           if( recognizedExternalFunctions.count(callee->getName()) )
+            //errs() << "SpecPriv: Inserting recognized external call at Basic Block: " << bb->getName() << '\n';
             continue;
         }
-
+        //errs() << "SpecPriv: Inserting unrecognized external call at Basic Block: " << bb->getName() << '\n';
         externalCalls.insert(inst);
       }
     }
@@ -1611,6 +1621,7 @@ private:
     BBSet interesting;
 
     ValSet already;
+    //insert find_underlying object call
     modified |= instrumentIndeterminatePointers(fcn,already,interesting,li);
 
     if( VerifyOften && modified )
@@ -1698,7 +1709,7 @@ private:
             //                     fcn->arg_end() };
             Value *actuals[] = { fcn->arg_begin(),
                                  fcn->arg_begin() + 1 };
-
+            //errs() << "SpecPriv: instrumenting function_main and bb: " << bb->getName() << '\n';
             end << CallInst::Create(unmanage_argv,
               ArrayRef<Value*>(&actuals[0], &actuals[2]));
           }
