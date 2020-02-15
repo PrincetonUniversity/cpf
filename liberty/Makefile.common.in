@@ -39,7 +39,7 @@ CXXWARNINGS :=-Wno-variadic-macros
 
 #LOADABLE_MODULE := 1 <- Could this be popular?
 
-NOELLEHEADERS := -I/u/sa8/CAT/include
+NOELLEHEADERS := -I/u/sa8/CAT/include -I/u/sa8/CAT/include/svf
 
 #CXXFLAGS := ${CXXFLAGS} -std=c++98 ${WARNINGS} ${CXXWARNINGS} $(EXTRACXXFLAGS) -fPIC
 CXXFLAGS := ${CXXFLAGS} -std=c++17 ${NOELLEHEADERS} ${WARNINGS} ${CXXWARNINGS} $(EXTRACXXFLAGS) -fPIC
