@@ -410,7 +410,10 @@ namespace liberty
                      const Instruction *A, LoopAA::TemporalRelation rel,
                      const Instruction *B, const Loop *L,
                      LoopAA::ModRefResult curRes, Remedies &curRemeds) {
-    if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
+    // avoid expensive remeds bailout policy
+    //if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
+    // exhaustive search (bailout policy)
+    if (curRes == LoopAA::NoModRef && totalRemedCost(curRemeds) == 0) {
       finalRes = curRes;
       appendRemedies(finalRemeds, curRemeds);
       return;
@@ -425,7 +428,10 @@ namespace liberty
                      const Instruction *A, LoopAA::TemporalRelation rel,
                      const Value *ptrB, unsigned sizeB, const Loop *L,
                      LoopAA::ModRefResult curRes, Remedies &curRemeds) {
-    if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
+    // avoid expensive remeds bailout policy
+    //if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
+    // exhaustive search (bailout policy)
+    if (curRes == LoopAA::NoModRef && totalRemedCost(curRemeds) == 0) {
       finalRes = curRes;
       appendRemedies(finalRemeds, curRemeds);
       return;
@@ -443,8 +449,12 @@ namespace liberty
                      unsigned Size2, const Loop *L,
                      DesiredAliasResult dAliasRes, LoopAA::AliasResult curRes,
                      Remedies &curRemeds) {
+    // avoid expensive remeds bailout policy
+    //if ((curRes == LoopAA::MustAlias || curRes == LoopAA::NoAlias) &&
+    //    !containsExpensiveRemeds(curRemeds)) {
+    // exhaustive search (bailout policy)
     if ((curRes == LoopAA::MustAlias || curRes == LoopAA::NoAlias) &&
-        !containsExpensiveRemeds(curRemeds)) {
+        totalRemedCost(curRemeds) == 0) {
       finalRes = curRes;
       appendRemedies(finalRemeds, curRemeds);
       return;
