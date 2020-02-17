@@ -313,16 +313,19 @@ namespace liberty
       remeds.insert(remed);
   }
 
-  void LoopAA::join(LoopAA::ModRefResult &finalRes, Remedies &finalRemeds,
-                    LoopAA::ModRefResult res1, Remedies &remeds1,
-                    LoopAA::ModRefResult res2, Remedies &remeds2) {
+  LoopAA::ModRefResult LoopAA::join(Remedies &finalRemeds,
+                                    LoopAA::ModRefResult res1,
+                                    Remedies &remeds1,
+                                    LoopAA::ModRefResult res2,
+                                    Remedies &remeds2) {
+
+    LoopAA::ModRefResult finalRes = LoopAA::ModRef;
 
     // i) if the same result (except for conservative), pick the cheapest.
     // Use no remedies for conservative result.
     if (res1 == res2) {
       if (res1 == LoopAA::ModRef) {
-        finalRes = LoopAA::ModRef;
-        return;
+        return finalRes;
       }
 
       // keep the one that does not have expensive remedies, or pick the
@@ -359,17 +362,21 @@ namespace liberty
         appendRemedies(finalRemeds, remeds2);
       }
     }
+    return finalRes;
   }
 
-  void LoopAA::join(LoopAA::AliasResult &finalRes, Remedies &finalRemeds,
-                    LoopAA::AliasResult res1, Remedies &remeds1,
-                    LoopAA::AliasResult res2, Remedies &remeds2) {
+  LoopAA::AliasResult LoopAA::join(Remedies &finalRemeds,
+                                   LoopAA::AliasResult res1, Remedies &remeds1,
+                                   LoopAA::AliasResult res2,
+                                   Remedies &remeds2) {
+
+    LoopAA::AliasResult finalRes = LoopAA::MayAlias;
+
     // i) if the same result (except for conservative), pick the cheapest. Use
     // no remedies for conservative result.
     if (res1 == res2) {
       if (res1 == LoopAA::MayAlias) {
-        finalRes = LoopAA::MayAlias;
-        return;
+        return finalRes;
       }
 
       // keep the one that does not have expensive remedies, or pick the
@@ -404,66 +411,67 @@ namespace liberty
         appendRemedies(finalRemeds, remeds2);
       }
     }
+    return finalRes;
   }
 
-  void LoopAA::chain(LoopAA::ModRefResult &finalRes, Remedies &finalRemeds,
-                     const Instruction *A, LoopAA::TemporalRelation rel,
-                     const Instruction *B, const Loop *L,
-                     LoopAA::ModRefResult curRes, Remedies &curRemeds) {
+  LoopAA::ModRefResult LoopAA::chain(Remedies &finalRemeds,
+                                     const Instruction *A,
+                                     LoopAA::TemporalRelation rel,
+                                     const Instruction *B, const Loop *L,
+                                     LoopAA::ModRefResult curRes,
+                                     Remedies &curRemeds) {
     // avoid expensive remeds bailout policy
     //if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
     // exhaustive search (bailout policy)
     if (curRes == LoopAA::NoModRef && totalRemedCost(curRemeds) == 0) {
-      finalRes = curRes;
       appendRemedies(finalRemeds, curRemeds);
-      return;
+      return curRes;
     }
     Remedies chainRemeds;
     LoopAA::ModRefResult chainRes = LoopAA::modref(A, rel, B, L, chainRemeds);
 
-    join(finalRes, finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
+    return join(finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
   }
 
-  void LoopAA::chain(LoopAA::ModRefResult &finalRes, Remedies &finalRemeds,
-                     const Instruction *A, LoopAA::TemporalRelation rel,
-                     const Value *ptrB, unsigned sizeB, const Loop *L,
-                     LoopAA::ModRefResult curRes, Remedies &curRemeds) {
+  LoopAA::ModRefResult LoopAA::chain(Remedies &finalRemeds,
+                                     const Instruction *A,
+                                     LoopAA::TemporalRelation rel,
+                                     const Value *ptrB, unsigned sizeB,
+                                     const Loop *L, LoopAA::ModRefResult curRes,
+                                     Remedies &curRemeds) {
     // avoid expensive remeds bailout policy
     //if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
     // exhaustive search (bailout policy)
     if (curRes == LoopAA::NoModRef && totalRemedCost(curRemeds) == 0) {
-      finalRes = curRes;
       appendRemedies(finalRemeds, curRemeds);
-      return;
+      return curRes;
     }
     Remedies chainRemeds;
     LoopAA::ModRefResult chainRes =
         LoopAA::modref(A, rel, ptrB, sizeB, L, chainRemeds);
 
-    join(finalRes, finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
+    return join(finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
   }
 
-  void LoopAA::chain(LoopAA::AliasResult &finalRes, Remedies &finalRemeds,
-                     const Value *V1, unsigned Size1,
-                     LoopAA::TemporalRelation Rel, const Value *V2,
-                     unsigned Size2, const Loop *L,
-                     DesiredAliasResult dAliasRes, LoopAA::AliasResult curRes,
-                     Remedies &curRemeds) {
+  LoopAA::AliasResult
+  LoopAA::chain(Remedies &finalRemeds, const Value *V1, unsigned Size1,
+                LoopAA::TemporalRelation Rel, const Value *V2, unsigned Size2,
+                const Loop *L, LoopAA::AliasResult curRes, Remedies &curRemeds,
+                DesiredAliasResult dAliasRes) {
     // avoid expensive remeds bailout policy
     //if ((curRes == LoopAA::MustAlias || curRes == LoopAA::NoAlias) &&
     //    !containsExpensiveRemeds(curRemeds)) {
     // exhaustive search (bailout policy)
     if ((curRes == LoopAA::MustAlias || curRes == LoopAA::NoAlias) &&
         totalRemedCost(curRemeds) == 0) {
-      finalRes = curRes;
       appendRemedies(finalRemeds, curRemeds);
-      return;
+      return curRes;
     }
     Remedies chainRemeds;
     LoopAA::AliasResult chainRes =
         LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds, dAliasRes);
 
-    join(finalRes, finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
+    return join(finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
   }
 
   //------------------------------------------------------------------------
