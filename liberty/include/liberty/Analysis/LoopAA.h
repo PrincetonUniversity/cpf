@@ -359,6 +359,35 @@ namespace liberty
     /// by adding/subtracting other LoopAAs.
     void stackHasChanged();
 
+    // utilities for processing remedies
+    bool containsExpensiveRemeds(const Remedies &R);
+    unsigned long totalRemedCost(const Remedies &R);
+
+    // merge newRemeds into remeds
+    void appendRemedies(Remedies &remeds, Remedies &newRemeds);
+
+    // join results with remedies (keep cheapest or most precise option)
+    void join(ModRefResult &finalRes, Remedies &finalRemeds, ModRefResult res1,
+              Remedies &remeds1, ModRefResult res2, Remedies &remeds2);
+    void join(AliasResult &finalRes, Remedies &finalRemeds, AliasResult res1,
+              Remedies &remeds1, AliasResult res2, Remedies &remeds2);
+
+    // Given the currently available response (result and remedies), do
+    // further exploration if needed (either due to use of expensive remedies or
+    // due to imprecise current answer).
+    // Adjust these function to change exploration policy.
+    void chain(ModRefResult &finalRes, Remedies &finalRemeds,
+               const Instruction *A, TemporalRelation rel, const Instruction *B,
+               const Loop *L, ModRefResult curRes, Remedies &curRemeds);
+    void chain(ModRefResult &finalRes, Remedies &finalRemeds,
+               const Instruction *A, TemporalRelation rel, const Value *ptrB,
+               unsigned sizeB, const Loop *L, ModRefResult curRes,
+               Remedies &curRemeds);
+    void chain(AliasResult &finalRes, Remedies &finalRemeds, const Value *V1,
+               unsigned Size1, TemporalRelation Rel, const Value *V2,
+               unsigned Size2, const Loop *L, DesiredAliasResult dAliasRes,
+               AliasResult curRes, Remedies &curRemeds);
+
   protected:
     /// Called indirectly by stackHasChanged().
     virtual void uponStackChange();
