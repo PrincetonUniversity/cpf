@@ -363,6 +363,9 @@ namespace liberty
     bool containsExpensiveRemeds(const Remedies &R);
     unsigned long totalRemedCost(const Remedies &R);
 
+    // is remeds1 cheaper than remeds2?
+    bool isCheaper(Remedies &remeds1, Remedies &remeds2);
+
     // merge newRemeds into remeds
     void appendRemedies(Remedies &remeds, Remedies &newRemeds);
 

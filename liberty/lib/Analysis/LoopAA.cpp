@@ -313,6 +313,22 @@ namespace liberty
       remeds.insert(remed);
   }
 
+  bool LoopAA::isCheaper(Remedies &remeds1, Remedies &remeds2) {
+    // cheaper is the one that does not have expensive remedies, or the
+    // cheapest in terms of cost (due to possibly inaccurate cost model, we
+    // check for expensive remedies separately)
+    bool containsExpensiveR1 = containsExpensiveRemeds(remeds1);
+    bool containsExpensiveR2 = containsExpensiveRemeds(remeds2);
+    bool cheaperOption1 = totalRemedCost(remeds1) < totalRemedCost(remeds2);
+    if ((!containsExpensiveR1 && containsExpensiveR2) ||
+        (((containsExpensiveR1 && containsExpensiveR2) ||
+          (!containsExpensiveR1 && !containsExpensiveR2)) &&
+         cheaperOption1))
+      return true;
+
+    return false;
+  }
+
   LoopAA::ModRefResult LoopAA::join(Remedies &finalRemeds,
                                     LoopAA::ModRefResult res1,
                                     Remedies &remeds1,
@@ -328,21 +344,12 @@ namespace liberty
         return finalRes;
       }
 
-      // keep the one that does not have expensive remedies, or pick the
-      // cheapest (due to possibly inaccurate cost model, we check for expensive
-      // remedies separately)
-      bool containsExpensiveR1 = containsExpensiveRemeds(remeds1);
-      bool containsExpensiveR2 = containsExpensiveRemeds(remeds2);
-      bool cheaperOption2 = totalRemedCost(remeds2) < totalRemedCost(remeds1);
-      if ((!containsExpensiveR1 && containsExpensiveR2) ||
-          (((containsExpensiveR1 && containsExpensiveR2) ||
-            (!containsExpensiveR1 && !containsExpensiveR2)) &&
-           !cheaperOption2)) {
-        finalRes = res1;
-        appendRemedies(finalRemeds, remeds1);
-      } else {
+      if (isCheaper(remeds2, remeds1)) {
         finalRes = res2;
         appendRemedies(finalRemeds, remeds2);
+      } else {
+        finalRes = res1;
+        appendRemedies(finalRemeds, remeds1);
       }
     }
     // ii) join Mod & Ref (use both)
@@ -379,21 +386,12 @@ namespace liberty
         return finalRes;
       }
 
-      // keep the one that does not have expensive remedies, or pick the
-      // cheapest (due to possibly inaccurate cost model, we check for expensive
-      // remedies separately)
-      bool containsExpensiveR1 = containsExpensiveRemeds(remeds1);
-      bool containsExpensiveR2 = containsExpensiveRemeds(remeds2);
-      bool cheaperOption2 = totalRemedCost(remeds2) < totalRemedCost(remeds1);
-      if ((!containsExpensiveR1 && containsExpensiveR2) ||
-          (((containsExpensiveR1 && containsExpensiveR2) ||
-            (!containsExpensiveR1 && !containsExpensiveR2)) &&
-           !cheaperOption2)) {
-        finalRes = res1;
-        appendRemedies(finalRemeds, remeds1);
-      } else {
+      if (isCheaper(remeds2, remeds1)) {
         finalRes = res2;
         appendRemedies(finalRemeds, remeds2);
+      } else {
+        finalRes = res1;
+        appendRemedies(finalRemeds, remeds1);
       }
     }
     // ii) assert error for conflicting result (analysis bug)
