@@ -292,8 +292,172 @@ namespace liberty
 
   void LoopAA::uponStackChange() {}
 
-//------------------------------------------------------------------------
-// Methods of NoLoopAA
+  bool LoopAA::containsExpensiveRemeds(const Remedies &R) {
+    for (auto remed : R) {
+      if (remed->isExpensive())
+        return true;
+    }
+    return false;
+  }
+
+  unsigned long LoopAA::totalRemedCost(const Remedies &R) {
+    unsigned long tcost = 0;
+    for (auto remed : R) {
+      tcost += remed->cost;
+    }
+    return tcost;
+  }
+
+  void LoopAA::appendRemedies(Remedies &remeds, Remedies &newRemeds) {
+    for (auto remed: newRemeds)
+      remeds.insert(remed);
+  }
+
+  void LoopAA::join(LoopAA::ModRefResult &finalRes, Remedies &finalRemeds,
+                    LoopAA::ModRefResult res1, Remedies &remeds1,
+                    LoopAA::ModRefResult res2, Remedies &remeds2) {
+
+    // i) if the same result (except for conservative), pick the cheapest.
+    // Use no remedies for conservative result.
+    if (res1 == res2) {
+      if (res1 == LoopAA::ModRef) {
+        finalRes = LoopAA::ModRef;
+        return;
+      }
+
+      // keep the one that does not have expensive remedies, or pick the
+      // cheapest (due to possibly inaccurate cost model, we check for expensive
+      // remedies separately)
+      bool containsExpensiveR1 = containsExpensiveRemeds(remeds1);
+      bool containsExpensiveR2 = containsExpensiveRemeds(remeds2);
+      bool cheaperOption2 = totalRemedCost(remeds2) < totalRemedCost(remeds1);
+      if ((!containsExpensiveR1 && containsExpensiveR2) ||
+          (((containsExpensiveR1 && containsExpensiveR2) ||
+            (!containsExpensiveR1 && !containsExpensiveR2)) &&
+           !cheaperOption2)) {
+        finalRes = res1;
+        appendRemedies(finalRemeds, remeds1);
+      } else {
+        finalRes = res2;
+        appendRemedies(finalRemeds, remeds2);
+      }
+    }
+    // ii) join Mod & Ref (use both)
+    else if ((res1 == LoopAA::Mod && res2 == LoopAA::Ref) ||
+             (res1 == LoopAA::Ref && res2 == LoopAA::Mod)) {
+      finalRes = LoopAA::NoModRef;
+      appendRemedies(finalRemeds, remeds1);
+      appendRemedies(finalRemeds, remeds2);
+    }
+    // iii) one is more precise than the other, keep most precise result
+    else {
+      if (res1 < res2) {
+        finalRes = res1;
+        appendRemedies(finalRemeds, remeds1);
+      } else {
+        finalRes = res2;
+        appendRemedies(finalRemeds, remeds2);
+      }
+    }
+  }
+
+  void LoopAA::join(LoopAA::AliasResult &finalRes, Remedies &finalRemeds,
+                    LoopAA::AliasResult res1, Remedies &remeds1,
+                    LoopAA::AliasResult res2, Remedies &remeds2) {
+    // i) if the same result (except for conservative), pick the cheapest. Use
+    // no remedies for conservative result.
+    if (res1 == res2) {
+      if (res1 == LoopAA::MayAlias) {
+        finalRes = LoopAA::MayAlias;
+        return;
+      }
+
+      // keep the one that does not have expensive remedies, or pick the
+      // cheapest (due to possibly inaccurate cost model, we check for expensive
+      // remedies separately)
+      bool containsExpensiveR1 = containsExpensiveRemeds(remeds1);
+      bool containsExpensiveR2 = containsExpensiveRemeds(remeds2);
+      bool cheaperOption2 = totalRemedCost(remeds2) < totalRemedCost(remeds1);
+      if ((!containsExpensiveR1 && containsExpensiveR2) ||
+          (((containsExpensiveR1 && containsExpensiveR2) ||
+            (!containsExpensiveR1 && !containsExpensiveR2)) &&
+           !cheaperOption2)) {
+        finalRes = res1;
+        appendRemedies(finalRemeds, remeds1);
+      } else {
+        finalRes = res2;
+        appendRemedies(finalRemeds, remeds2);
+      }
+    }
+    // ii) assert error for conflicting result (analysis bug)
+    else if ((res1 == LoopAA::MustAlias && res2 == LoopAA::NoAlias) ||
+             (res1 == LoopAA::NoAlias && res2 == LoopAA::MustAlias)) {
+      assert(false && "Conflicting alias results!!");
+    }
+    // iii) one more precise than the other, keep most precise result
+    else {
+      if (res2 == LoopAA::MayAlias) { // res1 is MustAlias or NoAlias
+        finalRes = res1;
+        appendRemedies(finalRemeds, remeds1);
+      } else {
+        finalRes = res2;
+        appendRemedies(finalRemeds, remeds2);
+      }
+    }
+  }
+
+  void LoopAA::chain(LoopAA::ModRefResult &finalRes, Remedies &finalRemeds,
+                     const Instruction *A, LoopAA::TemporalRelation rel,
+                     const Instruction *B, const Loop *L,
+                     LoopAA::ModRefResult curRes, Remedies &curRemeds) {
+    if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
+      finalRes = curRes;
+      appendRemedies(finalRemeds, curRemeds);
+      return;
+    }
+    Remedies chainRemeds;
+    LoopAA::ModRefResult chainRes = LoopAA::modref(A, rel, B, L, chainRemeds);
+
+    join(finalRes, finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
+  }
+
+  void LoopAA::chain(LoopAA::ModRefResult &finalRes, Remedies &finalRemeds,
+                     const Instruction *A, LoopAA::TemporalRelation rel,
+                     const Value *ptrB, unsigned sizeB, const Loop *L,
+                     LoopAA::ModRefResult curRes, Remedies &curRemeds) {
+    if (curRes == LoopAA::NoModRef && !containsExpensiveRemeds(curRemeds)) {
+      finalRes = curRes;
+      appendRemedies(finalRemeds, curRemeds);
+      return;
+    }
+    Remedies chainRemeds;
+    LoopAA::ModRefResult chainRes =
+        LoopAA::modref(A, rel, ptrB, sizeB, L, chainRemeds);
+
+    join(finalRes, finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
+  }
+
+  void LoopAA::chain(LoopAA::AliasResult &finalRes, Remedies &finalRemeds,
+                     const Value *V1, unsigned Size1,
+                     LoopAA::TemporalRelation Rel, const Value *V2,
+                     unsigned Size2, const Loop *L,
+                     DesiredAliasResult dAliasRes, LoopAA::AliasResult curRes,
+                     Remedies &curRemeds) {
+    if ((curRes == LoopAA::MustAlias || curRes == LoopAA::NoAlias) &&
+        !containsExpensiveRemeds(curRemeds)) {
+      finalRes = curRes;
+      appendRemedies(finalRemeds, curRemeds);
+      return;
+    }
+    Remedies chainRemeds;
+    LoopAA::AliasResult chainRes =
+        LoopAA::alias(V1, Size1, Rel, V2, Size2, L, chainRemeds, dAliasRes);
+
+    join(finalRes, finalRemeds, curRes, curRemeds, chainRes, chainRemeds);
+  }
+
+  //------------------------------------------------------------------------
+  // Methods of NoLoopAA
 
   NoLoopAA::NoLoopAA() : LoopAA(), ModulePass(ID) {}
 
