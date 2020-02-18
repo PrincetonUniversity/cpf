@@ -167,8 +167,8 @@ namespace liberty
     if (LoopAA::NoModRef == forward) {
       for (auto remed : tmpR1)
         tmpR.insert(remed);
-      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
-                                          aliasTmpR);
+
+      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
       return true;
     }
 
@@ -183,8 +183,8 @@ namespace liberty
     if (LoopAA::NoModRef == reverse) {
       for (auto remed : tmpR2)
         tmpR.insert(remed);
-      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
-                                          aliasTmpR);
+
+      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
       return true;
     }
 
@@ -193,8 +193,8 @@ namespace liberty
         tmpR.insert(remed);
       for (auto remed : tmpR2)
         tmpR.insert(remed);
-      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
-                                          aliasTmpR);
+
+      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
       return true; // RaR dep; who cares.
     }
 
@@ -213,8 +213,7 @@ namespace liberty
         tmpR.insert(remed);
       for (auto remed : tmpR2)
         tmpR.insert(remed);
-      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
-                                          aliasTmpR);
+      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
       return true;
     }
 
@@ -223,8 +222,7 @@ namespace liberty
         tmpR.insert(remed);
       for (auto remed : tmpR2)
         tmpR.insert(remed);
-      ClassicLoopAA::modrefAvoidExpRemeds(R, LoopAA::NoModRef, tmpR, aliasRes,
-                                          aliasTmpR);
+      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
       return true;
     }
 
