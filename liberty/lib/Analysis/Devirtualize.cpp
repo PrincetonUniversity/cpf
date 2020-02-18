@@ -449,6 +449,19 @@ bool DevirtualizationAnalysis::isWildcard(Type *ty) const
 }
 
 
+// Check ty1 is a subclass of ty2
+bool DevirtualizationAnalysis::isPotentialSubClass(StructType *ty1, StructType *ty2){
+  return true;
+  // TODO: Ziyang
+  // Step 1: check whether ty2 is equivalent (remove tail) to any element of ty1
+  // Step 2: recuisively check whether any element of ty1 is a subclass of ty2
+  //
+  // for each element e of ty1: areStructuallyEquivalentTrasitively(e, ty2)
+  // 
+  // for each element e of ty1: isPotentialSubClass(e, ty2)
+
+}
+
 bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, Type *ty2)
 {
   // Trivial case
@@ -478,7 +491,20 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
 
   // Are they structurally equivalent?
 
-  // Sequential types: arrays, pointers, vectors
+  // Ziyang: PointerType is not SequentialType any more
+  // Pointer type: pointers
+  if (PointerType *ptrty1 = dyn_cast< PointerType >(ty1))
+    if (PointerType *ptrty2 = dyn_cast< PointerType >(ty2))
+    {
+      const bool eq = areStructurallyEquivalentTransitively(
+          ptrty1->getElementType(),
+          ptrty2->getElementType() );
+      if( !eq )
+        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (ptr)\n");
+      return equivalentTypes[key] = eq;
+    }
+
+  // Sequential types: arrays, vectors
   if( SequentialType *seqty1 = dyn_cast< SequentialType >(ty1) )
     if( SequentialType *seqty2 = dyn_cast< SequentialType >(ty2) )
     {
@@ -486,35 +512,50 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
           seqty1->getElementType(),
           seqty2->getElementType() );
       if( !eq )
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (4)\n");
+        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (seq)\n");
       return equivalentTypes[key] = eq;
     }
 
   // Structures
+  // Ziyang: Feb 17, 2020
+  //   In C++, classes are structs;
+  //   We need to check whether two classes have inheritance relationship
   if( StructType *structty1 = dyn_cast< StructType >(ty1) )
     if( StructType *structty2 = dyn_cast< StructType >(ty2) )
     {
-      const unsigned N=structty1->getNumElements();
-      if( structty2->getNumElements() != N )
-      {
-        LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (1)\n");
-        return equivalentTypes[key] = false;
+      // identical layout
+      if (structty1->isLayoutIdentical(structty2))
+        return equivalentTypes[key] = true;
+
+      // TODO: check if it's just the alignment difference
+
+      if (isPotentialSubClass(structty1, structty2)){
+        return equivalentTypes[key] = true;
+
+      return equivalentTypes[key] = false;
+      // 
+      // const unsigned N=structty1->getNumElements();
+      // if( structty2->getNumElements() != N )
+      // {
+      //   LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (1)\n");
+      //   return equivalentTypes[key] = false;
+      // }
+
+      // for(unsigned i=0; i<N; ++i)
+      // {
+      //   Type *elt1 = structty1->getElementType(i);
+      //   Type *elt2 = structty2->getElementType(i);
+
+      //   if( !areStructurallyEquivalentTransitively(elt1,elt2) )
+      //   {
+      //     LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (2)\n");
+      //     return equivalentTypes[key] = false;
+      //   }
+      // }
+
+      // // Two structures with same size and equivalent types are equivalent.
+      // return equivalentTypes[key] = true;
       }
-
-      for(unsigned i=0; i<N; ++i)
-      {
-        Type *elt1 = structty1->getElementType(i);
-        Type *elt2 = structty2->getElementType(i);
-
-        if( !areStructurallyEquivalentTransitively(elt1,elt2) )
-        {
-          LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (2)\n");
-          return equivalentTypes[key] = false;
-        }
-      }
-
-      // Two structures with same size and equivalent types are equivalent.
-      return equivalentTypes[key] = true;
     }
 
   // Functions (guh)
