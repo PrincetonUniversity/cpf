@@ -1250,7 +1250,7 @@ bool Classify::runOnLoop(Loop *loop)
 
   // remove the expensive to remedy private aus from the cheap set
   for (auto i : cheapPrivAUs) {
-    if (ClassicLoopAA::containsExpensiveRemeds(i.second))
+    if (LoopAA::containsExpensiveRemeds(i.second))
       cheapPrivAUs.erase(i.first);
   }
 
