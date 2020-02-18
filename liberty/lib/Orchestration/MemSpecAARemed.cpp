@@ -41,14 +41,13 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   //lampaa = new LampOracle(lamp);
   //lampaa->InitializeLoopAA(&proxy, DL);
 
-  // tmp removal
-  //smtxaa = new SmtxAA(smtxMan, perf);
-  //smtxaa->InitializeLoopAA(&proxy, DL);
+  smtxaa = new SmtxAA(smtxMan, perf);
+  smtxaa->InitializeLoopAA(&proxy, DL);
 
   // Points-to
   // cannot validate points-to
-  //pointstoaa = new PointsToAA(spresults);
-  //pointstoaa->InitializeLoopAA(&proxy, DL);
+  pointstoaa = new PointsToAA(spresults);
+  pointstoaa->InitializeLoopAA(&proxy, DL);
 
   // Separation Spec
   const Ctx *ctx = spresults.getCtx(loop);
@@ -98,8 +97,8 @@ Remedies MemSpecAARemediator::satisfy(const PDG &pdg, Loop *loop,
   delete edgeaa;
   //delete lampaa;
 
-  //delete smtxaa;
-  //delete pointstoaa;
+  delete smtxaa;
+  delete pointstoaa;
   delete localityaa;
   delete predaa;
   delete ptrresaa;
