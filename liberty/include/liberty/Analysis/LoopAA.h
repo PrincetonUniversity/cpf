@@ -361,6 +361,7 @@ namespace liberty
 
     // utilities for processing remedies
     static bool containsExpensiveRemeds(const Remedies &R);
+    static bool containsPointsToRemeds(const Remedies &R);
     static unsigned long totalRemedCost(const Remedies &R);
 
     // is remeds1 cheaper than remeds2?

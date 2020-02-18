@@ -300,6 +300,14 @@ namespace liberty
     return false;
   }
 
+  bool LoopAA::containsPointsToRemeds(const Remedies &R) {
+    for (auto remed : R) {
+      if (remed->getRemedyName().equals("points-to-remedy"))
+        return true;
+    }
+    return false;
+  }
+
   unsigned long LoopAA::totalRemedCost(const Remedies &R) {
     unsigned long tcost = 0;
     for (auto remed : R) {
@@ -314,16 +322,26 @@ namespace liberty
   }
 
   bool LoopAA::isCheaper(Remedies &remeds1, Remedies &remeds2) {
-    // cheaper is the one that does not have expensive remedies, or the
-    // cheapest in terms of cost (due to possibly inaccurate cost model, we
-    // check for expensive remedies separately)
+    // cheaper is the one that does not have expensive remedies (and no
+    // points-to, hard to validate), or the cheapest in terms of cost (due to
+    // possibly inaccurate cost model, we check for expensive remedies
+    // separately)
+
+    bool containsPointsToR1 = containsPointsToRemeds(remeds1);
+    bool containsPointsToR2 = containsPointsToRemeds(remeds2);
+    if (!containsPointsToR1 && containsPointsToR2)
+      return true;
+    if (containsPointsToR1 && !containsPointsToR2)
+      return false;
+
     bool containsExpensiveR1 = containsExpensiveRemeds(remeds1);
     bool containsExpensiveR2 = containsExpensiveRemeds(remeds2);
-    bool cheaperOption1 = totalRemedCost(remeds1) < totalRemedCost(remeds2);
-    if ((!containsExpensiveR1 && containsExpensiveR2) ||
-        (((containsExpensiveR1 && containsExpensiveR2) ||
-          (!containsExpensiveR1 && !containsExpensiveR2)) &&
-         cheaperOption1))
+    if (!containsExpensiveR1 && containsExpensiveR2)
+      return true;
+    if (containsExpensiveR1 && !containsExpensiveR2)
+      return false;
+
+    if (totalRemedCost(remeds1) < totalRemedCost(remeds2))
       return true;
 
     return false;
