@@ -17,7 +17,7 @@ struct SmtxAA : public LoopAA // Not a pass!
       : LoopAA(), smtxMan(man), perf(pf) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
-    return SchedulingPreference(Bottom);
+    return SchedulingPreference(Bottom+1);
   }
 
   StringRef getLoopAAName() const { return "smtx-aa"; }
