@@ -360,20 +360,22 @@ namespace liberty
     void stackHasChanged();
 
     // utilities for processing remedies
-    bool containsExpensiveRemeds(const Remedies &R);
-    unsigned long totalRemedCost(const Remedies &R);
+    static bool containsExpensiveRemeds(const Remedies &R);
+    static unsigned long totalRemedCost(const Remedies &R);
 
     // is remeds1 cheaper than remeds2?
-    bool isCheaper(Remedies &remeds1, Remedies &remeds2);
+    static bool isCheaper(Remedies &remeds1, Remedies &remeds2);
 
     // merge newRemeds into remeds
-    void appendRemedies(Remedies &remeds, Remedies &newRemeds);
+    static void appendRemedies(Remedies &remeds, Remedies &newRemeds);
 
     // join results with remedies (keep cheapest or most precise option)
-    ModRefResult join(Remedies &finalRemeds, ModRefResult res1,
-                      Remedies &remeds1, ModRefResult res2, Remedies &remeds2);
-    AliasResult join(Remedies &finalRemeds, AliasResult res1, Remedies &remeds1,
-                     AliasResult res2, Remedies &remeds2);
+    static ModRefResult join(Remedies &finalRemeds, ModRefResult res1,
+                             Remedies &remeds1, ModRefResult res2,
+                             Remedies &remeds2);
+    static AliasResult join(Remedies &finalRemeds, AliasResult res1,
+                            Remedies &remeds1, AliasResult res2,
+                            Remedies &remeds2);
 
     // Given the currently available response (result and remedies), do
     // further exploration if needed (either due to use of expensive remedies or
