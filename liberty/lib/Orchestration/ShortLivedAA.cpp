@@ -75,6 +75,8 @@ LoopAA::AliasResult ShortLivedAA::alias(const Value *ptrA, unsigned sizeA,
       t2 = HeapAssignment::Local;
   }
 
+  Remedies tmpR;
+
   // Loop-carried queries:
   if( rel != LoopAA::Same )
   {
@@ -85,8 +87,8 @@ LoopAA::AliasResult ShortLivedAA::alias(const Value *ptrA, unsigned sizeA,
       ++numPrivatized;
       remedy->ptr = const_cast<Value *>(ptrA);
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoAlias;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, ptrA, sizeA, rel, ptrB, sizeB, L, NoAlias, tmpR);
     }
 
     if( t2 == HeapAssignment::Local )
@@ -94,8 +96,8 @@ LoopAA::AliasResult ShortLivedAA::alias(const Value *ptrA, unsigned sizeA,
       ++numPrivatized;
       remedy->ptr = const_cast<Value *>(ptrB);
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoAlias;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, ptrA, sizeA, rel, ptrB, sizeB, L, NoAlias, tmpR);
     }
   }
 
@@ -115,9 +117,9 @@ LoopAA::AliasResult ShortLivedAA::alias(const Value *ptrA, unsigned sizeA,
     remedy2->ptr = const_cast<Value *>(ptrB);
     remedy->setCost(perf);
     remedy2->setCost(perf);
-    R.insert(remedy);
-    R.insert(remedy2);
-    return NoAlias;
+    tmpR.insert(remedy);
+    tmpR.insert(remedy2);
+    return LoopAA::chain(R, ptrA, sizeA, rel, ptrB, sizeB, L, NoAlias, tmpR);
   }
 
   /*
@@ -245,13 +247,9 @@ LoopAA::ModRefResult ShortLivedAA::modref(const Instruction *A,
 
   const Value *ptrA = liberty::getMemOper(A);
 
-  ModRefResult result = check_modref(ptrA, rel, ptrB, L, R);
-
-  if (result != NoModRef)
-    // Chain.
-    result = ModRefResult(result & LoopAA::modref(A, rel, ptrB, sizeB, L, R));
-
-  return result;
+  Remedies tmpR;
+  ModRefResult result = check_modref(ptrA, rel, ptrB, L, tmpR);
+  return LoopAA::chain(R, A, rel, ptrB, sizeB, L, result, tmpR);
 }
 
 LoopAA::ModRefResult
@@ -259,13 +257,9 @@ ShortLivedAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
                                TemporalRelation rel, const Instruction *B,
                                const Value *ptrB, const Loop *L, Remedies &R) {
 
-  ModRefResult result = check_modref(ptrA, rel, ptrB, L, R);
-
-  if (result != NoModRef)
-    // Chain.
-    result = ModRefResult(result & LoopAA::modref(A, rel, B, L, R));
-
-  return result;
+  Remedies tmpR;
+  ModRefResult result = check_modref(ptrA, rel, ptrB, L, tmpR);
+  return LoopAA::chain(R, A, rel, B, L, result, tmpR);
 }
 
 LoopAA::ModRefResult ShortLivedAA::modref(const Instruction *A,

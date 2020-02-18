@@ -218,6 +218,9 @@ LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
   }
   */
 
+  Remedies tmpR;
+  AliasResult result = MayAlias;
+
   // Speculation is required to report no-alias.
   // Record this requirement.
   manager.setAssumed(a1);
@@ -230,7 +233,7 @@ LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
   remedy1->ptr = a1.first;
   remedy1->ctx = a1.second;
   remedy1->setCost(perf, a1.first);
-  R.insert(remedy1);
+  tmpR.insert(remedy1);
 
   std::shared_ptr<PtrResidueRemedy> remedy2 =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
@@ -238,9 +241,10 @@ LoopAA::AliasResult PtrResidueAA::alias(const Value *P1, unsigned S1,
   remedy2->ptr = a2.first;
   remedy2->ctx = a2.second;
   remedy2->setCost(perf, a2.first);
-  R.insert(remedy2);
+  tmpR.insert(remedy2);
 
-  return NoAlias;
+  result = NoAlias;
+  return LoopAA::chain(R, P1, S1, rel, P2, S2, L, result, tmpR);
 }
 
 LoopAA::ModRefResult PtrResidueAA::modref(
@@ -268,6 +272,9 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   }
   */
 
+  Remedies tmpR;
+  ModRefResult result = ModRef;
+
   // Speculation is required to report no-mod-ref.
   // Record this requirement.
   manager.setAssumed(a1);
@@ -280,7 +287,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   remedy1->ptr = a1.first;
   remedy1->ctx = a1.second;
   remedy1->setCost(perf, a1.first);
-  R.insert(remedy1);
+  tmpR.insert(remedy1);
 
   std::shared_ptr<PtrResidueRemedy> remedy2 =
       std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
@@ -288,9 +295,10 @@ LoopAA::ModRefResult PtrResidueAA::modref(
   remedy2->ptr = a2.first;
   remedy2->ctx = a2.second;
   remedy2->setCost(perf, a2.first);
-  R.insert(remedy2);
+  tmpR.insert(remedy2);
 
-  return NoModRef;
+  result = NoModRef;
+  return LoopAA::chain(R, A, rel, P2, S2, L, result, tmpR);
 }
 
 LoopAA::ModRefResult PtrResidueAA::modref(
@@ -335,6 +343,9 @@ LoopAA::ModRefResult PtrResidueAA::modref(
     }
     */
 
+    Remedies tmpR;
+    ModRefResult result = ModRef;
+
     // Speculation is required to report no-mod-ref.
     // Record this requirement.
     manager.setAssumed(a1);
@@ -347,7 +358,7 @@ LoopAA::ModRefResult PtrResidueAA::modref(
     remedy1->ptr = a1.first;
     remedy1->ctx = a1.second;
     remedy1->setCost(perf, a1.first);
-    R.insert(remedy1);
+    tmpR.insert(remedy1);
 
     std::shared_ptr<PtrResidueRemedy> remedy2 =
         std::shared_ptr<PtrResidueRemedy>(new PtrResidueRemedy());
@@ -355,9 +366,10 @@ LoopAA::ModRefResult PtrResidueAA::modref(
     remedy2->ptr = a2.first;
     remedy2->ctx = a2.second;
     remedy2->setCost(perf, a2.first);
-    R.insert(remedy2);
+    tmpR.insert(remedy2);
 
-    return NoModRef;
+    result = NoModRef;
+    return LoopAA::chain(R, A, rel, B, L, result, tmpR);
   }
 
   // All other cases.

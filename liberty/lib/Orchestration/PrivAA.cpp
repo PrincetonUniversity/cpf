@@ -190,46 +190,7 @@ LoopAA::AliasResult PrivAA::alias(const Value *P1, unsigned S1,
 
   tmpR.insert(remedy);
 
-  Remedies chainRemeds;
-  LoopAA::AliasResult chainRes =
-      LoopAA::alias(P1, S1, rel, P2, S2, L, chainRemeds);
-  if (chainRes == LoopAA::NoAlias &&
-      (!ClassicLoopAA::containsExpensiveRemeds(chainRemeds) ||
-       ClassicLoopAA::totalRemedCost(chainRemeds) <
-           ClassicLoopAA::totalRemedCost(tmpR))) {
-    for (auto remed : chainRemeds)
-      R.insert(remed);
-  } else {
-    for (auto remed : tmpR)
-      R.insert(remed);
-  }
-
-  return LoopAA::NoAlias;
-}
-
-LoopAA::ModRefResult
-PrivAA::lookForCheaperNoModRef(const Instruction *A, TemporalRelation rel,
-                               const Instruction *B, const Value *ptrB,
-                               unsigned sizeB, const Loop *L, Remedies &R,
-                               Remedies &tmpR) {
-  Remedies chainRemeds;
-  LoopAA::ModRefResult chainRes = LoopAA::ModRef;
-  if (B)
-    chainRes = LoopAA::modref(A, rel, B, L, chainRemeds);
-  else
-    chainRes = LoopAA::modref(A, rel, ptrB, sizeB, L, chainRemeds);
-
-  if (chainRes == LoopAA::NoModRef &&
-      (!ClassicLoopAA::containsExpensiveRemeds(chainRemeds) ||
-       ClassicLoopAA::totalRemedCost(chainRemeds) <
-           ClassicLoopAA::totalRemedCost(tmpR))) {
-    for (auto remed : chainRemeds)
-      R.insert(remed);
-  } else {
-    for (auto remed : tmpR)
-      R.insert(remed);
-  }
-  return LoopAA::NoModRef;
+  return LoopAA::chain(R, P1, S1, rel, P2, S2, L, LoopAA::NoAlias, tmpR);
 }
 
 LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
@@ -271,7 +232,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
 
   tmpR.insert(remedy);
 
-  return lookForCheaperNoModRef(A, rel, nullptr, ptrB, sizeB, L, R, tmpR);
+  return LoopAA::chain(R, A, rel, ptrB, sizeB, L, LoopAA::NoModRef, tmpR);
 }
 
 LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
@@ -315,7 +276,7 @@ LoopAA::ModRefResult PrivAA::modref(const Instruction *A, TemporalRelation rel,
   tmpR.insert(remedy);
   ++numPrivNoMemDep;
 
-  return lookForCheaperNoModRef(A, rel, B, nullptr, 0, L, R, tmpR);
+  return LoopAA::chain(R, A, rel, B, L, LoopAA::NoModRef, tmpR);
 
   /*
 
