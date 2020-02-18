@@ -220,8 +220,18 @@ namespace liberty
 
   static bool isCastInst(Value *use)
   {
+    //Ziyang: GEP 0,..,0 is the same as a bitcast
     if( isa<CastInst>(use) )
       return true;
+
+    if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(use)){
+      if (gep->hasAllZeroIndices()){
+        Type* ty_src = gep->getSourceElementType();
+        Type* ty_dest = gep->getResultElementType();
+        if (ty_src != ty_dest)
+          return true;
+      }
+    }
     return false;
   }
 
@@ -344,6 +354,7 @@ namespace liberty
 
     const Value *use = *inst->user_begin();
 
+    // TODO: Ziyang: what about other instinsic (llvm.debug...)
     if ( !isa<MemIntrinsic>(use) )
       return false;
 
@@ -374,6 +385,11 @@ namespace liberty
     ++numInsane;
 
     // Is this made of other types?
+
+    // Ziyang: PointerType is not SequentialType anymore
+    PointerType *ptrty = dyn_cast<PointerType>(t);
+    if (ptrty)
+      addInsane(ptrty->getElementType());
 
     // Sequential types (array, pointer, vector)
     SequentialType *seq = dyn_cast<SequentialType>(t);
@@ -477,7 +493,7 @@ namespace liberty
       Instruction *inst = &*i;
       CallSite cs = getCallSite(inst);
 
-      if( isa<CastInst>( inst ) )
+      if( isCastInst(inst)) //isa<CastInst>( inst ) )
       {
         if( isSingleCastFromMalloc( inst ) )
         {
@@ -502,9 +518,19 @@ namespace liberty
         else
         {
           // This is a cast from type ta to type tb
-          Type *ta = inst->getOperand(0)->getType();
-          Type *tb = inst->getType();
+          Type *ta;
+          Type *tb;
 
+          if (isa<CastInst>(inst)){
+              ta = inst->getOperand(0)->getType();
+              tb = inst->getType();
+          }
+          else if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(inst)){
+              ta = gep->getSourceElementType();
+              tb = gep->getResultElementType();
+              LLVM_DEBUG(errs() << "(GEP!!!)");
+          }
+ 
           LLVM_DEBUG(errs() << "Cast: " << *inst
                        << " at " << fcn.getName()
                        << ':' << inst->getParent()->getName() << '\n');
@@ -569,8 +595,15 @@ namespace liberty
     SequentialType *seq = dyn_cast<SequentialType>( t );
     if( seq )
       return getBaseType(seq->getElementType());
-    else
-      return t;
+    else{
+      // Ziyang: Special case for pointers; PointerType is not
+      // SequentialType any more
+      PointerType *ptr = dyn_cast<PointerType>(t);
+      if (ptr)
+        return getBaseType(ptr->getElementType());
+      else
+        return t;
+    }
   }
 
   static bool definitelyDifferent(const Value *v1, const Value *v2)
