@@ -119,6 +119,9 @@ private:
   // equivalent types.
   bool areStructurallyEquivalentTransitively(Type *ty1, Type *ty2);
 
+  // Determine if the types ty1 is potential a subclass of ty2
+  bool isPotentialSubClass(StructType *ty1, StructType *ty2);
+
   /// Determine if the supplied type is a wildcard (match anything) type
   bool isWildcard(Type *ty) const;
 
