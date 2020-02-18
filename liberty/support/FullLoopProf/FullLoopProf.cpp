@@ -46,10 +46,12 @@ int dumpLoopStack(void)
 {
   vector<int>::iterator it;
 
+  std::cerr << "Loop stack: ";
   for(it = loopStack->begin(); it < loopStack->end(); ++it)
   {
-    cout << *it << "\n";
+    std::cerr << *it << " ";
   }
+  std::cerr << "\n";
 
   return 1;
 }
@@ -86,11 +88,13 @@ void loop_exit(int loop)
   printf("Exiting function/calsite/loop %d\n", loop);
 #endif
 
+  /*
   for(;;)
   {
     if( loopStack->empty() )
     {
-      std::cerr << "Warning: exiting from empty stack\n";
+      // std::cerr << "Warning: exiting from empty stack\n";
+      // dumpLoopStack();
       withinRuntime = false;
       return;
     }
@@ -100,14 +104,23 @@ void loop_exit(int loop)
 
     if( loopStack->back() == 0 && loop != 0 )
     {
-      std::cerr << "Warning: don't pop past 'top' context\n";
+      // std::cerr << "Warning: don't pop past 'top' context\n";
+      // dumpLoopStack();
       withinRuntime = false;
       return;
     }
 
-    std::cerr << "Warning: expected " << loopStack->back() << " but got " << loop << "\n";
+    // std::cerr << "Warning: expected " << loopStack->back() << " but got " << loop << "\n";
+    // dumpLoopStack();
     // Can't assert b/c benchmarks like 471.omnetpp which enjoy longjmp
-    loopStack->pop_back();
+    // loopStack->pop_back();
+  }
+  */
+
+  if ( loopStack->back() != loop )
+  {
+    withinRuntime = false;
+    return;
   }
 
   loopStack->pop_back();
@@ -145,7 +158,7 @@ void timer_handler(int sig, siginfo_t *siginfo, void *dummy)
   sigfillset(&blockAll);
   sigprocmask(SIG_BLOCK, &blockAll, &oldSigs);
 
-  // Caution: evil
+  // Caution: evil. Set each element in loopAccounted to 0
   memset( &(*loopAccounted)[0], 0, loopAccounted->size() * sizeof(int));
   /*
   for( vector<int>::iterator it=loopAccounted->begin(), end=loopAccounted->end();
@@ -156,7 +169,7 @@ void timer_handler(int sig, siginfo_t *siginfo, void *dummy)
   }
   */
 
-
+  // within each timer interrupt, add 1 to loops that are in the loop/call stack
   for(unsigned i=0, N=loopStack->size(); i<N; ++i)
   {
     int loop = (*loopStack)[i];
