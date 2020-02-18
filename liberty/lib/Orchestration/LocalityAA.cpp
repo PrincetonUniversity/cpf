@@ -94,6 +94,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
   if( read.getUnderlyingAUs(P2,ctx,aus2) )
     t2 = asgn.classify(aus2);
 
+  Remedies tmpR;
+
   // Loop-carried queries:
   if( rel != LoopAA::Same )
   {
@@ -110,14 +112,14 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
-        populateCheapPrivRemedies(aus1, R);
-        populateNoWAWRemedies(aus1, R);
+        populateCheapPrivRemedies(aus1, tmpR);
+        populateNoWAWRemedies(aus1, tmpR);
       } else if (t1 == HeapAssignment::SharePrivate) {
         ++numPrivatizedSharedPriv;
         remedy->cost += SHAREPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::SharePriv;
-        populateCheapPrivRemedies(aus1, R);
-        populateNoWAWRemedies(aus1, R);
+        populateCheapPrivRemedies(aus1, tmpR);
+        populateNoWAWRemedies(aus1, tmpR);
       } else {
         ++numPrivatizedRedux;
         //if (auto sA = dyn_cast<StoreInst>(A))
@@ -127,8 +129,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
       remedy->ptr = const_cast<Value *>(P1);
       remedy->type = LocalityRemedy::UOCheck;
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoAlias;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, P1, S1, rel, P2, S2, L, NoAlias, tmpR);
     }
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
@@ -142,14 +144,14 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
-        populateCheapPrivRemedies(aus2, R);
-        populateNoWAWRemedies(aus2, R);
+        populateCheapPrivRemedies(aus2, tmpR);
+        populateNoWAWRemedies(aus2, tmpR);
       } else if (t2 == HeapAssignment::SharePrivate) {
         ++numPrivatizedSharedPriv;
         remedy->cost += SHAREPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::SharePriv;
-        populateCheapPrivRemedies(aus2, R);
-        populateNoWAWRemedies(aus2, R);
+        populateCheapPrivRemedies(aus2, tmpR);
+        populateNoWAWRemedies(aus2, tmpR);
       } else {
         ++numPrivatizedRedux;
         //if (auto sB = dyn_cast<StoreInst>(B))
@@ -159,8 +161,8 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
       remedy->ptr = const_cast<Value *>(P2);
       remedy->type = LocalityRemedy::UOCheck;
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoAlias;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, P1, S1, rel, P2, S2, L, NoAlias, tmpR);
     }
   }
 
@@ -182,9 +184,9 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
     remedy2->type = LocalityRemedy::UOCheck;
     remedy->setCost(perf);
     remedy2->setCost(perf);
-    R.insert(remedy);
-    R.insert(remedy2);
-    return NoAlias;
+    tmpR.insert(remedy);
+    tmpR.insert(remedy2);
+    return LoopAA::chain(R, P1, S1, rel, P2, S2, L, NoAlias, tmpR);
   }
 
   // They are assigned to the same heap.
@@ -213,9 +215,9 @@ LoopAA::AliasResult LocalityAA::alias(const Value *P1, unsigned S1,
         remedy2->type = LocalityRemedy::UOCheck;
         remedy->setCost(perf);
         remedy2->setCost(perf);
-        R.insert(remedy);
-        R.insert(remedy2);
-        return NoAlias;
+        tmpR.insert(remedy);
+        tmpR.insert(remedy2);
+        return LoopAA::chain(R, P1, S1, rel, P2, S2, L, NoAlias, tmpR);
       }
     }
   }
@@ -264,6 +266,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
   if( read.getUnderlyingAUs(ptrB,ctx,aus2) )
     t2 = asgn.classify(aus2);
 
+  Remedies tmpR;
+
   // Loop-carried queries:
   if( rel != LoopAA::Same )
   {
@@ -281,14 +285,14 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
-        populateCheapPrivRemedies(aus1, R);
-        populateNoWAWRemedies(aus1, R);
+        populateCheapPrivRemedies(aus1, tmpR);
+        populateNoWAWRemedies(aus1, tmpR);
       } else if (t1 == HeapAssignment::SharePrivate) {
         ++numPrivatizedSharedPriv;
         remedy->cost += SHAREPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::SharePriv;
-        populateCheapPrivRemedies(aus1, R);
-        populateNoWAWRemedies(aus1, R);
+        populateCheapPrivRemedies(aus1, tmpR);
+        populateNoWAWRemedies(aus1, tmpR);
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -298,8 +302,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
       remedy->ptr = const_cast<Value *>(ptrA);
       remedy->type = LocalityRemedy::UOCheck;
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoModRef;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, A, rel, ptrB, sizeB, L, NoModRef, tmpR);
     }
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
@@ -313,14 +317,14 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
-        populateCheapPrivRemedies(aus2, R);
-        populateNoWAWRemedies(aus2, R);
+        populateCheapPrivRemedies(aus2, tmpR);
+        populateNoWAWRemedies(aus2, tmpR);
       } else if (t2 == HeapAssignment::SharePrivate) {
         ++numPrivatizedSharedPriv;
         remedy->cost += SHAREPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::SharePriv;
-        populateCheapPrivRemedies(aus2, R);
-        populateNoWAWRemedies(aus2, R);
+        populateCheapPrivRemedies(aus2, tmpR);
+        populateNoWAWRemedies(aus2, tmpR);
       } else {
         ++numPrivatizedRedux;
         //if (auto sB = dyn_cast<StoreInst>(B))
@@ -330,8 +334,8 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
       remedy->ptr = const_cast<Value *>(ptrB);
       remedy->type = LocalityRemedy::UOCheck;
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoModRef;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, A, rel, ptrB, sizeB, L, NoModRef, tmpR);
     }
   }
 
@@ -353,9 +357,9 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
     remedy2->type = LocalityRemedy::UOCheck;
     remedy->setCost(perf);
     remedy2->setCost(perf);
-    R.insert(remedy);
-    R.insert(remedy2);
-    return NoModRef;
+    tmpR.insert(remedy);
+    tmpR.insert(remedy2);
+    return LoopAA::chain(R, A, rel, ptrB, sizeB, L, NoModRef, tmpR);
   }
 
   // They are assigned to the same heap.
@@ -384,9 +388,9 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
         remedy2->type = LocalityRemedy::UOCheck;
         remedy->setCost(perf);
         remedy2->setCost(perf);
-        R.insert(remedy);
-        R.insert(remedy2);
-        return NoModRef;
+        tmpR.insert(remedy);
+        tmpR.insert(remedy2);
+        return LoopAA::chain(R, A, rel, ptrB, sizeB, L, NoModRef, tmpR);
       }
     }
   }
@@ -416,9 +420,9 @@ LoopAA::ModRefResult LocalityAA::modref(const Instruction *A,
       remedy2->type = LocalityRemedy::UOCheck;
       remedy2->setCost(perf);
 
-      R.insert(remedy);
-      R.insert(remedy2);
-      return NoModRef;
+      tmpR.insert(remedy);
+      tmpR.insert(remedy2);
+      return LoopAA::chain(R, A, rel, ptrB, sizeB, L, NoModRef, tmpR);
     }
   }
 
@@ -464,6 +468,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
   if (read.getUnderlyingAUs(ptrB, ctx, aus2))
     t2 = asgn.classify(aus2);
 
+  Remedies tmpR;
+
   // Loop-carried queries:
   if (rel != LoopAA::Same) {
     // Reduction, local and private heaps are iteration-private, thus
@@ -480,14 +486,14 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
-        populateCheapPrivRemedies(aus1, R);
-        populateNoWAWRemedies(aus1, R);
+        populateCheapPrivRemedies(aus1, tmpR);
+        populateNoWAWRemedies(aus1, tmpR);
       } else if (t1 == HeapAssignment::SharePrivate) {
         ++numPrivatizedSharedPriv;
         remedy->cost += SHAREPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::SharePriv;
-        populateCheapPrivRemedies(aus1, R);
-        populateNoWAWRemedies(aus1, R);
+        populateCheapPrivRemedies(aus1, tmpR);
+        populateNoWAWRemedies(aus1, tmpR);
       } else {
         ++numPrivatizedRedux;
         if (auto sA = dyn_cast<StoreInst>(A))
@@ -497,8 +503,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
       remedy->ptr = const_cast<Value *>(ptrA);
       remedy->type = LocalityRemedy::UOCheck;
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoModRef;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, A, rel, B, L, NoModRef, tmpR);
     }
 
     if (t2 == HeapAssignment::Redux || t2 == HeapAssignment::Local ||
@@ -512,14 +518,14 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         ++numPrivatizedShort;
         remedy->cost += KILLPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::KillPriv;
-        populateCheapPrivRemedies(aus2, R);
-        populateNoWAWRemedies(aus2, R);
+        populateCheapPrivRemedies(aus2, tmpR);
+        populateNoWAWRemedies(aus2, tmpR);
       } else if (t2 == HeapAssignment::SharePrivate) {
         ++numPrivatizedSharedPriv;
         remedy->cost += SHAREPRIV_ACCESS_COST;
         remedy->type = LocalityRemedy::SharePriv;
-        populateCheapPrivRemedies(aus2, R);
-        populateNoWAWRemedies(aus2, R);
+        populateCheapPrivRemedies(aus2, tmpR);
+        populateNoWAWRemedies(aus2, tmpR);
       } else {
         ++numPrivatizedRedux;
         if (auto sB = dyn_cast<StoreInst>(B))
@@ -529,8 +535,8 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
       remedy->ptr = const_cast<Value *>(ptrB);
       remedy->type = LocalityRemedy::UOCheck;
       remedy->setCost(perf);
-      R.insert(remedy);
-      return NoModRef;
+      tmpR.insert(remedy);
+      return LoopAA::chain(R, A, rel, B, L, NoModRef, tmpR);
     }
   }
 
@@ -553,10 +559,9 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
     remedy2->type = LocalityRemedy::UOCheck;
     remedy->setCost(perf);
     remedy2->setCost(perf);
-    R.insert(remedy);
-    R.insert(remedy2);
-
-    return NoModRef;
+    tmpR.insert(remedy);
+    tmpR.insert(remedy2);
+    return LoopAA::chain(R, A, rel, B, L, NoModRef, tmpR);
   }
 
   // They are assigned to the same heap.
@@ -582,9 +587,9 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
         remedy2->type = LocalityRemedy::UOCheck;
         remedy->setCost(perf);
         remedy2->setCost(perf);
-        R.insert(remedy);
-        R.insert(remedy2);
-        return NoModRef;
+        tmpR.insert(remedy);
+        tmpR.insert(remedy2);
+        return LoopAA::chain(R, A, rel, B, L, NoModRef, tmpR);
       }
     }
   }
@@ -618,9 +623,9 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
       remedy2->type = LocalityRemedy::UOCheck;
       remedy2->setCost(perf);
 
-      R.insert(remedy);
-      R.insert(remedy2);
-      return NoModRef;
+      tmpR.insert(remedy);
+      tmpR.insert(remedy2);
+      return LoopAA::chain(R, A, rel, B, L, NoModRef, tmpR);
     } else if (t2 == HeapAssignment::Private) {
       if (t1 == HeapAssignment::Private && privateInsts.count(B)) {
         ++numReusedPriv;
@@ -647,9 +652,9 @@ LocalityAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
       remedy2->type = LocalityRemedy::UOCheck;
       remedy2->setCost(perf);
 
-      R.insert(remedy);
-      R.insert(remedy2);
-      return NoModRef;
+      tmpR.insert(remedy);
+      tmpR.insert(remedy2);
+      return LoopAA::chain(R, A, rel, B, L, NoModRef, tmpR);
     }
   }
 

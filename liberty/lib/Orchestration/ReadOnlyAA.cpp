@@ -56,6 +56,8 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
   remedy->ptr2 = nullptr;
   remedy->ptr = nullptr;
 
+  Remedies tmpR;
+
   Ptrs aus1;
   HeapAssignment::Type t1 = HeapAssignment::Unclassified;
   if( read.getUnderlyingAUs(ptrA,ctx,aus1) ) {
@@ -86,9 +88,9 @@ LoopAA::AliasResult ReadOnlyAA::alias(const Value *ptrA, unsigned sizeA,
     remedy2->ptr = const_cast<Value *>(ptrB);
     remedy->setCost(perf);
     remedy2->setCost(perf);
-    R.insert(remedy);
-    R.insert(remedy2);
-    return NoAlias;
+    tmpR.insert(remedy);
+    tmpR.insert(remedy2);
+    return LoopAA::chain(R, ptrA, sizeA, rel, ptrB, sizeB, L, NoAlias, tmpR);
   }
 
   return LoopAA::alias(ptrA,sizeA, rel, ptrB,sizeB, L, R);
@@ -188,13 +190,9 @@ LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,
 
   const Value *ptrA = liberty::getMemOper(A);
 
-  ModRefResult result = check_modref(ptrA, ptrB, L, R);
-
-  if( result != NoModRef )
-    // Chain.
-    result = ModRefResult(result & LoopAA::modref(A,rel,ptrB,sizeB,L,R) );
-
-  return result;
+  Remedies tmpR;
+  ModRefResult result = check_modref(ptrA, ptrB, L, tmpR);
+  return LoopAA::chain(R, A, rel, ptrB, sizeB, L, result, tmpR);
 }
 
 LoopAA::ModRefResult
@@ -202,13 +200,9 @@ ReadOnlyAA::modref_with_ptrs(const Instruction *A, const Value *ptrA,
                              TemporalRelation rel, const Instruction *B,
                              const Value *ptrB, const Loop *L, Remedies &R) {
 
-  ModRefResult result = check_modref(ptrA, ptrB, L, R);
-
-  if (result != NoModRef)
-    // Chain.
-    result = ModRefResult(result & LoopAA::modref(A, rel, B, L, R));
-
-  return result;
+  Remedies tmpR;
+  ModRefResult result = check_modref(ptrA, ptrB, L, tmpR);
+  return LoopAA::chain(R, A, rel, B, L, result, tmpR);
 }
 
 LoopAA::ModRefResult ReadOnlyAA::modref(const Instruction *A,

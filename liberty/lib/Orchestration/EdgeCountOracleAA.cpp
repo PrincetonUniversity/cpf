@@ -34,8 +34,6 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
 
   INTROSPECT(ENTER(A,rel,ptrB,sizeB,L));
 
-  ModRefResult result = ModRef;
-
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
   remedy->cost = DEFAULT_CTRL_REMED_COST;
@@ -45,15 +43,12 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   {
     ++numNoModRef;
     R.insert(remedy);
-    result = NoModRef;
+    return NoModRef;
   }
 
-  if( result != NoModRef )
-    // Chain.
-    result = ModRefResult(result & LoopAA::modref(A,rel,ptrB,sizeB,L,R) );
-
   INTROSPECT(EXIT(A,rel,ptrB,sizeB,L));
-  return result;
+  // Chain.
+  return LoopAA::modref(A,rel,ptrB,sizeB,L,R);
 }
 
 
@@ -66,8 +61,6 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
   ++numQueries;
 
   INTROSPECT(ENTER(A,rel,B,L));
-
-  ModRefResult result = ModRef;
 
   std::shared_ptr<ControlSpecRemedy> remedy =
       std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
@@ -90,11 +83,9 @@ LoopAA::ModRefResult EdgeCountOracle::modref(
     return NoModRef;
   }
 
+  INTROSPECT(EXIT(A,rel,B,L));
   // Chain.
-  result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
-
-  INTROSPECT(EXIT(A,rel,B,L,result));
-  return result;
+  return LoopAA::modref(A,rel,B,L,R);
 }
 
 }

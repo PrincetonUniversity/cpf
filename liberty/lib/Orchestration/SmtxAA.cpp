@@ -76,6 +76,7 @@ namespace SpecPriv
       return LoopAA::modref(A,rel,B,L,R);
 
     ModRefResult result = ModRef;
+    Remedies tmpR;
 
     LAMPLoadProfile &lamp = smtxMan->getLampResult();
 
@@ -157,8 +158,8 @@ namespace SpecPriv
           result = ModRefResult(result & ~Mod);
           ++numNoForwardFlow;
 
-          R.insert(remedyA);
-          R.insert(remedyB);
+          tmpR.insert(remedyA);
+          tmpR.insert(remedyB);
 
           // Keep track of this
           smtxMan->setAssumedLC(L,A,B);
@@ -178,8 +179,8 @@ namespace SpecPriv
           result = ModRefResult(result & ~Mod);
           ++numNoForwardFlow;
 
-          R.insert(remedyA);
-          R.insert(remedyB);
+          tmpR.insert(remedyA);
+          tmpR.insert(remedyB);
 
           // Keep track of this
           smtxMan->setAssumedII(L,A,B);
@@ -246,19 +247,22 @@ namespace SpecPriv
 
         ++numNoReverseFlow;
 
-        R.insert(remedyA);
-        R.insert(remedyB);
+        tmpR.insert(remedyA);
+        tmpR.insert(remedyB);
 
         // Keep track of this
         smtxMan->setAssumedLC(L,B,A);
       }
     }
 
-    if( result != NoModRef )
-      // Chain.
-      result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
+    // Chain.
+    return LoopAA::chain(R, A, rel, B, L, result, tmpR);
 
-    return result;
+    //if( result != NoModRef )
+    //  // Chain.
+    //  result = ModRefResult(result & LoopAA::modref(A,rel,B,L,R) );
+
+    //return result;
   }
 
 }

@@ -113,6 +113,9 @@ LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
   if (!ptrA || !ptrB)
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
 
+  Remedies tmpR;
+  AliasResult result = MayAlias;
+
   std::shared_ptr<LoadedValuePredRemedy> remedy =
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
   //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
@@ -133,8 +136,9 @@ LoopAA::AliasResult PredictionAA::alias(const Value *ptrA, unsigned sizeA,
     }
     remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedy->setCost(perf, this->L);
-    R.insert(remedy);
-    return NoAlias;
+    tmpR.insert(remedy);
+    result = NoAlias;
+    return LoopAA::chain(R, ptrA, sizeA, rel, ptrB, sizeB, L, result, tmpR);
   }
 
   return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R);
@@ -149,14 +153,18 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
   //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
 
+  Remedies tmpR;
+  ModRefResult result = ModRef;
+
   const Value *ptrA = liberty::getMemOper(I1);
   if (predspec->isPredictable(I1, L)) {
     ++numNoAlias;
     remedy->ptr = ptrA;
     remedy->loadI = I1;
     remedy->setCost(perf, this->L);
-    R.insert(remedy);
-    return NoModRef;
+    tmpR.insert(remedy);
+    result = NoModRef;
+    return LoopAA::chain(R, I1, rel, P2, S2, L, result, tmpR);
   }
 
   if (rel == LoopAA::Same)
@@ -181,8 +189,9 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
     }
     remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedy->setCost(perf, this->L);
-    R.insert(remedy);
-    return NoModRef;
+    tmpR.insert(remedy);
+    result = NoModRef;
+    return LoopAA::chain(R, I1, rel, P2, S2, L, result, tmpR);
   }
 
   return LoopAA::modref(I1,rel,P2,S2,L,R);
@@ -197,6 +206,9 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
       std::shared_ptr<LoadedValuePredRemedy>(new LoadedValuePredRemedy());
   //remedy->cost = DEFAULT_LOADED_VALUE_PRED_REMED_COST;
 
+  Remedies tmpR;
+  ModRefResult result = ModRef;
+
   const Value *ptrA = liberty::getMemOper(I1);
   const Value *ptrB = liberty::getMemOper(I2);
 
@@ -207,8 +219,9 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
     remedy->ptr = (predA) ? ptrA : ptrB;
     remedy->loadI = (predA) ? I1 : I2;
     remedy->setCost(perf, this->L);
-    R.insert(remedy);
-    return NoModRef;
+    tmpR.insert(remedy);
+    result = NoModRef;
+    return LoopAA::chain(R, I1, rel, I2, L, result, tmpR);
   }
 
   /*
@@ -246,8 +259,9 @@ LoopAA::ModRefResult PredictionAA::modref(const Instruction *I1,
     }
     remedy->loadI = mapPtrsToLoad[remedy->ptr];
     remedy->setCost(perf, this->L);
-    R.insert(remedy);
-    return NoModRef;
+    tmpR.insert(remedy);
+    result = NoModRef;
+    return LoopAA::chain(R, I1, rel, I2, L, result, tmpR);
   }
 
   return LoopAA::modref(I1, rel, I2, L, R);
