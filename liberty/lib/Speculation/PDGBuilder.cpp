@@ -28,9 +28,7 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetLibraryInfoWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired< LoopAA >();
-  //AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<PostDominatorTreeWrapperPass>();
-  //AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<LLVMAAResults>();
   AU.addRequired<ProfileGuidedControlSpeculator>();
   AU.addRequired<ProfileGuidedPredictionSpeculator>();
@@ -58,19 +56,11 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
 
-  addSpecModulesToLoopAA();
-  specModulesLoopSetup(loop);
-  LLVM_DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
-  aa->dump();
-  //annotateMemDepsWithRemedies(*pdg,loop,aa);
-  removeSpecModulesFromLoopAA();
-  //LLVM_DEBUG(errs() << "revert stack to CAF ...\n");
-  //aa->dump();
+  LLVM_DEBUG(errs() << "annotateMemDepsWithRemedies with SCAF ...\n");
+  annotateMemDepsWithRemedies(*pdg,loop,aa);
 
   LLVM_DEBUG(errs() << "constructEdgesFromControl ...\n");
 
-  //auto *F = loop->getHeader()->getParent();
-  //auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>(*F).getPostDomTree();
   constructEdgesFromControl(*pdg, loop);
 
   LLVM_DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
@@ -425,9 +415,9 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
 // query memory dep conservatively (with only memory analysis modules in the
 // stack)
 void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
-                                       LoopAA::TemporalRelation FW,
-                                       LoopAA::TemporalRelation RV, Loop *loop,
-                                       LoopAA *aa, PDG &pdg) {
+                                      LoopAA::TemporalRelation FW,
+                                      LoopAA::TemporalRelation RV, Loop *loop,
+                                      LoopAA *aa, PDG &pdg) {
   if (!src->mayReadOrWriteMemory())
     return;
   if (!dst->mayReadOrWriteMemory())
@@ -437,20 +427,20 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
 
   bool loopCarried = FW != RV;
 
-  // No remedies used in the initial conservative PDG construction
+  // No remedies used in the initial conservative PDG construction.
+  // only memory analysis modules in the stack
   Remedies R;
 
   // forward dep test
   LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, R);
 
-  if (LoopAA::NoModRef == forward)
-    return;
-
-  // forward is Mod, ModRef, or Ref
   if (!src->mayWriteToMemory())
     forward = LoopAA::ModRefResult(forward & (~LoopAA::Mod));
   if (!src->mayReadFromMemory())
     forward = LoopAA::ModRefResult(forward & (~LoopAA::Ref));
+
+  if (LoopAA::NoModRef == forward)
+    return;
 
   // reverse dep test
   LoopAA::ModRefResult reverse = forward;
@@ -505,8 +495,8 @@ void llvm::PDGBuilder::queryIntraIterationMemoryDep(Instruction *src,
 }
 
 void llvm::PDGBuilder::queryLoopCarriedMemoryDep(Instruction *src,
-                                                  Instruction *dst, Loop *loop,
-                                                  LoopAA *aa, PDG &pdg) {
+                                                 Instruction *dst, Loop *loop,
+                                                 LoopAA *aa, PDG &pdg) {
   // there is always a feasible path for inter-iteration deps
   // (there is a path from any node in the loop to the header
   //  and the header dominates all the nodes of the loops)
@@ -514,6 +504,51 @@ void llvm::PDGBuilder::queryLoopCarriedMemoryDep(Instruction *src,
   // only need to check for aliasing and kill-flow
 
   queryMemoryDep(src, dst, LoopAA::Before, LoopAA::After, loop, aa, pdg);
+}
+
+void llvm::PDGBuilder::annotateMemDepsWithRemedies(PDG &pdg, Loop *loop,
+                                                   LoopAA *aa) {
+  // setup SCAF (add spec modules to stack)
+  addSpecModulesToLoopAA();
+  specModulesLoopSetup(loop);
+  aa->dump();
+
+  // try to annotate as removable every edge in the PDG with SCAF
+  for (auto edge : make_range(pdg.begin_edges(), pdg.end_edges())) {
+
+    if (!pdg.isInternal(edge->getIncomingT()) ||
+        !pdg.isInternal(edge->getOutgoingT()))
+      continue;
+
+    Instruction *src = dyn_cast<Instruction>(edge->getOutgoingT());
+    Instruction *dst = dyn_cast<Instruction>(edge->getIncomingT());
+    assert(src && dst && "src/dst not instructions in the PDG?");
+
+    Remedies_ptr R = std::make_shared<Remedies>();
+    bool rawDep = edge->isRAWDependence();
+    bool wawDep = edge->isWAWDependence();
+
+    LoopAA::TemporalRelation FW = LoopAA::Same;
+    LoopAA::TemporalRelation RV = LoopAA::Same;
+    if (edge->isLoopCarriedDependence()) {
+      FW = LoopAA::Before;
+      RV = LoopAA::After;
+    }
+
+    bool removableEdge =
+        Remediator::noMemoryDep(src, dst, FW, RV, loop, aa, rawDep, wawDep, *R);
+
+    // annotate edge if removable
+    if (removableEdge) {
+      edge->addRemedies(R);
+      edge->setRemovable(true);
+      edge->processNewRemovalCost(LoopAA::totalRemedCost(*R));
+    }
+  }
+
+  // LLVM_DEBUG(errs() << "revert stack to CAF ...\n");
+  removeSpecModulesFromLoopAA();
+  // aa->dump();
 }
 
 char PDGBuilder::ID = 0;
