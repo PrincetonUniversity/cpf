@@ -182,7 +182,7 @@ namespace liberty
     // reverse dep test
     LoopAA::ModRefResult reverse = forward;
 
-    if (src != dst) {
+    if (FW != RV || src != dst) {
       reverse = aa->modref(dst, RV, src, loop, reverseRemeds);
 
       if (LoopAA::NoModRef == reverse)
