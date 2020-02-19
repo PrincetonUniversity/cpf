@@ -78,5 +78,7 @@ private:
 
   void queryIntraIterationMemoryDep(Instruction *src, Instruction *dst,
                                     Loop *loop, LoopAA *aa, PDG &pdg);
+
+  void annotateMemDepsWithRemedies(PDG &pdg, Loop *loop, LoopAA *aa);
 };
 } // namespace llvm
