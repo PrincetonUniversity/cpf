@@ -139,67 +139,57 @@ namespace liberty
   bool Remediator::noMemoryDep(const Instruction *src, const Instruction *dst,
                                LoopAA::TemporalRelation FW,
                                LoopAA::TemporalRelation RV, const Loop *loop,
-                               LoopAA *aa, bool rawDep, Remedies &R,
-                               bool onlyWawDep) {
-    Remedies tmpR1, tmpR2, tmpR, aliasTmpR;
+                               LoopAA *aa, bool rawDep, bool wawDep,
+                               Remedies &R) {
+
+    // collect all different ways to remove the mem dep
+    // either with alias query, or with fwd/reverse modref query in isolation or
+    // with a combination of fwd and reverse responses.
+    // At the end pick the cheapest of all.
+    //
+    Remedies aliasRemeds, fwdRemeds, reverseRemeds, fwdReverseRemeds;
+
+    LoopAA::ModRefResult aliasRes = LoopAA::ModRef;
+    LoopAA::ModRefResult fwdRes = LoopAA::ModRef;
+    LoopAA::ModRefResult reverseRes = LoopAA::ModRef;
+    LoopAA::ModRefResult fwdReverseRes = LoopAA::ModRef;
 
     const Value *ptrSrc = getPtrDepBased(src, rawDep, true);
     const Value *ptrDest = getPtrDepBased(dst, rawDep, false);
-    LoopAA::ModRefResult aliasRes = LoopAA::ModRef;
     // similar to ClassicLoopAA functionality of lifting modref to alias but
     // with high-level knowledge of the type of dependence
     if (ptrSrc && ptrDest) {
       if (LoopAA::NoAlias == aa->alias(ptrSrc, LoopAA::UnknownSize, FW, ptrDest,
-                                       LoopAA::UnknownSize, loop, aliasTmpR)) {
+                                       LoopAA::UnknownSize, loop, aliasRemeds,
+                                       LoopAA::DNoAlias)) {
         aliasRes = LoopAA::NoModRef;
       } else {
-        aliasTmpR.clear();
+        aliasRemeds.clear();
         if (LoopAA::NoAlias == aa->alias(ptrDest, LoopAA::UnknownSize, RV,
                                          ptrSrc, LoopAA::UnknownSize, loop,
-                                         aliasTmpR)) {
+                                         aliasRemeds, LoopAA::DNoAlias)) {
           aliasRes = LoopAA::NoModRef;
         }
       }
     }
 
     // forward dep test
-    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, tmpR1);
-    if (LoopAA::NoModRef == forward) {
-      for (auto remed : tmpR1)
-        tmpR.insert(remed);
+    LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, fwdRemeds);
 
-      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
-      return true;
-    }
-
-    // forward is Mod, ModRef, or Ref
+    if (LoopAA::NoModRef == forward)
+      fwdRes = LoopAA::NoModRef;
 
     // reverse dep test
     LoopAA::ModRefResult reverse = forward;
 
-    if (src != dst)
-      reverse = aa->modref(dst, RV, src, loop, tmpR2);
+    if (src != dst) {
+      reverse = aa->modref(dst, RV, src, loop, reverseRemeds);
 
-    if (LoopAA::NoModRef == reverse) {
-      for (auto remed : tmpR2)
-        tmpR.insert(remed);
-
-      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
-      return true;
+      if (LoopAA::NoModRef == reverse)
+        reverseRes = LoopAA::NoModRef;
     }
 
-    if (LoopAA::Ref == forward && LoopAA::Ref == reverse) {
-      for (auto remed : tmpR1)
-        tmpR.insert(remed);
-      for (auto remed : tmpR2)
-        tmpR.insert(remed);
-
-      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
-      return true; // RaR dep; who cares.
-    }
-
-    // At this point, we know there is one or more of
-    // a flow-, anti-, or output-dependence.
+    // combine fwd and reverse
 
     bool RAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
                (reverse == LoopAA::Ref || reverse == LoopAA::ModRef);
@@ -208,27 +198,24 @@ namespace liberty
     bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
                (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
 
-    if (rawDep && !RAW) {
-      for (auto remed : tmpR1)
-        tmpR.insert(remed);
-      for (auto remed : tmpR2)
-        tmpR.insert(remed);
-      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
-      return true;
+    bool RAR = (LoopAA::Ref == forward && LoopAA::Ref == reverse);
+    bool warDep = !rawDep && !wawDep;
+    assert(rawDep && wawDep && "Queries should be either RAW or WAW, not both!");
+
+    if (RAR || (rawDep && !RAW) || (wawDep && !WAW) || (warDep && !WAR)) {
+      LoopAA::appendRemedies(fwdReverseRemeds, fwdR);
+      LoopAA::appendRemedies(fwdReverseRemeds, reverseR);
+      fwdReverseRes = LoopAA::NoModRef;
     }
 
-    if (!rawDep && ((!WAR && !WAW) || (onlyWawDep && !WAW))) {
-      for (auto remed : tmpR1)
-        tmpR.insert(remed);
-      for (auto remed : tmpR2)
-        tmpR.insert(remed);
-      LoopAA::join(R, LoopAA::NoModRef, tmpR, aliasRes, aliasTmpR);
-      return true;
-    }
+    // join all results and determine cheapest one
+    Remedies tmpR1, tmpR2, finalRemeds;
+    LoopAA::ModRefResult tmpRes1 = LoopAA::join(tmpR1, aliasRes, aliasRemeds, fwdRes, fwdRemeds);
+    LoopAA::ModRefResult tmpRes2 = LoopAA::join(tmpR2, tmpRes1, tmpR1, reverseRes, reverseRemeds);
+    LoopAA::ModRefResult finalRes = LoopAA::join(finalRemeds, tmpRes2, tmpR2, fwdReverseRes, fwdReverseRemeds);
 
-    if (aliasRes == LoopAA::NoModRef) {
-      for (auto remed : aliasTmpR)
-        R.insert(remed);
+    if (finalRes == LoopAA::NoModRef) {
+      LoopAA::appendRemedies(R, finalRemeds);
       return true;
     }
 
