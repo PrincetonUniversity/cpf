@@ -86,9 +86,8 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
   SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
-  // tmp removal
-  //smtxaa = new SmtxAA(&smtxMan, perf);
-  //smtxaa->InitializeLoopAA(this, *DL);
+  smtxaa = new SmtxAA(&smtxMan, perf);
+  smtxaa->InitializeLoopAA(this, *DL);
 
   ctrlspec = getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
   edgeaa = new EdgeCountOracle(ctrlspec);
@@ -108,8 +107,9 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
 
   // cannot validate points-to object info.
   // should only be used within localityAA validation only for points-to heap
-  //pointstoaa = new PointsToAA(*spresults);
-  //pointstoaa->InitializeLoopAA(this, *DL);
+  // use it to explore coverage. points-to is always avoided
+  pointstoaa = new PointsToAA(*spresults);
+  pointstoaa->InitializeLoopAA(this, *DL);
 
   simpleaa = new SimpleAA();
   simpleaa->InitializeLoopAA(this, *DL);
@@ -146,11 +146,11 @@ void llvm::PDGBuilder::specModulesLoopSetup(Loop *loop) {
 }
 
 void llvm::PDGBuilder::removeSpecModulesFromLoopAA() {
-    //delete smtxaa;
+    delete smtxaa;
     delete edgeaa;
     delete predaa;
     delete ptrresaa;
-    //delete pointstoaa;
+    delete pointstoaa;
     delete roaa;
     delete localaa;
     delete simpleaa;
