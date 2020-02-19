@@ -653,7 +653,7 @@ bool Classify::getNoFullOverwritePrivAUs(
   // use of points-to can be allowed with smart subheaping
   // check for WAW dep
   if (Remediator::noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, top,
-                              false, R, true)) {
+                              false, true, R)) {
     for (auto au : auWriteUnion) {
       for (auto remed : R) {
         noWAWRemeds[au].insert(remed);
