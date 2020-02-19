@@ -221,17 +221,18 @@ namespace liberty
   static bool isCastInst(Value *use)
   {
     //Ziyang: GEP 0,..,0 is the same as a bitcast
+    // NOT TRUE in terms of sane types, remove this logic!
     if( isa<CastInst>(use) )
       return true;
 
-    if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(use)){
-      if (gep->hasAllZeroIndices()){
-        Type* ty_src = gep->getSourceElementType();
-        Type* ty_dest = gep->getResultElementType();
-        if (ty_src != ty_dest)
-          return true;
-      }
-    }
+    // if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(use)){
+    //   if (gep->hasAllZeroIndices()){
+    //     Type* ty_src = gep->getSourceElementType();
+    //     Type* ty_dest = gep->getResultElementType();
+    //     if (ty_src != ty_dest)
+    //       return true;
+    //   }
+    // }
     return false;
   }
 
@@ -525,11 +526,11 @@ namespace liberty
               ta = inst->getOperand(0)->getType();
               tb = inst->getType();
           }
-          else if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(inst)){
-              ta = gep->getSourceElementType();
-              tb = gep->getResultElementType();
-              LLVM_DEBUG(errs() << "(GEP!!!)");
-          }
+          // else if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(inst)){
+          //     ta = gep->getSourceElementType();
+          //     tb = gep->getResultElementType();
+          //     LLVM_DEBUG(errs() << "(GEP!!!)");
+          // }
  
           LLVM_DEBUG(errs() << "Cast: " << *inst
                        << " at " << fcn.getName()
