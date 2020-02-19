@@ -203,8 +203,8 @@ namespace liberty
     assert(rawDep && wawDep && "Queries should be either RAW or WAW, not both!");
 
     if (RAR || (rawDep && !RAW) || (wawDep && !WAW) || (warDep && !WAR)) {
-      LoopAA::appendRemedies(fwdReverseRemeds, fwdR);
-      LoopAA::appendRemedies(fwdReverseRemeds, reverseR);
+      LoopAA::appendRemedies(fwdReverseRemeds, fwdRemeds);
+      LoopAA::appendRemedies(fwdReverseRemeds, reverseRemeds);
       fwdReverseRes = LoopAA::NoModRef;
     }
 
