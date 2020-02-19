@@ -582,6 +582,8 @@ public:
     const Instruction *objI1 = dyn_cast<Instruction>(obj1);
     const Instruction *objI2 = dyn_cast<Instruction>(obj2);
 
+    Remedies tmpR;
+
     if( eligible(ap1) && eligible(ap2) )
     {
       ++numEligible;
@@ -634,10 +636,13 @@ public:
         const Instruction *defI1 = dyn_cast<Instruction>(def1);
         if (defI1 && objI1) {
           ++numSubQueries;
+          Remedies premiseR;
           const ModRefResult modrefresult =
-              top->modref(defI1, Rel, objI1, L, R);
-          if (modrefresult == NoModRef)
+              top->modref(defI1, Rel, objI1, L, premiseR);
+          if (modrefresult == NoModRef) {
+            appendRemedies(tmpR, premiseR);
             continue;
+          }
         }
 
         if (def1 == P1.ptr) {
@@ -663,10 +668,13 @@ public:
           const Instruction *defI2 = dyn_cast<Instruction>(def2);
           if (defI2 && objI2) {
             ++numSubQueries;
+            Remedies premiseR;
             const ModRefResult modrefresult =
-                top->modref(defI2, Rel, objI2, L, R);
-            if (modrefresult == NoModRef)
+                top->modref(defI2, Rel, objI2, L, premiseR);
+            if (modrefresult == NoModRef) {
+              appendRemedies(tmpR, premiseR);
               continue;
+            }
           }
 
           if( def2 == P2.ptr )
@@ -676,7 +684,7 @@ public:
           }
 
           ++numSubQueries;
-          const AliasResult myresult = top->alias(def1, size1, Rel, def2, size2, L, R);
+          const AliasResult myresult = top->alias(def1, size1, Rel, def2, size2, L, tmpR);
 
           if( myresult != NoAlias )
           {
@@ -714,6 +722,9 @@ public:
         }
       }
 
+      if (result != MayAlias)
+        appendRemedies(R, tmpR);
+
       LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
       return result;
     }
@@ -740,10 +751,13 @@ public:
         const Instruction *defI1 = dyn_cast<Instruction>(def1);
         if (defI1 && objI1) {
           ++numSubQueries;
+          Remedies premiseR;
           const ModRefResult modrefresult =
-              top->modref(defI1, Rel, objI1, L, R);
-          if (modrefresult == NoModRef)
+              top->modref(defI1, Rel, objI1, L, premiseR);
+          if (modrefresult == NoModRef) {
+            appendRemedies(tmpR, premiseR);
             continue;
+          }
         }
 
         if( def1 == P1.ptr )
@@ -753,7 +767,7 @@ public:
         }
 
         ++numSubQueries;
-        const AliasResult myresult = top->alias(def1,size1,Rel,P2.ptr,P2.size,L,R);
+        const AliasResult myresult = top->alias(def1,size1,Rel,P2.ptr,P2.size,L,tmpR);
 
         if( myresult != NoAlias )
         {
@@ -782,6 +796,9 @@ public:
         }
       }
 
+      if (result != MayAlias)
+        appendRemedies(R, tmpR);
+
       LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
       return result;
     }
@@ -808,10 +825,13 @@ public:
         const Instruction *defI2 = dyn_cast<Instruction>(def2);
         if (defI2 && objI2) {
           ++numSubQueries;
+          Remedies premiseR;
           const ModRefResult modrefresult =
-              top->modref(defI2, Rel, objI2, L, R);
-          if (modrefresult == NoModRef)
+              top->modref(defI2, Rel, objI2, L, premiseR);
+          if (modrefresult == NoModRef) {
+            appendRemedies(tmpR, premiseR);
             continue;
+          }
         }
 
         if( def2 == P2.ptr )
@@ -821,7 +841,7 @@ public:
         }
 
         ++numSubQueries;
-        const AliasResult myresult = top->alias(P1.ptr,P1.size,Rel,def2,size2,L,R);
+        const AliasResult myresult = top->alias(P1.ptr,P1.size,Rel,def2,size2,L,tmpR);
 
         if( myresult != NoAlias )
         {
@@ -848,6 +868,9 @@ public:
           }
         }
       }
+
+      if (result != MayAlias)
+        appendRemedies(R, tmpR);
 
       LLVM_DEBUG(errs() << "\n\tResult: " << result << '\n');
       return result;
