@@ -182,9 +182,23 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
   }
 
   // Do we need a default case?
+  
+  // If there's a struct, conservatively add a default a case
+  bool existStructArg = false;
+  for ( CallSite::arg_iterator cs_arg_it = cs.arg_begin(), z = cs.arg_end(); cs_arg_it != z; cs_arg_it++){
+     if (isa<StructType>((*cs_arg_it)->getType())){
+       existStructArg = true;
+       break;
+     }
+  }
+  
+
   const TypeSanityAnalysis &typeaa = getAnalysis< TypeSanityAnalysis >();
   output.requiresDefaultCase =
     !flow_valid && !typeaa.isSane( cs.getCalledValue()->getType() );
+
+  // if struct exists, set to true
+  output.requiresDefaultCase |= existStructArg;
 
   LLVM_DEBUG(errs() << "Possible targets of ``" << *cs.getInstruction()
                << "'' include:\n");
@@ -214,6 +228,7 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
 
       LLVM_DEBUG(errs() << " - " << fcn->getName()
                    << " : " << *fcn->getFunctionType() << '\n');
+
       output.callees.push_back(fcn);
     }
   }
@@ -451,15 +466,21 @@ bool DevirtualizationAnalysis::isWildcard(Type *ty) const
 
 // Check ty1 is a subclass of ty2
 bool DevirtualizationAnalysis::isPotentialSubClass(StructType *ty1, StructType *ty2){
-  return true;
-  // TODO: Ziyang
+  // Ziyang (Feb 19):
   // Step 1: check whether ty2 is equivalent (remove tail) to any element of ty1
   // Step 2: recuisively check whether any element of ty1 is a subclass of ty2
-  //
-  // for each element e of ty1: areStructuallyEquivalentTrasitively(e, ty2)
-  // 
-  // for each element e of ty1: isPotentialSubClass(e, ty2)
+  const unsigned N = ty1->getNumElements();
+  for (unsigned i = 0; i < N; ++i){
+    Type *elm = ty1->getElementType(i);
+    if (areStructurallyEquivalentTransitively(elm, ty2))
+      return true;
 
+    // elm is a subclass of ty2
+    if (StructType *structelm = dyn_cast<StructType>(elm))
+      if (isPotentialSubClass(structelm, ty2))
+        return true;
+  }
+  return false;
 }
 
 bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, Type *ty2)
@@ -519,43 +540,80 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
   // Structures
   // Ziyang: Feb 17, 2020
   //   In C++, classes are structs;
-  //   We need to check whether two classes have inheritance relationship
+  //   We need to guess whether two classes have inheritance relationship
   if( StructType *structty1 = dyn_cast< StructType >(ty1) )
     if( StructType *structty2 = dyn_cast< StructType >(ty2) )
     {
-      // identical layout
-      if (structty1->isLayoutIdentical(structty2))
-        return equivalentTypes[key] = true;
+      LLVM_DEBUG(errs() << "Checking types " << *ty1 << " and " << *ty2<< "\n");
+      // // identical layout, quick one
+      // if (structty1->isLayoutIdentical(structty2))
+      //   return equivalentTypes[key] = true;
 
-      // TODO: check if it's just the alignment difference
-
+      // check subclass relation
       if (isPotentialSubClass(structty1, structty2)){
+        LLVM_DEBUG(errs() << "Type " << *ty1 << "is a subtype (struct) of " << *ty2 << "\n");
         return equivalentTypes[key] = true;
-
-      return equivalentTypes[key] = false;
-      // 
-      // const unsigned N=structty1->getNumElements();
-      // if( structty2->getNumElements() != N )
-      // {
-      //   LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (1)\n");
-      //   return equivalentTypes[key] = false;
-      // }
-
-      // for(unsigned i=0; i<N; ++i)
-      // {
-      //   Type *elt1 = structty1->getElementType(i);
-      //   Type *elt2 = structty2->getElementType(i);
-
-      //   if( !areStructurallyEquivalentTransitively(elt1,elt2) )
-      //   {
-      //     LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (2)\n");
-      //     return equivalentTypes[key] = false;
-      //   }
-      // }
-
-      // // Two structures with same size and equivalent types are equivalent.
-      // return equivalentTypes[key] = true;
       }
+
+      if (isPotentialSubClass(structty2, structty1)){
+        LLVM_DEBUG(errs() << "Type " << *ty2 << "is a subtype (struct) of " << *ty1 << "\n");
+        return equivalentTypes[key] = true;
+      }
+
+      // Check Only equivalence relation
+      // if the same elements, cannot be alignment difference
+      const unsigned N1 = structty1->getNumElements();
+      const unsigned N2 = structty2->getNumElements();
+      unsigned checkN;
+
+      // the same length
+      // OR one has one more, and the last element is an array of i8
+      if (N1 == N2) checkN = N1;
+      else {
+        bool isAlignedDifference = false;
+        // structty1 is an aligned one
+        if (N1 == N2 + 1) {
+          //the last element is an array of i8
+          if (ArrayType *arrty = dyn_cast<ArrayType>(structty1->getElementType(N1 - 1))){
+            IntegerType *elmty = dyn_cast<IntegerType>(arrty->getElementType());
+            if (elmty->getBitWidth() == 8){
+              checkN = N2;
+              isAlignedDifference = true;
+            }
+          }
+        }
+        else if (N2 == N1 + 1) {
+          //the last element is an array of i8
+          if (ArrayType *arrty = dyn_cast<ArrayType>(structty2->getElementType(N2 - 1))){
+            IntegerType *elmty = dyn_cast<IntegerType>(arrty->getElementType());
+            if (elmty->getBitWidth() == 8){
+              checkN = N1;
+              isAlignedDifference = true;
+            }
+          }
+        }
+
+        // not an aligned case
+        if (!isAlignedDifference){
+          LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (not same #elements; not just alignment difference)\n");
+          return equivalentTypes[key] = false;
+        }
+      }
+
+      for(unsigned i=0; i< checkN; ++i)
+      {
+        Type *elt1 = structty1->getElementType(i);
+        Type *elt2 = structty2->getElementType(i);
+
+        if( !areStructurallyEquivalentTransitively(elt1,elt2) )
+        {
+          LLVM_DEBUG(errs() << "Types " << *ty1 << "\n  and " << *ty2 << " are not structurally equivalent (struct: at least an element not the same)\n");
+          return equivalentTypes[key] = false;
+        }
+      }
+
+      // Two structures with same size or just alignment difference and equivalent types are equivalent.
+      return equivalentTypes[key] = true;
     }
 
   // Functions (guh)
