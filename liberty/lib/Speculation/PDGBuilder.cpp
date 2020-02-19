@@ -62,7 +62,7 @@ std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   specModulesLoopSetup(loop);
   LLVM_DEBUG(errs() << "constructEdgesFromMemory with SCAF ...\n");
   aa->dump();
-  constructEdgesFromMemory(*pdg, loop, aa);
+  //annotateMemDepsWithRemedies(*pdg,loop,aa);
   removeSpecModulesFromLoopAA();
   //LLVM_DEBUG(errs() << "revert stack to CAF ...\n");
   //aa->dump();
@@ -422,6 +422,8 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
                << "\n");
 }
 
+// query memory dep conservatively (with only memory analysis modules in the
+// stack)
 void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
                                        LoopAA::TemporalRelation FW,
                                        LoopAA::TemporalRelation RV, Loop *loop,
@@ -434,16 +436,15 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
     return;
 
   bool loopCarried = FW != RV;
-  Remedies_ptr R = std::make_shared<Remedies>();
-  Remedies_ptr reverseR = std::make_shared<Remedies>();
+
+  // No remedies used in the initial conservative PDG construction
+  Remedies R;
 
   // forward dep test
-  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, *R);
+  LoopAA::ModRefResult forward = aa->modref(src, FW, dst, loop, R);
 
-  // do not return immediately, if second pass with SCAF need to make existing
-  // edge removable
-  // if (LoopAA::NoModRef == forward)
-  //  return;
+  if (LoopAA::NoModRef == forward)
+    return;
 
   // forward is Mod, ModRef, or Ref
   if (!src->mayWriteToMemory())
@@ -454,30 +455,19 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   // reverse dep test
   LoopAA::ModRefResult reverse = forward;
 
-  // in some cases calling reverse is not needed depending on whether dst writes
-  // or/and reads to/from memory but in favor of correctness (AA stack does not
-  // just check aliasing) instead of performance we call reverse and use
-  // assertions to identify accuracy bugs of AA stack
-  if ((loopCarried || src != dst) && forward != LoopAA::NoModRef)
-    reverse = aa->modref(dst, RV, src, loop, *reverseR);
+  if (loopCarried || src != dst)
+    reverse = aa->modref(dst, RV, src, loop, R);
 
   if (!dst->mayWriteToMemory())
     reverse = LoopAA::ModRefResult(reverse & (~LoopAA::Mod));
   if (!dst->mayReadFromMemory())
     reverse = LoopAA::ModRefResult(reverse & (~LoopAA::Ref));
 
-  if (LoopAA::NoModRef == reverse && forward != LoopAA::NoModRef) {
-    R = reverseR;
-    // return;
-  } else {
-    for (auto remed : *reverseR)
-      R->insert(remed);
-  }
+  if (LoopAA::NoModRef == reverse)
+    return;
 
-  /*
   if (LoopAA::Ref == forward && LoopAA::Ref == reverse)
     return; // RaR dep; who cares.
-  */
 
   // At this point, we know there is one or more of
   // a flow-, anti-, or output-dependence.
@@ -489,65 +479,17 @@ void llvm::PDGBuilder::queryMemoryDep(Instruction *src, Instruction *dst,
   bool WAW = (forward == LoopAA::Mod || forward == LoopAA::ModRef) &&
              (reverse == LoopAA::Mod || reverse == LoopAA::ModRef);
 
-  // check if there was a dep before and now it is gone. Save
-  // assumptions/remedies that made that possible
-
-  bool alreadyRAW = false;
-  bool alreadyWAR = false;
-  bool alreadyWAW = false;
-  DGEdge<Value> *rawE;
-  DGEdge<Value> *warE;
-  DGEdge<Value> *wawE;
-  auto srcNode = pdg.fetchNode(src);
-  for (auto edge : srcNode->getOutgoingEdges()) {
-    Instruction *dstI = dyn_cast<Instruction>(edge->getIncomingT());
-    if (dstI == dst && edge->isMemoryDependence() &&
-        edge->isLoopCarriedDependence() == loopCarried) {
-      if (edge->isRAWDependence()) {
-        alreadyRAW = true;
-        rawE = edge;
-      } else if (edge->isWARDependence()) {
-        alreadyWAR = true;
-        warE = edge;
-      } else if (edge->isWAWDependence()) {
-        alreadyWAW = true;
-        wawE = edge;
-      }
-    }
-  }
-
-  long totalRemedCost = 0;
-  for (Remedy_ptr r : *R) {
-    totalRemedCost += r->cost;
-  }
-
-  if (!RAW && alreadyRAW) {
-    rawE->addRemedies(R);
-    rawE->setRemovable(true);
-    rawE->processNewRemovalCost(totalRemedCost);
-  }
-  if (!WAR && alreadyWAR) {
-    warE->addRemedies(R);
-    warE->setRemovable(true);
-    warE->processNewRemovalCost(totalRemedCost);
-  }
-  if (!WAW && alreadyWAW) {
-    wawE->addRemedies(R);
-    wawE->setRemovable(true);
-    wawE->processNewRemovalCost(totalRemedCost);
-  }
-
-  if (RAW && !alreadyRAW) {
+  if (RAW) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_RAW);
     edge->setLoopCarried(loopCarried);
   }
-  if (WAR && !alreadyWAR) {
+  if (WAR) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_WAR);
     edge->setLoopCarried(loopCarried);
   }
-  if (WAW && !alreadyWAW) {
+  if (WAW) {
     auto edge = pdg.addEdge((Value *)src, (Value *)dst);
     edge->setMemMustType(true, false, DG_DATA_WAW);
     edge->setLoopCarried(loopCarried);
