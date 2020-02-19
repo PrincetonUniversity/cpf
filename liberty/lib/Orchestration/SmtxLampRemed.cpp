@@ -87,6 +87,7 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
       std::shared_ptr<SmtxLampRemedy>(new SmtxLampRemedy());
   remedy->cost = DEFAULT_LAMP_REMED_COST;
   bool RAW = dataDepTy == DataDepType::RAW;
+  bool WAW = dataDepTy == DataDepType::WAW;
 
   // Lamp profile data is loop sensitive.
   if (!L) {
@@ -124,10 +125,10 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
       (!isa<LoadInst>(B) && !(isMemIntrinsic(B) && intrinsicMayRead(B)))) {
     // Callsites, etc: inapplicable
 
-    bool noDep =
-        (LoopCarried)
-            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
-            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
+    bool noDep = (LoopCarried) ? noMemoryDep(A, B, LoopAA::Before,
+                                             LoopAA::After, L, aa, RAW, WAW, R)
+                               : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same,
+                                             L, aa, RAW, WAW, R);
     if (noDep) {
       ++numSmtxAA;
       remedResp.depRes = DepResult::NoDep;
@@ -187,8 +188,8 @@ Remediator::RemedResp SmtxLampRemediator::memdep(const Instruction *A,
   // check if collaboration of AA and SmtxAA achieves better accuracy
   bool noDep =
       (LoopCarried)
-          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
-          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
+          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, WAW, R)
+          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, WAW, R);
   if (noDep) {
     ++numSmtxAA;
     remedResp.depRes = DepResult::NoDep;

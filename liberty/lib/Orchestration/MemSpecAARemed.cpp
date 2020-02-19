@@ -148,7 +148,9 @@ Remediator::RemedResp MemSpecAARemediator::memdep(const Instruction *A,
   Remedies R;
 
   bool RAW = dataDepTy == DataDepType::RAW;
-  bool noDep = noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R);
+  bool WAW = dataDepTy == DataDepType::WAW;
+  bool noDep =
+      noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, WAW, R);
   if (noDep) {
     ++numNoFlow;
     remedy->subR = R;

@@ -259,6 +259,7 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   //remedy->loop = const_cast<Loop*>(L);
 
   bool RAW = dataDepTy == DataDepType::RAW;
+  bool WAW = dataDepTy == DataDepType::WAW;
   const Value *ptr1 = liberty::getMemOper(A);
   const Value *ptr2 = liberty::getMemOper(B);
 
@@ -281,10 +282,10 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   }
 
   if (!ptr1 || !ptr2) {
-    bool noDep =
-        (LoopCarried)
-            ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
-            : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
+    bool noDep = (LoopCarried) ? noMemoryDep(A, B, LoopAA::Before,
+                                             LoopAA::After, L, aa, RAW, WAW, R)
+                               : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same,
+                                             L, aa, RAW, WAW, R);
     if (noDep) {
       ++numLocalityAA;
       remedResp.depRes = DepResult::NoDep;
@@ -443,8 +444,8 @@ Remediator::RemedResp LocalityRemediator::memdep(const Instruction *A,
   // check if collaboration of AA and LocalityAA achieves better accuracy
   bool noDep =
       (LoopCarried)
-          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, R)
-          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, R);
+          ? noMemoryDep(A, B, LoopAA::Before, LoopAA::After, L, aa, RAW, WAW, R)
+          : noMemoryDep(A, B, LoopAA::Same, LoopAA::Same, L, aa, RAW, WAW, R);
   if (noDep) {
     ++numLocalityAA2;
     remedResp.depRes = DepResult::NoDep;
