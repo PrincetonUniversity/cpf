@@ -7,6 +7,7 @@ using namespace llvm;
 
 namespace liberty {
 
+  ICmpInst *getLatchCmpInst(const Loop &L);
   PHINode *getInductionVariable(const Loop *L, ScalarEvolution &SE);
   Optional<Loop::LoopBounds> getBounds(const Loop *L, ScalarEvolution &SE);
   bool getInductionDescriptor(const Loop *L, ScalarEvolution &SE,

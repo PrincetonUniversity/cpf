@@ -41,14 +41,11 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
   remedy->cost = 0;
 
   Function* f = L->getHeader()->getParent();
-  ScalarEvolution *SE = &mLoop->getAnalysis_ScalarEvolution(f);
-  PHINode* phiIV = liberty::getInductionVariable(L, *SE);
-  Instruction* casted_phiIV;
+  ScalarEvolution *SE = &mLoops->getAnalysis_ScalarEvolution(f);
+  PHINode *phiIV = liberty::getInductionVariable(L, *SE);
 
-  if ( phiIV && (casted_phiIV = dyn_cast<Instruction>(phiIV)) &&
-       (B->isIdenticalTo(casted_phiIV)) ) {
+  if (phiIV && B == (Instruction *)phiIV) {
     ++numNoRegDep;
-    assert(casted_phiIV && "Dest inst in CountedIVRemediator::regdep not a phiNode??");
     remedy->ivPHI = phiIV;
     remedResp.depRes = DepResult::NoDep;
   }
@@ -68,16 +65,14 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  PHINode* phiCIV = L->getCanonicalInductionVariable();
   Function* f = L->getHeader()->getParent();
-  ScalarEvolution *SE = &mLoop->getAnalysis_ScalarEvolution(f);
+  ScalarEvolution *SE = &mLoops->getAnalysis_ScalarEvolution(f);
   PHINode* phiIV = liberty::getInductionVariable(L,*SE);
-  Instruction* casted_phiIV;
 
   // remove all ctrl edges originating from branch controlled by a bounded IV
-  if ( phiIV && (casted_phiIV = dyn_cast<Instruction>(phiIV)) &&
-       (B->isIdenticalTo(casted_phiIV))  ){
+  if (phiIV && B == (Instruction *)phiIV) {
     ++numNoCtrlDep;
+    remedy->ivPHI = phiIV;
     remedResp.depRes = DepResult::NoDep;
   }
 
