@@ -200,7 +200,7 @@ namespace liberty
 
     bool RAR = (LoopAA::Ref == forward && LoopAA::Ref == reverse);
     bool warDep = !rawDep && !wawDep;
-    assert(rawDep && wawDep && "Queries should be either RAW or WAW, not both!");
+    assert(!(rawDep && wawDep) && "Queries should be either RAW or WAW, not both!");
 
     if (RAR || (rawDep && !RAW) || (wawDep && !WAW) || (warDep && !WAR)) {
       LoopAA::appendRemedies(fwdReverseRemeds, fwdRemeds);

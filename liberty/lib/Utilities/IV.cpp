@@ -26,9 +26,8 @@
 #include "liberty/Utilities/IV.h"
 
 using namespace llvm;
-
 /// Get the latch condition instruction.
-static ICmpInst *getLatchCmpInst(const Loop &L) {
+static ICmpInst *getLatchCmpInst_IV(const Loop &L) {
   if (BasicBlock *Latch = L.getLoopLatch()) {
     if (BranchInst *BI = dyn_cast_or_null<BranchInst>(Latch->getTerminator())) {
       if (BI->isConditional()) {
@@ -40,7 +39,7 @@ static ICmpInst *getLatchCmpInst(const Loop &L) {
           if (BranchInst *BIH =
                   dyn_cast_or_null<BranchInst>(header->getTerminator()))
             if (BIH->isConditional())
-              return dyn_cast<ICmpInst>(BI->getCondition());
+              return dyn_cast<ICmpInst>(BIH->getCondition());
       }
     }
   }
@@ -54,7 +53,7 @@ PHINode *liberty::getInductionVariable(const Loop *L,
 
   BasicBlock *Header = L->getHeader();
   assert(Header && "Expected a valid loop header");
-  ICmpInst *CmpInst = getLatchCmpInst(*L);
+  ICmpInst *CmpInst = getLatchCmpInst_IV(*L);
   if (!CmpInst)
     return nullptr;
 
