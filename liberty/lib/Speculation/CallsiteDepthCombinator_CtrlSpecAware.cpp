@@ -118,11 +118,14 @@ namespace liberty
     LoopAA *top = kill.getTopAA();
     INTROSPECT(errs() << "Test flow from " << write << " to " << read << " {\n");
 //      enterIntrospectionRegion(false);
-    ModRefResult q = top->modref(write.getInst(), Before, read.getInst(), L, R);
+    Remedies tmpR;
+    ModRefResult q = top->modref(write.getInst(), Before, read.getInst(), L, tmpR);
 //      exitIntrospectionRegion();
     INTROSPECT(errs() << "} Exit test flow +--> " << q << '\n');
-    if( q == NoModRef || q == Ref )
+    if( q == NoModRef || q == Ref ) {
+      LoopAA::appendRemedies(R, tmpR);
       return false;
+    }
 
     std::shared_ptr<ControlSpecRemedy> remedy =
         std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
@@ -278,11 +281,14 @@ namespace liberty
     LoopAA *top = kill.getTopAA();
     INTROSPECT(errs() << "Test flow from " << write << " to " << read << " {\n");
 //      enterIntrospectionRegion(false);
-    ModRefResult q = top->modref(write.getInst(), Same, read.getInst(), L, R);
+    Remedies tmpR;
+    ModRefResult q = top->modref(write.getInst(), Same, read.getInst(), L, tmpR);
 //      exitIntrospectionRegion();
     INTROSPECT(errs() << "} Exit test flow +--> " << q << '\n');
-    if( q == NoModRef || q == Ref )
+    if( q == NoModRef || q == Ref ) {
+      LoopAA::appendRemedies(R, tmpR);
       return false;
+    }
 
     std::shared_ptr<ControlSpecRemedy> remedy =
         std::shared_ptr<ControlSpecRemedy>(new ControlSpecRemedy());
@@ -615,61 +621,24 @@ namespace liberty
       queryStart = 0;
     }
 
-    Remedies tmpR;
-    ModRefResult result = LoopAA::modref(inst1, Rel, inst2, L, tmpR);
+    ModRefResult flowResult = ModRef;
+
     // Interpret the isFlow result w.r.t. LoopAA Before/After query semantics.
     if( !isFlow )
     {
       LLVM_DEBUG(errs() << "No flow from " << *src << " to " << *dst << '\n');
 
-      for (auto remed : isFlowTmpR)
-        R.insert(remed);
-
-      if (Rel == Before) {
-        if (result == NoModRef || result == Mod) {
-          for (auto remed : tmpR) {
-            R.insert(remed);
-          }
-        }
-        result = ModRefResult(result & ~Mod);
-      }
-
-      else if (Rel == After) {
-        if (result == NoModRef || result == Ref) {
-          for (auto remed : tmpR) {
-            R.insert(remed);
-          }
-        }
-        result = ModRefResult(result & ~Ref);
-      }
-    } else {
-      if (!inst1->mayReadOrWriteMemory()) {
-        result = NoModRef;
-      } else if (!inst1->mayReadFromMemory()) {
-        if (result == NoModRef || result == Ref) {
-          for (auto remed : tmpR) {
-            R.insert(remed);
-          }
-        }
-        result = ModRefResult(result & ~Ref);
-      } else if (!inst1->mayWriteToMemory()) {
-        if (result == NoModRef || result == Mod) {
-          for (auto remed : tmpR) {
-            R.insert(remed);
-          }
-        }
-        result = ModRefResult(result & ~Mod);
-      } else {
-        for (auto remed : tmpR) {
-          R.insert(remed);
-        }
-      }
+      if (Rel == Before)
+        flowResult = Ref;
+      else if (Rel == After)
+        flowResult = Mod;
     }
 
-    INTROSPECT(EXIT(inst1,Rel,inst2,L,result));
+    INTROSPECT(EXIT(inst1,Rel,inst2,L,flowResult));
     if( introspect )
       exitIntrospectionRegion();
-    return result;
+
+    return LoopAA::chain(R, inst1, Rel, inst2, L, flowResult, isFlowTmpR);
   }
 
   LoopAA::ModRefResult CallsiteDepthCombinator_CtrlSpecAware::modref(
