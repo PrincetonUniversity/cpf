@@ -1,8 +1,13 @@
 #define DEBUG_TYPE "counted-iv-remed"
 
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/IVDescriptors.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/IR/Instructions.h"
 
 #include "liberty/Orchestration/CountedIVRemed.h"
+#include "liberty/Utilities/IV.h"
 
 #define DEFAULT_COUNTED_IV_REMED_COST 0
 
@@ -18,7 +23,7 @@ void CountedIVRemedy::apply(Task *task) {
 bool CountedIVRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<CountedIVRemedy> countedIVRhs =
       std::static_pointer_cast<CountedIVRemedy>(rhs);
-  return this->ivSCC < countedIVRhs->ivSCC;
+  return this->ivPHI < countedIVRhs->ivPHI;
 }
 
 Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
@@ -33,25 +38,19 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
     return remedResp;
 
   auto remedy = std::make_shared<CountedIVRemedy>();
-  //remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
   remedy->cost = 0;
 
-  auto aSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(const_cast<Instruction *>(A));
-  auto bSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(const_cast<Instruction *>(B));
+  Function* f = L->getHeader()->getParent();
+  ScalarEvolution *SE = &mLoop->getAnalysis_ScalarEvolution(f);
+  PHINode* phiIV = liberty::getInductionVariable(L, *SE);
+  Instruction* casted_phiIV;
 
-  if (aSCC == bSCC &&
-      loopDepInfo->sccdagAttrs.getSCCAttrs(aSCC)->isInductionVariableSCC() &&
-      loopDepInfo->sccdagAttrs.isLoopGovernedByIV() &&
-      loopDepInfo->sccdagAttrs.sccIVBounds.find(aSCC) !=
-          loopDepInfo->sccdagAttrs.sccIVBounds.end()) {
+  if ( phiIV && (casted_phiIV = dyn_cast<Instruction>(phiIV)) &&
+       (B->isIdenticalTo(casted_phiIV)) ) {
     ++numNoRegDep;
-    remedy->ivSCC = aSCC;
-    const PHINode *phiB = dyn_cast<PHINode>(B);
-    assert(phiB && "Dest inst in CountedIVRemediator::regdep not a phiNode??");
-    remedy->ivPHI = phiB;
+    assert(casted_phiIV && "Dest inst in CountedIVRemediator::regdep not a phiNode??");
+    remedy->ivPHI = phiIV;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CountedIVRemed removed reg dep between inst " << *A
-                 << "  and  " << *B << '\n');
   }
 
   remedResp.remedy = remedy;
@@ -67,21 +66,19 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
   remedResp.depRes = DepResult::Dep;
 
   auto remedy = std::make_shared<CountedIVRemedy>();
-  //remedy->cost = DEFAULT_COUNTED_IV_REMED_COST;
   remedy->cost = 0;
 
-  auto aSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(const_cast<Instruction *>(A));
+  PHINode* phiCIV = L->getCanonicalInductionVariable();
+  Function* f = L->getHeader()->getParent();
+  ScalarEvolution *SE = &mLoop->getAnalysis_ScalarEvolution(f);
+  PHINode* phiIV = liberty::getInductionVariable(L,*SE);
+  Instruction* casted_phiIV;
 
   // remove all ctrl edges originating from branch controlled by a bounded IV
-  if (loopDepInfo->sccdagAttrs.getSCCAttrs(aSCC)->isInductionVariableSCC() &&
-      loopDepInfo->sccdagAttrs.isLoopGovernedByIV() &&
-      loopDepInfo->sccdagAttrs.sccIVBounds.find(aSCC) !=
-          loopDepInfo->sccdagAttrs.sccIVBounds.end()) {
+  if ( phiIV && (casted_phiIV = dyn_cast<Instruction>(phiIV)) &&
+       (B->isIdenticalTo(casted_phiIV))  ){
     ++numNoCtrlDep;
-    remedy->ivSCC = aSCC;
     remedResp.depRes = DepResult::NoDep;
-    LLVM_DEBUG(errs() << "CountedIVRemed removed ctrl dep between inst " << *A
-                 << "  and  " << *B << '\n');
   }
 
   remedResp.remedy = remedy;

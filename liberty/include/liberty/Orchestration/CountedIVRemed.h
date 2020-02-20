@@ -3,6 +3,7 @@
 
 #include "llvm/IR/Instructions.h"
 
+#include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "PDG.hpp"
@@ -12,7 +13,7 @@ using namespace llvm;
 
 class CountedIVRemedy : public Remedy {
 public:
-  const SCC *ivSCC;
+  //const SCC *ivSCC;
   const PHINode *ivPHI;
 
   void apply(Task *task);
@@ -22,8 +23,9 @@ public:
 
 class CountedIVRemediator : public Remediator {
 public:
-  CountedIVRemediator(LoopDependenceInfo *ldi)
-      : Remediator(), loopDepInfo(ldi) {}
+  //Susan CHANGE: ldi to mloop
+  CountedIVRemediator(ModuleLoops *mloops)
+      : Remediator(), mLoop(mloops) {}
 
   StringRef getRemediatorName() const { return "counted-iv-remediator"; }
 
@@ -33,7 +35,8 @@ public:
   RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
 
 private:
-  LoopDependenceInfo *loopDepInfo;
+  //CHANGE: ldi to module loops
+  ModuleLoops *mLoop;
 };
 
 } // namespace liberty

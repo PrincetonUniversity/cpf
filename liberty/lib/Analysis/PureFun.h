@@ -317,6 +317,7 @@
 // strings.h
   "strcasecmp",
   "strncasecmp",
+  "bcmp",
 
 // libautocuda.so
   "lcuAlloca",
