@@ -13,7 +13,6 @@ using namespace llvm;
 
 class CountedIVRemedy : public Remedy {
 public:
-  //const SCC *ivSCC;
   const PHINode *ivPHI;
 
   void apply(Task *task);
@@ -23,9 +22,7 @@ public:
 
 class CountedIVRemediator : public Remediator {
 public:
-  //Susan CHANGE: ldi to mloop
-  CountedIVRemediator(ModuleLoops *mloops)
-      : Remediator(), mLoop(mloops) {}
+  CountedIVRemediator(ModuleLoops *ml) : Remediator(), mLoops(ml) {}
 
   StringRef getRemediatorName() const { return "counted-iv-remediator"; }
 
@@ -35,8 +32,7 @@ public:
   RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
 
 private:
-  //CHANGE: ldi to module loops
-  ModuleLoops *mLoop;
+  ModuleLoops *mLoops;
 };
 
 } // namespace liberty
