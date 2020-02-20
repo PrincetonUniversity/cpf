@@ -209,10 +209,12 @@ public:
 
       if (staticallyDiffIndexFound) {
         // 0. Check if the base pointers must alias.
+        Remedies tmpR;
         if (getTopAA()->alias(gep1->getPointerOperand(), 1, Same,
-                              gep2->getPointerOperand(), 1, 0, R,
+                              gep2->getPointerOperand(), 1, 0, tmpR,
                               LoopAA::DMustAlias) == MustAlias) {
           ++numNoAlias;
+          LoopAA::appendRemedies(R, tmpR);
           return NoAlias;
         }
       }
@@ -310,10 +312,12 @@ public:
       return MayAlias;
 
     // 0. Check if the base pointers must alias.
+    Remedies tmpR;
     if (getTopAA()->alias(gep1->getPointerOperand(), 1, Same,
-                          gep2->getPointerOperand(), 1, 0, R,
+                          gep2->getPointerOperand(), 1, 0, tmpR,
                           LoopAA::DMustAlias) == MustAlias) {
       ++numNoAlias;
+      LoopAA::appendRemedies(R, tmpR);
       return NoAlias;
     }
 
