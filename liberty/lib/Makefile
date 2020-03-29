@@ -14,8 +14,8 @@ ifdef SYSCHAR_INCLUDE_DIR
   CHAR=Characterization
 endif
 
-DIRS= SLAMP LAMP Analysis Strategy Speculation Orchestration Utilities Redux \
+DIRS=LAMP Analysis Strategy Speculation Orchestration Utilities Redux \
 LoopProf LAMPLoad Metadata Devirt Priv PointsToProfiler Exclusions GraphAlgorithms \
-AggrInliner CodeGen DbgClean
+AggrInliner CodeGen DbgClean Talkdown
 
 include $(LEVEL)/Makefile.common
