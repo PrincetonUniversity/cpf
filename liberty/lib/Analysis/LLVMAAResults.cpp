@@ -59,6 +59,13 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
 
   // only handles intra-iteration mem queries
+
+  // avoid queries for must-alias, takes a long time (LLVM passes do not
+  // understand that only must-alias responses are needed), and it is
+  // problematic (leads to assertion) for 538.imagick_r
+  if (dAliasRes == DMustAlias)
+    return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
+
   auto *funA = getParent(ptrA);
   if (!funA || !notDifferentParent(ptrA, ptrB))
     return LoopAA::alias(ptrA, sizeA, rel, ptrB, sizeB, L, R, dAliasRes);
@@ -74,10 +81,10 @@ LoopAA::AliasResult LLVMAAResults::alias(const Value *ptrA, unsigned sizeA,
   }
 
   LoopAA::AliasResult aaLoopAARes;
-  if (aaRes == llvm::PartialAlias || aaRes == llvm::MayAlias)
-    aaLoopAARes = LoopAA::MayAlias;
-  else  //aaRes == llvm::MustAlias
+  if (aaRes == llvm::MustAlias)
     aaLoopAARes = LoopAA::MustAlias;
+  else // aaRes == llvm::PartialAlias || aaRes == llvm::MayAlias
+    aaLoopAARes = LoopAA::MayAlias;
 
   return LoopAA::AliasResult(aaLoopAARes & LoopAA::alias(ptrA, sizeA, rel, ptrB,
                                                          sizeB, L, R,
