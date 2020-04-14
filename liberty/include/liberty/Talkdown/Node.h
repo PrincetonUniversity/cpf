@@ -2,6 +2,8 @@
 
 #include "llvm/IR/Instructions.h"
 
+#include "Annotation.h"
+
 #include <vector>
 #include <unordered_map>
 
@@ -38,7 +40,7 @@ namespace llvm {
       void addAnnotation(std::pair<std::string, std::string>);
       void addAnnotations(std::unordered_map<std::string, std::string>);
       std::vector<SESENode *> getChildren();
-      std::vector<Instruction *> getInstructions();
+      std::set<Instruction *> getInstructions();
       const std::unordered_map<std::string, std::string> &getAnnotation() const;
       void addAnnotationsFromBasicBlock();
 
@@ -79,7 +81,7 @@ namespace llvm {
       /*
        * Instruction of node. Is empty if not leaf.
        */
-      std::vector<Instruction *> instructions;
+      std::set<Instruction *> instructions;
 
       /*
        * Annotations pertaining to a node. Children inherit annotations of parent unlesss
@@ -100,6 +102,8 @@ namespace llvm {
       BasicBlock *basic_block;
 
       bool basicBlockSameMetadata(BasicBlock *);
+
+      Annotation annot;
   };
 
   /*

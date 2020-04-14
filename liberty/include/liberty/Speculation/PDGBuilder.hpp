@@ -22,6 +22,7 @@
 #include "liberty/Speculation/LoopDominators.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Talkdown/Talkdown.h"
 
 #include "PDG.hpp"
 
@@ -61,6 +62,7 @@ private:
   Classify *classify;
   KillFlow_CtrlSpecAware *killflow_aware;
   CallsiteDepthCombinator_CtrlSpecAware *callsite_aware;
+  Talkdown *talkdown;
 
   void addSpecModulesToLoopAA();
   void specModulesLoopSetup(Loop *loop);

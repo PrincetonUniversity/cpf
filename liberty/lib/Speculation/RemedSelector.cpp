@@ -36,7 +36,7 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
 {
   Selector::analysisUsage(au);
 
-  au.addRequired< SLAMPLoadProfile >();
+  /* au.addRequired< SLAMPLoadProfile >(); */
   au.addRequired< SmtxSlampSpeculationManager >();
   au.addRequired< SmtxSpeculationManager >();
   au.addRequired< PtrResidueSpeculationManager >();

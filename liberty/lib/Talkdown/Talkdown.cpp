@@ -1,4 +1,8 @@
+#define DEBUG_TYPE "talkdown"
+
 #include "SystemHeaders.hpp"
+
+#include "liberty/LoopProf/Targets.h"
 
 #include "liberty/Talkdown/Talkdown.h"
 #include "liberty/Talkdown/Node.h"
@@ -27,7 +31,7 @@ static cl::opt<bool> TalkdownDisable("noelle-talkdown-disable", cl::ZeroOrMore, 
     {
       if ( f.isDeclaration() )
         continue;
-      std::cerr << "\t" << f.getName().str() << "\n";
+      LLVM_DEBUG(std::cerr << "\t" << f.getName().str() << "\n";);
       FunctionTree tree = FunctionTree( &f );
       modified |= tree.constructTree( &f );
       function_trees.push_back( tree );
@@ -46,6 +50,7 @@ static cl::opt<bool> TalkdownDisable("noelle-talkdown-disable", cl::ZeroOrMore, 
 
   void Talkdown::getAnalysisUsage(AnalysisUsage &AU) const
   {
+    /* AU.addRequired<Targets>(); */
     AU.setPreservesAll();
   }
 

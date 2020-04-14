@@ -26,6 +26,7 @@ namespace llvm
       SESENode *getParent(SESENode *);
       SESENode *getInnermostCommonAncestor(SESENode *, SESENode *);
       std::map<std::string, std::string> &getMetadata(SESENode *); // common metadata
+      bool areIndependent(Instruction *i1, Instruction *i2);
 
     private:
       bool enabled;

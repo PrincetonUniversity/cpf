@@ -72,13 +72,13 @@ bool SmtxSlampSpeculationManager::Assumption::operator!=(const Assumption &other
 
 void SmtxSlampSpeculationManager::getAnalysisUsage(AnalysisUsage &au) const
 {
-  au.addRequired< SLAMPLoadProfile >();
+  /* au.addRequired< SLAMPLoadProfile >(); */
   au.setPreservesAll();
 }
 
 bool SmtxSlampSpeculationManager::runOnModule(Module &mod)
 {
-  slampResult = & getAnalysis< SLAMPLoadProfile >();
+  /* slampResult = & getAnalysis< SLAMPLoadProfile >(); */
 
   return false;
 }

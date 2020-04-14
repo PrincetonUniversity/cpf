@@ -42,7 +42,7 @@ namespace llvm
           llvm::errs() << "\n";
         }
       );
-      instructions.push_back( &inst );
+      instructions.insert( &inst );
     }
   }
 
@@ -69,7 +69,7 @@ namespace llvm
 
   void SESENode::addInstruction(Instruction *i)
   {
-    instructions.push_back( i );
+    instructions.insert( i );
   }
 
   void SESENode::clearInstructions()
@@ -87,7 +87,7 @@ namespace llvm
     annotations.insert( annot.begin(), annot.end() );
   }
 
-  std::vector<Instruction *> SESENode::getInstructions()
+  std::set<Instruction *> SESENode::getInstructions()
   {
     return this->instructions;
   }
@@ -205,7 +205,7 @@ namespace llvm
       os << "\033[32m++ Leaf node ++\033[0m\n";
       os << "\tFirst instruction:\n";
       assert(node->instructions.size() > 0);
-      llvm::errs() << "\t\t" << *(node->instructions[0]) << "\n";
+      llvm::errs() << "\t\t" << *(node->instructions.begin()) << "\n";
     }
 
     os << "\tAnnotations:\n";

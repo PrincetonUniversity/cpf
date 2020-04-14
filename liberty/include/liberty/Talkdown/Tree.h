@@ -2,7 +2,7 @@
 
 #include "llvm/IR/Function.h"
 
-#include "liberty/Talkdown/Node.h"
+#include "Node.h"
 
 #include <string>
 
