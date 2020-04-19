@@ -129,6 +129,12 @@ bool PureFunAA::isRecursiveProperty(const Function *fun,
     return true;
   }
 
+  for(StringRef knownFun : knownFunSet) {
+    StringRef fcn_name = fun->getName();
+    if(fcn_name.contains(knownFun))
+       return true;
+  }
+
   if(fun->isDeclaration()) {
     return false;
   }
@@ -397,8 +403,10 @@ char PureFunAA::ID = 0;
 
 StringRef  const PureFunAA::pureFunNames[] = {
 #include "PureFun.h"
+#include "MultiTypePureFun.h"
 ""
 };
+
 /* StringRef  const PureFunAA::pureFunNames[] = { */
 /* "#include \"PureFun.h\"", */
 /* "" */
