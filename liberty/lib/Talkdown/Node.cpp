@@ -1,107 +1,19 @@
+#define DEBUG_TYPE "talkdown"
+
 #include "liberty/Talkdown/Node.h"
+
+#include "llvm/Support/Debug.h"
+
 #include <iostream>
 #include <map>
 #include <unordered_map>
 
-#include "llvm/Support/Debug.h"
-
-#define DEBUG_TYPE "talkdown"
-
 using namespace llvm;
 
-namespace llvm
+namespace AutoMP
 {
 
-  SESENode::SESENode()
-  {
-    is_leaf = false;
-    depth = -1;
-
-    parent = nullptr;
-    basic_block = nullptr;
-
-    annotations = std::unordered_map<std::string, std::string>();
-    inherited_annotations = std::unordered_map<std::string, std::string>();
-  }
-
-  SESENode::SESENode(BasicBlock *bb) : SESENode()
-  {
-    basic_block = bb;
-    is_leaf = true;
-
-    // do we want to do this here or split it as a separate function?
-    for ( auto &inst : *bb )
-    {
-      LLVM_DEBUG(
-        llvm::errs() << "Inserting inst (" << *&inst << ") to ";
-        if ( bb->hasName() )
-          llvm::errs() << bb->getName().str() << "\n";
-        else
-        {
-          bb->printAsOperand( llvm::errs(), false, bb->getParent()->getParent() );
-          llvm::errs() << "\n";
-        }
-      );
-      instructions.insert( &inst );
-    }
-  }
-
-  void SESENode::setParent(SESENode *node)
-  {
-    parent = node;
-
-    // correct place to do this?
-    if ( node != nullptr)
-      inherited_annotations = parent->getAnnotation();
-    // annotations.insert(inherited_annotations.begin(), inherited_annotations.end());
-  }
-
-  void SESENode::addChild(SESENode *node)
-  {
-    this->is_leaf = false;
-    children.push_back( node );
-  }
-
-  std::vector<SESENode *> SESENode::getChildren()
-  {
-    return this->children;
-  }
-
-  void SESENode::addInstruction(Instruction *i)
-  {
-    instructions.insert( i );
-  }
-
-  void SESENode::clearInstructions()
-  {
-    this->instructions.clear();
-  }
-
-  void SESENode::addAnnotation(std::pair<std::string, std::string> annot)
-  {
-    annotations.emplace( annot );
-  }
-
-  void SESENode::addAnnotations(std::unordered_map<std::string, std::string> annot)
-  {
-    annotations.insert( annot.begin(), annot.end() );
-  }
-
-  std::set<Instruction *> SESENode::getInstructions()
-  {
-    return this->instructions;
-  }
-
-  const std::unordered_map<std::string, std::string> &SESENode::getAnnotation() const
-  {
-    return annotations;
-  }
-
-  bool SESENode::isLeaf() const
-  {
-    return is_leaf;
-  }
-
+#if 0
   void SESENode::addAnnotationsFromBasicBlock()
   {
     Annotations annotations_to_add = {};
@@ -177,11 +89,11 @@ namespace llvm
     return split_complete;
   }
 
-  // std::ostream &SESENode::recursivePrint(std::ostream &os) const
-  std::ostream &SESENode::recursivePrint(std::ostream &os) const
+#endif
+  std::ostream &Node::recursivePrint(std::ostream &os) const
   {
     os << this << "\n";
-    if ( !is_leaf )
+    if ( children.size() != 0 )
     {
       for ( auto child : children)
         child->recursivePrint( os );
@@ -191,8 +103,27 @@ namespace llvm
     // return;
   }
 
-  std::ostream &operator<<(std::ostream &os, const SESENode *node)
+  std::ostream &operator<<(std::ostream &os, const Node *node)
   {
+    if ( !node->parent )
+      /* os << "\033[1;31m** Root node **\033[0m\n"; */
+      os << "** Root node **\n";
+    else if ( node->children.size() == 0 )
+      os << "** Leaf node **\n";
+    else
+      os << "** Intermediate node **\n";
+
+    os << "\tID: " << node->ID << "\n";
+    if ( node->parent )
+      os << "\tParent ID: " << node->parent->ID << "\n";
+    os << "\tAnnotations:\n";
+    for ( auto &annot : node->annotations )
+    {
+      errs() << "\t\t" << annot.get_key() << " : " << annot.get_value() << "\n";
+    }
+    errs() << "\n";
+
+#if 0
     if ( !node->is_leaf )
     {
       if ( !node->parent )
@@ -217,17 +148,8 @@ namespace llvm
     for ( auto &annot : node->annotations )
       os << "\t\t\t" << annot.first << " : " << annot.second << "\n";
 
+#endif
     return os;
-  }
-
-  bool SESENode::basicBlockSameMetadata(BasicBlock *bb)
-  {
-    MDNode *meta;
-
-    for ( auto &i : *bb )
-    {
-      // meta;
-    }
   }
 
 } // namespace llvm

@@ -1,60 +1,78 @@
 #pragma once
 
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Instruction.h"
+#include "llvm/Analysis/LoopInfo.h"
 
+#include "liberty/Utilities/ModuleLoops.h"
 #include "Node.h"
 
 #include <string>
 
 using namespace llvm;
+using namespace AutoMP;
 
-namespace llvm {
+namespace AutoMP {
 
   class FunctionTree
   {
-    public:
-      FunctionTree();
-      FunctionTree(Function *f);
-      ~FunctionTree();
-      bool constructTree(Function *f);
+  public:
+    FunctionTree() : root(nullptr), num_nodes(0) {}
+    FunctionTree(Function *f);
+    ~FunctionTree();
+    bool constructTree(Function *f, liberty::ModuleLoops &m);
+    bool constructTree(Function *f, LoopInfo &li); // should use this instead
 
-      SESENode *getInnermostNode(Instruction *);
-      SESENode *getParent(SESENode *);
-      SESENode *getFirstCommonAncestor(SESENode *, SESENode *);
+    bool constructTreeFromNode(Node *n); // use subtrees later for something???
 
-      friend std::ostream &operator<<(std::ostream &, const FunctionTree &);
+    /* SESENode *getInnermostNode(Instruction *); */
+    /* SESENode *getParent(SESENode *); */
+    /* SESENode *getFirstCommonAncestor(SESENode *, SESENode *); */
 
-      void print();
-      void writeDotFile( const std::string filename );
+    friend std::ostream &operator<<(std::ostream &, const FunctionTree &);
 
-    private:
+    void print();
+    void writeDotFile(const std::string filename);
 
-      /*
-       * Associated function
-       */
-      Function *associated_function;
+    std::vector<Node *> nodes; // remove this once an iterator is developed
 
-      /*
-       * Root node of tree
-       */
-      SESENode *root;
+  private:
+    Node *findNodeForLoop(Node *start, Loop *l); // level-order traversal
+    Node *findNodeForBasicBlock(Node *start, BasicBlock *bb);
+    Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a); // search upward from a node to find first node with matching annotation
 
-      /*
-       * Split nodes of tree recursively
-       */
-      bool splitNodesRecursive(SESENode *node);
+    void addLoopsToTree( LoopInfo &li );
+    void annotateLoops();
 
-      /*
-       * NOTE(gc14): Maps instructions to its appropriate SESENode
-       */
-      std::unordered_map<Instruction *, SESENode *> inst_node_map;
+    // Change these to use the node instead so we don't have to traverse the tree?
+    void addBasicBlocksToLoops(LoopInfo &li);
 
-#if 0
-      /*
-       * Split basic block when annotation changes
-       */
-      bool insertSplits();
-#endif
+    // If something like a "critical" pragma is attached to a basic block, do something
+    void backAnnotateLoopFromBasicBlocks(Loop *l);
+
+    bool handleCriticalAnnotations(void);
+
+    Function *associated_function;
+    Node *root;
+
+    int num_nodes;
+
+  public:
+    // XXX: First attempt at creating custom iterator. Maybe at a const_iterator later?
+    // I have no idea what I'm doing lol
+    class iterator
+    {
+      Node *start;
+      iterator(Node *n) : start(n) {}
+      /* iterator &operator++() {} */
+    };
+
+
   };
 
-} // namespace llvm
+  // Things to consider:
+  //  - how to implement an efficient iterator? If we want to traverse the tree often, then we should
+  //    use a std::set and add to it every time a node is added (probably worth it). Otherwise, manually
+  //    do a level-order traversal every time????
+
+} // namespace AutoMP
