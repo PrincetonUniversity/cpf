@@ -22,7 +22,8 @@ namespace AutoMP
     void setLoop(Loop *l) { loop = l; }
     Loop *getLoop() { return loop; }
 
-    bool operator<(const Annotation &b) const { return true; } // for std::set::insert
+    bool operator<(const Annotation &a) const { return true; } // for std::set::insert
+    bool operator=(const Annotation &a) const { return !key.compare(a.key) && !value.compare(a.value); }
 
   private:
     Loop *loop;

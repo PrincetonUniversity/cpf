@@ -18,13 +18,13 @@ using namespace llvm;
 namespace AutoMP
 {
 
-  std::set<std::pair<std::string, std::string> > getMetadataAsStrings(Instruction *i)
+  static std::set<std::pair<std::string, std::string> > getMetadataAsStrings(Instruction *i)
   {
     std::set<std::pair<std::string, std::string> > meta_vec;
     MDNode *meta = i->getMetadata("note.noelle");
     if ( meta )
     {
-      errs() << "Found noelle metadata for instruction " << *&i << "\n";
+      LLVM_DEBUG( errs() << "Found noelle metadata for instruction " << *&i << "\n"; );
       auto operands = meta->operands();
       for ( auto &op : operands )
       {
@@ -35,7 +35,7 @@ namespace AutoMP
         MDString *value = dyn_cast<MDString>(casted_meta->getOperand(1));
         assert( key && value && "Couldn't cast key or value from annotation" );
 
-        errs() << "key: " << key->getString() << ", value: " << value->getString() << "\n";
+        LLVM_DEBUG( errs() << "key: " << key->getString() << ", value: " << value->getString() << "\n"; );
         meta_vec.emplace(key->getString(), value->getString());
       }
     }
@@ -107,6 +107,32 @@ namespace AutoMP
     return nullptr;
   }
 
+  std::vector<Node *> FunctionTree::getNodesInPreorder(Node *start)
+  {
+    std::vector<Node *> retval = { start };
+    if ( start->getChildren().size() == 0 )
+      return retval;
+    for ( auto &n : start->getChildren() )
+    {
+      std::vector<Node *> child_nodes = getNodesInPreorder( n );
+      retval.insert( retval.end(), child_nodes.begin(), child_nodes.end() );
+    }
+    return retval;
+  }
+
+  std::vector<Node *> FunctionTree::getAllLoopContainerNodes(void)
+  {
+    std::vector<Node *> retval;
+    std::vector<Node *> all_nodes = getNodesInPreorder( root );
+    for ( auto &n : all_nodes )
+      if ( n->containsAnnotationWithKey( "__loop_container" ) )
+        retval.push_back( n );
+
+    return retval;
+  }
+
+  // this function adds loop-container nodes to the tree that will end up being parents to all respective subloops (both
+  // subloop-container nodes and basic blocks )
   void FunctionTree::addLoopsToTree(LoopInfo &li)
   {
     std::set<Loop *> visited_loops;
@@ -243,6 +269,7 @@ namespace AutoMP
       }
     }
 
+    // if we didn't have to split basic blocks, don't continue with the rest
     if ( !modified )
       return false;
 
@@ -284,6 +311,10 @@ namespace AutoMP
     }
 
     return true;
+  }
+
+  bool FunctionTree::handleOwnedAnnotations(void)
+  {
   }
 
   // construct a tree for each function in program order

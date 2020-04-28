@@ -40,6 +40,8 @@ namespace AutoMP {
     Node *findNodeForLoop(Node *start, Loop *l); // level-order traversal
     Node *findNodeForBasicBlock(Node *start, BasicBlock *bb);
     Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a); // search upward from a node to find first node with matching annotation
+    std::vector<Node *> getNodesInPreorder(Node *start);
+    std::vector<Node *> getAllLoopContainerNodes(void);
 
     void addLoopsToTree( LoopInfo &li );
     void annotateLoops();
@@ -51,6 +53,7 @@ namespace AutoMP {
     void backAnnotateLoopFromBasicBlocks(Loop *l);
 
     bool handleCriticalAnnotations(void);
+    bool handleOwnedAnnotations(void);
 
     Function *associated_function;
     Node *root;

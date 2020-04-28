@@ -30,6 +30,9 @@ namespace AutoMP {
     void setBB(BasicBlock *bb) { basic_block = bb; }
     BasicBlock *getBB(void) { return basic_block; }
 
+    bool containsAnnotationWithKey(std::string s) const;
+    bool containsAnnotation(const Annotation &a) const;
+
     std::ostream &recursivePrint(std::ostream &) const;
     friend std::ostream &operator<<(std::ostream &, const Node *);
 
