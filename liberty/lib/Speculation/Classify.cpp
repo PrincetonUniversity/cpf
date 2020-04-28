@@ -20,6 +20,7 @@
 #include "liberty/Orchestration/ShortLivedAA.h"
 #include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Orchestration/TXIOAA.h"
+#include "liberty/Orchestration/TalkdownAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/ControlSpeculator.h"
@@ -54,6 +55,7 @@ stable_hash_code stable_hash<SpecPriv::AU const&>(SpecPriv::AU const &au)
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace AutoMP;
 
 STATISTIC(numClassified, "Parallel regions selected #regression");
 
@@ -138,6 +140,10 @@ bool Classify::runOnModule(Module &mod)
 
     SimpleAA simpleaa;
     simpleaa.InitializeLoopAA(this, mod.getDataLayout());
+
+    // put this at the end so it's actually added to the top
+    TalkdownAA talkdownaa;
+    talkdownaa.InitializeLoopAA(this, mod.getDataLayout());
 
     KillFlow_CtrlSpecAware *killflow_aware =
         &getAnalysis<KillFlow_CtrlSpecAware>();
