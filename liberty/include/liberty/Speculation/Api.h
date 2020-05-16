@@ -430,7 +430,7 @@ struct Api
   Constant *getSetLoopID()
   {
     std::string name = (Twine(personality) + "_set_loopID").str();
-    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
     return cast<Constant>(wrapper.getCallee());
   }
 
