@@ -1,3 +1,19 @@
+// linux
+  "__acos_finite",
+  "__acosh_finite",
+  "__asin_finite",
+  "__atanh_finite",
+  "__atan2_finite",
+  "__cosh_finite",
+  "__exp_finite",
+  "__fmod_finite",
+  "__hypot_finite",
+  "__j0_finite",
+  "__j1_finite",
+  "__log_finite",
+  "__log10_finite",
+  "__sinh_finite",
+
 // txio
   "__root_epoch",
   "__open_subepoch",
@@ -129,6 +145,7 @@
   "coshf",
   "coshl",
   "cosl",
+  "div",
   "erf",
   "erfc",
   "erfcf",
