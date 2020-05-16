@@ -269,9 +269,13 @@ Remediator::RemedResp ControlSpecRemediator::ctrldep(const Instruction *A,
 
   assert(A->isTerminator());
 
-  if (speculator->misspecInProfLoopExit(A))
-    remedy->cost = 0;
+  if (speculator->misspecInProfLoopExit(A)) {
+    // avoid spec on loop exits completely
+    remedResp.remedy = remedy;
+    return remedResp;
+
     //remedy->cost = EXPENSIVE_CTRL_REMED_COST;
+  }
 
   remedResp.depRes = DepResult::NoDep;
   LLVM_DEBUG(errs() << "CtrlSpecRemed removed ctrl dep between inst " << *A
