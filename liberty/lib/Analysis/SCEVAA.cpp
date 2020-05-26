@@ -190,12 +190,12 @@ public:
 
   void delinearize(ScalarEvolution *SE, const Pointer &P, const APInt &size,
                    SmallVectorImpl<const SCEV *> &Sizes,
-                   const SCEVUnknown *ptrBase) {
+                   const SCEVUnknown **ptrBase) {
     const SCEV *pSCEV = SE->getSCEV(const_cast<Value *>(P.ptr));
 
-    ptrBase = dyn_cast<SCEVUnknown>(SE->getPointerBase(pSCEV));
-    if (ptrBase) {
-      const SCEV *spSCEV = SE->getMinusSCEV(pSCEV, ptrBase);
+    *ptrBase = dyn_cast<SCEVUnknown>(SE->getPointerBase(pSCEV));
+    if (*ptrBase) {
+      const SCEV *spSCEV = SE->getMinusSCEV(pSCEV, *ptrBase);
 
       const SCEVAddRecExpr *sAR = dyn_cast<SCEVAddRecExpr>(spSCEV);
 
@@ -621,8 +621,8 @@ public:
       SmallVector<const SCEV *, 4> Sizes1;
       const SCEVUnknown *ptrBase2;
       SmallVector<const SCEV *, 4> Sizes2;
-      delinearize(SE, P1, size1, Sizes1, ptrBase1);
-      delinearize(SE, P2, size2, Sizes2, ptrBase2);
+      delinearize(SE, P1, size1, Sizes1, &ptrBase1);
+      delinearize(SE, P2, size2, Sizes2, &ptrBase2);
 
       bool multiDimArrayEligible =
           !innerMostLoopAccess &&
