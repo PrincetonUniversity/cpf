@@ -274,10 +274,9 @@ struct Api
     formals[0] = voidptr;
     FunctionType *fty = FunctionType::get(voidty, formals, false);
     std::string name = (Twine(personality) + "_misspec").str();
-    AttributeList Attr;
-    Attr = Attr.addAttribute(mod->getContext(), 0, Attribute::NoReturn);
-    FunctionCallee cc = mod->getOrInsertFunction(name, fty, Attr);
-    return cast<Constant>(cc.getCallee());
+    Function *cc = mod->getFunction(name);
+    cc->setDoesNotReturn();
+    return cc;
   }
 
   Constant *getCurrentIter()
