@@ -157,12 +157,6 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
   BasicBlock *preheader_on = createOnIteration(
     strategy,stageno,stage2queue,fcn,vmap_on,dt,pdt);
 
-  //errs() << *fcn << "\n";
-  //for (Function::iterator bi = fcn->begin() ; bi != fcn->end() ; bi++)
- // {
-  //  BasicBlock *bb = &*bi;
-  //  errs() << *bb << "\n";
- // }
   BasicBlock *preheader = 0;
   if( stage.type == PipelineStage::Sequential )
     preheader = preheader_on;
@@ -500,7 +494,7 @@ BasicBlock *MTCG::stitchLoops(
   Value *cmp  = CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, phase, repId, "on/off", newHeader);
   BranchInst::Create(preheader_on,preheader_off,cmp, newHeader);
 
-  //errs() << "Susan: right before adding OFF preheader\n";
+  preheader_on->setName( "ON." + preheader_on->getName() );
   preheader_off->setName( "OFF." + preheader_off->getName() );
 
   return newPreheader;
@@ -759,7 +753,6 @@ BasicBlock *MTCG::copyInstructions(
   // Optional
   Twine blockNameSuffix)
 {
-  //errs() << "printing loop "<< *loop << "\n";
   BasicBlock *header = loop->getHeader();
   BasicBlock *loop_preheader = loop->getLoopPreheader();
   Module *mod = header->getParent()->getParent();
@@ -858,14 +851,12 @@ BasicBlock *MTCG::copyInstructions(
         }
       }
 
-      //errs() << "SUSAN: " << *cloneBB << "\n";
       //errs() << "BB:\n" << *bb << "\n     Clone:\n"  << *cloneBB << "\n";
 
       // If this block did not get a terminator,
       // we add an unconditional branch.
-      if( cloneBB->empty() || ! cloneBB->getTerminator()  )
+      if( cloneBB->empty() || ! cloneBB->getTerminator() )
       {
-        //errs() << "Susan: didn't get terminator\n";
         Instruction *oldTerm = bb->getTerminator();
 //          assert( cs.isSpeculativelyUnconditional(oldTerm)
 //          && "Blocks with default branch must have unconditional branch");
@@ -875,10 +866,8 @@ BasicBlock *MTCG::copyInstructions(
         for(unsigned sn=0, N=oldTerm->getNumSuccessors(); sn<N; ++sn)
         {
           if( cs.isSpeculativelyDead(oldTerm,sn) )
-          {
-            //errs() << "Susan: speculatively dead\n";
             continue;
-          }
+
           ControlSpeculation::LoopBlock crpd = closestRelevantPostdom(
             oldTerm->getSuccessor(sn), rel, pdt, cache_crpd);
           assert( crpd.isValid() && "closestRelevantPostdom invalid");
@@ -1062,7 +1051,6 @@ BasicBlock *MTCG::copyInstructions(
   for(BBVec::iterator i=newBlocks.begin(), e=newBlocks.end(); i!=e; ++i)
   {
     BasicBlock *bb = *i;
-    //errs() << *bb << "\n";
 
     for(BasicBlock::iterator j=bb->begin(), jj=bb->end(); j!=jj; ++j)
     {
@@ -1200,8 +1188,6 @@ BasicBlock *MTCG::copyInstructions(
 
         bool predMayReachBB = false;
         Instruction *term = pred->getTerminator();
-        //errs() << *pred << "\n";
-        assert(term && "no terminator\n");
         for(unsigned sn=0, SN=term->getNumSuccessors(); sn<SN; ++sn)
           if( term->getSuccessor(sn) == bb )
           {
@@ -1358,7 +1344,6 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
                                    const PipelineStage &stage,
                                    const Stage2Value &stage2queue,
                                    const int num_stages) {
-  //errs() << "Susan: markIterationBoundaries invoked?\n";
   BasicBlock *originalLoopHeader = strategy.loop->getHeader();
   Function *fcn = preheader->getParent();
   Module *mod = fcn->getParent();
@@ -1433,7 +1418,6 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
     BasicBlock *dest = term->getSuccessor(sn);
 
     {
-      //errs() << "Susan: is end.iter created?\n";
       BasicBlock *split = BasicBlock::Create(ctx, "end.iter", fcn);
 
       // Update PHIs in dest
