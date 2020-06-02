@@ -319,7 +319,7 @@ bool LoopProf::runOnModule(Module& M)
   ReturnInst::Create(M.getContext(), initor_entry);
 
   // Function has been created, now add it to the global ctor list
-  callBeforeMain(func_lamp_initor, 65534);
+  callBeforeMain(func_lamp_initor, 0);
 
 
   return false;
