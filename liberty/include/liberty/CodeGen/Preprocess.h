@@ -122,7 +122,7 @@ private:
   // collect all the AUs that appeared in various types of selected
   // privitization remedies
   HeapAssignment::AUSet normalPrivAUs;
-  //HeapAssignment::AUSet localPrivAUs;
+  HeapAssignment::AUSet localPrivAUs;
   HeapAssignment::AUSet killPrivAUs;
   HeapAssignment::AUSet predPrivAUs;
   HeapAssignment::AUSet privateerPrivAUs;
