@@ -361,7 +361,7 @@ const RecoveryFunction &Preprocess::getRecoveryFunction(Loop *loop) const
   return recovery.getRecoveryFunction(loop);
 }
 
-
+/*
 bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
   if (const AllocaInst *alloca = dyn_cast<AllocaInst>(alloc)) {
     // find uses of alloca by @llvm.lifetime.start and lifetime.end
@@ -398,7 +398,7 @@ bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
   }
   return false;
 }
-
+*/
 
 // TODO: create new family for local-privates
 // temporarily move them to killPrivs (no need to memcpy to main memory though
@@ -406,7 +406,7 @@ bool isLocalPrivateAU(const Value *alloc, const Loop *L) {
 // share the same property)
 
 // StackLocals and PrivLocals are assigned in killpriv heap during classification
-
+/*
 void Preprocess::moveStackLocals(HeapAssignment &asgn, const Loop *L) {
   HeapAssignment::AUSet &privs = asgn.getPrivateAUs();
   //HeapAssignment::AUSet &locals = asgn.getLocalAUs();
@@ -453,7 +453,7 @@ void Preprocess::moveLocalPrivs(HeapAssignment &asgn) {
     localCount++;
   }
 }
-
+*/
 
 // full-overlap is now handled during classificiation.
 // only predictable objects are moved from privs to killpriv here
@@ -664,13 +664,13 @@ void Preprocess::init(ModuleLoops &mloops)
           }
           */
         } else if (remed->getRemedyName().equals("priv-local-remedy")) {
-          //assert(false && "priv-local should be generated during classification");
-          collectRelevantAUs(privRemed->privPtr, spresults,
-                             loop_ctx, localPrivAUs);
+          assert(false && "priv-local should be generated during classification");
+          //collectRelevantAUs(privRemed->privPtr, spresults,
+           //                  loop_ctx, localPrivAUs);
         } else if (remed->getRemedyName().equals("priv-full-overlap-remedy")) {
-          //assert(false && "priv-full-overlap should be generated during classification");
-          collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
-                             killPrivAUs);
+          assert(false && "priv-full-overlap should be generated during classification");
+          //collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
+            //                 killPrivAUs);
         }
       }
       else if (remed->getRemedyName().equals("txio-remedy")) {
