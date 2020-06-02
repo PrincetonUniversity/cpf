@@ -464,7 +464,6 @@ const Instruction *getGravityInstFromRemed(Remedy_ptr &remed) {
 void populateRemedCostPerStage(LoopParallelizationStrategy *strategy, Loop *L,
                                SelectedRemedies &remeds) {
   unsigned unknownStageCnt = 0;
-
   for (auto remed : remeds) {
     // find gravity inst
     const Instruction *gravity = getGravityInstFromRemed(remed);
@@ -853,10 +852,12 @@ bool Selector::doSelection(
   for(unsigned i=0, N=toDelete.size(); i<N; ++i)
   {
     Loop *deleteme = toDelete[i];
-
-    auto *strat = strategies[deleteme->getHeader()].get();
-    populateRemedCostPerStage(strat, deleteme,
+    if(selectedRemedies[deleteme->getHeader()])
+    {
+      auto *strat = strategies[deleteme->getHeader()].get();
+      populateRemedCostPerStage(strat, deleteme,
                               *selectedRemedies[deleteme->getHeader()]);
+    }
 
     // 'deleteme' is a loop we will NOT parallelize.
     if (DebugFlag &&
