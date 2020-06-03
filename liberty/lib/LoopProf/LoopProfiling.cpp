@@ -196,10 +196,9 @@ bool LoopProf::runOnModule(Module& M)
       {
         Instruction *inst = &*j;
 
-        if( isa<CallInst>(inst) )
+        if( CallBase  *call = dyn_cast<CallBase>(inst) ){
           calls.push_back(inst);
-        else if( isa<InvokeInst>(inst) )
-          calls.push_back(inst);
+        }
       }
 
     /* Using the same structures as loops to track time spent in functions
@@ -258,6 +257,15 @@ bool LoopProf::runOnModule(Module& M)
       Instruction *inst = *i;
 
       ++numLoops;
+
+      // Ziyang: need to ignore all llvm.* instrinsics
+
+      Function *fcn = dyn_cast<CallBase>(inst)->getCalledFunction();
+      if (fcn){ // the other case is indirect call
+        if (fcn->getName().startswith("llvm."))
+          continue;
+      }
+
       Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops );
       InstInsertPt::Before(inst) << CallInst::Create(InvocFn, Args);
 
