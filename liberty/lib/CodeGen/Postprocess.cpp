@@ -309,7 +309,7 @@ private:
   {
     bool modified = false;
 
-    IntegerType *u8 = Type::getInt8Ty(bbi->getContext());
+    IntegerType *u64 = Type::getInt64Ty(bbi->getContext());
 
     for(CallsByBlock::iterator k=group.lower_bound(bbi); k!=group.upper_bound(bbi); ++k)
     {
@@ -343,14 +343,14 @@ private:
         if( heapj != -1 )
           if( heapi == heapj )
           {
-            csj.setArgument(1, ConstantInt::get(u8,-1) );
+            csj.setArgument(1, ConstantInt::get(u64,-1) );
             modified = true;
             ++numHeapRedundantUO;
           }
         if( subheapj != -1 )
           if( subheapi == subheapj )
           {
-            csj.setArgument(2, ConstantInt::get(u8,-1) );
+            csj.setArgument(2, ConstantInt::get(u64,-1) );
             modified = true;
             ++numSubHeapRedundantUO;
           }
@@ -364,7 +364,7 @@ private:
   {
     bool modified = false;
 
-    IntegerType *u8 = Type::getInt8Ty(fcn->getContext());
+    IntegerType *u64 = Type::getInt64Ty(fcn->getContext());
 
     const DataLayout &DL = fcn->getParent()->getDataLayout();
 
@@ -426,13 +426,13 @@ private:
         if( heapMustBeCorrect && -1 != heap )
         {
           LLVM_DEBUG(errs() << "Heap must be correct in " << *check << '\n');
-          cs.setArgument(1, ConstantInt::get(u8,-1));
+          cs.setArgument(1, ConstantInt::get(u64,-1));
           ++numHeapCorrectUO;
         }
         if( subheapMustBeCorrect && -1 != subheap )
         {
           LLVM_DEBUG(errs() << "Sub-heap must be correct in " << *check << '\n');
-          cs.setArgument(2, ConstantInt::get(u8,-1));
+          cs.setArgument(2, ConstantInt::get(u64,-1));
           ++numSubHeapCorrectUO;
         }
 
