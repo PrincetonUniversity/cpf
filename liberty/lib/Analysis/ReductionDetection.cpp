@@ -9,7 +9,7 @@
 namespace liberty
 {
   cl::opt<bool> FAST_MATH(
-    "fast-math", cl::init(true), cl::NotHidden,
+    "fast-math", cl::init(false), cl::NotHidden,
     //"fast-math", cl::init(false), cl::NotHidden,
     cl::desc("Fast math---allow transforms which may change floating point results slightly."));
 
@@ -29,7 +29,7 @@ bool isDefUseForPHI(const PHINode *dst, const Instruction *addInst)
 
 bool isAddInst(const Instruction *src)
 {
-  if (src->getOpcode() == Instruction::Add || src->getOpcode() == Instruction::FAdd )
+  if (src->getOpcode() == Instruction::Add )
     return true;
 
   if( FAST_MATH && src->getOpcode() == Instruction::FAdd)
