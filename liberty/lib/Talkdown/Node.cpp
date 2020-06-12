@@ -12,6 +12,13 @@ using namespace llvm;
 
 namespace AutoMP
 {
+  unsigned int Node::how_many = 0;
+
+  Node::~Node()
+  {
+    how_many--;
+  }
+
   bool Node::containsAnnotationWithKey(std::string s) const
   {
     for ( auto &a : annotations )

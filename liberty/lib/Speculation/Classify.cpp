@@ -85,6 +85,7 @@ void Classify::getAnalysisUsage(AnalysisUsage &au) const
   au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   au.addRequired< Targets >();
   au.addRequired< ProfilePerformanceEstimator >();
+  /* au.addRequired< TalkdownAA >(); */
   au.setPreservesAll();
 }
 

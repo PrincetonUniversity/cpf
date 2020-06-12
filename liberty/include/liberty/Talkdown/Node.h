@@ -6,16 +6,23 @@
 #include "llvm/Analysis/LoopInfo.h"
 
 #include <set>
+#include <vector>
 
 #include "Annotation.h"
 
 using namespace llvm;
 
 namespace AutoMP {
+
+	/// Node class for representing SESE regions or loops or a function (only root node).
+	/// Note that nodes not attached to a tree are not allowed, since how_many will be screwed up
   struct Node
   {
   public:
-    Node() : parent(nullptr), loop(nullptr), basic_block(nullptr) {}
+    Node() : Node(nullptr, nullptr, nullptr) {}
+		Node( Node *p, Loop *l = nullptr, BasicBlock *bb = nullptr, std::vector<Annotation> v = std::vector<Annotation>() ) :
+			parent(p), loop(l), basic_block(bb) {}
+		~Node();
 
     Node *getParent(void) { return parent; }
     void setParent(Node *p) { parent = p; }
@@ -38,6 +45,8 @@ namespace AutoMP {
 
     // TODO: make this private
     std::set<Annotation> annotations; // should this be a set? most likely
+
+		static unsigned int how_many;
 
   private:
     int ID;

@@ -2,12 +2,15 @@
 
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Talkdown/Tree.h"
 
+#include <algorithm>
 #include <iostream>
+#include <unordered_set>
 #include <set>
 #include <string>
 #include <utility>
@@ -17,14 +20,27 @@ using namespace llvm;
 
 namespace AutoMP
 {
+  // since std::unordered_set uses std::hash to compare (which std::pair doesn't define) we need to
+  // define our own hash function for a pair
+	struct pair_hash
+	{
+		template <class T1, class T2>
+		std::size_t operator () (std::pair<T1, T2> const &pair) const
+		{
+			std::size_t h1 = std::hash<T1>()(pair.first);
+			std::size_t h2 = std::hash<T2>()(pair.second);
 
-  static std::set<std::pair<std::string, std::string> > getMetadataAsStrings(Instruction *i)
+			return h1 ^ h2;
+		}
+	};
+
+  std::unordered_set<std::pair<std::string, std::string>, pair_hash > getMetadataAsStrings(Instruction *i)
   {
-    std::set<std::pair<std::string, std::string> > meta_vec;
+    std::unordered_set<std::pair<std::string, std::string>, pair_hash > meta_vec;
     MDNode *meta = i->getMetadata("note.noelle");
     if ( meta )
     {
-      LLVM_DEBUG( errs() << "Found noelle metadata for instruction " << *&i << "\n"; );
+      /* LLVM_DEBUG( errs() << "Found noelle metadata for instruction " << *&i << "\n"; ); */
       auto operands = meta->operands();
       for ( auto &op : operands )
       {
@@ -35,7 +51,7 @@ namespace AutoMP
         MDString *value = dyn_cast<MDString>(casted_meta->getOperand(1));
         assert( key && value && "Couldn't cast key or value from annotation" );
 
-        LLVM_DEBUG( errs() << "key: " << key->getString() << ", value: " << value->getString() << "\n"; );
+        /* LLVM_DEBUG( errs() << "key: " << key->getString() << ", value: " << value->getString() << "\n"; ); */
         meta_vec.emplace(key->getString(), value->getString());
       }
     }
@@ -233,6 +249,42 @@ namespace AutoMP
 
   }
 
+  bool FunctionTree::splitBasicBlocksByAnnotation(void)
+  {
+    for ( auto &bb : *associated_function )
+    {
+      std::unordered_set<std::pair<std::string, std::string>, pair_hash > prev_meta; // seen metadata
+      for ( auto &i : bb )
+      {
+        if ( isa<IntrinsicInst>(&i) )
+        {
+          /* LLVM_DEBUG(errs() << "Encountered llvm intrinsic -- " << *&i << "; continuing\n";); */
+          continue;
+        }
+
+        auto meta = getMetadataAsStrings( &i );
+        std::unordered_set<std::pair<std::string, std::string>, pair_hash > current_meta =
+          std::unordered_set<std::pair<std::string, std::string>, pair_hash >(meta);
+
+        if ( prev_meta.size() != 0 && meta != prev_meta ) // found mismatch
+        {
+          // invalidated_bbs.insert( i.getParent() );
+          LLVM_DEBUG(errs() << "Found mismatch at " << *&i << "\n";);
+          LLVM_DEBUG(errs() << "Previous metadata was:\n";);
+          for ( auto &m : prev_meta )
+            LLVM_DEBUG(errs() << m.first << ": " << m.second << "\n";);
+          LLVM_DEBUG(errs() << "Current metadata is:\n";);
+          for ( auto &m : current_meta )
+            LLVM_DEBUG(errs() << m.first << ": " << m.second << "\n";);
+        }
+
+        prev_meta = current_meta;
+      }
+    }
+
+    return false;
+  }
+
   // need to find out which loop the critical annotation corresponds to
   // returns true if modified
   bool FunctionTree::handleCriticalAnnotations(void)
@@ -246,6 +298,7 @@ namespace AutoMP
     for ( auto &bb : *associated_function )
     {
       bool found_crit = false;
+
       for ( auto &i : bb )
       {
         auto meta = getMetadataAsStrings( &i );
@@ -366,7 +419,8 @@ namespace AutoMP
 
     addBasicBlocksToLoops( li );
 
-    modified |= handleCriticalAnnotations();
+    modified |= splitBasicBlocksByAnnotation();
+    /* modified |= handleCriticalAnnotations(); */
 
     return modified;
   }

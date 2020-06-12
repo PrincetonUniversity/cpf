@@ -14,6 +14,7 @@ using namespace AutoMP;
 
 namespace AutoMP {
 
+
   class FunctionTree
   {
   public:
@@ -24,10 +25,6 @@ namespace AutoMP {
     bool constructTree(Function *f, LoopInfo &li); // should use this instead
 
     bool constructTreeFromNode(Node *n); // use subtrees later for something???
-
-    /* SESENode *getInnermostNode(Instruction *); */
-    /* SESENode *getParent(SESENode *); */
-    /* SESENode *getFirstCommonAncestor(SESENode *, SESENode *); */
 
     friend std::ostream &operator<<(std::ostream &, const FunctionTree &);
 
@@ -52,6 +49,7 @@ namespace AutoMP {
     // If something like a "critical" pragma is attached to a basic block, do something
     void backAnnotateLoopFromBasicBlocks(Loop *l);
 
+    bool splitBasicBlocksByAnnotation(void);
     bool handleCriticalAnnotations(void);
     bool handleOwnedAnnotations(void);
 
