@@ -576,7 +576,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
           //the last element is an array of i8
           if (ArrayType *arrty = dyn_cast<ArrayType>(structty1->getElementType(N1 - 1))){
             IntegerType *elmty = dyn_cast<IntegerType>(arrty->getElementType());
-            if (elmty->getBitWidth() == 8){
+            if (elmty && elmty->getBitWidth() == 8){
               checkN = N2;
               isAlignedDifference = true;
             }
@@ -586,7 +586,7 @@ bool DevirtualizationAnalysis::areStructurallyEquivalentTransitively(Type *ty1, 
           //the last element is an array of i8
           if (ArrayType *arrty = dyn_cast<ArrayType>(structty2->getElementType(N2 - 1))){
             IntegerType *elmty = dyn_cast<IntegerType>(arrty->getElementType());
-            if (elmty->getBitWidth() == 8){
+            if (elmty && elmty->getBitWidth() == 8){
               checkN = N1;
               isAlignedDifference = true;
             }
