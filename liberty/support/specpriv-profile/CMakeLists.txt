@@ -3,14 +3,15 @@ file(GLOB SRCS
 )
 
 # Compilation flags
-set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17 -Wno-inline -O3 -fexceptions -emit-llvm")
-set(PassName "slamp_hooks")
+set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17 -fPIC")
+set(PassName "specprivprofruntime")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 #include(HandleLLVMOptions)
 include(AddLLVM)
 
 include_directories(./)
+include_directories(../smtx)
 
 add_llvm_library(${PassName} STATIC ${SRCS})
 add_llvm_library(${PassName}_shared SHARED ${SRCS})

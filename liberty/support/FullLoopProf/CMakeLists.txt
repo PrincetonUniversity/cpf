@@ -3,8 +3,8 @@ file(GLOB SRCS
 )
 
 # Compilation flags
-set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17 -Wno-inline -O3 -fexceptions -emit-llvm")
-set(PassName "slamp_hooks")
+set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17")
+set(PassName "FullLoopProf")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 #include(HandleLLVMOptions)
