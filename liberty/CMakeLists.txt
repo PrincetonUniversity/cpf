@@ -35,6 +35,7 @@ add_definitions(${LLVM_DEFINITIONS})
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
 
+# All include files for CPF
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_BINARY_DIR}/include
                     ${NOELLE_INSTALL_DIR}/include
