@@ -4,7 +4,7 @@ file(GLOB SRCS
 
 # Compilation flags
 set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17 -fPIC")
-set(PassName "Analysis")
+set(PassName "LoopProf")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 #include(HandleLLVMOptions)
