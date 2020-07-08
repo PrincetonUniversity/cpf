@@ -43,3 +43,4 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
 
 # Pass
 add_subdirectory(lib)
+add_subdirectory(support)
