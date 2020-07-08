@@ -1,0 +1,73 @@
+# Inspired by Rust's configuration file
+#
+# Sample TOML configuration file for building CPF.
+#
+# To configure build, copy this file to the directory from which you will be
+# running the build, and name it config.toml.
+#
+# All options are commented out by default in this file, and they're commented
+# out with their default values. The build system by default looks for
+# `config.toml` in the current directory of a build for build configuration, but
+# a custom configuration file can also be specified with `--config` to the build
+# system. (#TODO)
+
+# =============================================================================
+# Tweaking how LLVM is compiled
+# =============================================================================
+[llvm]
+# Indicate whether skipping buliding llvm locally, if skip=true, a prebuilt
+# path need to be provided
+#skip=false 
+
+# If skip=true, Path to the `llvm-config` binary of the installation of a
+# custom LLVM to link against. Note that if this is specified we don't
+# compile LLVM at all for this target.
+#llvm-config = "../path/to/llvm/root/bin/llvm-config"
+
+# Indicates whether the LLVM build is a Release or Debug build
+#optimize = both
+
+
+# =============================================================================
+# Tweaking how NOELLE is compiled
+# =============================================================================
+[noelle]
+# Indicate whether skipping buliding NOELLE locally, if skip=true, a
+# prebuilt path need to be provided
+#skip=false 
+
+# If skip=true, use this path to copy prebuilt NOELLE
+#prebuilt-install-dir="../path/to/noelle/install/"
+
+# If skip=false, use this url to clone and build NOELLE from scratch
+#remote-url=https://github.com/scampanoni/noelle.git
+
+# If skip=true, indicates whether the NOELLE build is a Release or Debug build
+#optimize = both
+
+
+# =============================================================================
+# Tweaking how CPF is compiled
+# =============================================================================
+[cpf]
+# Indicates whether the CPF build is a Release or Debug build
+#optimize = both
+
+
+# =============================================================================
+# General install configuration options
+# =============================================================================
+[install]
+#prefix = "~/cpf-workspace/"
+
+# Where to install llvm in `prefix` above
+#llvmdir = "llvm-install"
+
+# Where to install noelle in `prefix` above
+#noelledir = "noelle-install"
+
+# Where to install cpf in `prefix` above
+#cpfdir = "cpf-install"
+
+# Where to install environments in `prefix` above
+#environdir = "environs"
