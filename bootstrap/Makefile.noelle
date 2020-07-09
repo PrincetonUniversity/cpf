@@ -1,0 +1,29 @@
+BASE_DIR=$(shell pwd)
+NOELLE_REMOTE=/u/sa8/noelle
+ORIGINAL_PATH:=${PATH}
+LLVM_INSTALL_DEBUG=/u/ziyangx/llvm-workspace-9/llvm-install/
+LLVM_INSTALL_RELEASE=/u/ziyangx/llvm-workspace-9/llvm-install-release/
+
+all: noelle-objects-debug noelle-objects-release
+.PHONY: noelle-objects-debug noelle-objects-release clean
+
+noelle:
+	git clone -b master ${NOELLE_REMOTE} noelle
+
+clean:
+	cd ${BASE_DIR}
+	rm -rf noelle
+	rm -rf install-debug
+	rm -rf install-release
+
+noelle-objects-debug: export PDG_INSTALL_DIR=${BASE_DIR}/install-debug
+noelle-objects-debug: export PATH=${LLVM_INSTALL_DEBUG}/bin/:${ORIGINAL_PATH}
+noelle-objects-debug: noelle
+	cd ${BASE_DIR}
+	make -C noelle src
+	
+noelle-objects-release: export PDG_INSTALL_DIR=${BASE_DIR}/install-release
+noelle-objects-release: export PATH=${LLVM_INSTALL_RELEASER}/bin/:${ORIGINAL_PATH}
+noelle-objects-release: noelle
+	cd ${BASE_DIR}
+	make -C noelle src

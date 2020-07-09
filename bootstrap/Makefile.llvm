@@ -1,0 +1,42 @@
+BASE_DIR=$(shell pwd)
+INSTALL_DIR_DEBUG=${BASE_DIR}/llvm-install-debug
+INSTALL_DIR_RELEASE=${BASE_DIR}/llvm-install-release
+CONFIG_LLVM_DEBUG=-G "Unix Makefiles"  -DCMAKE_BUILD_TYPE="Debug" -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR_DEBUG} -DLLVM_TARGETS_TO_BUILD="X86" -DCMAKE_CXX_FLAGS="-std=c++17"
+CONFIG_LLVM_RELEASE=-G "Unix Makefiles"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR_RELEASE} -DLLVM_TARGETS_TO_BUILD="X86" -DCMAKE_CXX_FLAGS="-std=c++17"
+
+all: llvm-objects-debug llvm-objects-release
+.PHONY: llvm-objects-debug llvm-objects-release clean
+
+llvm:
+	svn co https://llvm.org/svn/llvm-project/llvm/branches/release_90 llvm	&& \
+	cd llvm/ &&           \
+	cd tools/ &&           \
+	svn co https://llvm.org/svn/llvm-project/cfe/branches/release_90 clang  &&  \
+	cd ../.. &&    \
+	cd llvm/projects && \
+	svn co https://llvm.org/svn/llvm-project/compiler-rt/branches/release_90 compiler-rt && \
+	cd ../..
+
+clean:
+	rm -rf llvm-install-debug
+	rm -rf llvm-install-release
+	rm -rf llvm-objects-debug
+	rm -rf llvm-objects-release
+
+llvm-objects-debug: llvm
+	cd ${BASE_DIR}
+	mkdir -p llvm-install-debug && 	\
+	mkdir -p llvm-objects-debug &&		\
+	cd llvm-objects-debug &&			\
+	cmake ${CONFIG_LLVM_DEBUG} ../llvm/ &&	\
+	make -j32 &&		\
+	make install
+
+llvm-objects-release: llvm
+	cd ${BASE_DIR}
+	mkdir -p llvm-install-release && 	\
+	mkdir -p llvm-objects-release &&			\
+	cd llvm-objects-release &&			\
+	cmake ${CONFIG_LLVM_RELEASE} ../llvm/ &&	\
+	make -j32 &&		\
+	make install
