@@ -19,12 +19,12 @@
 # path need to be provided
 #skip=false 
 
-# If skip=true, Path to the `llvm-config` binary of the installation of a
-# custom LLVM to link against. Note that if this is specified we don't
-# compile LLVM at all for this target.
-#llvm-config = "../path/to/llvm/root/bin/llvm-config"
+# If skip=true, provide paths to both the debug and the release versions
+#llvm-install-dir-debug = "../path/to/llvm/debug/install"
+#llvm-install-dir-relase = "../path/to/llvm/release/install"
 
-# Indicates whether the LLVM build is a Release or Debug build
+# Indicates whether the LLVM build is a Release or Debug build (both will
+# generate both versions)
 #optimize = both
 
 
@@ -36,13 +36,17 @@
 # prebuilt path need to be provided
 #skip=false 
 
-# If skip=true, use this path to copy prebuilt NOELLE
-#prebuilt-install-dir="../path/to/noelle/install/"
+# If skip=true, provide paths to both the debug and the release versions
+#noelle-install-dir-debug ="../path/to/noelle/debug/install/"
+#noelle-install-dir-release ="../path/to/noelle/release/install/"
 
 # If skip=false, use this url to clone and build NOELLE from scratch
-#remote-url=https://github.com/scampanoni/noelle.git
+#noelle-remote-url = "https://github.com/scampanoni/noelle.git"
+#noelle-remote-ur = "/u/sa8/noelle"
+#noelle-branch = "master"
 
 # If skip=true, indicates whether the NOELLE build is a Release or Debug build
+# (both will generate both versions)
 #optimize = both
 
 
@@ -51,6 +55,7 @@
 # =============================================================================
 [cpf]
 # Indicates whether the CPF build is a Release or Debug build
+# (both will generate both versions)
 #optimize = both
 
 
