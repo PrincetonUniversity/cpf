@@ -19,7 +19,6 @@ noelle:
 	git clone -b master ${NOELLE_REMOTE} noelle
 
 clean:
-	cd ${BASE_DIR}
 	rm -rf noelle
 	rm -rf noelle-install-debug
 	rm -rf noelle-install-release
@@ -27,11 +26,9 @@ clean:
 noelle-objects-debug: export PDG_INSTALL_DIR=${BASE_DIR}/noelle-install-debug
 noelle-objects-debug: export PATH=${LLVM_INSTALL_DEBUG}/bin/:${ORIGINAL_PATH}
 noelle-objects-debug: noelle
-	cd ${BASE_DIR}
 	make -C noelle src
 	
 noelle-objects-release: export PDG_INSTALL_DIR=${BASE_DIR}/noelle-install-release
 noelle-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 noelle-objects-release: noelle
-	cd ${BASE_DIR}
 	make -C noelle src

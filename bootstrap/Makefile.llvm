@@ -24,7 +24,6 @@ clean:
 	rm -rf llvm-objects-release
 
 llvm-objects-debug: llvm
-	cd ${BASE_DIR}
 	mkdir -p llvm-install-debug && 	\
 	mkdir -p llvm-objects-debug &&		\
 	cd llvm-objects-debug &&			\
@@ -33,7 +32,6 @@ llvm-objects-debug: llvm
 	make install
 
 llvm-objects-release: llvm
-	cd ${BASE_DIR}
 	mkdir -p llvm-install-release && 	\
 	mkdir -p llvm-objects-release &&			\
 	cd llvm-objects-release &&			\
