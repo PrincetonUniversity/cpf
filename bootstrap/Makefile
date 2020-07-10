@@ -1,7 +1,7 @@
 # !!!Read before any change!!!
 # For all the variable definitions
 # Don't use quotes
-# Don't have trailing spaces
+# Make sure there are no trailing spaces
 # "Enjoy GNU Make"
 
 ## Start of Configuration ##
@@ -40,7 +40,7 @@ noelle-branch=master
 ##############
 
 install-prefix=~/cpf-workspace-test
-cpf-root=/u/ziyangx/cpf-9
+cpf-root-path=/u/ziyangx/cpf-9
 # 1: verbose mode, print all internal cmake/make message to terminal
 verbose=0
 ## End of Configuration ##
@@ -132,14 +132,16 @@ endif
 
 cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
 cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
-cpf: export NOELLE_INSTALL_DEBUG=/u/sa8/CAT ### FIXME!!!
-cpf: export NOELLE_INSTALL_RELEASE=/u/sa8/CAT ### FIXME!!!
+###FIXME!!!
+cpf: export NOELLE_INSTALL_DEBUG=/u/sa8/CAT
+###FIXME!!!
+cpf: export NOELLE_INSTALL_RELEASE=/u/sa8/CAT
 cpf: export CPF_ROOT_PATH=${cpf-root-path}
 cpf: llvm noelle
 	mkdir -p ${install-prefix}
 	cp Makefile.cpf ${install-prefix}
 ifeq (${verbose}, 1)
-	${MAKE} -C ${intall-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1 | tee ${install-prefix}/cpf.log
+	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1 | tee ${install-prefix}/cpf.log
 else
-	${MAKE} -C ${intall-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
+	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
 endif
