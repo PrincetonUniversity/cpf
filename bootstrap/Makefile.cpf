@@ -25,7 +25,6 @@ all: cpf-objects-debug cpf-objects-release
 .PHONY: cpf-objects-debug cpf-objects-release clean
 
 clean:
-	cd ${BASE_DIR} && \
 	rm -rf cpf-install-debug && \
 	rm -rf cpf-install-release
 

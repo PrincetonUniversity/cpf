@@ -1,5 +1,6 @@
 BASE_DIR:=$(shell pwd)
-NOELLE_REMOTE=/u/sa8/noelle
+NOELLE_REMOTE?=/u/sa8/noelle
+NOELLE_BRANCH?=master
 ORIGINAL_PATH:=${PATH}
 #LLVM_INSTALL_DEBUG=/u/ziyangx/llvm-workspace-9/llvm-install/
 #LLVM_INSTALL_RELEASE=/u/ziyangx/llvm-workspace-9/llvm-install-release/
