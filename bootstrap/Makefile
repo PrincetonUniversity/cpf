@@ -59,7 +59,7 @@ ifeq (${compile-noelle}, 1)
 	noelle-install-dir-release=${install-prefix}/noelle-install-release
 endif
 
-all: llvm noelle cpf
+all: llvm noelle cpf env-debug.rc env-release.rc
 .PHONY: llvm noelle cpf clean
 
 clean:
@@ -67,7 +67,7 @@ clean:
 
 llvm:
 ifeq (${compile-llvm}, 1)
-	$(info Compiling LLVM from Scratch)
+	@echo Compiling LLVM from Scratch
 	mkdir -p ${install-prefix}
 	cp Makefile.llvm ${install-prefix}
 ifeq (${verbose}, 1)
@@ -85,15 +85,15 @@ ifndef llvm-install-dir-release
 	$(error Chose not to compile llvm but llvm-install-dir-release is not set)
 endif
 
-	$(info Using provided LLVM Debug and Release versions)
-    $(info LLVM Debug: ${llvm-install-dir-debug})
-    $(info LLVM Relase: ${llvm-install-dir-release})
+	@echo Using provided LLVM Debug and Release versions
+    @echo LLVM Debug: ${llvm-install-dir-debug}
+    @echo LLVM Relase: ${llvm-install-dir-release}
 	# DO NOTHING
 endif
 
 noelle:
 ifeq (${compile-noelle}, 1)
-	$(info Compiling NOELLE from Scratch)
+	@echo Compiling NOELLE from Scratch
 ifndef noelle-remote-url
 	$(error Chose to NOELLE but noelle-remote-url is not set)
 endif
@@ -123,7 +123,6 @@ else
 ifndef noelle-install-dir-debug 
 	$(error Chose not to compile noelle but noelle-install-dir-debug is not set)
 endif
-
 ifndef noelle-install-dir-release
 	$(error Chose not to compile noelle but noelle-install-dir-release is not set)
 endif
@@ -145,3 +144,14 @@ ifeq (${verbose}, 1)
 else
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
 endif
+
+env-debug.rc: llvm noelle cpf
+	rm -f $@
+	@echo Generating $@
+	#TODO: replace PC-{LLVM, NOELLE, CPF}
+
+
+env-release.rc: llvm noelle cpf
+	rm -f $@
+	@echo Generating $@ 
+	#TODO: replace PC-{LLVM, NOELLE, CPF}
