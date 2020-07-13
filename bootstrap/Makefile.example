@@ -59,11 +59,12 @@ ifeq (${compile-noelle}, 1)
 	noelle-install-dir-release=${install-prefix}/noelle-install-release
 endif
 
-all: llvm noelle cpf env-debug.rc env-release.rc
+all: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
 .PHONY: llvm noelle cpf clean
 
 clean:
 	- rm -rf ${install-prefix}
+
 
 llvm:
 ifeq (${compile-llvm}, 1)
@@ -145,13 +146,14 @@ else
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
 endif
 
-env-debug.rc: llvm noelle cpf
+cpf-env-debug.rc: llvm noelle cpf
 	rm -f $@
 	@echo Generating $@
-	#TODO: replace PC-{LLVM, NOELLE, CPF}
+	cp cpf-env.rc.template $@
+	sed -i "s/PC-LLVM/${LLVM_INSTALL_DEBUG}/g s/PC-NOELLE/${NOELLE_INSTALL_DEBUG}/g s/PC-CPF/${CPF_INSTALL_DEBUG}/g" $@
 
-
-env-release.rc: llvm noelle cpf
+cpf-env-release.rc: llvm noelle cpf
 	rm -f $@
 	@echo Generating $@ 
-	#TODO: replace PC-{LLVM, NOELLE, CPF}
+	cp cpf-env.rc.template $@
+	sed -i "s/PC-LLVM/${LLVM_INSTALL_RELEASE}/g s/PC-NOELLE/${NOELLE_INSTALL_RELEASE}/g s/PC-CPF/${CPF_INSTALL_RELEASE}/g" $@
