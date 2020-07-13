@@ -1,10 +1,11 @@
 file(GLOB SRCS
-    "*.cpp"
+    "*.c"
 )
 
 # Compilation flags
-set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17 -fPIC")
-set(PassName "specprivprofruntime")
+set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS 
+    "-O3 -fPIC -flto -std=c11") #"-D_GNU_SOURCE"
+set(PassName "specprivexecutive")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 #include(HandleLLVMOptions)
