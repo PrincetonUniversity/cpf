@@ -11,9 +11,9 @@
 ########
 compile-llvm=1
 
-## If compile-noelle=0, provide paths to both the debug and the release versions
-#llvm-install-dir-debug=/u/ziyangx/llvm-workspace-9/llvm-install
-#llvm-install-dir-release=/u/ziyangx/llvm-workspace-9/llvm-install-release
+## If compile-llvm=0, provide paths to both the debug and the release versions
+#llvm-install-dir-debug=/u/ziyangx/cpf-workspace-test/llvm-install-debug
+#llvm-install-dir-release=/u/ziyangx/cpf-workspace-test/llvm-install-release
 
 ##########
 # NOELLE #
@@ -21,8 +21,8 @@ compile-llvm=1
 compile-noelle=1
 
 ## If compile-noelle=0, provide paths to both the debug and the release versions
-#noelle-install-dir-debug ="../path/to/noelle/debug/install/"
-#noelle-install-dir-release ="../path/to/noelle/release/install/"
+#noelle-install-dir-debug=/u/ziyangx/cpf-workspace-test/noelle-install-debug
+#noelle-install-dir-release=/u/ziyangx/cpf-workspace-test/noelle-install-release
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
@@ -33,7 +33,10 @@ noelle-branch=master
 #######
 # CPF #
 #######
-
+compile-cpf=1
+## If compile-cpf=0, provide paths to both the debug and the release versions
+#cpf-install-dir-debug=/u/ziyangx/cpf-workspace-test/cpf-install-debug
+#cpf-install-dir-release=/u/ziyangx/cpf-workspace-test/cpf-install-release
 
 ##############
 # Installing #
@@ -45,7 +48,9 @@ cpf-root-path=/u/ziyangx/cpf-9
 verbose=0
 ## End of Configuration ##
 
+#######################################
 ## DON'T CHANGE ANYTHING BELOW HERE! ##
+#######################################
 
 # if llvm is compiled from scratch, then is the default one
 ifeq (${compile-llvm}, 1)
@@ -59,12 +64,17 @@ ifeq (${compile-noelle}, 1)
 	noelle-install-dir-release=${install-prefix}/noelle-install-release
 endif
 
+# if cpf is compiled from scratch, then is the default one
+ifeq (${compile-cpf}, 1)
+	cpf-install-dir-debug=${install-prefix}/cpf-install-debug
+	cpf-install-dir-release=${install-prefix}/cpf-install-release
+endif
+
 all: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
 .PHONY: llvm noelle cpf clean
 
 clean:
-	- rm -rf ${install-prefix}
-
+	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
 
 llvm:
 ifeq (${compile-llvm}, 1)
@@ -88,8 +98,7 @@ endif
 
 	@echo Using provided LLVM Debug and Release versions
     @echo LLVM Debug: ${llvm-install-dir-debug}
-    @echo LLVM Relase: ${llvm-install-dir-release}
-	# DO NOTHING
+    @echo LLVM Release: ${llvm-install-dir-release}
 endif
 
 noelle:
@@ -127,7 +136,9 @@ endif
 ifndef noelle-install-dir-release
 	$(error Chose not to compile noelle but noelle-install-dir-release is not set)
 endif
-	# DO NOTHING
+	@echo Using provided NOELLE Debug and Release versions
+	@echo NOELLE Debug: ${noelle-install-dir-debug}
+	@echo NOELLE Release: ${noelle-install-dir-release}
 endif
 
 cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
@@ -138,6 +149,8 @@ cpf: export NOELLE_INSTALL_DEBUG=/u/sa8/CAT
 cpf: export NOELLE_INSTALL_RELEASE=/u/sa8/CAT
 cpf: export CPF_ROOT_PATH=${cpf-root-path}
 cpf: llvm noelle
+ifeq (${compile-cpf}, 1)
+	@echo Compiling CPF from Scratch
 	mkdir -p ${install-prefix}
 	cp Makefile.cpf ${install-prefix}
 ifeq (${verbose}, 1)
@@ -145,15 +158,33 @@ ifeq (${verbose}, 1)
 else
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
 endif
+else
+ifndef cpf-install-dir-debug 
+	$(error Chose not to compile cpf but cpf-install-dir-debug is not set)
+endif
+
+ifndef cpf-install-dir-release
+	$(error Chose not to compile cpf but cpf-install-dir-release is not set)
+endif
+
+	@echo Using provided CPF Debug and Release versions
+	@echo CPF Debug: ${cpf-install-dir-debug}
+	@echo CPF Release: ${cpf-install-dir-release}
+endif
 
 cpf-env-debug.rc: llvm noelle cpf
 	rm -f $@
 	@echo Generating $@
 	cp cpf-env.rc.template $@
-	sed -i "s/PC-LLVM/${LLVM_INSTALL_DEBUG}/g s/PC-NOELLE/${NOELLE_INSTALL_DEBUG}/g s/PC-CPF/${CPF_INSTALL_DEBUG}/g" $@
+	#sed -i -e "s%'PC-LLVM'%'${llvm-install-dir-debug}'%g s%'PC-NOELLE'%'${noelle-install-dir-debug}'%g s%'PC-CPF'%'${cpf-install-dir-debug}'%g" $@
+	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g" $@
+	@echo Debug environment variables stored in $@
+	@echo
 
 cpf-env-release.rc: llvm noelle cpf
 	rm -f $@
 	@echo Generating $@ 
 	cp cpf-env.rc.template $@
-	sed -i "s/PC-LLVM/${LLVM_INSTALL_RELEASE}/g s/PC-NOELLE/${NOELLE_INSTALL_RELEASE}/g s/PC-CPF/${CPF_INSTALL_RELEASE}/g" $@
+	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g" $@
+	@echo  Release environment variables stored in $@
+	@echo
