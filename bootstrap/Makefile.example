@@ -71,7 +71,7 @@ ifeq (${compile-cpf}, 1)
 endif
 
 all: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
-.PHONY: llvm noelle cpf clean
+.PHONY: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
 
 clean:
 	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
@@ -148,7 +148,7 @@ cpf: export NOELLE_INSTALL_DEBUG=/u/sa8/CAT
 ###FIXME!!!
 cpf: export NOELLE_INSTALL_RELEASE=/u/sa8/CAT
 cpf: export CPF_ROOT_PATH=${cpf-root-path}
-cpf: llvm noelle
+cpf:
 ifeq (${compile-cpf}, 1)
 	@echo Compiling CPF from Scratch
 	mkdir -p ${install-prefix}
@@ -172,16 +172,15 @@ endif
 	@echo CPF Release: ${cpf-install-dir-release}
 endif
 
-cpf-env-debug.rc: llvm noelle cpf
+cpf-env-debug.rc:
 	rm -f $@
 	@echo Generating $@
 	cp cpf-env.rc.template $@
-	#sed -i -e "s%'PC-LLVM'%'${llvm-install-dir-debug}'%g s%'PC-NOELLE'%'${noelle-install-dir-debug}'%g s%'PC-CPF'%'${cpf-install-dir-debug}'%g" $@
 	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g" $@
 	@echo Debug environment variables stored in $@
 	@echo
 
-cpf-env-release.rc: llvm noelle cpf
+cpf-env-release.rc:
 	rm -f $@
 	@echo Generating $@ 
 	cp cpf-env.rc.template $@
