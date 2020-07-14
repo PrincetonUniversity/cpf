@@ -21,7 +21,7 @@
 #include "Assumptions.h"
 #include "PDG.hpp"
 #include "LoopDependenceInfo.hpp"
-#include "TaskExecution.hpp"
+#include "Task.hpp"
 
 #include <set>
 #include <unordered_set>
