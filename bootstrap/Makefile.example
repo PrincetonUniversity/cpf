@@ -170,17 +170,17 @@ endif
 endif
 
 cpf-env-debug.rc:
-	rm -f $@
-	@echo Generating $@
-	cp cpf-env.rc.template $@
-	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g" $@
-	@echo Debug environment variables stored in $@
+	rm -f ${install-prefix}/$@
+	@echo Generating ${install-prefix}/$@
+	cp cpf-env.rc.template ${install-prefix}/$@
+	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g" ${install-prefix}/$@
+	@echo Debug environment variables stored in ${install-prefix}/$@
 	@echo
 
 cpf-env-release.rc:
-	rm -f $@
-	@echo Generating $@ 
-	cp cpf-env.rc.template $@
-	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g" $@
-	@echo  Release environment variables stored in $@
+	rm -f ${install-prefix}/$@
+	@echo Generating ${install-prefix}/$@ 
+	cp cpf-env.rc.template ${install-prefix}/$@
+	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g" ${install-prefix}/$@
+	@echo  Release environment variables stored in ${install-prefix}/$@
 	@echo
