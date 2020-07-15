@@ -1,12 +1,13 @@
 #define DEBUG_TYPE "selector"
 
 #include "llvm/ADT/Statistic.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/Analysis/DOTGraphTraitsPass.h"
@@ -40,6 +41,7 @@
 
 #include "LoopDependenceInfo.hpp"
 #include "DGGraphTraits.hpp"
+#include "DominatorSummary.hpp"
 
 using namespace llvm;
 
@@ -188,7 +190,10 @@ unsigned Selector::computeWeights(
           << fA->getName() << " :: " << hA->getName() << "...\n");
 
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
+    DominatorTree &dt = mloops.getAnalysis_DominatorTree(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
+    std::unique_ptr<DominatorSummary> ds =
+        std::make_unique<DominatorSummary>(dt, pdt);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
 
     const HeapAssignment &asgn = classify.getAssignmentFor(A);
@@ -212,7 +217,7 @@ unsigned Selector::computeWeights(
       writeGraph<PDG>(pdgDotName, pdg);
 
       std::unique_ptr<LoopDependenceInfo> ldi =
-          std::make_unique<LoopDependenceInfo>(fA, pdg, A, li, se, pdt);
+          std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
 
       // trying to find the best parallelization strategy for this loop
 
