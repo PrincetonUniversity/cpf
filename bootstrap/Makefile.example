@@ -113,15 +113,14 @@ ifndef noelle-branch
 endif
 	mkdir -p ${install-prefix}
 	cp Makefile.noelle ${install-prefix}
-	# FIXME!!!
 ifeq (${verbose}, 1)
-	- LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
 	NOELLE_REMOTE=${noelle-remote-url} \
 	NOELLE_BRANCH=${noelle-branch} \
 	${MAKE} -C ${install-prefix} -f Makefile.noelle all 2>&1 | tee ${install-prefix}/noelle.log
 else
-	- LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
 	NOELLE_REMOTE=${noelle-remote-url} \
 	NOELLE_BRANCH=${noelle-branch} \
@@ -143,10 +142,8 @@ endif
 
 cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
 cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
-###FIXME!!!
-cpf: export NOELLE_INSTALL_DEBUG=/u/sa8/CAT
-###FIXME!!!
-cpf: export NOELLE_INSTALL_RELEASE=/u/sa8/CAT
+cpf: export NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug}
+cpf: export NOELLE_INSTALL_RELEASE=${noelle-install-dir-release}
 cpf: export CPF_ROOT_PATH=${cpf-root-path}
 cpf:
 ifeq (${compile-cpf}, 1)
