@@ -43,7 +43,7 @@ compile-cpf=1
 ##############
 
 install-prefix=~/cpf-workspace-test
-cpf-root-path=/u/ziyangx/cpf-9
+cpf-root-path=/your/local/cpf/root
 # 1: verbose mode, print all internal cmake/make message to terminal
 verbose=0
 ## End of Configuration ##
