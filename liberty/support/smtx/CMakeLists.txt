@@ -1,3 +1,6 @@
+#file(GLOB SRCS
+#    ${CMAKE_CURRENT_SOURCE_DIR}/*.h
+#)
 # set(SRCS
 #     "commit.c"
 #     "version.c"
@@ -49,7 +52,10 @@
 # install(TARGETS "sw_queue.noinline"
 #         DESTINATION lib)
 
-add_custom_target(smtx ALL)
-add_custom_command(TARGET smtx COMMAND make -f Makefile.original all)
+# FIXME!
+add_custom_target(smtx ALL COMMAND make -f Makefile.original WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+#add_custom_target(smtx ALL COMMAND make -f "${CMAKE_CURRENT_SOURCE_DIR}/Makefile.original" SOURCES ${SRCS})
+#add_custom_command(TARGET smtx POST_BUILD COMMAND cat bitcast.h DEPENDS bitcast.h)
+#add_custom_command(TARGET smtx POST_BUILD COMMAND make -f Makefile.original all)
 install(DIRECTORY .
-        DESTINATION support/smtx)
+        DESTINATION support/smtx/)
