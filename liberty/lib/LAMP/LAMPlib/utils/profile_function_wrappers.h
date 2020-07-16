@@ -1822,7 +1822,9 @@ int memprof_execl(const char *path, const char *arg0, ... /*, (char *)0 */) {
 
 /* Compiler/Glibc internals */
 void memprof___assert_fail(const char * assertion, const char * file, unsigned int line, const char * function) {
+#ifndef NDEBUG
     __assert_fail(assertion, file, line, function);
+#endif
 }
 
 const unsigned short int **memprof___ctype_b_loc(void) {
