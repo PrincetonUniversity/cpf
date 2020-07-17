@@ -2289,7 +2289,9 @@ char* SLAMP_nl_langinfo(nl_item item)
 
 void SLAMP___assert_fail(const char * assertion, const char * file, unsigned int line, const char * function)
 {
+#ifndef NDEBUG
   __assert_fail(assertion, file, line, function);
+#endif
 }
 
 const unsigned short int **SLAMP___ctype_b_loc(void)

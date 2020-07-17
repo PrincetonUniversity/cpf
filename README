@@ -1,5 +1,0 @@
-This repository uses sub-modules.
-
-To clone the repository and its sub-mdoules: git clone --recurse-submodules
-
-To clone only the sub-modules after you have cloned the repository: git submodule init ; git submodule update 
