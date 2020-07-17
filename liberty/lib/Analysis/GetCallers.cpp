@@ -23,7 +23,7 @@ namespace liberty
         if( cexp->isCast() && cexp->hasOneUse() )
         {
           cs = getCallSite( * cexp->user_begin() );
-          if( cs.getInstruction() )
+          if( cs.getInstruction() && (cs.getCalledFunction() == fcn))
           {
             callsitesOut.push_back(cs);
             continue;
