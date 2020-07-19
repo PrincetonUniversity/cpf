@@ -70,7 +70,14 @@ ifeq (${compile-cpf}, 1)
 	cpf-install-dir-release=${install-prefix}/cpf-install-release
 endif
 
-all: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
+.DEFAULT_GOAL:=default
+
+default:
+	@echo Run \`make all\` to compile and install all specified components.
+	@echo After the initial installation, run \`make cpf\` to only udpate cpf.
+	@echo Nothing has been done.
+
+all: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc copy-makefile
 .PHONY: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
 
 clean:
@@ -80,7 +87,7 @@ llvm:
 ifeq (${compile-llvm}, 1)
 	@echo Compiling LLVM from Scratch
 	mkdir -p ${install-prefix}
-	cp Makefile.llvm ${install-prefix}
+	- cp Makefile.llvm ${install-prefix}
 ifeq (${verbose}, 1)
 	$(MAKE) -C ${install-prefix} -f Makefile.llvm all 2>&1 | tee ${install-prefix}/llvm.log
 else
@@ -112,7 +119,7 @@ ifndef noelle-branch
 	$(error Chose to compile NOELLE but noelle-branch is not set)
 endif
 	mkdir -p ${install-prefix}
-	cp Makefile.noelle ${install-prefix}
+	- cp Makefile.noelle ${install-prefix}
 ifeq (${verbose}, 1)
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
@@ -149,7 +156,7 @@ cpf:
 ifeq (${compile-cpf}, 1)
 	@echo Compiling CPF from Scratch
 	mkdir -p ${install-prefix}
-	cp Makefile.cpf ${install-prefix}
+	- cp Makefile.cpf ${install-prefix}
 ifeq (${verbose}, 1)
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all 2>&1 | tee ${install-prefix}/cpf.log
 else
@@ -184,3 +191,7 @@ cpf-env-release.rc:
 	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g" ${install-prefix}/$@
 	@echo  Release environment variables stored in ${install-prefix}/$@
 	@echo
+
+copy-makefile:
+	mkdir -p ${install-prefix}
+	cp Makefile ${install-prefix}/Makefile
