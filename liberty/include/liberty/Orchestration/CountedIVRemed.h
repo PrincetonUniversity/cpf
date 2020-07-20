@@ -7,6 +7,7 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "PDG.hpp"
+#include "Noelle.hpp"
 
 namespace liberty {
 using namespace llvm;
@@ -22,17 +23,16 @@ public:
 
 class CountedIVRemediator : public Remediator {
 public:
-  CountedIVRemediator(ModuleLoops *ml) : Remediator(), mLoops(ml) {}
+  CountedIVRemediator(LoopDependenceInfo* LDI) : Remediator(), ldi(LDI) {}
 
   StringRef getRemediatorName() const { return "counted-iv-remediator"; }
 
-  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   const Loop *L);
+  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried);
 
-  RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
+  RemedResp ctrldep(const Instruction *A, const Instruction *B);
 
 private:
-  ModuleLoops *mLoops;
+  LoopDependenceInfo *ldi;
 };
 
 } // namespace liberty
