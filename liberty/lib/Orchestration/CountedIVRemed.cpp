@@ -28,8 +28,11 @@ bool CountedIVRemedy::compare(const Remedy_ptr rhs) const {
 
 Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
                                                   const Instruction *B,
-                                                  bool loopCarried,
-                                                  const Loop *L) {
+                                                  bool loopCarried){
+  auto livm = ldi->getInductionVariableManager();
+  auto ls   = ldi->getLoopStructure();
+  auto iv   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
+
   Remediator::RemedResp remedResp;
   // conservative answer
   remedResp.depRes = DepResult::Dep;
@@ -40,13 +43,9 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  Function* f = L->getHeader()->getParent();
-  ScalarEvolution *SE = &mLoops->getAnalysis_ScalarEvolution(f);
-  PHINode *phiIV = liberty::getInductionVariable(L, *SE);
-
-  if (phiIV && B == (Instruction *)phiIV) {
+  if (iv) {
     ++numNoRegDep;
-    remedy->ivPHI = phiIV;
+    remedy->ivPHI = iv->getLoopEntryPHI();
     remedResp.depRes = DepResult::NoDep;
   }
 
@@ -55,8 +54,10 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
 }
 
 Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
-                                                   const Instruction *B,
-                                                   const Loop *L) {
+                                                   const Instruction *B){
+  auto livm = ldi->getInductionVariableManager();
+  auto ls   = ldi->getLoopStructure();
+  auto iv   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
 
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -65,14 +66,10 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  Function* f = L->getHeader()->getParent();
-  ScalarEvolution *SE = &mLoops->getAnalysis_ScalarEvolution(f);
-  PHINode* phiIV = liberty::getInductionVariable(L,*SE);
-
   // remove all ctrl edges originating from branch controlled by a bounded IV
-  if (phiIV && B == (Instruction *)phiIV) {
+  if (iv) {
     ++numNoCtrlDep;
-    remedy->ivPHI = phiIV;
+    remedy->ivPHI = iv->getLoopEntryPHI();
     remedResp.depRes = DepResult::NoDep;
   }
 
