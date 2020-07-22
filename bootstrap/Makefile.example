@@ -89,6 +89,7 @@ ifeq (${compile-llvm}, 1)
 	mkdir -p ${install-prefix}
 	- cp Makefile.llvm ${install-prefix}
 ifeq (${verbose}, 1)
+	set -o pipefail; \
 	$(MAKE) -C ${install-prefix} -f Makefile.llvm all 2>&1 | tee ${install-prefix}/llvm.log
 else
 	$(MAKE) -C ${install-prefix} -f Makefile.llvm all > ${install-prefix}/llvm.log 2>&1
@@ -121,6 +122,7 @@ endif
 	mkdir -p ${install-prefix}
 	- cp Makefile.noelle ${install-prefix}
 ifeq (${verbose}, 1)
+	set -o pipefail; \
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
 	NOELLE_REMOTE=${noelle-remote-url} \
@@ -158,6 +160,7 @@ ifeq (${compile-cpf}, 1)
 	mkdir -p ${install-prefix}
 	- cp Makefile.cpf ${install-prefix}
 ifeq (${verbose}, 1)
+	set -o pipefail; \
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all 2>&1 | tee ${install-prefix}/cpf.log
 else
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
