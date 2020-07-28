@@ -42,10 +42,17 @@ compile-cpf=1
 # Installing #
 ##############
 
+# Make sure you have write privilege to both directories here
 install-prefix=~/cpf-workspace-test
 cpf-root-path=/your/local/cpf/root
+
 # 1: verbose mode, print all internal cmake/make message to terminal
 verbose=0
+
+# Number of workers to build LLVM/CPF, NOELLE will use as many core as possible
+# by default and we don't have control over it
+num-workers=16
+
 ## End of Configuration ##
 
 #######################################
@@ -77,12 +84,13 @@ default:
 	@echo After the initial installation, run \`make cpf\` to only udpate cpf.
 	@echo Nothing has been done.
 
-all: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc copy-makefile
-.PHONY: llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
+all: copy-makefile llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
+.PHONY: copy-makefile llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
 
 clean:
 	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
 
+llvm: export JOBS=${num-workers}
 llvm:
 ifeq (${compile-llvm}, 1)
 	@echo Compiling LLVM from Scratch
@@ -154,6 +162,7 @@ cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
 cpf: export NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug}
 cpf: export NOELLE_INSTALL_RELEASE=${noelle-install-dir-release}
 cpf: export CPF_ROOT_PATH=${cpf-root-path}
+cpf: export JOBS=${num-workers}
 cpf:
 ifeq (${compile-cpf}, 1)
 	@echo Compiling CPF from Scratch
