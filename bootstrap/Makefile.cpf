@@ -31,14 +31,13 @@ all: cpf-objects-debug cpf-objects-release
 .PHONY: cpf-objects-debug cpf-objects-release clean
 
 clean:
-	rm -rf cpf-install-debug && \
-	rm -rf cpf-install-release
+	rm -rf cpf-release-debug cpf-build-release 
 
 cpf-objects-debug: export PATH=${LLVM_INSTALL_DEBUG}/bin/:${ORIGINAL_PATH}
 cpf-objects-debug: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_DEBUG}
 cpf-objects-debug:
-	mkdir -p cpf-install-debug && \
-	cd ./cpf-install-debug && \
+	mkdir -p cpf-build-debug && \
+	cd ./cpf-build-debug && \
 	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_DEBUG)" -DCMAKE_BUILD_TYPE=Debug ${CPF_ROOT_PATH}/liberty && \
 	make -j16 && \
 	make install
@@ -46,8 +45,8 @@ cpf-objects-debug:
 cpf-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 cpf-objects-release: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_RELEASE}
 cpf-objects-release:
-	mkdir -p cpf-install-release && \
-	cd ./cpf-install-release && \
+	mkdir -p cpf-build-release && \
+	cd ./cpf-build-release && \
 	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_RELEASE)" -DCMAKE_BUILD_TYPE=Release ${CPF_ROOT_PATH}/liberty && \
 	make -j16 && \
 	make install
