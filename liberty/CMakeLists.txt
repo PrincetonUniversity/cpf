@@ -38,9 +38,16 @@ include(AddLLVM)
 # All include files for CPF
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_BINARY_DIR}/include
+                    ${CMAKE_INSTALL_PREFIX}/include
                     ${NOELLE_INSTALL_DIR}/include
                     ${NOELLE_INSTALL_DIR}/include/svf)
 
 # Pass
 add_subdirectory(lib)
 add_subdirectory(support)
+
+# Install
+INSTALL (
+   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ ${CMAKE_CURRENT_BINARY_DIR}/include/ 
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
