@@ -4,6 +4,9 @@ ORIGINAL_PATH:=${PATH}
 CPF_INSTALL_DEBUG=$(BASE_DIR)/install-debug
 CPF_INSTALL_RELEASE=$(BASE_DIR)/install-release
 
+CC= gcc
+CXX= g++
+
 ifndef LLVM_INSTALL_DEBUG
 $(error LLVM_INSTALL_DEBUG is not set)
 endif
