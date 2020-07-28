@@ -1,6 +1,7 @@
 BASE_DIR:=$(shell pwd)
 INSTALL_DIR_DEBUG:=${BASE_DIR}/llvm-install-debug
 INSTALL_DIR_RELEASE:=${BASE_DIR}/llvm-install-release
+JOBS?=16
 
 CONFIG_LLVM_DEBUG=-G "Unix Makefiles"  -DCMAKE_BUILD_TYPE="Debug" -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR_DEBUG} -DLLVM_TARGETS_TO_BUILD="X86" -DCMAKE_CXX_FLAGS="-std=c++17"
 CONFIG_LLVM_RELEASE=-G "Unix Makefiles"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR_RELEASE} -DLLVM_TARGETS_TO_BUILD="X86" -DCMAKE_CXX_FLAGS="-std=c++17"
@@ -29,7 +30,7 @@ llvm-objects-debug: llvm
 	mkdir -p llvm-objects-debug &&		\
 	cd llvm-objects-debug &&			\
 	cmake ${CONFIG_LLVM_DEBUG} ../llvm/ &&	\
-	make -j32 &&		\
+	make -j${JOBS} &&		\
 	make install
 
 llvm-objects-release: llvm
@@ -37,5 +38,5 @@ llvm-objects-release: llvm
 	mkdir -p llvm-objects-release &&			\
 	cd llvm-objects-release &&			\
 	cmake ${CONFIG_LLVM_RELEASE} ../llvm/ &&	\
-	make -j32 &&		\
+	make -j${JOBS} &&		\
 	make install
