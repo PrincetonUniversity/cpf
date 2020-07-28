@@ -17,7 +17,8 @@ all: noelle-objects-debug noelle-objects-release
 .PHONY: noelle-objects-debug noelle-objects-release clean
 
 noelle:
-	git clone -b master ${NOELLE_REMOTE} noelle
+	git clone -n ${NOELLE_REMOTE} noelle
+	cd noelle && git checkout ${NOELLE_BRANCH}
 
 clean:
 	rm -rf noelle
