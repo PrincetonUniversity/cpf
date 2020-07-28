@@ -1,6 +1,9 @@
 BASE_DIR:=$(shell pwd)
 ORIGINAL_PATH:=${PATH}
 
+CPF_INSTALL_DEBUG=$(BASE_DIR)/install-debug
+CPF_INSTALL_RELEASE=$(BASE_DIR)/install-release
+
 ifndef LLVM_INSTALL_DEBUG
 $(error LLVM_INSTALL_DEBUG is not set)
 endif
@@ -33,15 +36,15 @@ cpf-objects-debug: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_DEBUG}
 cpf-objects-debug:
 	mkdir -p cpf-install-debug && \
 	cd ./cpf-install-debug && \
-	cmake -DCMAKE_INSTALL_PREFIX="./" -DCMAKE_BUILD_TYPE=Debug ${CPF_ROOT_PATH}/liberty
-	make -C ./cpf-install-debug -j32
-	make -C ./cpf-install-debug install
-	
+	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_DEBUG)" -DCMAKE_BUILD_TYPE=Debug ${CPF_ROOT_PATH}/liberty && \
+	make -j16 && \
+	make install
+
 cpf-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 cpf-objects-release: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_RELEASE}
 cpf-objects-release:
 	mkdir -p cpf-install-release && \
 	cd ./cpf-install-release && \
-	cmake -DCMAKE_INSTALL_PREFIX="./" -DCMAKE_BUILD_TYPE=Release ${CPF_ROOT_PATH}/liberty
-	make -C ./cpf-install-release -j32
-	make -C ./cpf-install-release install
+	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_RELEASE)" -DCMAKE_BUILD_TYPE=Release ${CPF_ROOT_PATH}/liberty && \
+	make -j16 && \
+	make install
