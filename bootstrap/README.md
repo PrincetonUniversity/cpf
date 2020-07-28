@@ -11,11 +11,13 @@ The bootstrap scripts for the CPF infrastructure.
 
 ## Develop CPF
 
+### Recompile under Existing Build 
 To develop CPF and overwrite the existing copy, first compile and install CPF
 and all its dependences following the installation section.  After the initial
 installation, after modifying CPF, cd to `install-prefix` you've set, and run
 `make cpf` with the same Makefile will update CPF.
 
+### Make a New Copy of CPF
 To make a second copy of CPF libraries without recompiling LLVM and NOELLE,
 modify Makefile to skip compiling LLVM and NOELLE by specifyin `compile-llvm=0`
 and `compile-noelle=0` and also specify all installed directories. Change
@@ -24,6 +26,14 @@ this will compile and install CPF under `install-prefix`, and most importantly,
 also generate all the .rc files with the correct LLVM and NOELLE environment.
 directory of LLVM and NOELLE. You can then cd to `install-prefix` and update
 CPF by `make cpf` if you modify your code under `cpf-root-path`.
+
+### Add New Modules
+To add a new module in CPF, for example, a new FOO directory under
+`liberty/lib`, first, modify `liberty/lib/CMakeLists.txt` to add a new
+subdirectory, second, create a new CMakeLists.txt under `liberty/lib/FOO`
+following an existing one under other modules. Finally, compile the code by
+doing `make cpf` under `install-prefix` or make a new copy (follow the previous
+steps)
 
 ## Use CPF
 
