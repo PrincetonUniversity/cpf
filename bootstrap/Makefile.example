@@ -206,4 +206,4 @@ cpf-env-release.rc:
 
 copy-makefile:
 	mkdir -p ${install-prefix}
-	cp Makefile ${install-prefix}/Makefile
+	- cp Makefile ${install-prefix}/Makefile
