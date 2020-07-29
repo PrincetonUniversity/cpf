@@ -1,0 +1,2 @@
+In the corresponding NOELLE commit, struct GraphTraits<PDG*> is replaced with
+struct GraphTraits<DGGraphWrapper<PDG, Value>*>; same applies to SCCDAG.
