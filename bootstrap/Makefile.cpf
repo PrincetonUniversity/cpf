@@ -2,8 +2,8 @@ BASE_DIR:=$(shell pwd)
 ORIGINAL_PATH:=${PATH}
 JOBS?=16
 
-CPF_INSTALL_DEBUG=$(BASE_DIR)/install-debug
-CPF_INSTALL_RELEASE=$(BASE_DIR)/install-release
+CPF_INSTALL_DEBUG=$(BASE_DIR)/cpf-install-debug
+CPF_INSTALL_RELEASE=$(BASE_DIR)/cpf-install-release
 
 CC= gcc
 CXX= g++
