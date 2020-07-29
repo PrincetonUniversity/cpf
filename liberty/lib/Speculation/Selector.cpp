@@ -113,8 +113,10 @@ void writeGraph(const std::string &filename, GT *graph) {
   raw_fd_ostream File(filename, EC, sys::fs::F_Text);
   std::string Title = DOTGraphTraits<GT *>::getGraphName(graph);
 
+  DGGraphWrapper<GT, Value> graphWrapper(graph);
+
   if (!EC) {
-    WriteGraph(File, graph, false, Title);
+    WriteGraph(File, &graphWrapper, false, Title);
   } else {
     LLVM_DEBUG(errs() << "Error opening file for writing!\n");
     abort();
