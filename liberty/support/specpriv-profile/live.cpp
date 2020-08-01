@@ -173,9 +173,9 @@ AUHolder AllocationUnitTable::add_temporary(const AUHolder &au)
 
     else
     {
-      std::cerr << "Address collision:\n"
-                << " Old temporary at " << i->second->extents << ": "  << i->second << '\n'
-                << " New temporary at " << au->extents << ": " << au << '\n';
+      // std::cerr << "Address collision:\n"
+      //           << " Old temporary at " << i->second->extents << ": "  << i->second << '\n'
+      //           << " New temporary at " << au->extents << ": " << au << '\n';
       trailing_assert( false && "repeat address t-t" );
     }
   }
