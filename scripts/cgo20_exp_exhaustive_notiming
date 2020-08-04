@@ -1,0 +1,223 @@
+#!/bin/bash
+
+DBG=
+if [[ x$DEBUG != x ]]
+then
+  DBG=-debug-only=$DEBUG
+fi
+
+ECPROF=
+if [ -a ./llvmprof.out ]
+then
+  ECPROF="-pgo-instr-use -pgo-test-profile-file=./llvmprof.out"
+  echo Edge profile information available...
+fi
+
+SPPROF=
+if [ -a ./result.specpriv.profile.txt ]
+then
+  SPPROF="-read-specpriv-profile"
+  echo SpecPriv profile information available...
+fi
+
+LPROF=
+if [ -a ./result.lamp.profile ]
+then
+  echo Lamp profile available
+  LPROF=" -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "
+fi
+
+
+
+BENCHNAME=benchmark
+if [[ x$2 != x ]]
+then
+  BENCHNAME=$2
+fi
+
+OPTLEVEL=optlevel
+if [[ x$3 != x ]]
+then
+  OPTLEVEL=$3
+fi
+
+AADESC=aa
+if [[ x$4 != x ]]
+then
+  AADESC=$4
+fi
+
+AA=aa
+if [[ x$5 != x ]]
+then
+  AA=$5
+fi
+
+CAF=
+if [[ x$6 == xCAF ]]
+then
+  CAF=-use-caf
+fi
+
+PT=
+if [[ x$7 == xPOINTSTO ]]
+then
+  PT=-use-points-to
+fi
+
+CS=
+if [[ x$8 == xCTRLSPEC ]]
+then
+  CS=-use-cntr-spec
+fi
+
+VP=
+if [[ x$9 == xVALUEPRED ]]
+then
+  VP=-use-value-pred
+fi
+
+MS=
+if [[ x${10} == xMEMSPEC ]]
+then
+  MS=-use-oracle
+fi
+
+PR=
+if [[ x${11} == xPTRRES ]]
+then
+  PR=-use-ptr-res
+fi
+
+RO=
+if [[ x${12} == xREADONLY ]]
+then
+  RO=-use-read-only
+fi
+
+SL=
+if [[ x${13} == xSHORT ]]
+then
+  SL=-use-short-lived
+fi
+
+# ULO=
+# if [[ x$5 == xLAMP ]]
+# then
+#   ULO=-use-oracle
+# fi
+
+# HC=
+# if [[ x$7 == xNOCONTEXT ]]
+# then
+#   HC=-hide-context
+# fi
+
+# CS=
+# if [[ x$8 == xCNTRSPEC ]]
+# then
+#   CS=-use-cntr-spec
+# fi
+
+# VP=
+# if [[ x$9 == xVALUEPRED ]]
+# then
+#   VP=-use-value-pred
+# fi
+
+# Determine if the user provided a modifier.
+# Valid choices are:
+# - memcheck
+# - massif
+# - gdb
+PREFIX=time
+if [[ x$GDB != x ]]
+then
+  PREFIX="gdb --args "
+elif [[ x$MASSIF != x ]]
+then
+  PREFIX="valgrind --tool=massif --heap=yes --massif-out-file=massif.out "
+elif [[ x$MEMCHECK != x ]]
+then
+  PREFIX="valgrind --tool=memcheck --leak-check=full --malloc-fill=aa --free-fill=dd "
+fi
+
+#sot
+#LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+#      -load $LIBERTY_LIBS_DIR/libExclusions.so
+#      -load $LIBERTY_LIBS_DIR/libAnalysis.so
+#      -load $LIBERTY_LIBS_DIR/libRecoverTypes.so
+#      -load $LIBERTY_LIBS_DIR/libLoopProf.so
+#      -load $LIBERTY_LIBS_DIR/libPDG.so
+#      -load $LIBERTY_LIBS_DIR/libMetadata.so
+#      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+#      -load $LIBERTY_LIBS_DIR/libRedux.so
+#      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+#      -load $LIBERTY_LIBS_DIR/libSpecPriv.so
+#      -load $LIBERTY_LIBS_DIR/libSMTAA.so"
+
+LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+      -load $LIBERTY_LIBS_DIR/libExclusions.so
+      -load $LIBERTY_LIBS_DIR/libAnalysis.so
+      -load $LIBERTY_LIBS_DIR/libLoopProf.so
+      -load $LIBERTY_LIBS_DIR/libMetadata.so
+      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+      -load $LIBERTY_LIBS_DIR/libLAMP.so
+      -load $LIBERTY_LIBS_DIR/libSLAMP.so
+      -load $LIBERTY_LIBS_DIR/libRedux.so
+      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+      -load /u/sa8/CAT/lib/AllocAA.so
+      -load /u/sa8/CAT/lib/TalkDown.so
+      -load /u/sa8/CAT/lib/PDGAnalysis.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
+      -load /u/sa8/CAT/lib/HotProfiler.so
+      -load /u/sa8/CAT/lib/Parallelization.so
+      -load /u/ziyangx/z3_obj/lib/libz3.so
+      -load $LIBERTY_LIBS_DIR/libStrategy.so
+      -load $LIBERTY_LIBS_DIR/libOrchestration.so
+      -load $LIBERTY_LIBS_DIR/libSpeculation.so
+      -load /u/sa8/CAT/lib/Heuristics.so 
+      -load /u/sa8/CAT/lib/ParallelizationTechnique.so
+      -load /u/sa8/CAT/lib/DOALL.so
+      -load $LIBERTY_LIBS_DIR/libCodeGen.so
+      -load $LIBERTY_LIBS_DIR/libcsafExp.so"
+
+# LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+#       -load $LIBERTY_LIBS_DIR/libExclusions.so
+#       -load $LIBERTY_LIBS_DIR/libAnalysis.so
+#       -load $LIBERTY_LIBS_DIR/libRecoverTypes.so
+#       -load $LIBERTY_LIBS_DIR/libLoopProf.so
+#       -load $LIBERTY_LIBS_DIR/libMetadata.so
+#       -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+#       -load $LIBERTY_LIBS_DIR/libRedux.so
+#       -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+#       -load $LIBERTY_LIBS_DIR/libSpecPriv.so
+#       -load $LIBERTY_LIBS_DIR/libSMTAA.so
+#       -load $LIBERTY_LIBS_DIR/libStrategy.so
+#       -load $LIBERTY_LIBS_DIR/libSpeculation.so
+#       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+#       -load $LIBERTY_LIBS_DIR/libOrchestration.so
+#       -load $LIBERTY_LIBS_DIR/libcsafExp.so"
+
+#OPTS="-target-min-exec-percent=5 -target-min-iters=5 -cdc-timeout=120 $LPROF $ECPROF $SPPROF $EXTRA $AA -stats -debug-only=unique-access-paths-aa -pldi14-exhaustive $DBG "
+#OPTS="-target-min-exec-percent=5 -target-min-iters=5 -cdc-timeout=120 $LPROF $ECPROF $SPPROF $EXTRA $AA -stats $DBG "
+#OPTS="-target-min-exec-percent=10 -target-min-iters=50 -cdc-timeout=120 $LPROF $AA $SPPROF -cgo20-exhaustive -stats -debug-only=classify $DBG "
+OPTS="-target-min-exec-percent=10 -target-min-iters=50 -cdc-timeout=120 $LPROF $AA $SPPROF -cgo20-exhaustive -stats $DBG "
+# STRIPPED="benchmark.stripped.bc"
+# opt -strip $1 -o $STRIPPED
+#OPTS="-target-min-exec-percent=5 -target-min-iters=5 -cdc-timeout=120 $LPROF $ECPROF $SPPROF $EXTRA $AA -debug -stats -debug-only=ctrlspec -pldi14-exhaustive $DBG "
+OUT="-disable-output"
+
+CMD="$PREFIX opt $1 $LIBS $OPTS -bench-name=$BENCHNAME -opt-level=$OPTLEVEL -aa-desc=$AADESC $MS $CAF $CS $VP $PT $PR $RO $SL $OUT"
+
+echo Running: $CMD
+ulimit -S -v $[64*1024*1024]
+$CMD 2>&1
+
+#rm -f *.cvc3
+
+#if [[ x$MASSIF != x ]]
+#then
+#  ms_print --x=150 --y=50 massif.out > massif.out.txt
+#fi

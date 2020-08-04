@@ -1,0 +1,20 @@
+# LLVM PATH
+export LLVM_SRC_ROOT=$HOME/llvm-workspace/llvm/
+export LLVM_OBJ_DIR=$HOME/llvm-workspace/llvm-objects/
+export LLVM_INSTALL_DIR=$HOME/llvm-workspace/llvm-install/
+
+# CPF PATH
+export LIBERTY_SRC_DIR=$HOME/cpf/liberty/
+export LIBERTY_OBJ_DIR=$HOME/cpf/llvm-liberty-objects/
+export LIBERTY_SMTX_DIR=$LIBERTY_SRC_DIR/support/smtx/
+export LIBERTY_INCLUDE_DIR=$LIBERTY_SRC_DIR/include/
+#export LIBERTY_LIBS_DIR=$LIBERTY_OBJ_DIR/Release+Asserts/lib/
+#export LIBERTY_LIBS_DIR=$LIBERTY_OBJ_DIR/Release+Debug+Asserts/lib/
+export LIBERTY_LIBS_DIR=$LIBERTY_OBJ_DIR/Debug+Asserts/lib/
+
+# CPF BENCHMARK PATH
+export CPF_ROOT=$HOME/CPF_Benchmarks/
+
+# PATH & LD_LIBRARY_PATH
+export PATH=$LLVM_INSTALL_DIR/bin:$CPF_ROOT/scripts/:$PATH
+export LD_LIBRARY_PATH=$LLVM_INSTALL_DIR/lib:$LIBERTY_LIBS_DIR:$LD_LIBRARY_PATH

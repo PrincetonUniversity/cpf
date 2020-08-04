@@ -1,0 +1,8 @@
+{
+"correlation": {"suites": ["PolyBench"], "available": true},
+"2mm": {"suites": ["PolyBench"], "available": true},
+"3mm": {"suites": ["PolyBench"], "available": true},
+"covariance": {"suites": ["PolyBench"], "available": true},
+"gemm": {"suites": ["PolyBench"], "available": true},
+"doitgen": {"suites": ["PolyBench"], "available": true}
+}

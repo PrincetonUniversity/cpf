@@ -1,0 +1,8 @@
+{
+"swaptions": {"suites": ["PARSEC"], "available": true},
+"blackscholes": {"suites": ["PARSEC"], "available": true},
+"dijkstra-dynsize": {"suites": ["MiBench"], "available": true},
+"052.alvinn": {"suites": ["SpecFP", "Spec"], "available": true},
+"enc-md5": {"suites": ["Trimaran"], "available": true},
+"179.art": {"suites": ["SpecFP", "Spec"], "available": true}
+}

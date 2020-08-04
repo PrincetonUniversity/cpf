@@ -1,0 +1,328 @@
+#!/bin/bash
+
+#DBG=-debug-only=classify
+#if [[ x$DEBUG != x ]]
+#then
+#  DBG=-debug-only=$DEBUG
+#fi
+
+if [[ x$CG != x ]]
+then
+  echo CodeGen enabled
+else
+  echo CodeGen disabled
+fi
+
+if [[ x$VT != x ]]
+then
+  echo Validation Testing 
+fi
+
+if [[ x$ST != x ]]
+then
+	echo Statically link
+else
+	echo Dynamically link
+fi
+
+ECPROF=
+if [ -a ./llvmprof.out ]
+then
+  ECPROF="-pgo-instr-use -pgo-test-profile-file=./llvmprof.out"
+  echo Edge profile information available...
+fi
+
+SPPROF=
+if [ -a ./result.specpriv.profile.txt ]
+then
+  SPPROF="-read-specpriv-profile"
+  echo SpecPriv profile information available...
+fi
+
+LPROF=
+if [ -a ./result.lamp.profile ]
+then
+  echo Lamp profile available
+  LPROF=" -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "
+fi
+
+SLPROF=
+if [ -a ./result.slamp.profile ]
+then
+  echo Slamp profile available
+  SLPROF=" -slamp-load-profile "
+fi
+
+HDRPHIPROF=
+if [ -a ./headerphi_prof.out ]
+then
+  echo HeaderPhi profile available
+  HDRPHIPROF=" -headerphi-load-profile "
+fi
+
+# Determine if the user specified a function
+FCN=
+if [[ x$2 != x ]]
+then
+  FCN="-target-fcn=$2"
+fi
+
+# Determine if the user specified a loop
+LOOP=
+if [[ x$3 != x ]]
+then
+  LOOP="-target-loop=$3"
+fi
+
+# Determine if the user provided a modifier.
+# Valid choices are:
+# - memcheck
+# - massif
+# - gdb
+PREFIX=time
+if [[ x$GDB != x ]]
+then
+  PREFIX="gdb --args "
+elif [[ x$MASSIF != x ]]
+then
+  PREFIX="valgrind --tool=massif --heap=yes --massif-out-file=massif.out "
+elif [[ x$MEMCHECK != x ]]
+then
+  PREFIX="valgrind --tool=memcheck --leak-check=full --malloc-fill=aa --free-fill=dd "
+fi
+
+#SPEX="-L$LIBERTY_LIBS_DIR -lspecprivexecutive"
+SPEX="$LIBERTY_LIBS_DIR/libspecprivexecutive.so"
+# SPEX_STATIC="$LIBERTY_LIBS_DIR/libspecprivexecutive.a"
+SPEX_STATIC="/u/gc14/cpf/liberty/support/specpriv-executive/specprivexecutive.bc"
+
+LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+      -load $LIBERTY_LIBS_DIR/libExclusions.so
+      -load $NOELLE_LIBS_DIR/libSvf.so
+      -load $NOELLE_LIBS_DIR/libCudd.so
+      -load $LIBERTY_LIBS_DIR/libAnalysis.so
+      -load $LIBERTY_LIBS_DIR/libLoopProf.so
+      -load $LIBERTY_LIBS_DIR/libMetadata.so
+      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+      -load $LIBERTY_LIBS_DIR/libLAMP.so
+      -load $LIBERTY_LIBS_DIR/libSLAMP.so
+      -load $LIBERTY_LIBS_DIR/libRedux.so
+      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+      -load $NOELLE_LIBS_DIR/AllocAA.so
+      -load $NOELLE_LIBS_DIR/BasicUtilities.so
+      -load $NOELLE_LIBS_DIR/LoopStructure.so
+      -load $NOELLE_LIBS_DIR/TalkDown.so
+      -load $NOELLE_LIBS_DIR/PDGAnalysis.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
+      -load $NOELLE_LIBS_DIR/Architecture.so
+      -load $NOELLE_LIBS_DIR/HotProfiler.so
+      -load $NOELLE_LIBS_DIR/Loops.so
+      -load $LIBERTY_LIBS_DIR/libStrategy.so
+      -load $LIBERTY_LIBS_DIR/libOrchestration.so
+      -load $LIBERTY_LIBS_DIR/libSpeculation.so
+      -load $NOELLE_LIBS_DIR/Heuristics.so 
+      -load $NOELLE_LIBS_DIR/ParallelizationTechnique.so
+      -load $NOELLE_LIBS_DIR/DOALL.so
+      -load $LIBERTY_LIBS_DIR/libCodeGen.so"
+
+#      -load $LIBERTY_LIBS_DIR/libRecoverTypes.so
+
+AA=`aa`
+#EXTRA=""
+EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -llvm-aa-results -svf-results"
+#EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias"
+
+#OPTS="$LPROF $SLPROF $AA $SPPROF $HDRPHIPROF $EXTRA
+
+
+#if [[ x$CG != x ]] && [[ x$MT == x ]] && [[ x$PP == x ]]
+#then 
+#OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
+#  -remed-selector
+#  -spec-priv-preprocess
+#  -spec-priv-apply-separation-spec
+#  -spec-priv-apply-control-spec
+#  -spec-priv-apply-value-pred-spec
+#  -stats 
+#  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,specpriv-transform,locality-remed,classify,redux-remed,priv-remed,loaded-value-pred-remed
+#  $DBG "
+
+if [[ x$CG != x ]] || [[ x$PP != x ]]
+then
+#OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
+#  -remed-selector
+#  -doall-transform
+#  -stats 
+#  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,doall-transform
+#  $DBG "
+OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
+  -remed-selector
+  -spec-priv-preprocess
+  -spec-priv-apply-separation-spec
+  -spec-priv-apply-control-spec
+  -spec-priv-apply-value-pred-spec
+  -specpriv-mtcg
+  -stats
+  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,mtcg,specpriv-transform,locality-remed,classify,redux-remed,priv-remed,loaded-value-pred-remed
+  -veto -nander
+  $DBG "
+
+else
+OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
+  -remed-selector
+  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,locality-remed
+  -veto -nander
+  $DBG "
+fi
+	# -veto -nander -hander -sander -sfrander -wander -ander -fspta -lander -hlander
+  #-spec-priv-preprocess
+  #-spec-priv-apply-header-phi-pred-spec
+  #-spec-priv-apply-smtx-slamp-spec
+  #-spec-priv-apply-control-spec 
+  #-specpriv-mtcg 
+  #--specpriv-dont-compute-tred=false
+  #--specpriv-print-pipeline=true
+  #--specpriv-print-full-dag-scc=true
+
+# -debug-only= ctrlspec,kill-flow-aa,ctrlspec-remed,redux-remed,counted-iv-remed,smtx-slamp-remed,header-phi-remed,txio-remed,array-of-structures-aa,semi-local-fun-aa,pure-fun-aa
+#--print-inst-static-id=true
+#--debug-pass=Structure
+#-hold-ref-to-control-spec
+#-spec-priv-apply-header-phi-pred-spec
+#-specpriv-reduction
+
+
+NOPEEP=`basename $1 .bc`.collaborative-pipeline-nopeep.bc
+OUTFILE=`basename $1 .bc`.collaborative-pipeline.bc
+ASMOUT=`basename $1 .bc`.collaborative-pipeline.s
+
+if [[ x$CG != x ]]
+then
+  DUMPFILE=`basename $1 .bc`.collaborative-parallelized.dump
+else
+  DUMPFILE=`basename $1 .bc`.collaborative-pipeline.dump
+fi
+
+if [[ x$PP != x ]] && [[ x$CG == x ]]
+then
+  DUMPFILE=`basename $1 .bc`.analysis.dump
+fi
+
+OUTFILE_BC_LINKED=`basename $1 .bc`.collaborative.linked.bc
+OUTFILE_BC_OPT=`basename $1 .bc`.collaborative.opt.bc
+OUTFILE_BC_OPT_STRIP=`basename $1 .bc`.collaborative.opt.stripped.bc
+OUTFILE_OBJ=`basename $1 .bc`.collaborative.o
+OUTFILE_EXE=`basename $1 .bc`.collaborative.exe
+OUTFILE_STATIC_EXE=`basename $1 .bc`.collaborative_static.exe
+
+rm -f $NOPEEP
+OUT="-o $NOPEEP"
+
+#CMD="$PREFIX opt $1 $LIBS $OPTS $FCN $LOOP $OUT"
+CMD="$PREFIX opt $1 $LIBS $OPTS $FCN $LOOP $OUT"
+
+echo Running: $CMD
+ulimit -S -v $[112*1024*1024]
+#ulimit -S -v $[6*1024*1024]
+## use .bc file to generate executable
+$CMD > $DUMPFILE 2>&1
+## use .ll file to generate executable
+# NOPEEPLL=`basename $1 .bc`.collaborative-pipeline-nopeep.ll
+# llvm-as $NOPEEPLL
+
+if [[ x$CG != x ]]
+then
+# procude executable
+#####
+RUNTIME_CFLAGS="-DDEBUG"
+OPT_LEVEL="-O3"
+INCLUDES="-I/u/sa8/CPF_Benchmarks/scripts/threadpool/include"
+THREADER_SRC="/u/sa8/CPF_Benchmarks/scripts/Parallelizer_utils.cpp"
+THREADER_BC="Parallelizer_utils.bc"
+CPP=clang++
+
+
+#### The peephole optimizer (aka the 'postprocessor')
+## Privateer-related spec optimizations
+
+
+BEGIN="$PREFIX2 opt $LIBS $AA -spec-priv-postprocess-1 -dce -stats $DBG $EXTRA1 "
+MIDDLE="$PREFIX2 opt $LIBS $AA -loop-simplify -indvars -spec-priv-postprocess-2 -stats $DBG $EXTRA2"
+END="$PREFIX2 opt $LIBS $AA -spec-priv-postprocess-3 -stats $DBG $EXTRA3 "
+#END="$PREFIX2 opt $LIBS $AA -spec-priv-postprocess-3 -stats -debug-only=specpriv-postprocess $DBG $EXTRA3 "
+
+if [[ x$VT == x ]]
+then
+
+echo Postprocessor step 1
+$BEGIN $NOPEEP -o tmp1.bc 2>&1 || exit
+echo
+echo Postprocessor step 2a
+$MIDDLE tmp1.bc -o tmp2.bc 2>&1 || exit
+opt -O3 tmp2.bc -o tmp2.o3.bc 2>&1 || exit
+echo
+echo Postprocessor step 2b
+$MIDDLE tmp2.o3.bc -o tmp3.bc 2>&1 || exit
+opt -O3 tmp3.bc -o tmp3.o3.bc 2>&1 || exit
+echo
+echo Postprocessor step 2c
+$MIDDLE tmp3.o3.bc -o tmp4.bc 2>&1 || exit
+opt -O3 tmp4.bc -o tmp4.o3.bc 2>&1 || exit
+echo
+echo Postprocessor step 3
+$END tmp4.o3.bc -o tmp5.bc 2>&1 || exit
+opt -O3 tmp5.bc -o $OUTFILE 2>&1 || exit
+echo
+
+else
+echo Postprocessor step 1
+$BEGIN $NOPEEP -o tmp1.bc 2>&1 || exit
+echo
+opt -O3 tmp1.bc -o $OUTFILE 2>&1 || exit 
+fi
+
+
+#### Link and Code Gen
+
+#echo Compile threadpool
+#perform only once , do it in the makefile
+#$CPP $RUNTIME_CFLAGS $INCLUDES -std=c++14 -emit-llvm $OPT_LEVEL -c $THREADER_SRC -o $THREADER_BC
+
+#echo llvm-link with runtime libraries
+#llvm-link -o $OUTFILE_BC_LINKED  $THREADER_BC $OUTFILE
+
+#llvm-link -o $OUTFILE_BC_LINKED  $THREADER_BC $NOPEEP
+if [[ x$ST != x ]]
+then
+llvm-link -o $OUTFILE $SPEX_STATIC $OUTFILE
+fi
+echo Produce executable
+#$CPP $OPT_LEVEL -c -emit-llvm -o $OUTFILE_BC_OPT $OUTFILE_BC_LINKED
+$CPP $OPT_LEVEL -c -emit-llvm -o $OUTFILE_BC_OPT $OUTFILE
+# opt -strip-dead-debug-info -strip-nondebug -o $OUTFILE_BC_OPT_STRIP $OUTFILE_BC_OPT
+opt -strip -o $OUTFILE_BC_OPT_STRIP $OUTFILE_BC_OPT
+
+
+#opt -O3 -o $OUTFILE_BC_OPT $OUTFILE_BC_LINKED
+#clang++ -O3 -c -o $OUTFILE_OBJ $OUTFILE_BC_OPT
+#$clang++ -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_OBJ -lm -o $OUTFILE_EXE
+#$CXX -O3 -o $OUTFILE_EXE $OUTFILE_OBJ -pthreads -lm
+####
+if [[ x$ST != x ]]
+then
+# $CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP $SPEX_STATIC -lm -lrt -o $OUTFILE_STATIC_EXE
+$CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP -lm -lrt -o $OUTFILE_STATIC_EXE
+else
+$CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP -lm $SPEX -lrt -o $OUTFILE_EXE
+fi
+#####
+fi
+
+#### Cleanup
+rm -f tmp1.bc tmp2.bc tmp2.o3.bc tmp3.bc tmp3.o3.bc tmp4.bc tmp4.o3.bc tmp5.bc *.cvc3
+
+if [[ x$MASSIF != x ]]
+then
+  ms_print --x=150 --y=50 massif.out > massif.out.txt
+fi

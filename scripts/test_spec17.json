@@ -1,0 +1,15 @@
+{
+"500.perlbench": {"suites": ["Spec"], "available": true},
+"505.mcf": {"suites": ["Spec"], "available": true},
+"508.namd": {"suites": ["Spec"], "available": true},
+"510.parest": {"suites": ["Spec"], "available": true},
+"511.povray": {"suites": ["Spec"], "available": true},
+"519.lbm": {"suites": ["Spec"], "available": true},
+"520.omnetpp": {"suites": ["Spec"], "available": true},
+"525.x264": {"suites": ["Spec"], "available": true},
+"531.deepsjeng_r": {"suites": ["Spec"], "available": true},
+"538.imagick": {"suites": ["Spec"], "available": true},
+"541.leena": {"suites": ["Spec"], "available": true},
+"544.nab": {"suites": ["Spec"], "available": true},
+"557.xz": {"suites": ["Spec"], "available": true}
+}

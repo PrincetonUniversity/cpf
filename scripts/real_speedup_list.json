@@ -1,0 +1,14 @@
+{
+"correlation": {"suites": ["PolyBench"], "available": true},
+"2mm": {"suites": ["PolyBench"], "available": true},
+"3mm": {"suites": ["PolyBench"], "available": true},
+"covariance": {"suites": ["PolyBench"], "available": true},
+"gemm": {"suites": ["PolyBench"], "available": true},
+"doitgen": {"suites": ["PolyBench"], "available": true},
+"swaptions": {"suites": ["PARSEC"], "available": true},
+"blackscholes": {"suites": ["PARSEC"], "available": true},
+"dijkstra-dynsize": {"suites": ["MiBench"], "available": true},
+"052.alvinn": {"suites": ["SpecFP", "Spec"], "available": true},
+"enc-md5": {"suites": ["Trimaran"], "available": true},
+"179.art": {"suites": ["SpecFP", "Spec"], "available": true}
+}
