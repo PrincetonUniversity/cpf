@@ -1,4 +1,4 @@
-# Collaborative Analysis Framework (CPF)
+# Collaborative Parallelization Framework (CPF)
 
 ## Remediators in CPF
 
