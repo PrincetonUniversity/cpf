@@ -1,6 +1,1 @@
-PROFILESETUP=
-PROFILEARGS=0 512 512 512 512
-TESTSETUP=
-TESTARGS=0 4096 4096 4096 4096
-
-include ../../Makefile.generic
+include ../../../Makefile.generic

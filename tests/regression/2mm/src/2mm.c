@@ -5,6 +5,7 @@
  * Contact: Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://polybench.sourceforge.net
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
