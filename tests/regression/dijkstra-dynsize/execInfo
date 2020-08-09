@@ -1,0 +1,6 @@
+PROFILESETUP=
+PROFILEARGS=../input4/input300.in 300
+
+TESTSETUP=
+TESTARGS=../input2/large.in 1000
+LARGETESTARGS=../input3000/input3000.in 3000

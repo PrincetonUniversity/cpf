@@ -1,0 +1,3 @@
+PROFILEARGS=-ns 999 -sm 100 -nt 1
+TESTARGS=-ns 5000 -sm 8000 -nt 1
+LARGETESTARGS=-ns 10000 -sm 40000 -nt 1
