@@ -1440,11 +1440,10 @@ void ApplySeparationSpec::insertUOCheck(const HeapAssignment &asgn, Loop *loop, 
 
   Constant *check = Api(mod).getUO();
 
-  Constant *heap_arg = ConstantInt::get(u64, heap);
-  // Value *code = ConstantInt::get(u64, Api::getCodeForHeap(heap) ); // use code directly!
+  Constant *code = ConstantInt::get(u64, (int) heap);
   Constant *subheap = ConstantInt::get(u64, sh);
 
-  Value *args[] = { cast, heap_arg, subheap, message };
+  Value *args[] = { cast, code, subheap, message };
   Instruction *call = CallInst::Create(check, ArrayRef<Value*>(&args[0], &args[4]) );
   where << cast << call;
   preprocess.addToLPS(cast, inst_obj);
