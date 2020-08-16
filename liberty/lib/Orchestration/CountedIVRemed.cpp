@@ -28,7 +28,7 @@ bool CountedIVRemedy::compare(const Remedy_ptr rhs) const {
 
 Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
                                                   const Instruction *B,
-                                                  bool loopCarried){
+                                                  bool loopCarried, const Loop *loop){
   auto livm = ldi->getInductionVariableManager();
   auto ls   = ldi->getLoopStructure();
   auto iv   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
@@ -44,7 +44,11 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
   remedy->cost = 0;
 
   if (iv) {
+      errs() << "SUSAN: instructions for this iv:" << "\n";
+      for(auto inst : iv->getAllInstructions())
+        errs() << *inst << "\n";
     ++numNoRegDep;
+    remedy->allIVInfo = livm;
     remedy->ivPHI = iv->getLoopEntryPHI();
     remedResp.depRes = DepResult::NoDep;
   }
@@ -54,7 +58,7 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
 }
 
 Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
-                                                   const Instruction *B){
+                                                   const Instruction *B, const Loop *loop){
   auto livm = ldi->getInductionVariableManager();
   auto ls   = ldi->getLoopStructure();
   auto iv   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));

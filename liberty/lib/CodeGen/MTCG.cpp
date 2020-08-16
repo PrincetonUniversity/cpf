@@ -490,7 +490,10 @@ BasicBlock *MTCG::stitchLoops(
   // Alternate between the ON and OFF iterations.
   Constant *getIterNum = api.getCurrentIter();
   Value *iter = CallInst::Create(getIterNum, "current.iteration", newHeader);
-  Value *phase  = BinaryOperator::Create(Instruction::URem, iter, repFactor, "phase", newHeader);
+  IntegerType *u32 = Type::getInt32Ty(ctx);
+  Value *four = ConstantInt::get(u32, 4);
+  Value *reduced_iter  = BinaryOperator::Create(Instruction::UDiv, iter, four, "chunked.iter", newHeader);
+  Value *phase  = BinaryOperator::Create(Instruction::URem, reduced_iter, repFactor, "phase", newHeader);
   Value *cmp  = CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, phase, repId, "on/off", newHeader);
   BranchInst::Create(preheader_on,preheader_off,cmp, newHeader);
 

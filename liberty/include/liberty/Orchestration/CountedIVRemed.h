@@ -15,6 +15,7 @@ using namespace llvm;
 class CountedIVRemedy : public Remedy {
 public:
   const PHINode *ivPHI;
+  InductionVariableManager *allIVInfo;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
@@ -27,9 +28,9 @@ public:
 
   StringRef getRemediatorName() const { return "counted-iv-remediator"; }
 
-  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried);
+  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried, const Loop *loop);
 
-  RemedResp ctrldep(const Instruction *A, const Instruction *B);
+  RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *loop);
 
 private:
   LoopDependenceInfo *ldi;
