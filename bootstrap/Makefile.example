@@ -81,7 +81,7 @@ endif
 
 default:
 	@echo Run \`make all\` to compile and install all specified components.
-	@echo After the initial installation, run \`make cpf\` to only udpate cpf.
+	@echo After the initial installation, run \`make cpf\` to only update cpf.
 	@echo Nothing has been done.
 
 all: copy-makefile llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
