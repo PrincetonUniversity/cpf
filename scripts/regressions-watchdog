@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+
+# usage: watchdog <timeout-seconds> <write-runtime-to-file> <program> <args...>
+KB=1024
+MB=1024*KB
+GB=1024*MB
+
+#RSS_LIMIT=(1.5*GB).to_i
+RSS_LIMIT=(12*GB).to_i
+
+timeout = ARGV[0].to_i
+file = ARGV[1]
+childcmd = ARGV[2 .. -1]
+
+throw "Usage: regressions-watchdog [timeout-seconds] [time-out-file] [command...]" if timeout == nil || timeout < 1 || file == nil
+
+def kill3(pid)
+  begin
+    Process.kill("TERM", pid)
+    sleep 0.5
+    Process.kill("STOP", pid)
+    Process.kill("KILL", pid)
+  rescue Exception => e
+    # meh
+  end
+end
+
+# We will execute the program-under-test.
+# There are three cases in which we exit:
+# (1) The program-under-test exits as it normally would.
+# (2) The timer expires, and we terminate the program-under-test
+# (3) Someone kills this program, and we will terminate the program-under-test.
+
+startTime = Time.now
+parent = Process.pid
+child = Kernel.fork
+
+if child == nil
+  # child process
+
+  # Put this process, and all its children, into the same
+  # process group so they can be killed together
+  mypid = Process::pid
+  Process::setpgid(mypid,mypid)
+
+  # Limit RSS usage.
+  Process.setrlimit( Process::RLIMIT_RSS, RSS_LIMIT, RSS_LIMIT )
+
+  Kernel.exec *childcmd
+
+  # Unreachable, unless no command specified
+  $stderr.puts "Failed to exec"
+  exit 254
+else
+  sleeper = Kernel.fork do
+    sleep timeout
+    # (Case 2)
+    kill3(-child) # negative PID is interpreted as a process group
+    exit 1
+  end
+
+  # (Case 3)
+  # If anything happens which would cause the
+  # main watchdog process to exit, we want to
+  # pass that along to the child.
+  Kernel.at_exit do
+    kill3(-child) # negative PID is interpreted as a process group
+    kill3 sleeper
+  end
+
+  # (Case 1)
+  deadKid,processStatus = Process.waitpid2(child)
+  endTime = Time.now
+
+  # Kill the sleeper, if he's still around
+  kill3 sleeper
+  Process.waitpid(sleeper)
+
+  File.open(file,'w') do |fout|
+    fout.puts( endTime-startTime )
+  end
+  exit( processStatus.exitstatus || 0 )
+end
+
+

@@ -587,13 +587,15 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
   return res;
 }
 
-template <class GT> void writeGraph(const std::string &filename, GT *graph) {
+template <class GT, class T> void writeGraph(const std::string &filename, GT *graph) {
   std::error_code EC;
   raw_fd_ostream File(filename, EC, sys::fs::F_Text);
   std::string Title = DOTGraphTraits<GT *>::getGraphName(graph);
 
+  DGGraphWrapper<GT, T> graphWrapper(graph);
+
   if (!EC) {
-    WriteGraph(File, graph, false, Title);
+    WriteGraph(File, &graphWrapper, false, Title);
   } else {
     LLVM_DEBUG(errs() << "Error opening file for writing!\n");
     abort();
@@ -704,13 +706,13 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
 
   std::string pdgDotName = "optimistic_pdg_" + header->getName().str() + "_" +
                            fcn->getName().str() + ".dot";
-  writeGraph<PDG>(pdgDotName, optimisticPDG);
+  writeGraph<PDG, Value>(pdgDotName, optimisticPDG);
 
   optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
   std::string sccdagDotName = "optimistic_sccdag_" + header->getName().str() +
                               "_" + fcn->getName().str() + ".dot";
-  writeGraph<SCCDAG>(sccdagDotName, optimisticSCCDAG);
+  writeGraph<SCCDAG, SCC>(sccdagDotName, optimisticSCCDAG);
 }
 
 // move inst and backward (if moveToFront is true) or forward slice of inst to

@@ -855,7 +855,7 @@ BasicBlock *MTCG::copyInstructions(
 
       // If this block did not get a terminator,
       // we add an unconditional branch.
-      if( cloneBB->empty() || ! isa<Instruction>( cloneBB->back() ) )
+      if( cloneBB->empty() || ! cloneBB->getTerminator() )
       {
         Instruction *oldTerm = bb->getTerminator();
 //          assert( cs.isSpeculativelyUnconditional(oldTerm)

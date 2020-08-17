@@ -167,7 +167,7 @@ bool Classify::runOnModule(Module &mod)
 
     killflow_aware->setLoopOfInterest(nullptr, nullptr);
   }
-
+  errs() << "Susan: Classification ends";
   return false;
 }
 
@@ -1055,8 +1055,10 @@ bool Classify::runOnLoop(Loop *loop)
   // Find all AUs which are read,written,reduced...
   AUs reads, writes;
   ReduxAUs reductions;
+  errs() << "Susan: start getting footprint";
   if( !spresults.getFootprint(loop, ctx, reads, writes, reductions) )
   {
+    errs() << "Susan: failed getting footprint";
     LLVM_DEBUG(errs() << "Classify: Failed to get write footprint of loop; abort\n");
     return false;
   }

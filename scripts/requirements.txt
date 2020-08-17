@@ -1,0 +1,6 @@
+joblib>=0.13.2
+numpy>=1.16.1
+ptyprocess>=0.6.0
+termcolor>=1.1.0
+requests>=2.21.0
+GitPython>=2.1.11

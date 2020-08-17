@@ -93,19 +93,19 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  //auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
-  //    ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
-  //remeds.push_back(std::move(privRemed));
+  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
+      ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
+  remeds.push_back(std::move(privRemed));
 
   // counted induction variable remediator
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage
-  remeds.push_back(std::make_unique<CountedIVRemediator>(&mloops));
+  //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
   // TXIO remediator
   //remeds.push_back(std::make_unique<TXIORemediator>());
 
   // memory versioning remediator
-  remeds.push_back(std::make_unique<MemVerRemediator>());
+  //remeds.push_back(std::make_unique<MemVerRemediator>());
 
   // commutative libs remediator
   remeds.push_back(std::make_unique<CommutativeLibsRemediator>());

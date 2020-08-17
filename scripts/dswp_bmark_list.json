@@ -1,0 +1,12 @@
+{
+"130.li": {"suites": ["SpecINT", "Spec"], "available": true},
+"164.gzip": {"suites": ["SpecINT", "Spec"], "available": true},
+"181.mcf": {"suites": ["SpecINT", "Spec"], "available": true},
+"197.parser": {"suites": ["SpecINT", "Spec"], "available": false},
+"256.bzip2": {"suites": ["SpecINT", "Spec"], "available": true},
+"429.mcf": {"suites": ["SpecINT", "Spec"], "available": true},
+"464.h264ref": {"suites": ["SpecINT", "Spec"], "available": false},
+"179.art": {"suites": ["SpecFP", "Spec"], "available": true},
+"blackscholes": {"suites": ["PARSEC"], "available": true},
+"ks": {"suites": ["Trimaran"], "available": true}
+}

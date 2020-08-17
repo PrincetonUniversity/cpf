@@ -1,0 +1,101 @@
+#!/bin/bash
+# Script to profile a complete bitcode file using LAMP
+# YOUR MUST RUN LOOPSIMPLIFY BEFORE USING LAMP
+# You also want to compile your .bc files with -g to get line numbers
+#
+# $1 - bitcode file to lampify
+# $2 - function name -lamp-init-fn FUNCTIONNAME
+
+
+if [[ x$1 = x ]]
+then
+  echo "Usage: loop-profile <bc file>"
+  echo -e "\tbc file must be -loopsimplfy "
+  exit
+fi
+
+PREFIX=
+if [[ x$GDB != x ]]
+then
+  PREFIX="gdb --args"
+fi
+
+HOOKS=$LIBERTY_LIBS_DIR/libFullLoopProf.a
+LAMPBC=${1%.bc}.loopProf.bc
+LAMPS=${LAMPBC%.bc}.s
+EXE=${LAMPBC%.bc}.exe
+
+if [ -a $HOOKS ]
+then
+  A=a #good
+else
+  #bad
+  echo ''
+  echo "Searched for $HOOKS, using LIBERTY_LIBS_DIR"
+  echo "Cannot find lamp_hooks.a aborting"
+  echo ''
+  exit
+fi
+
+if [ -a comp_libs ]
+then
+  FLIBS=`cat comp_libs`
+fi
+
+# Determine if the user specified a function
+FCN=
+if [[ x$2 != x ]]
+then
+  FCN=" -lamp-init-fn $2 "
+fi
+
+
+LIBS=" \
+       -load $LIBERTY_LIBS_DIR/libUtil.so 
+       -load $LIBERTY_LIBS_DIR/libExclusions.so 
+       -load $NOELLE_LIBS_DIR/libSvf.so
+       -load $NOELLE_LIBS_DIR/libCudd.so
+       -load $LIBERTY_LIBS_DIR/libAnalysis.so 
+       -load $LIBERTY_LIBS_DIR/libExclusions.so 
+       -load $LIBERTY_LIBS_DIR/libUtil.so 
+       -load $LIBERTY_LIBS_DIR/libAnalysis.so
+       -load $LIBERTY_LIBS_DIR/libLoopProf.so 
+"
+
+
+#normal lamp doesn't need AA
+#AA=`aa` 
+DEBUG= #"-debug-only=LAMP"
+OPT="opt  --debug-pass=Structure
+    $LIBS $DEBUG 
+    -loop-prof
+    $1 -o $LAMPBC"
+
+CMD="$PREFIX $OPT"
+echo "Running: $CMD"
+$CMD
+
+if [[ $? != 0 ]]
+then
+   echo "OPT failed"
+  exit
+fi
+
+# NO Nick was wrong :)
+#echo
+#CMD="clang++ -O3 $LAMPBC $HOOKS -o $EXE"
+#echo $CMD
+#$CMD
+
+echo ''
+CMD="llc -O3 $LAMPBC -o $LAMPS"
+echo $CMD 
+$CMD
+
+echo ''
+CMD="g++ -O3 $FLIBS $LAMPS $HOOKS -o $EXE"
+echo $CMD 
+$CMD
+
+echo ''
+echo "Created exe '$EXE', run to generate loop profiling info"

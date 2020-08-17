@@ -72,6 +72,11 @@ static const char *recognized_external_function_list[] = {
   0
 };
 
+static const char *llvm_multi_type_function_list[] = {
+#include "LLVMMultiTypeFunctions.h"
+  0
+};
+
 STATISTIC(numValuePredictors, "Num value-predictor instrumentations inserted");
 STATISTIC(numResidue,         "Num pointer-residue instrumentations inserted");
 STATISTIC(numIndeterminate,   "Num indeterminate-base instrumentations inserted");
@@ -1591,9 +1596,20 @@ private:
           if( !callee->isDeclaration() )
             continue;
 
+          int contains = 0;
+          for(unsigned i=0; llvm_multi_type_function_list[i]; ++i){
+            StringRef fcn_name = callee->getName();
+            StringRef multi_type_fcn_name = StringRef(llvm_multi_type_function_list[i]);
+            if(fcn_name.contains(multi_type_fcn_name))
+              contains = 1;
+          }
+          if (contains)
+            continue;
+
           if( recognizedExternalFunctions.count(callee->getName()) )
             //errs() << "SpecPriv: Inserting recognized external call at Basic Block: " << bb->getName() << '\n';
             continue;
+
         }
         //errs() << "SpecPriv: Inserting unrecognized external call at Basic Block: " << bb->getName() << '\n';
         externalCalls.insert(inst);

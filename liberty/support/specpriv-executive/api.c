@@ -983,6 +983,7 @@ Iteration __specpriv_last_redux_update_iter(void) {
 // uo checks are inlined in postprocess. This function was never called
 void __specpriv_uo(void *ptr, uint64_t code, uint64_t subheap, const char *msg)
 {
+  assert( 0 ); // FIXME: the MTCG now uses heap # instead of code
   uint64_t start;
   VAL_TIME(start);
   if( ptr )

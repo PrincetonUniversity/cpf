@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# should be handled elsewhere
+#-recover-types \
+
+
+echo -basic-loop-aa
+echo -scev-loop-aa
+echo -auto-restrict-aa
+echo -intrinsic-aa
+echo -global-malloc-aa
+echo -pure-fun-aa
+echo -semi-local-fun-aa
+
+echo -phi-maze-aa
+echo -no-capture-global-aa
+echo -no-capture-src-aa
+echo -type-aa
+echo -no-escape-fields-aa
+echo -acyclic-aa
+
+echo -disjoint-fields-aa
+echo -field-malloc-aa
+echo -loop-variant-allocation-aa
+echo -std-in-out-err-aa
+echo -array-of-structures-aa
+
+echo -kill-flow-aa
+echo -callsite-depth-combinator-aa
+echo -unique-access-paths-aa
+
+# too slow
+#echo -module-smt-aa
+
+# dominated by callsite depth combinator
+# -callsite-breadth-combinator-aa
+
+# No evidence it is effective;
+# Theoretical argument that it can't be helpful for some speculation profiles;
+# Strong evidence that it can be slow.
+#-subloop-combinator-aa
+

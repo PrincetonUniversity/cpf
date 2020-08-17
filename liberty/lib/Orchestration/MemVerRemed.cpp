@@ -50,8 +50,7 @@ Remediator::RemedResp MemVerRemediator::memdep(const Instruction *A,
       remedy->waw = true;
       // DISABLE WAW functionality for MemVer (Cannot handle
       // last-liveout value in the codegen)
-      // allow this for PLDI20. TODO: avoid it and prefer other remedies for WAW
-      //remedResp.depRes = DepResult::Dep;
+      remedResp.depRes = DepResult::Dep;
     }
     else {
       // with process-based parallelization, WAR are removed for free.

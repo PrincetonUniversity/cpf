@@ -665,12 +665,12 @@ void Preprocess::init(ModuleLoops &mloops)
           */
         } else if (remed->getRemedyName().equals("priv-local-remedy")) {
           assert(false && "priv-local should be generated during classification");
-          //collectRelevantAUs(privRemed->storeI->getPointerOperand(), spresults,
-          //                   loop_ctx, localPrivAUs);
+          //collectRelevantAUs(privRemed->privPtr, spresults,
+           //                  loop_ctx, localPrivAUs);
         } else if (remed->getRemedyName().equals("priv-full-overlap-remedy")) {
           assert(false && "priv-full-overlap should be generated during classification");
           //collectRelevantAUs(privRemed->privPtr, spresults, loop_ctx,
-          //                   killPrivAUs);
+            //                 killPrivAUs);
         }
       }
       else if (remed->getRemedyName().equals("txio-remedy")) {

@@ -1,0 +1,18 @@
+{
+"052.alvinn": {"suites": ["SpecFP", "Spec"], "available": true},
+"056.ear": {"suites": ["SpecFP", "Spec"], "available": true},
+"129.compress": {"suites": ["SpecINT", "Spec"], "available": true},
+"164.gzip": {"suites": ["SpecINT", "Spec"], "available": true},
+"175.vpr": {"suites": ["SpecINT", "Spec"], "available": true},
+"179.art": {"suites": ["SpecFP", "Spec"], "available": true},
+"181.mcf": {"suites": ["SpecINT", "Spec"], "available": true},
+"183.equake": {"suites": ["SpecFP", "Spec"], "available": true},
+"429.mcf": {"suites": ["SpecINT", "Spec"], "available": true},
+"456.hmmer": {"suites": ["SpecINT", "Spec"], "available": true},
+"462.libquantum": {"suites": ["Spec2006", "Spec"], "available": true},
+"470.lbm": {"suites": ["Spec2006", "Spec"], "available": true},
+"482.sphinx3": {"suites": ["Spec2006", "Spec"], "available": true},
+"519.lbm": {"suites": ["Spec"], "available": true},
+"525.x264": {"suites": ["Spec"], "available": true},
+"544.nab": {"suites": ["Spec"], "available": true}
+}

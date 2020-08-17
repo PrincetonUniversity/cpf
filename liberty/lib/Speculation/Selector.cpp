@@ -1,12 +1,13 @@
 #define DEBUG_TYPE "selector"
 
 #include "llvm/ADT/Statistic.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Analysis/ScalarEvolutionExpressions.h"
-#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/Analysis/DOTGraphTraitsPass.h"
@@ -40,6 +41,7 @@
 
 #include "LoopDependenceInfo.hpp"
 #include "DGGraphTraits.hpp"
+#include "DominatorSummary.hpp"
 
 using namespace llvm;
 
@@ -111,8 +113,10 @@ void writeGraph(const std::string &filename, GT *graph) {
   raw_fd_ostream File(filename, EC, sys::fs::F_Text);
   std::string Title = DOTGraphTraits<GT *>::getGraphName(graph);
 
+  DGGraphWrapper<GT, Value> graphWrapper(graph);
+
   if (!EC) {
-    WriteGraph(File, graph, false, Title);
+    WriteGraph(File, &graphWrapper, false, Title);
   } else {
     LLVM_DEBUG(errs() << "Error opening file for writing!\n");
     abort();
@@ -188,7 +192,10 @@ unsigned Selector::computeWeights(
           << fA->getName() << " :: " << hA->getName() << "...\n");
 
     LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
+    DominatorTree &dt = mloops.getAnalysis_DominatorTree(fA);
     PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
+    std::unique_ptr<DominatorSummary> ds =
+        std::make_unique<DominatorSummary>(dt, pdt);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
 
     const HeapAssignment &asgn = classify.getAssignmentFor(A);
@@ -212,7 +219,7 @@ unsigned Selector::computeWeights(
       writeGraph<PDG>(pdgDotName, pdg);
 
       std::unique_ptr<LoopDependenceInfo> ldi =
-          std::make_unique<LoopDependenceInfo>(fA, pdg, A, li, se, pdt);
+          std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
 
       // trying to find the best parallelization strategy for this loop
 
@@ -464,7 +471,6 @@ const Instruction *getGravityInstFromRemed(Remedy_ptr &remed) {
 void populateRemedCostPerStage(LoopParallelizationStrategy *strategy, Loop *L,
                                SelectedRemedies &remeds) {
   unsigned unknownStageCnt = 0;
-
   for (auto remed : remeds) {
     // find gravity inst
     const Instruction *gravity = getGravityInstFromRemed(remed);
@@ -853,10 +859,12 @@ bool Selector::doSelection(
   for(unsigned i=0, N=toDelete.size(); i<N; ++i)
   {
     Loop *deleteme = toDelete[i];
-
-    auto *strat = strategies[deleteme->getHeader()].get();
-    populateRemedCostPerStage(strat, deleteme,
+    if(selectedRemedies[deleteme->getHeader()])
+    {
+      auto *strat = strategies[deleteme->getHeader()].get();
+      populateRemedCostPerStage(strat, deleteme,
                               *selectedRemedies[deleteme->getHeader()]);
+    }
 
     // 'deleteme' is a loop we will NOT parallelize.
     if (DebugFlag &&

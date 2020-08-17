@@ -1,0 +1,52 @@
+#!/bin/bash
+
+IN=$1
+OUT=`basename $IN .bc`.devirt.bc
+
+DBG=
+if [[ x$DEBUG != x ]]
+then
+  DBG="-debug-only="$DEBUG
+fi
+
+# Determine if the user specified a function
+FCN=
+if [[ x$2 != x ]]
+then
+  FCN=
+fi
+
+# Determine if the user specified a loop
+LOOP=
+if [[ x$3 != x ]]
+then
+  LOOP=
+fi
+
+
+# Determine if the user provided a modifier.
+# Valid choices are:
+# - memcheck
+# - massif
+# - gdb
+PREFIX=time
+if [[ x$GDB != x ]]
+then
+  PREFIX="gdb --args "
+elif [[ x$MASSIF != x ]]
+then
+  PREFIX="valgrind --tool=massif --heap=yes --massif-out-file=massif.out "
+elif [[ x$MEMCHECK != x ]]
+then
+  PREFIX="valgrind --tool=memcheck --leak-check=yes "
+elif [[ x$ECHO != x ]]
+then
+  PREFIX="echo "
+fi
+
+$PREFIX opt \
+  -load $LIBERTY_LIBS_DIR/libExclusions.so -load $LIBERTY_LIBS_DIR/libUtil.so -load $NOELLE_LIBS_DIR/libSvf.so -load $NOELLE_LIBS_DIR/libCudd.so -load $LIBERTY_LIBS_DIR/libAnalysis.so \
+  -load $LIBERTY_LIBS_DIR/libDevirt.so \
+  $EXTRA -devirtualize -simplifycfg -simplifycfg-sink-common=false $DBG $IN -o $OUT $FCN $LOOP -stats -specpriv-devirt-stats
+  #$EXTRA -devirtualize -simplifycfg -debug-only=$DBG $IN -o $OUT $FCN $LOOP -stats -specpriv-devirt-stats
+

@@ -42,7 +42,8 @@ public:
   bool compare(const Remedy_ptr rhs) const;
 
   StringRef getPrivRemedyName() const {
-    switch (type) {
+    return "priv-remedy";
+    /*switch (type) {
     case Normal:
       return "priv-remedy";
       break;
@@ -54,7 +55,7 @@ public:
       break;
     default:
       assert(false && "No priv-remedy type?");
-    }
+    }*/
   }
 
   StringRef getRemedyName() const { return getPrivRemedyName(); };

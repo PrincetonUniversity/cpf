@@ -1,0 +1,6 @@
+{
+"covariance": {"suites": ["PolyBench"], "available": true},
+"2mm": {"suites": ["PolyBench"], "available": true},
+"dijkstra-dynsize": {"suites": ["MiBench"], "available": true},
+"052.alvinn": {"suites": ["SpecFP", "Spec"], "available": true}
+}

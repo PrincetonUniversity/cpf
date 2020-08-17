@@ -1,0 +1,48 @@
+{
+"correlation": {"suites": ["PolyBench"], "available": true},
+"2mm": {"suites": ["PolyBench"], "available": true},
+"3mm": {"suites": ["PolyBench"], "available": true},
+"covariance": {"suites": ["PolyBench"], "available": true},
+"gemm": {"suites": ["PolyBench"], "available": true},
+"doitgen": {"suites": ["PolyBench"], "available": true},
+"lu": {"suites": ["PolyBench"], "available": true},
+"dynprog": {"suites": ["PolyBench"], "available": true},
+"ludcmp": {"suites": ["PolyBench"], "available": true},
+"gramschmidt": {"suites": ["PolyBench"], "available": true},
+"jacobi-2d-imper": {"suites": ["PolyBench"], "available": true},
+"reg_detect": {"suites": ["PolyBench"], "available": true},
+"seidel-2d": {"suites": ["PolyBench"], "available": true},
+"symm": {"suites": ["PolyBench"], "available": true},
+"syr2k": {"suites": ["PolyBench"], "available": true},
+"syrk": {"suites": ["PolyBench"], "available": true},
+
+"swaptions": {"suites": ["PARSEC"], "available": true},
+"blackscholes": {"suites": ["PARSEC"], "available": true},
+
+"dijkstra-dynsize": {"suites": ["MiBench"], "available": true},
+
+"enc-md5": {"suites": ["Trimaran"], "available": true},
+"052.alvinn": {"suites": ["SpecFP", "Spec"], "available": true},
+"482.sphinx3": {"suites": ["Spec2006", "Spec"], "available": false},
+"459.GemsFDTD": {"suites": ["Spec2006", "Spec"], "available": false},
+"470.lbm": {"suites": ["Spec2006", "Spec"], "available": true},
+"462.libquantum": {"suites": ["Spec2006", "Spec"], "available": false},
+"410.bwaves": {"suites": ["Spec2006", "Spec"], "available": false},
+"436.cactusADM": {"suites": ["Spec2006", "Spec"], "available": false},
+"183.equake": {"suites": ["SpecFP", "Spec"], "available": true},
+"102.swim": {"suites": ["SpecFP", "Spec"], "available": false},
+"171.swim": {"suites": ["SpecFP", "Spec"], "available": true},
+
+"vacation": {"suites": ["STAMP"], "available": false},
+"labyrinth": {"suites": ["STAMP"], "available": false},
+
+"beamformer": {"suites": ["StreamIt"], "available": false},
+"fmradio": {"suites": ["StreamIt"], "available": false},
+"dct": {"suites": ["StreamIt"], "available": false},
+
+"rls": {"suites": ["unknown"], "available": false},
+
+"056.ear": {"suites": ["SpecFP", "Spec"], "available": true},
+"107.mgrid": {"suites": ["SpecFP", "Spec"], "available": false},
+"172.mgrid": {"suites": ["SpecFP", "Spec"], "available": false}
+}

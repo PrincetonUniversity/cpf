@@ -710,20 +710,18 @@ void ApplySeparationSpec::insertMemcpy(InstInsertPt &where, Value *dst, Value *s
   Type *u1 = Type::getInt1Ty(ctx);
   Type *u32 = Type::getInt32Ty(ctx);
 
-  std::vector<Type*> formals(5);
+  std::vector<Type*> formals(4);
   formals[0] = voidptr;
   formals[1] = voidptr;
   formals[2] = u32;
-  formals[3] = u32;
-  formals[4] = u1;
+  formals[3] = u1;
   FunctionType *fty = FunctionType::get(voidty, formals, false);
   FunctionCallee wrapper_memcpy = mod->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i32", fty);
   Constant *memcpy = cast<Constant>(wrapper_memcpy.getCallee());
-  Value *one = ConstantInt::get(u32, 1);
   Value *fls = ConstantInt::getFalse(ctx);
 
-  Value *actuals[] = { d, s, sz, one, fls };
-  where << CallInst::Create(memcpy, ArrayRef<Value*>(&actuals[0], &actuals[5]) );
+  Value *actuals[] = { d, s, sz, fls };
+  where << CallInst::Create(memcpy, ArrayRef<Value*>(&actuals[0], &actuals[4]) );
 }
 
 struct ReplaceConstant2PreprocessAdaptor : ReplaceConstantObserver
@@ -1442,12 +1440,12 @@ void ApplySeparationSpec::insertUOCheck(const HeapAssignment &asgn, Loop *loop, 
 
   Constant *check = Api(mod).getUO();
 
-  Value *code = ConstantInt::get(u64, Api::getCodeForHeap(heap) );
+  Constant *heap_arg = ConstantInt::get(u64, heap);
+  // Value *code = ConstantInt::get(u64, Api::getCodeForHeap(heap) ); // use code directly!
   Constant *subheap = ConstantInt::get(u64, sh);
 
-  Value *args[] = { cast, code, subheap, message };
+  Value *args[] = { cast, heap_arg, subheap, message };
   Instruction *call = CallInst::Create(check, ArrayRef<Value*>(&args[0], &args[4]) );
-
   where << cast << call;
   preprocess.addToLPS(cast, inst_obj);
   preprocess.addToLPS(call, inst_obj);

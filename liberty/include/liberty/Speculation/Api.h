@@ -274,10 +274,10 @@ struct Api
     formals[0] = voidptr;
     FunctionType *fty = FunctionType::get(voidty, formals, false);
     std::string name = (Twine(personality) + "_misspec").str();
-    AttributeList Attr;
-    Attr = Attr.addAttribute(mod->getContext(), 0, Attribute::NoReturn);
-    FunctionCallee cc = mod->getOrInsertFunction(name, fty, Attr);
-    return cast<Constant>(cc.getCallee());
+    FunctionCallee cc = mod->getOrInsertFunction(name,fty);
+    Function* cc_fcn = dyn_cast<Function>(cc.getCallee());
+    cc_fcn->setDoesNotReturn();
+    return cast<Constant>(cc_fcn);
   }
 
   Constant *getCurrentIter()
@@ -430,7 +430,7 @@ struct Api
   Constant *getSetLoopID()
   {
     std::string name = (Twine(personality) + "_set_loopID").str();
-    FunctionCallee wrapper = mod->getOrInsertFunction(name,fv2i);
+    FunctionCallee wrapper = mod->getOrInsertFunction(name,fi2v);
     return cast<Constant>(wrapper.getCallee());
   }
 
