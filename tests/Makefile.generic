@@ -459,7 +459,7 @@ clean-runtime :
 
 clean :
 	- $(CLEANUP)
-	rm -f *.o *.ll *.bc *.pdf *.dot $(CANON).* $(CANON).opt.* *.time *.dump compare1.out rabbit* seq.out seq_check* parallel.out parallel_* compare.out compare_* check.out check_* $(CANON).compare.out dout.out loops.out auxout.out lcout.out result.slamp.profile loopProf.out llvmprof.out __targets.txt result.lamp.profile a.out result.specpriv.profile.txt headerphi_prof.out
+	rm -f *.o *.ll *.bc *.pdf *.dot $(CANON).* $(CANON).opt.* *.time *.dump compare1.out rabbit* seq.out seq_check* parallel.out parallel_* compare.out compare_* check.out check_* $(CANON).compare.out dout.out loops.out auxout.out lcout.out loopProf.out llvmprof.out __targets.txt result.lamp.profile a.out result.specpriv.profile.txt 
 	find . -type f -name '*.bc' -delete
 
 clean-exp:
