@@ -58,6 +58,7 @@ LIBS="
 
 EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -llvm-aa-results"
 
-$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler -debug-only=$DBG $IN -o $TMP -stats 2>&1
+$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler $IN -o $TMP -stats 2>&1
+#$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler -debug-only=$DBG $IN -o $TMP -stats 2>&1
 opt $TMP -O3 -o $OUT
 

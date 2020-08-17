@@ -29,10 +29,19 @@ LLVM_CXX?= clang++
 LLVM_LINK?= llvm-link
 LLVM_OPT?= opt
 
+ARGS?=$(TRAINARGS)
+TESTARGS?=$(REFARGS)
+TESTARGS=$(ARGS)
+PROFILEARGS?=$(TRAINARGS)
+
 LARGETESTARGS?=$(TESTARGS)
 CHECKARGS?=$(PROFILEARGS)
 CHECKARGS1?=$(CHECKARGS)
 CHECKARGS2?=$(CHECKARGS)
+
+PROFILESETUP?=$(SETUP_TRAIN)
+SETUP_TRAIN?=$(SETUP)
+SETUP_REF?=$(SETUP)
 
 PROFILE?=
 OPT?=-O1
@@ -40,7 +49,7 @@ DEBUG?=
 EXTRACHECK?=
 CFLAGS?= -c $(OPT) $(PREPROCESSING_OPTIONS)  $(PREPROCESSOR_OPTIONS) $(PROFILE) $(DEBUG)
 LDFLAGS?= $(PROFILE) $(DEBUG)
-LLVM_CFLAGS?=-O1 -g -c -emit-llvm $(PREPROCESSOR_OPTIONS) $(PREPROCESSING_OPTIONS) $(DEBUG) -Xclang -disable-llvm-passes
+LLVM_CFLAGS?=-O1 -g -c -emit-llvm $(PREPROCESSOR_OPTIONS) $(PREPROCESSING_OPTIONS) $(DEBUG) -Xclang -disable-llvm-passes $(FINAL_CFLAGS) $(FINAL_CXXFLAGS)
 TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
 LLVM_LINK_FLAGS?=
 QUEUES=$(LIBERTY_LIBS_DIR)/sw_queue.noinline.o
@@ -124,7 +133,7 @@ $(PLAIN).o3.out : $(PLAIN).o3.exe
 $(PLAIN).o3.exe : $(PLAIN).o3.bc
 	date
 	regressions-watchdog $(TRANSFORM_TIMEOUT) strip.time $(LLVM_OPT) -strip $^ -o $(PLAIN).o3.striped.bc
-	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-plain.time $(LLVM_CXX) -O3 -lm $(LIBS) $(PLAIN).o3.striped.bc -o $@ 
+	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-plain.time $(LLVM_CXX) -O3 $(CXXOPTIMIZE) $(COPTIMIZE) -lm $(LIBS) $(PLAIN).o3.striped.bc -o $@ 
 	date
 
 #
@@ -262,7 +271,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 # specpriv profile
 #
 
-%.specpriv-profile.out : %.specpriv-profile.exe $(CANON).lamp.out
+%.specpriv-profile.out : %.specpriv-profile.exe #$(CANON).lamp.out
 	date
 	$(SETUP)
 	$(PROFILESETUP)
@@ -319,7 +328,7 @@ $(CANON).collaborative.exe: | setup_codegen $(CANON).specpriv-profile.out $(CANO
 	CG=1 collaborative-pipeline $(CANON).bc
 
 seq.time seq.out: $(PLAIN).o3.exe
-	$(SETUP)
+	$(SETUP_REF)
 	regressions-watchdog $(RUN_TIMEOUT) seq.time ./$(PLAIN).o3.exe $(TESTARGS) > seq.out 2>&1
 	$(CHECK)
 	$(CLEAUP)
@@ -336,7 +345,7 @@ reg_para: $(CANON).collaborative.exe
 	$(CLEANUP)
 
 parallel.time parallel.out: $(CANON).collaborative.exe
-	$(SETUP)
+	$(SETUP_REF)
 	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) parallel.time ./$(CANON).collaborative.exe $(TESTARGS) > parallel.out 2>&1
 	- rm -f /dev/shm/specpriv-*
 	$(CLEANUP)
