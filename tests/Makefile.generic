@@ -278,15 +278,6 @@ $(CANON).analysis.dump : | setup_codegen $(CANON).specpriv-profile.out $(CANON).
 $(CANON).collaborative.exe: | setup_codegen $(CANON).specpriv-profile.out $(CANON).bc
 	CG=1 collaborative-pipeline $(CANON).bc
 
-$(CANON).collaborative_v2.exe: | setup_codegen $(CANON).specpriv-profile.out $(CANON).bc
-	CG=1 V2=1 collaborative-pipeline $(CANON).bc
-
-$(CANON).collaborative_v1.exe: | setup_codegen $(CANON).specpriv-profile.out $(CANON).bc
-	CG=1 V1=1 collaborative-pipeline $(CANON).bc
-
-$(CANON).collaborative_privateer.exe: | setup_codegen $(CANON).specpriv-profile.out $(CANON).bc
-	CG=1 PRIV=1 collaborative-pipeline $(CANON).bc
-
 seq.time seq.out: $(PLAIN).o3.exe
 	$(SETUP)
 	regressions-watchdog $(RUN_TIMEOUT) seq.time ./$(PLAIN).o3.exe $(TESTARGS) > seq.out 2>&1
@@ -309,24 +300,6 @@ parallel.time parallel.out: $(CANON).collaborative.exe
 	- rm -f /dev/shm/specpriv-*
 	$(CLEANUP)
 
-parallel_v2.time parallel_v2.out: $(CANON).collaborative_v2.exe
-	$(SETUP)
-	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) parallel_v2.time ./$(CANON).collaborative_v2.exe $(TESTARGS) > parallel_v2.out 2>&1
-	- rm -f /dev/shm/specpriv-*
-	$(CLEANUP)
-
-parallel_v1.time parallel_v1.out: $(CANON).collaborative_v1.exe
-	$(SETUP)
-	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) parallel_v1.time ./$(CANON).collaborative_v1.exe $(TESTARGS) > parallel_v1.out 2>&1
-	- rm -f /dev/shm/specpriv-*
-	$(CLEANUP)
-
-parallel_privateer.time parallel_privateer.out: $(CANON).collaborative_privateer.exe
-	$(SETUP)
-	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) parallel_privateer.time ./$(CANON).collaborative_privateer.exe $(TESTARGS) > parallel_privateer.out 2>&1
-	- rm -f /dev/shm/specpriv-*
-	$(CLEANUP)
-
 compare.out: $(CANON).collaborative.exe $(PLAIN).o3.exe
 	$(SETUP)
 	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) check.time ./$(CANON).collaborative.exe $(CHECKARGS1) > check.out 2>&1
@@ -334,33 +307,6 @@ compare.out: $(CANON).collaborative.exe $(PLAIN).o3.exe
 	regressions-watchdog $(RUN_TIMEOUT) seq_check.time ./$(PLAIN).o3.exe $(CHECKARGS2) > seq_check.out 2>&1
 	- diff seq_check.out check.out > $@ 2>&1
 	- $(EXTRACHECK)	>> $@ 2>&1
-	$(CLEANUP)
-
-compare_v2.out: $(CANON).collaborative_v2.exe $(PLAIN).o3.exe
-	$(SETUP)
-	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) check_v2.time ./$(CANON).collaborative_v2.exe $(CHECKARGS1) > check_v2.out 2>&1
-	- rm -f /dev/shm/specpriv-*
-	regressions-watchdog $(RUN_TIMEOUT) seq_check.time ./$(PLAIN).o3.exe $(CHECKARGS2) > seq_check.out 2>&1
-	- diff seq_check.out check_v2.out > $@ 2>&1
-	- $(EXTRACHECK)	>> $@ 2>&1
-	$(CLEANUP)
-
-compare_v1.out: $(CANON).collaborative_v1.exe $(PLAIN).o3.exe
-	$(SETUP)
-	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) check_v1.time ./$(CANON).collaborative_v1.exe $(CHECKARGS1) > check_v1.out 2>&1
-	- rm -f /dev/shm/specpriv-*
-	regressions-watchdog $(RUN_TIMEOUT) seq_check.time ./$(PLAIN).o3.exe $(CHECKARGS2) > seq_check.out 2>&1
-	- diff seq_check.out check_v1.out > $@ 2>&1
-	- $(EXTRACHECK)	>> $@ 2>&1
-	$(CLEANUP)
-
-compare_privateer.out: $(CANON).collaborative_privateer.exe $(PLAIN).o3.exe
-	$(SETUP)
-	NUM_WORKERS=${REG_NUM_WORKERS} regressions-watchdog $(RUN_TIMEOUT) check_privateer.time ./$(CANON).collaborative_privateer.exe $(CHECKARGS1) > check_privateer.out 2>&1
-	- rm -f /dev/shm/specpriv-*
-	regressions-watchdog $(RUN_TIMEOUT) seq_check.time ./$(PLAIN).o3.exe $(CHECKARGS2) > seq_check.out 2>&1
-	- diff seq_check.out check_privateer.out > $@ 2>&1
-	- $(EXTRACHECK) >> $@ 2>&1
 	$(CLEANUP)
 
 $(CANON).compare.out : seq.out parallel.out
