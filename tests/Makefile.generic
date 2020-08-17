@@ -4,7 +4,11 @@ CANON=$(BINARY)
 
 LIBS?=
 
-OBJFILES_BC?= $(shell find . -name \*.c | sed -e "s/\.c/.bc/" ) $(shell find . -name \*.C | sed -e "s/\.C/.bc/" ) $(shell find . -name \*.cpp | sed -e "s/\.cpp/.bc/" )  $(shell find . -name \*.cc | sed -e "s/\.cc/.bc/" ) 
+ifdef SPEC_DEFAULTS
+OBJFILES_BC = $(OBJS)
+else
+OBJFILES_BC?= $(shell find . -name \*.c | sed -e "s/\.c/.bc/" ) $(shell find . -name \*.C | sed -e "s/\.C/.bc/" ) $(shell find . -name \*.cpp | sed -e "s/\.cpp/.bc/" )  $(shell find . -name \*.cc | sed -e "s/\.cc/.bc/" )
+endif
 
 BENCH_NAME?=$(shell cd .. && basename `pwd`)
 BENCH_DIR?= ../../$(BENCH_NAME)
