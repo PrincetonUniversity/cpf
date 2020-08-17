@@ -9,6 +9,7 @@ OBJFILES_BC?= $(shell find . -name \*.c | sed -e "s/\.c/.bc/" ) $(shell find . -
 BENCH_NAME?=$(shell cd .. && basename `pwd`)
 BENCH_DIR?= ../../$(BENCH_NAME)
 RESULT_FILE?=$(BENCH_NAME).result
+BENCH_ROOT?=../..
 
 RUN_TIMEOUT?=7200 # 2 hours.
 TRANSFORM_TIMEOUT?=21600 # 6 hours.
@@ -281,6 +282,7 @@ $(CANON).collaborative.exe: | setup_codegen $(CANON).specpriv-profile.out $(CANO
 seq.time seq.out: $(PLAIN).o3.exe
 	$(SETUP)
 	regressions-watchdog $(RUN_TIMEOUT) seq.time ./$(PLAIN).o3.exe $(TESTARGS) > seq.out 2>&1
+	$(CHECK)
 	$(CLEAUP)
 
 reg_seq: $(PLAIN).o3.exe
@@ -352,7 +354,7 @@ $(HACK).bc : $(PLAIN).opt.internalized.devirt.bc
 	cp $< $@
 endif
 
-$(HACK2).bc : $(HACK).opt.bc
+$(HACK2).bc : $(HACK).opt.named.bc
 	cp $< $@
 
 AINLINE=$(BINARY).ainline
@@ -418,6 +420,7 @@ clean-runtime :
 clean :
 	- $(CLEANUP)
 	rm -f *.o *.ll *.bc *.pdf *.dot $(CANON).* $(CANON).opt.* *.time *.dump compare1.out rabbit* seq.out seq_check* parallel.out parallel_* compare.out compare_* check.out check_* $(CANON).compare.out dout.out loops.out auxout.out lcout.out result.slamp.profile loopProf.out llvmprof.out __targets.txt result.lamp.profile a.out result.specpriv.profile.txt headerphi_prof.out
+	find . -type f -name '*.bc' -delete
 
 clean-exp:
 	- rm -f $(CANON).collaborative-pipeline.dump
