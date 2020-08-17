@@ -44,7 +44,7 @@ compile-cpf=1
 
 # Make sure you have write privilege to both directories here
 install-prefix=/tmp/github-cpf-test
-cpf-root-path:=${GITHUB_WORKSPAE}
+cpf-root-path:=${GITHUB_WORKSPACE}
 
 # 1: verbose mode, print all internal cmake/make message to terminal
 verbose=0
