@@ -28,7 +28,7 @@ jobs:
 
     # Runs a set of commands using the runners shell
     - name: Build CPF
-      run: make -f bootstrap/Makefile.github all
+      run: make -C bootstrap -f Makefile.github all
 
   # Run regression test
   #reg:
