@@ -25,4 +25,7 @@ echo -kill-flow-aa
 echo -callsite-depth-combinator-aa
 echo -unique-access-paths-aa
 
+echo -llvm-aa-results
 
+# disable svf for now.
+# echo -svf-results
