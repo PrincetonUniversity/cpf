@@ -1,4 +1,5 @@
 ## Collaborative Parallelization Framework (CPF)
+![Build](https://github.com/PrincetonUniversity/cpf/workflows/Build/badge.svg)
 
 CPF is a compiler infrastructure that automatically parallelizes sequential C/C++ programs to run efficiently on shared-memory multicore systems.
 
