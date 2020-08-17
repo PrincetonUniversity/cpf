@@ -59,8 +59,29 @@ FCNSPLITLIBS=
 NAMEDLIBS=
 
 INLINER_LIB=-load $(LIBERTY_LIBS_DIR)/libUtil.so \
+						-load $(NOELLE_LIBS_DIR)/libCudd.so \
+						-load $(NOELLE_LIBS_DIR)/libSvf.so \
 						-load $(LIBERTY_LIBS_DIR)/libAnalysis.so \
 						-load $(LIBERTY_LIBS_DIR)/libLoopProf.so \
+						-load $(LIBERTY_LIBS_DIR)/libMetadata.so \
+						-load $(LIBERTY_LIBS_DIR)/libLAMPLoad.so \
+						-load $(LIBERTY_LIBS_DIR)/libLAMP.so \
+						-load $(LIBERTY_LIBS_DIR)/libSLAMP.so \
+						-load $(LIBERTY_LIBS_DIR)/libRedux.so \
+						-load $(LIBERTY_LIBS_DIR)/libPointsToProfiler.so \
+						-load $(LIBERTY_LIBS_DIR)/libGraphAlgorithms.so \
+						-load $(NOELLE_LIBS_DIR)/AllocAA.so \
+						-load $(NOELLE_LIBS_DIR)/BasicUtilities.so \
+						-load $(NOELLE_LIBS_DIR)/LoopStructure.so \
+						-load $(NOELLE_LIBS_DIR)/TalkDown.so \
+						-load $(NOELLE_LIBS_DIR)/PDGAnalysis.so \
+						-load $(LIBERTY_LIBS_DIR)/libGraphAlgorithms.so \
+						-load $(NOELLE_LIBS_DIR)/Architecture.so \
+						-load $(NOELLE_LIBS_DIR)/HotProfiler.so \
+						-load $(NOELLE_LIBS_DIR)/Loops.so \
+						-load $(LIBERTY_LIBS_DIR)/libStrategy.so \
+						-load $(LIBERTY_LIBS_DIR)/libOrchestration.so \
+						-load $(LIBERTY_LIBS_DIR)/libSpeculation.so \
 						-load $(LIBERTY_LIBS_DIR)/libAggrInliner.so
 
 HACK=$(BINARY).hack
@@ -219,6 +240,24 @@ $(CANON).loopProf_OG.exe : $(CANON).pgo.bc $(LOOPPROFLIBS)
 	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-lamp.time lamp-profile $*.bc
 	date
 
+
+$(CANON).lamp_OG.out : $(CANON).lamp_OG.exe
+	date
+	$(SETUP)
+	$(PROFILESETUP)
+	regressions-watchdog $(PROFILE_TIMEOUT) $*.lamp_OG.time ./$(CANON).lamp_OG.exe $(ARGS) $(PROFILEARGS) >rabbit33 2>&1
+	cp result.lamp.profile $@
+	$(CLEANUP)
+	date
+
+$(CANON).lamp_OG.exe : $(HACK2).bc $(LAMPLIBS)
+$(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
+	date
+	rm -f lamp_OG.time $(CANON).lamp_OG.out $(CANON).lamp_OG.exe
+	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-lamp.time lamp-profile $<
+	mv benchmark.pgo.lamp.exe $@
+	date
+
 #
 # specpriv profile
 #
@@ -362,9 +401,10 @@ $(AINLINE).bc : $(HACK2).bc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) inline.time $(LLVM_OPT) $(INLINER_LIB) -always-inline $< -o $@
 
 INLINED=$(BINARY).inlined
-$(INLINED).bc : $(HACK2).bc $(CANON).loopProf_OG.out
+$(INLINED).bc : $(HACK2).bc $(CANON).loopProf_OG.out $(CANON).lamp_OG.out
 	cp $(CANON).loopProf_OG.out loopProf.out
-	regressions-watchdog $(TRANSFORM_TIMEOUT) inline.time $(LLVM_OPT) $(INLINER_LIB) -aggr-inliner $< -o benchmark.inlined.noopt.bc
+	cp $(CANON).lamp_OG.out result.lamp.profile
+	regressions-watchdog $(TRANSFORM_TIMEOUT) inline.time $(LLVM_OPT) $(INLINER_LIB) -lamp-inst-cnt -lamp-map-loop -lamp-load-profile -always-inline -aggr-inliner $< -o benchmark.inlined.noopt.bc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) simplify.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) benchmark.inlined.noopt.bc -o $@
 	rm -f loopProf.out
 
