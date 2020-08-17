@@ -301,7 +301,7 @@ unsigned Selector::computeWeights(
   return numApplicable;
 }
 
-void getCalledFuns(CallGraphNode *cgNode,
+void getCalledFuns(llvm::CallGraphNode *cgNode,
                    unordered_set<const Function *> &calledFuns) {
   for (auto i = cgNode->begin(), e = cgNode->end(); i != e; ++i) {
     auto *succ = i->second;
@@ -315,7 +315,7 @@ void getCalledFuns(CallGraphNode *cgNode,
 
 bool Selector::callsFun(const Loop *l, const Function *tgtF,
                         LoopToTransCalledFuncs &loopTransCallGraph,
-                        CallGraph &callGraph) {
+                        llvm::CallGraph &callGraph) {
   if (loopTransCallGraph.count(l))
     return loopTransCallGraph[l].count(tgtF);
 
@@ -337,7 +337,7 @@ bool Selector::callsFun(const Loop *l, const Function *tgtF,
 
 bool Selector::mustBeSimultaneouslyActive(
     const Loop *A, const Loop *B, LoopToTransCalledFuncs &loopTransCallGraph,
-    CallGraph &callGraph) {
+    llvm::CallGraph &callGraph) {
 
   if (A->contains(B->getHeader()) || B->contains(A->getHeader()))
     return true;
