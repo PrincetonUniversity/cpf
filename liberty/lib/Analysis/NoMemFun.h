@@ -69,6 +69,8 @@
   "llvm.floor.f64",
   "llvm.ceil.f32",
   "llvm.ceil.f64",
+  "llvm.prefetch",
+  "llvm.pcmarker",
 
 // New with llvm 135637
   "llvm.lifetime.start",
