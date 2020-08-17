@@ -1,0 +1,23 @@
+ # IMPACT Public Release (www.crhc.uiuc.edu/IMPACT)            Version 2.33  #
+ # IMPACT Trimaran Release (www.trimaran.org)                  July 12, 1999 #
+###############################################################################
+#  Run 'read_exec_info --help | more' for documentation.
+#
+#  Source of this file's information:
+#   The IMPACT team 
+#
+#  Revision history for this file:
+#     2/99  Created by John C. Gyllenhaal (www.crhc.uiuc.edu/IMPACT)
+###############################################################################
+
+DESCRIPTION="Graph Partition via Kernighan-Lin"
+SETUP_TRAIN=ln -sf ${BENCH_DIR}/input5/KL-5.in .
+SETUP_REF=ln -sf ${BENCH_DIR}/input7/KL-7.in .
+PREFIX="";
+PROFILEARGS= KL-5.in
+TESTARGS= KL-7.in
+CHECK="diff ${RESULT_FILE} ${BENCH_DIR}/output5/KL-5.OUT"
+CLEANUP=rm -f KL-5.in KL-7.in
+
+# Simulate everything
+SKIP="0";

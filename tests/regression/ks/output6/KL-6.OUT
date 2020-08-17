@@ -1,0 +1,370 @@
+gMax = 13.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 192
+Total net cuts  = 79
+sz:    2     total:   79     edgesCut:   45     netsCuts:   45
+sz:    3     total:   27     edgesCut:   32     netsCuts:   16
+sz:    4     total:    7     edgesCut:   22     netsCuts:    7
+sz:    5     total:    6     edgesCut:   26     netsCuts:    5
+sz:    6     total:    3     edgesCut:   25     netsCuts:    3
+sz:    7     total:    1     edgesCut:   12     netsCuts:    1
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:   14     netsCuts:    1
+sz:   10     total:    1     edgesCut:   16     netsCuts:    1
+No progress: gMax = 13.000000
+gMax = 13.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 179
+Total net cuts  = 78
+sz:    2     total:   79     edgesCut:   45     netsCuts:   45
+sz:    3     total:   27     edgesCut:   32     netsCuts:   16
+sz:    4     total:    7     edgesCut:   19     netsCuts:    6
+sz:    5     total:    6     edgesCut:   26     netsCuts:    5
+sz:    6     total:    3     edgesCut:   22     netsCuts:    3
+sz:    7     total:    1     edgesCut:   12     netsCuts:    1
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:   14     netsCuts:    1
+sz:   10     total:    1     edgesCut:    9     netsCuts:    1
+gMax = 14.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 165
+Total net cuts  = 77
+sz:    2     total:   79     edgesCut:   45     netsCuts:   45
+sz:    3     total:   27     edgesCut:   34     netsCuts:   17
+sz:    4     total:    7     edgesCut:   19     netsCuts:    6
+sz:    5     total:    6     edgesCut:   18     netsCuts:    3
+sz:    6     total:    3     edgesCut:   22     netsCuts:    3
+sz:    7     total:    1     edgesCut:   10     netsCuts:    1
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    8     netsCuts:    1
+sz:   10     total:    1     edgesCut:    9     netsCuts:    1
+No progress: gMax = 14.000000
+gMax = 14.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 151
+Total net cuts  = 73
+sz:    2     total:   79     edgesCut:   41     netsCuts:   41
+sz:    3     total:   27     edgesCut:   36     netsCuts:   18
+sz:    4     total:    7     edgesCut:   19     netsCuts:    6
+sz:    5     total:    6     edgesCut:   18     netsCuts:    3
+sz:    6     total:    3     edgesCut:   22     netsCuts:    3
+sz:    7     total:    1     edgesCut:    6     netsCuts:    1
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    9     netsCuts:    1
+gMax = 12.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 139
+Total net cuts  = 71
+sz:    2     total:   79     edgesCut:   41     netsCuts:   41
+sz:    3     total:   27     edgesCut:   34     netsCuts:   17
+sz:    4     total:    7     edgesCut:   19     netsCuts:    6
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   23     netsCuts:    3
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 10.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 129
+Total net cuts  = 68
+sz:    2     total:   79     edgesCut:   41     netsCuts:   41
+sz:    3     total:   27     edgesCut:   32     netsCuts:   16
+sz:    4     total:    7     edgesCut:   16     netsCuts:    5
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   18     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 6.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 123
+Total net cuts  = 62
+sz:    2     total:   79     edgesCut:   35     netsCuts:   35
+sz:    3     total:   27     edgesCut:   32     netsCuts:   16
+sz:    4     total:    7     edgesCut:   16     netsCuts:    5
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   18     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+No progress: gMax = 6.000000
+gMax = 6.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 117
+Total net cuts  = 58
+sz:    2     total:   79     edgesCut:   31     netsCuts:   31
+sz:    3     total:   27     edgesCut:   32     netsCuts:   16
+sz:    4     total:    7     edgesCut:   16     netsCuts:    5
+sz:    5     total:    6     edgesCut:   20     netsCuts:    4
+sz:    6     total:    3     edgesCut:   18     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 5.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 112
+Total net cuts  = 55
+sz:    2     total:   79     edgesCut:   29     netsCuts:   29
+sz:    3     total:   27     edgesCut:   30     netsCuts:   15
+sz:    4     total:    7     edgesCut:   15     netsCuts:    5
+sz:    5     total:    6     edgesCut:   20     netsCuts:    4
+sz:    6     total:    3     edgesCut:   18     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 4.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 108
+Total net cuts  = 53
+sz:    2     total:   79     edgesCut:   29     netsCuts:   29
+sz:    3     total:   27     edgesCut:   28     netsCuts:   14
+sz:    4     total:    7     edgesCut:   12     netsCuts:    4
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   17     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 3.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 105
+Total net cuts  = 50
+sz:    2     total:   79     edgesCut:   26     netsCuts:   26
+sz:    3     total:   27     edgesCut:   28     netsCuts:   14
+sz:    4     total:    7     edgesCut:   12     netsCuts:    4
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   17     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+No progress: gMax = 3.000000
+gMax = 3.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 102
+Total net cuts  = 49
+sz:    2     total:   79     edgesCut:   27     netsCuts:   27
+sz:    3     total:   27     edgesCut:   24     netsCuts:   12
+sz:    4     total:    7     edgesCut:   12     netsCuts:    4
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   17     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+No progress: gMax = 3.000000
+gMax = 3.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 99
+Total net cuts  = 48
+sz:    2     total:   79     edgesCut:   26     netsCuts:   26
+sz:    3     total:   27     edgesCut:   26     netsCuts:   13
+sz:    4     total:    7     edgesCut:   12     netsCuts:    4
+sz:    5     total:    6     edgesCut:   18     netsCuts:    3
+sz:    6     total:    3     edgesCut:   17     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 2.000000, iMax = 1
+----------------------------------------------
+Total edge cuts = 94
+Total net cuts  = 48
+sz:    2     total:   79     edgesCut:   27     netsCuts:   27
+sz:    3     total:   27     edgesCut:   26     netsCuts:   13
+sz:    4     total:    7     edgesCut:    6     netsCuts:    2
+sz:    5     total:    6     edgesCut:   22     netsCuts:    4
+sz:    6     total:    3     edgesCut:   13     netsCuts:    2
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 1.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 93
+Total net cuts  = 48
+sz:    2     total:   79     edgesCut:   26     netsCuts:   26
+sz:    3     total:   27     edgesCut:   28     netsCuts:   14
+sz:    4     total:    7     edgesCut:    6     netsCuts:    2
+sz:    5     total:    6     edgesCut:   28     netsCuts:    5
+sz:    6     total:    3     edgesCut:    5     netsCuts:    1
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+gMax = 0.000000, iMax = 0
+----------------------------------------------
+Total edge cuts = 0
+Total net cuts  = 48
+sz:    2     total:   79     edgesCut:    0     netsCuts:   26
+sz:    3     total:   27     edgesCut:    0     netsCuts:   14
+sz:    4     total:    7     edgesCut:    0     netsCuts:    2
+sz:    5     total:    6     edgesCut:    0     netsCuts:    5
+sz:    6     total:    3     edgesCut:    0     netsCuts:    1
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
+----------------------------------------------
+Group A:  
+ 54  59  22  87  40  44  42  70  74  76  20  29  43  47  12   5  35  69  26  45  31  89  64  21  16  84  34  49  38  32  37  27  62   7  30  14  36  17  82  98  96  41  28  86   2  24  81   4  19  50 
+Group B:  
+ 95  77  75   9  78  93   6  66  71  80 100  58  99  18  25  46  68  85  91  88  97   3  60   1  92  51  67  65  53  39  79  11  63  10  56  61  57  23  83  55  15  72  94  73  90  33  13   8  52  48 
+Conn  54 -  52 cut.
+Conn  54 -  99 cut.
+Conn  54 -   3 cut.
+Conn  54 -  97 cut.
+Conn  59 -  55 cut.
+Conn  59 -  11 cut.
+Conn  22 -  83 cut.
+Conn  22 -  67 cut.
+Conn  87 -   6 cut.
+Conn  87 -  53 cut.
+Conn  87 -   8 cut.
+Conn  87 -  65 cut.
+Conn  40 -  56 cut.
+Conn  44 -  55 cut.
+Conn  44 -   8 cut.
+Conn  44 -  53 cut.
+Conn  42 -  67 cut.
+Conn  70 -  52 cut.
+Conn  74 -  51 cut.
+Conn  74 -  15 cut.
+Conn  76 -  67 cut.
+Conn  20 -  60 cut.
+Conn  20 -  73 cut.
+Conn  20 -  57 cut.
+Conn  29 -  92 cut.
+Conn  43 -  65 cut.
+Conn  12 -  51 cut.
+Conn   5 -   8 cut.
+Conn   5 -  52 cut.
+Conn   5 -   9 cut.
+Conn  35 -  52 cut.
+Conn  31 -   9 cut.
+Conn  31 -   9 cut.
+Conn  89 -  75 cut.
+Conn  21 -  46 cut.
+Conn  21 -   9 cut.
+Conn  21 -  65 cut.
+Conn  16 -  55 cut.
+Conn  16 -   9 cut.
+Conn  16 -  80 cut.
+Conn  16 -  33 cut.
+Conn  32 -  95 cut.
+Conn  32 -   3 cut.
+Conn  32 -  99 cut.
+Conn  32 -  58 cut.
+Conn  37 -  95 cut.
+Conn  27 -  65 cut.
+Conn   7 -  13 cut.
+Conn   7 -   6 cut.
+Conn  30 -  46 cut.
+Conn  14 -  94 cut.
+Conn  17 -  73 cut.
+Conn  17 -  52 cut.
+Conn  17 -  51 cut.
+Conn  17 -  92 cut.
+Conn  17 -  95 cut.
+Conn  98 -  10 cut.
+Conn  98 -   3 cut.
+Conn  96 -  77 cut.
+Conn  96 -  53 cut.
+Conn  96 -   8 cut.
+Conn  96 -  65 cut.
+Conn  41 - 100 cut.
+Conn  41 -  63 cut.
+Conn  41 -  48 cut.
+Conn  28 -   1 cut.
+Conn  28 -  60 cut.
+Conn  28 -  39 cut.
+Conn  28 -  66 cut.
+Conn  28 -  75 cut.
+Conn  86 -  67 cut.
+Conn  86 -   3 cut.
+Conn  86 -  68 cut.
+Conn  86 -  99 cut.
+Conn  86 -  58 cut.
+Conn   2 -  93 cut.
+Conn   2 -  99 cut.
+Conn   2 -  58 cut.
+Conn   2 -  99 cut.
+Conn   2 -   3 cut.
+Conn   2 -  97 cut.
+Conn  24 -  73 cut.
+Conn  24 -  53 cut.
+Conn  24 -  10 cut.
+Conn  24 -   3 cut.
+Conn  81 -  73 cut.
+Conn   4 -   9 cut.
+Conn  19 -  55 cut.
+Conn  19 -  75 cut.
+Conn  19 -  90 cut.
+Conn  19 -  71 cut.
+Conn  50 -  10 cut.
+Conn  50 -   3 cut.
+Total edge cuts = 93
+Net   2 cut.
+Net   4 cut.
+Net   5 cut.
+Net  11 cut.
+Net  12 cut.
+Net  16 cut.
+Net  17 cut.
+Net  23 cut.
+Net  28 cut.
+Net  30 cut.
+Net  31 cut.
+Net  32 cut.
+Net  41 cut.
+Net  43 cut.
+Net  45 cut.
+Net  48 cut.
+Net  49 cut.
+Net  51 cut.
+Net  57 cut.
+Net  58 cut.
+Net  60 cut.
+Net  63 cut.
+Net  64 cut.
+Net  71 cut.
+Net  72 cut.
+Net  73 cut.
+Net  74 cut.
+Net  75 cut.
+Net  77 cut.
+Net  78 cut.
+Net  80 cut.
+Net  84 cut.
+Net  89 cut.
+Net  91 cut.
+Net  94 cut.
+Net  96 cut.
+Net  97 cut.
+Net 100 cut.
+Net 104 cut.
+Net 106 cut.
+Net 107 cut.
+Net 109 cut.
+Net 110 cut.
+Net 113 cut.
+Net 115 cut.
+Net 116 cut.
+Net 118 cut.
+Net 123 cut.
+Total net cuts  = 48
+sz:    2     total:   79     edgesCut:   26     netsCuts:   26
+sz:    3     total:   27     edgesCut:   28     netsCuts:   14
+sz:    4     total:    7     edgesCut:    6     netsCuts:    2
+sz:    5     total:    6     edgesCut:   28     netsCuts:    5
+sz:    6     total:    3     edgesCut:    5     netsCuts:    1
+sz:    7     total:    1     edgesCut:    0     netsCuts:    0
+sz:    8     total:    0     edgesCut:    0     netsCuts:    0
+sz:    9     total:    1     edgesCut:    0     netsCuts:    0
+sz:   10     total:    1     edgesCut:    0     netsCuts:    0
