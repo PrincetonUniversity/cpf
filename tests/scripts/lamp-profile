@@ -50,6 +50,8 @@ fi
 LIBS=" \
        -load $LIBERTY_LIBS_DIR/libUtil.so 
        -load $LIBERTY_LIBS_DIR/libExclusions.so 
+       -load $NOELLE_LIBS_DIR/libSvf.so
+       -load $NOELLE_LIBS_DIR/libCudd.so
        -load $LIBERTY_LIBS_DIR/libAnalysis.so 
        -load $LIBERTY_LIBS_DIR/libExclusions.so 
        -load $LIBERTY_LIBS_DIR/libUtil.so 
@@ -84,7 +86,6 @@ then
   exit
 fi
 
-# NO Nick was wrong :)
 #echo
 #CMD="clang++ -O3 $LAMPBC $HOOKS -o $EXE"
 #echo $CMD
