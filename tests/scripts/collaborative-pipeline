@@ -66,21 +66,10 @@ else
   SPEX="$LIBERTY_LIBS_DIR/libspecprivexecutive_timer.so"
 fi
 
-if [[ x$V2 != x ]]
-then
-  mode=_v2
-elif [[ x$V1 != x ]]
-then
-  mode=_v1
-elif [[ x$PRIV != x ]]
-then
-  mode=_privateer
-else
-  mode=
-fi
-
 LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $LIBERTY_LIBS_DIR/libExclusions.so
+      -load $NOELLE_LIBS_DIR/libSvf.so
+      -load $NOELLE_LIBS_DIR/libCudd.so
       -load $LIBERTY_LIBS_DIR/libAnalysis.so
       -load $LIBERTY_LIBS_DIR/libLoopProf.so
       -load $LIBERTY_LIBS_DIR/libMetadata.so
@@ -90,24 +79,27 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $LIBERTY_LIBS_DIR/libRedux.so
       -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
-      -load $LIBERTY_LIBS_DIR/AllocAA.so
-      -load $LIBERTY_LIBS_DIR/TalkDown.so
-      -load $LIBERTY_LIBS_DIR/PDGAnalysis.so
-      -load $LIBERTY_LIBS_DIR/libPDGBuilder.so 
+      -load $NOELLE_LIBS_DIR/AllocAA.so
+      -load $NOELLE_LIBS_DIR/BasicUtilities.so
+      -load $NOELLE_LIBS_DIR/LoopStructure.so
+      -load $NOELLE_LIBS_DIR/TalkDown.so
+      -load $NOELLE_LIBS_DIR/PDGAnalysis.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
-      -load $LIBERTY_LIBS_DIR/HotProfiler.so
-      -load $LIBERTY_LIBS_DIR/Parallelization.so
+      -load $NOELLE_LIBS_DIR/Architecture.so
+      -load $NOELLE_LIBS_DIR/HotProfiler.so
+      -load $NOELLE_LIBS_DIR/Loops.so
       -load $LIBERTY_LIBS_DIR/libStrategy.so
-      -load $LIBERTY_LIBS_DIR/libOrchestration${mode}.so
-      -load $LIBERTY_LIBS_DIR/libSpeculation${mode}.so
-      -load $LIBERTY_LIBS_DIR/Heuristics.so 
-      -load $LIBERTY_LIBS_DIR/ParallelizationTechnique.so
-      -load $LIBERTY_LIBS_DIR/DOALL.so
-      -load $LIBERTY_LIBS_DIR/libCodeGen${mode}.so"
+      -load $LIBERTY_LIBS_DIR/libOrchestration.so
+      -load $LIBERTY_LIBS_DIR/libSpeculation.so
+      -load $NOELLE_LIBS_DIR/Heuristics.so 
+      -load $NOELLE_LIBS_DIR/ParallelizationTechnique.so
+      -load $NOELLE_LIBS_DIR/DOALL.so
+      -load $LIBERTY_LIBS_DIR/libCodeGen.so"
 
 
 AA=`aa`
-EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -llvm-aa-results"
+#EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias"
+EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
 
 if [[ x$CG != x ]] || [[ x$PP != x ]]
 then
@@ -128,23 +120,26 @@ OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
   $DBG "
 fi
 
-OUTFILE_EXE=`basename $1 .bc`.collaborative${mode}.exe
-NOPEEP=`basename $1 .bc`.collaborative${mode}-pipeline-nopeep.bc
-OUTFILE=`basename $1 .bc`.collaborative${mode}-pipeline.bc
-ASMOUT=`basename $1 .bc`.collaborative${mode}-pipeline.s
-OUTFILE_BC_LINKED=`basename $1 .bc`.collaborative${mode}.linked.bc
-OUTFILE_BC_OPT=`basename $1 .bc`.collaborative${mode}.opt.bc
-OUTFILE_BC_OPT_STRIP=`basename $1 .bc`.collaborative${mode}.opt.striped.bc
-OUTFILE_OBJ=`basename $1 .bc`.collaborative${mode}.o
+NOPEEP=`basename $1 .bc`.collaborative-pipeline-nopeep.bc
+OUTFILE=`basename $1 .bc`.collaborative-pipeline.bc
+ASMOUT=`basename $1 .bc`.collaborative-pipeline.s
+OUTFILE_BC_LINKED=`basename $1 .bc`.collaborative.linked.bc
+OUTFILE_BC_OPT=`basename $1 .bc`.collaborative.opt.bc
+OUTFILE_BC_OPT_STRIP=`basename $1 .bc`.collaborative.opt.stripped.bc
+OUTFILE_OBJ=`basename $1 .bc`.collaborative.o
+OUTFILE_EXE=`basename $1 .bc`.collaborative.exe
 
 if [[ x$CG != x ]]
 then
-  DUMPFILE=`basename $1 .bc`.collaborative${mode}-parallelized.dump
+  DUMPFILE=`basename $1 .bc`.collaborative-parallelized.dump
 else
   DUMPFILE=`basename $1 .bc`.collaborative-pipeline.dump
 fi
 
-OUTFILE_STATIC_EXE=`basename $1 .bc`.collaborative${mode}_static.exe
+if [[ x$PP != x ]] && [[ x$CG == x ]]
+then
+  DUMPFILE=`basename $1 .bc`.analysis.dump
+fi
 
 rm -f $NOPEEP
 OUT="-o $NOPEEP"
@@ -152,7 +147,7 @@ OUT="-o $NOPEEP"
 CMD="$PREFIX opt $1 $LIBS $OPTS $FCN $LOOP $OUT"
 
 echo Running: $CMD
-ulimit -S -v $[12*1024*1024]
+ulimit -S -v $[48*1024*1024]
 ## use .bc file to generate executable
 $CMD > $DUMPFILE 2>&1
 
@@ -172,24 +167,25 @@ MIDDLE="$PREFIX2 opt $LIBS $AA -loop-simplify -indvars -spec-priv-postprocess-2 
 END="$PREFIX2 opt $LIBS $AA -spec-priv-postprocess-3 -stats $DBG $EXTRA3 "
 
 echo Postprocessor step 1
-$BEGIN $NOPEEP -o tmp1${mode}.bc 2>&1 || exit
+$BEGIN $NOPEEP -o tmp1.bc 2>&1 || exit
 echo
 echo Postprocessor step 2a
-$MIDDLE tmp1${mode}.bc -o tmp2${mode}.bc 2>&1 || exit
-opt -O3 tmp2${mode}.bc -o tmp2${mode}.o3.bc 2>&1 || exit
+$MIDDLE tmp1.bc -o tmp2.bc 2>&1 || exit
+opt -O3 tmp2.bc -o tmp2.o3.bc 2>&1 || exit
 echo
 echo Postprocessor step 2b
-$MIDDLE tmp2${mode}.o3.bc -o tmp3${mode}.bc 2>&1 || exit
-opt -O3 tmp3${mode}.bc -o tmp3${mode}.o3.bc 2>&1 || exit
+$MIDDLE tmp2.o3.bc -o tmp3.bc 2>&1 || exit
+opt -O3 tmp3.bc -o tmp3.o3.bc 2>&1 || exit
 echo
 echo Postprocessor step 2c
-$MIDDLE tmp3${mode}.o3.bc -o tmp4${mode}.bc 2>&1 || exit
-opt -O3 tmp4${mode}.bc -o tmp4${mode}.o3.bc 2>&1 || exit
+$MIDDLE tmp3.o3.bc -o tmp4.bc 2>&1 || exit
+opt -O3 tmp4.bc -o tmp4.o3.bc 2>&1 || exit
 echo
 echo Postprocessor step 3
-$END tmp4${mode}.o3.bc -o tmp5${mode}.bc 2>&1 || exit
-opt -O3 tmp5${mode}.bc -o $OUTFILE 2>&1 || exit
+$END tmp4.o3.bc -o tmp5.bc 2>&1 || exit
+opt -O3 tmp5.bc -o $OUTFILE 2>&1 || exit
 echo
+
 
 #### Link and Code Gen
 echo Produce executable
@@ -200,4 +196,4 @@ $CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP -lm $SPEX -lrt -o $OU
 fi
 
 #### Cleanup
-rm -f tmp1${mode}.bc tmp2${mode}.bc tmp2${mode}.o3.bc tmp3${mode}.bc tmp3${mode}.o3.bc tmp4${mode}.bc tmp4${mode}.o3.bc tmp5${mode}.bc *.cvc3
+rm -f tmp1.bc tmp2.bc tmp2.o3.bc tmp3.bc tmp3.o3.bc tmp4.bc tmp4.o3.bc tmp5.bc *.cvc3
