@@ -44,13 +44,14 @@ LIBS="
   -load $LIBERTY_LIBS_DIR/libRedux.so
   -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
   -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
-  -load $LIBERTY_LIBS_DIR/AllocAA.so
-  -load $LIBERTY_LIBS_DIR/TalkDown.so
-  -load $LIBERTY_LIBS_DIR/PDGAnalysis.so
-  -load $LIBERTY_LIBS_DIR/libPDGBuilder.so
+  -load $NOELLE_LIBS_DIR/AllocAA.so
+  -load $NOELLE_LIBS_DIR/TalkDown.so
+  -load $NOELLE_LIBS_DIR/PDGAnalysis.so
   -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
-  -load $LIBERTY_LIBS_DIR/HotProfiler.so
-  -load $LIBERTY_LIBS_DIR/Parallelization.so
+  -load $NOELLE_LIBS_DIR/Architecture.so
+  -load $NOELLE_LIBS_DIR/HotProfiler.so
+  -load $NOELLE_LIBS_DIR/Loops.so
+  -load $NOELLE_LIBS_DIR/Parallelization.so
   -load $LIBERTY_LIBS_DIR/libStrategy.so
   -load $LIBERTY_LIBS_DIR/libOrchestration.so
   -load $LIBERTY_LIBS_DIR/libSpeculation.so"
