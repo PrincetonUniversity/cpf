@@ -12,6 +12,8 @@
 #include "heap.h"
 #include "fiveheaps.h"
 
+Be a bad guy!
+
 // Deferred IO
 
 static IOEvt *worker_io_events = 0;
