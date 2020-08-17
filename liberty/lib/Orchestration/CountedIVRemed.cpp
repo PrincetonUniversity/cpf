@@ -29,41 +29,42 @@ bool CountedIVRemedy::compare(const Remedy_ptr rhs) const {
 Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
                                                   const Instruction *B,
                                                   bool loopCarried, const Loop *loop){
+  //add a check to unconditionally branch to ON header iff there is a countedIV remed other wise just chunking without
+  //Preprocess populate a ds that informs MTCG to change
+  //test it on 5xx lbm after finish detection
+  //do it all in preprocess
+  //
+  //To disprove the loop carried dependence from instruction A, a
+  //stepping instruction and instruction B, the IV PHI
   auto livm = ldi->getInductionVariableManager();
   auto ls   = ldi->getLoopStructure();
-  auto ivA   = livm->getInductionVariable(*ls, const_cast<Instruction*> (A));
-  auto ivB   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
+  auto ivs   = livm->getInductionVariables(*ls);
+  auto govern_iv = livm->getLoopGoverningInductionVariable (*ls);
 
   Remediator::RemedResp remedResp;
-  // conservative answer
   remedResp.depRes = DepResult::Dep;
 
-  if (!loopCarried)
+  if(!loopCarried || ivs.size() != 1 || govern_iv == NULL)
     return remedResp;
 
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  if (ivA || ivB)
+  auto ivB   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
+  if(ivB == govern_iv)
   {
-    if(ivA)
-      errs()<< "Susan: found IV inst A\n" << *A << "\n";
-    if(ivB)
-      errs()<< "Susan: found IV inst B\n" << *B << "\n";
-    ++numNoRegDep;
-    remedy->allIVInfo = livm;
-    remedResp.depRes = DepResult::NoDep;
-    auto PHIA = ivA->getLoopEntryPHI();
-    auto PHIB = ivB->getLoopEntryPHI();
-    if(PHIA == PHIB)
-      remedy->ivPHI = PHIA;
-    else
+    auto insts = ivB->getNonPHIIntermediateValues();
+    for (auto inst : insts)
     {
-      assert(!(PHIA && PHIB) && "assuming not both instructiosn are IV instructions");
-      if(PHIA)
-        remedy->ivPHI = PHIA;
-      else if(PHIB)
+      if(inst == A)
+      {
+        ++numNoRegDep;
+        remedy->allIVInfo = livm;
+        remedResp.depRes = DepResult::NoDep;
+        auto PHIB = ivB->getLoopEntryPHI();
         remedy->ivPHI = PHIB;
+        break;
+      }
     }
   }
 
@@ -73,33 +74,40 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
 
 Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
                                                    const Instruction *B, const Loop *loop){
-  auto livm = ldi->getInductionVariableManager();
-  auto ls   = ldi->getLoopStructure();
-  auto term = (ls->getHeader())->getTerminator();
-
+  auto livm      = ldi->getInductionVariableManager();
+  auto ls        = ldi->getLoopStructure();
+  auto LDG       = ldi->getLoopDG();
   Remediator::RemedResp remedResp;
-  // conservative answer
   remedResp.depRes = DepResult::Dep;
+
+  auto govern_attr    = livm->getLoopGoverningIVAttribution (*ls);
+  BranchInst* iv_br   = govern_attr->getHeaderBrInst();
+  InductionVariable* govern_iv = livm->getLoopGoverningInductionVariable(*ls);
+  if(iv_br == NULL || cast<Instruction>(iv_br) != A || govern_iv == NULL)
+    return remedResp;
 
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  if(term == B || term == A)
-  {
-    if(auto cmp_inst = dyn_cast<CmpInst>(term->getOperand(0)))
+  bool BdepA = false;
+  auto isCtrlDepOnA = [B, &BdepA](Value *to, DataDependenceType ddType) -> bool {
+    if (!isa<Instruction>(to))
+      return false;
+    auto i = cast<Instruction>(to);
+    if(B == i)
     {
-      for (auto op = cmp_inst->op_begin(); op != cmp_inst->op_end(); ++op)
-      {
-        auto iv_inst = dyn_cast<Instruction> (op);
-        auto iv = livm->getInductionVariable(*ls, iv_inst);
-        if(iv)
-        {
-          ++numNoCtrlDep;
-          remedy->ivPHI = iv->getLoopEntryPHI();
-          remedResp.depRes = DepResult::NoDep;
-        }
-      }
+      errs() << "Susan: found instruction control dep on iv branch\n" << *B;
+      BdepA = true;
     }
+    return false;
+  };
+  LDG->iterateOverDependencesFrom(cast<Value>(iv_br), true, false, false, isCtrlDepOnA);
+  if(BdepA)
+  {
+    ++numNoCtrlDep;
+    remedy->allIVInfo = livm;
+    remedResp.depRes = DepResult::NoDep;
+    remedy->ivPHI = govern_iv->getLoopEntryPHI();
   }
 
   remedResp.remedy = remedy;
