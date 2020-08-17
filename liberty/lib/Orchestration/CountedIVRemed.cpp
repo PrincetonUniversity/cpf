@@ -31,7 +31,8 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
                                                   bool loopCarried, const Loop *loop){
   auto livm = ldi->getInductionVariableManager();
   auto ls   = ldi->getLoopStructure();
-  auto iv   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
+  auto ivA   = livm->getInductionVariable(*ls, const_cast<Instruction*> (A));
+  auto ivB   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
 
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -43,14 +44,27 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  if (iv) {
-      errs() << "SUSAN: instructions for this iv:" << "\n";
-      for(auto inst : iv->getAllInstructions())
-        errs() << *inst << "\n";
+  if (ivA || ivB)
+  {
+    if(ivA)
+      errs()<< "Susan: found IV inst A\n" << *A << "\n";
+    if(ivB)
+      errs()<< "Susan: found IV inst B\n" << *B << "\n";
     ++numNoRegDep;
     remedy->allIVInfo = livm;
-    remedy->ivPHI = iv->getLoopEntryPHI();
     remedResp.depRes = DepResult::NoDep;
+    auto PHIA = ivA->getLoopEntryPHI();
+    auto PHIB = ivB->getLoopEntryPHI();
+    if(PHIA == PHIB)
+      remedy->ivPHI = PHIA;
+    else
+    {
+      assert(!(PHIA && PHIB) && "assuming not both instructiosn are IV instructions");
+      if(PHIA)
+        remedy->ivPHI = PHIA;
+      else if(PHIB)
+        remedy->ivPHI = PHIB;
+    }
   }
 
   remedResp.remedy = remedy;
@@ -61,7 +75,7 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
                                                    const Instruction *B, const Loop *loop){
   auto livm = ldi->getInductionVariableManager();
   auto ls   = ldi->getLoopStructure();
-  auto iv   = livm->getInductionVariable(*ls, const_cast<Instruction*> (B));
+  auto term = (ls->getHeader())->getTerminator();
 
   Remediator::RemedResp remedResp;
   // conservative answer
@@ -70,11 +84,22 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
   auto remedy = std::make_shared<CountedIVRemedy>();
   remedy->cost = 0;
 
-  // remove all ctrl edges originating from branch controlled by a bounded IV
-  if (iv) {
-    ++numNoCtrlDep;
-    remedy->ivPHI = iv->getLoopEntryPHI();
-    remedResp.depRes = DepResult::NoDep;
+  if(term == B || term == A)
+  {
+    if(auto cmp_inst = dyn_cast<CmpInst>(term->getOperand(0)))
+    {
+      for (auto op = cmp_inst->op_begin(); op != cmp_inst->op_end(); ++op)
+      {
+        auto iv_inst = dyn_cast<Instruction> (op);
+        auto iv = livm->getInductionVariable(*ls, iv_inst);
+        if(iv)
+        {
+          ++numNoCtrlDep;
+          remedy->ivPHI = iv->getLoopEntryPHI();
+          remedResp.depRes = DepResult::NoDep;
+        }
+      }
+    }
   }
 
   remedResp.remedy = remedy;
