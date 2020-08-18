@@ -319,7 +319,7 @@ def parse_args():
                         default=3, help="Test times for sequential and parallel version")
 
     parser.add_argument("-s", "--suite", type=str, choices=[
-        'All', 'Spec', 'SpecFP', 'SpecInt',
+        'All', 'reg_fast', 'reg_all', 'Spec', 'SpecFP', 'SpecInt',
         'PolyBench', 'PARSEC', 'MediaBench', 'Toys',
         'MiBench', 'Trimaran', 'Utilities', 'MicroBench'],
         help="Choose specific test suite")
