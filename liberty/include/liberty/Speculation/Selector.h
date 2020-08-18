@@ -103,12 +103,13 @@ private:
   typedef std::unordered_map<const Loop *, std::unordered_set<const Function *>>
       LoopToTransCalledFuncs;
   static bool callsFun(const Loop *l, const Function *tgtF,
-                       LoopToTransCalledFuncs &l2cF, CallGraph &callGraph);
+                       LoopToTransCalledFuncs &l2cF,
+                       llvm::CallGraph &callGraph);
 
   void computeEdges(const Vertices &vertices, Edges &edges);
   static bool mustBeSimultaneouslyActive(const Loop *A, const Loop *B,
                                          LoopToTransCalledFuncs &l2cF,
-                                         CallGraph &callGraph);
+                                         llvm::CallGraph &callGraph);
   bool doInlining(LateInliningOpportunities &opps);
   // Reduction into maximum weighted clique problem
   unsigned computeWeights(
