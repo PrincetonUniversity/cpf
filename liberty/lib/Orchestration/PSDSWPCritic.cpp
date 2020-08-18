@@ -50,10 +50,7 @@ long getMinRemovalCost(DGEdge<Value> *edge) {
     return LONG_MAX;
   auto sors = edge->getRemedies();
   auto cheapestR = *(sors->begin());
-  long minCost = 0;
-  for (auto &r : *cheapestR)
-    minCost += r->cost;
-  return minCost;
+  return LoopAA::totalRemedCost(*cheapestR);
 }
 
 void pivot(const PDG &pdg, const SCCDAG &sccdag, const SCCDAG::SCCSet &all,
