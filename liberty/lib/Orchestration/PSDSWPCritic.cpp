@@ -45,6 +45,17 @@ static EdgeWeight estimate_weight(PerformanceEstimator &perf,
 }
 */
 
+long getMinRemovalCost(DGEdge<Value> *edge) {
+  if (!edge->isRemovableDependence())
+    return LONG_MAX;
+  auto sors = edge->getRemedies();
+  auto cheapestR = *(sors->begin());
+  long minCost = 0;
+  for (auto &r : *cheapestR)
+    minCost += r->cost;
+  return minCost;
+}
+
 void pivot(const PDG &pdg, const SCCDAG &sccdag, const SCCDAG::SCCSet &all,
            const SCCDAG::SCCSet &pivots, SCCDAG::SCCSet &before,
            SCCDAG::SCCSet &after, SCCDAG::SCCSet &flexible) {
@@ -681,7 +692,7 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
     // remain but they can belong in a parallel stage. Thus, loop-carried deps
     // handled by reduction are marked as intra-iteration to allow integration
     // in parallel stage and avoid cross-stage distribution.
-    if (edge->getMinRemovalCost() == DEFAULT_REDUX_REMED_COST &&
+    if (getMinRemovalCost(edge) == DEFAULT_REDUX_REMED_COST &&
         edge->isLoopCarriedDependence()) {
       edge->setLoopCarried(false);
     } else {
@@ -804,8 +815,8 @@ unsigned long PSDSWPCritic::moveOffStage(
 
     // ignore cheap removable edges that are not redux
     if ((edge->isRemovableDependence() &&
-         edge->getMinRemovalCost() < OffPStageEdgeCostThreshold &&
-         edge->getMinRemovalCost() != DEFAULT_REDUX_REMED_COST) &&
+         getMinRemovalCost(edge) < OffPStageEdgeCostThreshold &&
+         getMinRemovalCost(edge) != DEFAULT_REDUX_REMED_COST) &&
         !edgesNotRemoved.count(edge))
       continue;
 
@@ -841,7 +852,7 @@ bool PSDSWPCritic::avoidElimDep(
     return false;
 
   // try to avoid lamp/slamp remedies, locality-private, mem ver and priv remed
-  if (edge->getMinRemovalCost() < OffPStageEdgeCostThreshold)
+  if (getMinRemovalCost(edge) < OffPStageEdgeCostThreshold)
     return false;
 
   Value *inV = edge->getIncomingT();
@@ -895,7 +906,7 @@ bool PSDSWPCritic::avoidElimDep(
     edgesNotRemoved.insert(edge);
     offPStageWeight += moveFrontCost;
     LLVM_DEBUG(errs() << "\nWill not remove edge(s) (removal cost: "
-                 << edge->getMinRemovalCost() << " ) from "
+                 << getMinRemovalCost(edge) << " ) from "
                  << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                  << '\n');
     for (Instruction *I : tmpInstsMovedToFront) {
@@ -907,7 +918,7 @@ bool PSDSWPCritic::avoidElimDep(
     edgesNotRemoved.insert(edge);
     offPStageWeight += moveBackCost;
     LLVM_DEBUG(errs() << "\nWill not remove edge(s) (removal cost: "
-                 << edge->getMinRemovalCost() << " ) from "
+                 << getMinRemovalCost(edge) << " ) from "
                  << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                  << '\n');
     for (Instruction *I : tmpInstsMovedToBack) {
@@ -1094,7 +1105,7 @@ void PSDSWPCritic::populateCrossStageDependences(PipelineStrategy &ps,
           // ignore ctrl deps that are removable and highly unlikely to
           // misspeculate
           if (!edge->isRemovableDependence() ||
-              edge->getMinRemovalCost() == EXPENSIVE_CTRL_REMED_COST)
+              getMinRemovalCost(edge) == EXPENSIVE_CTRL_REMED_COST)
             ps.crossStageDeps.push_back(CrossStageDependence(src, dst, edge));
 
         } else if (edge->isMemoryDependence() && edge->isRAWDependence() &&
@@ -1288,7 +1299,7 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
     for (auto edge : edges) {
       if (edge->isControlDependence() && edge->isRemovableDependence() &&
           edge->isLoopCarriedDependence() &&
-          edge->getMinRemovalCost() == EXPENSIVE_CTRL_REMED_COST) {
+          getMinRemovalCost(edge) == EXPENSIVE_CTRL_REMED_COST) {
         expCtrlSpecNeeded = true;
         break;
       }
