@@ -542,7 +542,6 @@ void llvm::PDGBuilder::annotateMemDepsWithRemedies(PDG &pdg, Loop *loop,
     if (removableEdge) {
       edge->addRemedies(R);
       edge->setRemovable(true);
-      edge->processNewRemovalCost(LoopAA::totalRemedCost(*R));
     }
   }
 

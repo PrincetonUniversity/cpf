@@ -258,15 +258,15 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   LLVM_DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
     //SetOfRemedies &sors = mapCriticismsToRemeds[cr];
-    const SetOfRemedies &sors = cr->getRemedies();
-    const Remedies_ptr cheapestR = *(sors.begin());
+    auto sors = cr->getRemedies();
+    const Remedies_ptr cheapestR = *(sors->begin());
     for (auto &r : *cheapestR) {
       if (!selectedRemedies.count(r)) {
         selectedRemediesCost += r->cost;
         selectedRemedies.insert(r);
       }
     }
-    printSelected(sors, cheapestR, *cr);
+    printSelected(*sors, cheapestR, *cr);
   }
   LLVM_DEBUG(errs() << "-====================================================-\n\n");
   printRemediatorSelectionCnt();
@@ -338,7 +338,6 @@ bool Orchestrator::findBestStrategy(
         // mapCriticismsToRemeds[c].insert(remedSet);
         c->setRemovable(true);
         c->addRemedies(remedSet);
-        c->processNewRemovalCost(tcost);
       }
     }
   }
