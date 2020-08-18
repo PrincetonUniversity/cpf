@@ -81,6 +81,7 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
       -load $NOELLE_LIBS_DIR/AllocAA.so
       -load $NOELLE_LIBS_DIR/BasicUtilities.so
+      -load $NOELLE_LIBS_DIR/DataFlow.so
       -load $NOELLE_LIBS_DIR/LoopStructure.so
       -load $NOELLE_LIBS_DIR/TalkDown.so
       -load $NOELLE_LIBS_DIR/PDGAnalysis.so

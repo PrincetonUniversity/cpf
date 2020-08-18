@@ -11,6 +11,7 @@
 
 import argparse
 import json
+import sys
 import os
 import subprocess
 import shutil
@@ -311,6 +312,7 @@ def parse_args():
                         required=True, help="Path to a benchmark json file")
     parser.add_argument("-r", "--reg-option", type=int,
                         required=False, help="Regression option (0-5), will bypass interaction")
+    parser.add_argument("-f", "--force-die", action='store_true', help="Regression option (0-5), will bypass interaction")
     parser.add_argument("-n", "--core-num", type=int,
                         default=4, help="Core number")
     parser.add_argument("-t", "--test-times", type=int,
@@ -334,6 +336,7 @@ def parse_args():
     config['test_times'] = args.test_times
     config['bmark_list'] = bmark_list
     config['reg_option'] = args.reg_option
+    config['force_die'] = args.force_die
 
     # Get CPF and Regression Git Hash
     if 'LIBERTY_LIBS_DIR' in os.environ and 'LIBERTY_SMTX_DIR' in os.environ:
@@ -376,17 +379,17 @@ def get_config_from_file(config_file):
     for key in necessary_keys:
         if key not in config:
             print("Key %s not in config, abort!" % key)
-            exit()
+            sys.exit(1)
 
     if 'Compare' in config['experiment_passes']:
         if 'compare_worker_num' not in config:
             print("Key compare_worker_num not in config when doing Compare, abort!")
-            exit()
+            sys.exit(1)
 
     if 'Multicore' in config['experiment_passes']:
         if 'multicore_workers_list' not in config:
             print("Key multicore_workers_list not in config when doing Multicore, abort!")
-            exit()
+            sys.exit(1)
 
     # Get actual benchmarks
     with open(config['bmark_list_file'], 'r') as fd:
@@ -468,7 +471,7 @@ if __name__ == "__main__":
     config = parse_args()
     if not config:
         print("Bad configuration, please start over, good luck!")
-        quit()
+        sys.exit(1)
 
     ask_memo = False
     if config["reg_option"] is None:
@@ -477,7 +480,7 @@ if __name__ == "__main__":
 
     if not config:
         print("Bad configuration, please start over, good luck!")
-        quit()
+        sys.exit(1)
 
     preview_config(config)
     # Ask for memo
@@ -489,7 +492,7 @@ if __name__ == "__main__":
                 break
             elif confirm == 'n':
                 print("Let's start over, good luck!")
-                quit()
+                sys.exit(1)
 
     print("\n\n### Experiment Start ###")
     # Preprocesing
@@ -511,6 +514,18 @@ if __name__ == "__main__":
     status_list = Parallel(n_jobs=config['core_num'])(delayed(get_all_passes)(
         config['root_path'], bmark, passes, config['result_path']) for bmark in config['bmark_list'])
     status = dict(ChainMap(*status_list))
+
+    # If any pass failed, die here
+    die = False
+    if config['force_die']:
+        for bmark in config['bmark_list']:
+            for p in passes:
+                if not status[bmark][p]:
+                    die = True
+                    print("%s failed on %s" % (bmark, p))
+
+    if die:
+        sys.exit(1)
 
     if "RealSpeedup" in passes:
         # Get Speedup in sequential
