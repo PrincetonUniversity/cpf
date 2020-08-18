@@ -1,0 +1,9 @@
+{
+"2mm": {"suites": ["PolyBench"], "available": true},
+"3mm": {"suites": ["PolyBench"], "available": true},
+"correlation": {"suites": ["PolyBench"], "available": true},
+"covariance": {"suites": ["PolyBench"], "available": true},
+"swaptions": {"suites": ["PARSEC"], "available": true},
+"dijkstra-dynsize": {"suites": ["MiBench"], "available": true},
+"ks": {"suites": ["?"], "available": true}
+}
