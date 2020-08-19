@@ -572,6 +572,7 @@ void Preprocess::init(ModuleLoops &mloops)
     bool specUsedFlag = false;
     bool memVerUsed = false;
     bool privUsed = false;
+    Chunking = false;
     Ctx *loop_ctx = spresults.getCtx(loop);
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
@@ -635,7 +636,8 @@ void Preprocess::init(ModuleLoops &mloops)
         }
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
-        indVarPhi = indVarRemed->ivPHI;
+        indVarPhis.insert(indVarRemed->ivPHI);
+        Chunking = true;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
         MemVerRemedy *memVerRemed = (MemVerRemedy *)&*remed;
         if (memVerRemed->waw) {
@@ -826,6 +828,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
         if( Instruction *user = dyn_cast< Instruction >( *k ) )
           if( ! loop->contains(user) ) {
             if (reduxV.count(inst)) {
+              errs() << "Susan: inst\n" << *inst << "\n added to reduxLiveoutSet\n";
               reduxLiveoutSet.insert(inst);
               reduxLiveouts.push_back(inst);
             } else
@@ -847,8 +850,8 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       break;
 
     // exclude induction variable and reduction variables
-    if (indVarPhi != phi && !reduxLiveoutSet.count(phi))
-      phis.push_back(phi);
+     if (!indVarPhis.count(phi) && !reduxLiveoutSet.count(phi))
+        phis.push_back(phi);
 
   }
 
@@ -1030,6 +1033,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       StoreInst *store = new StoreInst(vdef, liveoutStructure.reduxObjects[i]);
       InstInsertPt::End(pred) << store;
 
+      errs() << "Susan: gravity is \n" << *phi << "\n";
       Instruction *gravity = phi;
       if (Instruction *idef = dyn_cast<Instruction>(vdef))
         gravity = idef;

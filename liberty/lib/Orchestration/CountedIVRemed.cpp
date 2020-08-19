@@ -95,10 +95,7 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
       return false;
     auto i = cast<Instruction>(to);
     if(B == i)
-    {
-      errs() << "Susan: found instruction control dep on iv branch\n" << *B;
       BdepA = true;
-    }
     return false;
   };
   LDG->iterateOverDependencesFrom(cast<Value>(iv_br), true, false, false, isCtrlDepOnA);

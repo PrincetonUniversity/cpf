@@ -54,6 +54,10 @@ struct Preprocess : public ModulePass {
   void replaceLiveOutUsage(Instruction *def, unsigned i, Loop *loop,
                            StringRef name, Instruction *object, bool redux);
 
+  std::unordered_set<const PHINode *> getIndVarPhis () const{
+    return indVarPhis;
+  }
+
   std::unordered_set<const Instruction *> *
   getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
     if (selectedCtrlSpecDeps.count(loopHeader))
@@ -78,6 +82,8 @@ struct Preprocess : public ModulePass {
   bool isSeparationSpecUsed(BasicBlock *loopHeader) {
     return separationSpecUsed.count(loopHeader);
   }
+
+  bool getChunking () const {return Chunking;}
 
   bool isSpecUsed(BasicBlock *loopHeader) const {
     return specUsed.count(loopHeader);
@@ -117,7 +123,9 @@ private:
   std::unordered_set<const Instruction *> reduxV;
   std::unordered_map<const Instruction *, Reduction::ReduxInfo> redux2Info;
   std::unordered_map<const BasicBlock *, const Instruction *> reduxUpdateInst;
-  const PHINode *indVarPhi;
+  std::unordered_set<const PHINode *> indVarPhis;
+  //const PHINode *indVarPhi;
+  bool Chunking;
 
   // collect all the AUs that appeared in various types of selected
   // privitization remedies

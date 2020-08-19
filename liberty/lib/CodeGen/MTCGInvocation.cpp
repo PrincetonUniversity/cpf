@@ -69,6 +69,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     PHINode *phi = dyn_cast< PHINode >( &*i );
     if( !phi )
       continue;
+    errs() << "Susan: phi value at this point\n" << *phi << "\n";
     for(unsigned j=0, N=phi->getNumIncomingValues(); j<N; ++j)
       if( phi->getIncomingBlock(j) == preheader )
         phi->setIncomingBlock(j, should_invoc_bb);
@@ -304,13 +305,23 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     Instruction *phiI = reduxLiveouts[i];
     PHINode *phi = dyn_cast<PHINode>(phiI);
     assert(phi && "Redux variable not a phi?");
-
+    errs() << "Susan: redux live out : \n" << *phi << "\n";
     LoadInst *load = new LoadInst( reduxObjects[i] );
     load->setName("initial:" + phi->getName() );
 
     S << load;
 
     initialValues[ phi ] = load;
+  }
+
+  //Chunking IV live ins
+  const std::unordered_set<const PHINode *> indVarPhis =  preprocessor.getIndVarPhis();
+  for(auto &phi : indVarPhis)
+  {
+    assert(phi && "IVPHI is NULL?");
+    auto livein = phi->getIncomingValue(0);
+    errs() << "Susan: indvar livein value is \n" << *livein << "\n for phi\n" << *phi << "\n" ;
+    initialValues[const_cast< PHINode* >(phi)] = livein;
   }
 
   Instruction *wid = CallInst::Create( api.getWorkerId() );

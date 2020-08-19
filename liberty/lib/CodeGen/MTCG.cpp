@@ -276,9 +276,13 @@ BasicBlock *MTCG::stitchLoops(
     VMap::const_iterator fnd = vmap_on.find(phi);
     if( fnd != vmap_on.end() )
       phi_on = dyn_cast<PHINode>( fnd->second );
+    else
+      errs() << "SUSAN: phi_on is not found in on map\n";
     fnd = vmap_off.find(phi);
     if( fnd != vmap_off.end() )
       phi_off = dyn_cast<PHINode>( fnd->second );
+    else
+      errs() << "SUSAN: phi_off is not found in off map\n";
 
     if( !phi_on && !phi_off )
       continue;
@@ -344,7 +348,7 @@ BasicBlock *MTCG::stitchLoops(
 
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
-    else {
+    else if(!preprocessor.getChunking()){
       // For reducible live-outs create a dummy PHI whose incoming value is the
       // phi in the new stitch loop header (OFF iteration does not change the
       // value, just passes on the one it received).
@@ -369,7 +373,7 @@ BasicBlock *MTCG::stitchLoops(
 
       if (reduxObject) {
         // reducible live-out found
-
+        errs() << "SUSAN: is reduxObject every found?\n";
         phi_off =
             PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
                             &*(header_off->getFirstInsertionPt()));
@@ -476,6 +480,13 @@ BasicBlock *MTCG::stitchLoops(
           }
         }
       } else {
+        /*for(auto bb_iter = loop->block_begin(); bb_iter != loop->block_end(); bb_iter++)
+        {
+          BasicBlock* bb = *bb_iter;
+          for(BasicBlock::iterator j=bb->begin(), z=bb->end(); j!=z; ++j)
+            errs() << *j << "\n";
+        }
+        errs() << "SUSAN: Loop:\n" << *loop << "\n";*/
         assert(0 && "Loop-carried dep that is not reducible "
                     "should already have a phi node in both on,off iteration "
                     "(replicable inst)");
@@ -495,10 +506,15 @@ BasicBlock *MTCG::stitchLoops(
   Value *reduced_iter  = BinaryOperator::Create(Instruction::UDiv, iter, four, "chunked.iter", newHeader);
   Value *phase  = BinaryOperator::Create(Instruction::URem, reduced_iter, repFactor, "phase", newHeader);
   Value *cmp  = CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, phase, repId, "on/off", newHeader);
-  BranchInst::Create(preheader_on,preheader_off,cmp, newHeader);
+  //BranchInst::Create(preheader_on,preheader_off,cmp, newHeader);
+
+  //unconditionally branch to the ON preheader
+  BranchInst::Create(preheader_on, newHeader);
 
   preheader_on->setName( "ON." + preheader_on->getName() );
   preheader_off->setName( "OFF." + preheader_off->getName() );
+
+  /*In side of the preheader basic block, manipulate the induction variables*/
 
   return newPreheader;
 }
@@ -1130,27 +1146,37 @@ BasicBlock *MTCG::copyInstructions(
   Function::arg_iterator ai = fcn->arg_begin();
   for(unsigned i=0, N=liveIns.size(); i<N; ++i)
     ++ai;
+
+  errs() << "Susan: header name " << header->getName() << "\n";
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i, ++ai)
   {
     // PHI node in the original loop
     PHINode *phi = dyn_cast< PHINode >(&*i);
     if( !phi )
       break;
-
+    errs() << "Susan: phi in header" << *phi << "\n";
     VMap::iterator iter = vmap.find(phi);
     if( iter == vmap.end() )
       continue;
+    errs() << "Susan: phi found in vmap" << *phi << "\n";
 
     // Clone of that PHI node in the thread
     PHINode *my_phi = dyn_cast< PHINode >( iter->second );
     if( !my_phi )
+    {
+      errs() << "Susan: my_phi is null\n";
       continue; // (skip a consume of the phi node)
+    }
 
     const int idx = my_phi->getBasicBlockIndex(preheader);
     if( idx == -1 )
+    {
+      errs() << "Susan: idx is -1\n";
       continue;
+    }
 
     my_phi->setIncomingValue(idx, &*ai);
+    errs() << "my phi is " << *my_phi << "\n";
   }
 
   // How does this enter an iteration?
