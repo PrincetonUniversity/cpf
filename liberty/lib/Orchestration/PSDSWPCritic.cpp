@@ -1488,8 +1488,7 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
   }
 }
 
-CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop,
-                                      LoopDependenceInfo &ldi) {
+CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
   LLVM_DEBUG(errs() << "Begin criticisms generation for PS-DSWP critic\n");
 
   this->loop = loop;

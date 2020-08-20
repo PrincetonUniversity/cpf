@@ -411,7 +411,7 @@ bool Orchestrator::findBestStrategy(
   std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     LLVM_DEBUG(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
-    CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
+    CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
     Criticisms &criticisms = res.criticisms;
     unsigned long expSpeedup = res.expSpeedup;
 
