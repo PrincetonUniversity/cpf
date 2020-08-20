@@ -5,7 +5,6 @@
 #include "liberty/CodeGen/MTCG.h"
 
 #include "liberty/Utilities/ModuleLoops.h"
-
 #include "liberty/CodeGen/PrintStage.h"
 
 #if (MTCG_CTRL_DEBUG || MTCG_VALUE_DEBUG)
@@ -158,15 +157,16 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
     strategy,stageno,stage2queue,fcn,vmap_on,dt,pdt);
 
   BasicBlock *preheader = 0;
+
+  const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  bool doChunking = preprocessor.getChunking();
+
   if( stage.type == PipelineStage::Sequential )
     preheader = preheader_on;
 
   else if( stage.type == PipelineStage::Parallel )
   {
-    const Preprocess &preprocessor = getAnalysis< Preprocess >();
-  //  BasicBlock *preheader_off = BasicBlock::Create(fcn->getContext(), "degenerate.preheader", fcn);
-//    if(!preprocessor.getChunking())
-      BasicBlock *preheader_off = createOffIteration(
+    BasicBlock *preheader_off = createOffIteration(
         loop,stages,strategy.liveIns,strategy.available,xdeps,stageno,stage2queue,fcn,vmap_off,dt,pdt);
 
     preheader = stitchLoops(
@@ -176,20 +176,37 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
       strategy.liveIns,
       repId,repFactor);
 
-    if(preprocessor.getChunking())
+    /*if(doChunking)
     {
       auto header = preheader->getUniqueSuccessor();
-      for (auto it = pred_begin(header), et = pred_end(header); it != et; ++it)
-      {
-        BasicBlock* bb = *it;
-        errs() << "Susan: pred bbs: " << bb->getName() << "\n";
-      }
       auto off_header = preheader_off->getUniqueSuccessor();
       Instruction* term = off_header->getTerminator();
       term->eraseFromParent();
       BranchInst::Create(off_header, off_header);
       //header->removePredecessor(off_header);
-    }
+      for (auto it = pred_begin(header), et = pred_end(header); it != et; ++it)
+      {
+        BasicBlock* bb = *it;
+        if(bb != preheader)
+        {
+          auto where = llvm::InstInsertPt::Beginning(bb);
+          for(auto iter = header->begin(); iter != header->end(); ++iter)
+          {
+            PHINode* phi = dyn_cast<PHINode>(iter);
+            if(!phi)
+              break;
+            if(phi->getName() == "chunk.phi")
+            {
+              Type* phiType = phi->getType();
+              Value *one = ConstantInt::get(phiType, 1);
+              auto AddChunk = llvm::BinaryOperator::CreateNSWAdd(cast<Value>(phi), one);
+              where << AddChunk;
+              phi->addIncoming(AddChunk, bb);
+            }
+          }
+        }
+      }
+    }*/
   }
 
   // Entry branches to loop header
@@ -281,14 +298,23 @@ BasicBlock *MTCG::stitchLoops(
   std::vector<BasicBlock *> saveRxLCBBs;
   const Preprocess &preprocessor = getAnalysis< Preprocess >();
   bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
+  bool doChunking = preprocessor.getChunking();
+  IntegerType *u32 = Type::getInt32Ty(ctx);
+  auto indVarPhis = preprocessor.getIndVarPhis();
 
+  Type* phiType = u32;//default
   // For each PHI node which appears in both the ON and OFF versions of this stage.
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
   {
     PHINode *phi = dyn_cast<PHINode>( &*i );
+
     if( !phi )
       break;
 
+    if (indVarPhis.count(phi))
+    {
+      phiType = phi->getType();
+    }
     // Find the corresponding phi nodes on the ON/OFF versions.
     PHINode *phi_on  = 0, *phi_off = 0;
     VMap::const_iterator fnd = vmap_on.find(phi);
@@ -297,8 +323,6 @@ BasicBlock *MTCG::stitchLoops(
     fnd = vmap_off.find(phi);
     if( fnd != vmap_off.end() )
       phi_off = dyn_cast<PHINode>( fnd->second );
-    else
-      errs() << "SUSAN: phi_off is not found in off map\n";
 
     if( !phi_on && !phi_off )
       continue;
@@ -368,7 +392,7 @@ BasicBlock *MTCG::stitchLoops(
 
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
-    else if(!preprocessor.getChunking()){
+    else if(!doChunking){
       // For reducible live-outs create a dummy PHI whose incoming value is the
       // phi in the new stitch loop header (OFF iteration does not change the
       // value, just passes on the one it received).
@@ -521,15 +545,35 @@ BasicBlock *MTCG::stitchLoops(
   // Alternate between the ON and OFF iterations.
   Constant *getIterNum = api.getCurrentIter();
   Value *iter = CallInst::Create(getIterNum, "current.iteration", newHeader);
-  IntegerType *u32 = Type::getInt32Ty(ctx);
-  Value *four = ConstantInt::get(u32, 4);
-  Value *reduced_iter  = BinaryOperator::Create(Instruction::UDiv, iter, four, "chunked.iter", newHeader);
-  Value *phase  = BinaryOperator::Create(Instruction::URem, reduced_iter, repFactor, "phase", newHeader);
-  Value *cmp  = CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, phase, repId, "on/off", newHeader);
-  //BranchInst::Create(preheader_on,preheader_off,cmp, newHeader);
-
+  Value *chunk_size = ConstantInt::get(phiType, 4);
+  Value *zero = ConstantInt::get(phiType, 0);
   //unconditionally branch to the ON preheader
-  BranchInst::Create(preheader_on, newHeader);
+  Value *chunkPhiUpdate, *isChunkCompleted, *avail_worker;
+  PHINode* chunkPHI;
+  if(doChunking)
+  {
+    /*create chunkPHI*/
+
+    chunkPHI = PHINode::Create(phiType, 0, "chunk.phi" ,
+                            &*(newHeader->getFirstInsertionPt()));
+        chunkPHI->addIncoming(zero, newPreheader);
+    //temporarily adding zeros to each incoming block
+
+    Constant *numAvail = api.getNumWorkers();
+    avail_worker = CallInst::Create(numAvail, "num.worker", newHeader);
+    isChunkCompleted  = CmpInst::Create(Instruction::ICmp,
+        ICmpInst::ICMP_EQ, cast< Value > (chunkPHI), chunk_size, "isChunkCompleted", newHeader);
+    chunkPhiUpdate = SelectInst::Create(isChunkCompleted, zero, cast< Value > (chunkPHI), "chunk.phi.next", newHeader);
+    BranchInst::Create(preheader_on, newHeader);
+  }
+  else
+  {
+    //chunk with ON/OFF needs another way to determine whether to turn it on or not
+    Value *reduced_iter  = BinaryOperator::Create(Instruction::UDiv, iter, chunk_size, "chunked.iter", newHeader);
+    Value *phase  = BinaryOperator::Create(Instruction::URem, reduced_iter, repFactor, "phase", newHeader);
+    Value *cmp  = CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, phase, repId, "on/off", newHeader);
+    BranchInst::Create(preheader_on,preheader_off,cmp, newHeader);
+  }
 
   preheader_on->setName( "ON." + preheader_on->getName() );
   preheader_off->setName( "OFF." + preheader_off->getName() );
@@ -541,10 +585,30 @@ BasicBlock *MTCG::stitchLoops(
     PHINode *phi_on  = 0;
     VMap::const_iterator fnd = vmap_on.find(phi);
     if( fnd != vmap_on.end() )
-    {
       phi_on = dyn_cast<PHINode>( fnd->second );
-      errs() << "Susan: phi_on now is \n" << *phi_on << "\n";
-    }
+  }
+
+  if(doChunking)
+  {
+      //auto header = preheader->getUniqueSuccessor();
+     // auto off_header = preheader_off->getUniqueSuccessor();
+      assert(chunkPHI && chunkPhiUpdate && isChunkCompleted && avail_worker && "chunkPHI, chunkPhiUpdate, isChunkCompleted and avail_worker should be initialized at line 553 with chunking\n ");
+      Instruction* term = header_off->getTerminator();
+      term->eraseFromParent();
+      BranchInst::Create(header_off, header_off);
+      Type* phiType = chunkPHI->getType();
+      Value *one = ConstantInt::get(phiType, 1);
+      auto AddChunk = llvm::BinaryOperator::CreateNSWAdd(chunkPhiUpdate, one);
+      for (auto it = pred_begin(newHeader), et = pred_end(newHeader); it != et; ++it)
+      {
+        BasicBlock* bb = *it;
+        if(bb != newPreheader)
+        {
+          auto where = llvm::InstInsertPt::Beginning(bb);
+          where << AddChunk;
+          chunkPHI->addIncoming(AddChunk, bb);
+        }
+      }
   }
   return newPreheader;
 }
@@ -1480,6 +1544,7 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
     {
       BasicBlock *split = BasicBlock::Create(ctx, "end.iter", fcn);
 
+
       // Update PHIs in dest
       for (BasicBlock::iterator j = dest->begin(), z = dest->end(); j != z;
            ++j) {
@@ -1525,6 +1590,8 @@ void MTCG::markIterationBoundaries(BasicBlock *preheader,
         }
       }
       */
+
+
 
       CallInst::Create(enditer, ConstantInt::get(u32, ckptNeeded), "", split);
       BranchInst::Create(dest, split);
