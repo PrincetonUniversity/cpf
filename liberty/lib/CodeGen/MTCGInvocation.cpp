@@ -63,6 +63,7 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     << cmp
     << br;
 
+  errs() << "Susan: header name is " << header->getName() << "\n";
   // Update PHIs in loop header
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
   {
@@ -319,9 +320,9 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
   for(auto &phi : indVarPhis)
   {
     assert(phi && "IVPHI is NULL?");
-    auto livein = phi->getIncomingValue(0);
-    errs() << "Susan: indvar livein value is \n" << *livein << "\n for phi\n" << *phi << "\n" ;
-    initialValues[const_cast< PHINode* >(phi)] = livein;
+    for(unsigned j=0, N=phi->getNumIncomingValues(); j<N; ++j)
+      if( phi->getIncomingBlock(j) == should_invoc_bb )
+        initialValues[const_cast<PHINode*>(phi)] = phi->getIncomingValue(j);
   }
 
   Instruction *wid = CallInst::Create( api.getWorkerId() );

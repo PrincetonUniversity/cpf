@@ -163,8 +163,11 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
 
   else if( stage.type == PipelineStage::Parallel )
   {
-    BasicBlock *preheader_off = createOffIteration(
-      loop,stages,strategy.liveIns,strategy.available,xdeps,stageno,stage2queue,fcn,vmap_off,dt,pdt);
+    const Preprocess &preprocessor = getAnalysis< Preprocess >();
+  //  BasicBlock *preheader_off = BasicBlock::Create(fcn->getContext(), "degenerate.preheader", fcn);
+//    if(!preprocessor.getChunking())
+      BasicBlock *preheader_off = createOffIteration(
+        loop,stages,strategy.liveIns,strategy.available,xdeps,stageno,stage2queue,fcn,vmap_off,dt,pdt);
 
     preheader = stitchLoops(
       loop,
@@ -172,6 +175,21 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
       vmap_off,preheader_off,
       strategy.liveIns,
       repId,repFactor);
+
+    if(preprocessor.getChunking())
+    {
+      auto header = preheader->getUniqueSuccessor();
+      for (auto it = pred_begin(header), et = pred_end(header); it != et; ++it)
+      {
+        BasicBlock* bb = *it;
+        errs() << "Susan: pred bbs: " << bb->getName() << "\n";
+      }
+      auto off_header = preheader_off->getUniqueSuccessor();
+      Instruction* term = off_header->getTerminator();
+      term->eraseFromParent();
+      BranchInst::Create(off_header, off_header);
+      //header->removePredecessor(off_header);
+    }
   }
 
   // Entry branches to loop header
@@ -276,8 +294,6 @@ BasicBlock *MTCG::stitchLoops(
     VMap::const_iterator fnd = vmap_on.find(phi);
     if( fnd != vmap_on.end() )
       phi_on = dyn_cast<PHINode>( fnd->second );
-    else
-      errs() << "SUSAN: phi_on is not found in on map\n";
     fnd = vmap_off.find(phi);
     if( fnd != vmap_off.end() )
       phi_off = dyn_cast<PHINode>( fnd->second );
@@ -343,8 +359,12 @@ BasicBlock *MTCG::stitchLoops(
       4,
       "", newHeader);
 
+    errs() << "Susan: phi_on is " << *phi_on << "\n";
+    errs() << "Susan: preheader_on is " << *preheader_on << "\n";
     if( phi_on )
       stitchPhi(preheader_on, phi_on, newPreheader, newPhi);
+    errs() << "Susan: new_phi is " << *newPhi << "\n";
+    errs() << "Susan: phi_on after stitch is " << *phi_on << "\n";
 
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
@@ -513,9 +533,19 @@ BasicBlock *MTCG::stitchLoops(
 
   preheader_on->setName( "ON." + preheader_on->getName() );
   preheader_off->setName( "OFF." + preheader_off->getName() );
-
-  /*In side of the preheader basic block, manipulate the induction variables*/
-
+  for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
+  {
+    PHINode *phi = dyn_cast<PHINode>( &*i );
+    if( !phi )
+      break;
+    PHINode *phi_on  = 0;
+    VMap::const_iterator fnd = vmap_on.find(phi);
+    if( fnd != vmap_on.end() )
+    {
+      phi_on = dyn_cast<PHINode>( fnd->second );
+      errs() << "Susan: phi_on now is \n" << *phi_on << "\n";
+    }
+  }
   return newPreheader;
 }
 
@@ -613,6 +643,7 @@ BasicBlock *MTCG::createOffIteration(
 
   if( off_rel.empty() )
   {
+    errs() << "Susan: is off_rel empty?\n";
     // Degenerate case: create an empty OFF iteration.
     LLVMContext &ctx = fcn->getContext();
 
