@@ -1,9 +1,7 @@
 BASE_DIR:=$(shell pwd)
 NOELLE_REMOTE?=/u/sa8/noelle
-NOELLE_BRANCH?=master
+NOELLE_BRANCH?=remedies_minor_fix
 ORIGINAL_PATH:=${PATH}
-#LLVM_INSTALL_DEBUG=/u/ziyangx/llvm-workspace-9/llvm-install/
-#LLVM_INSTALL_RELEASE=/u/ziyangx/llvm-workspace-9/llvm-install-release/
 
 ifndef LLVM_INSTALL_DEBUG
 $(error LLVM_INSTALL_DEBUG is not set)
