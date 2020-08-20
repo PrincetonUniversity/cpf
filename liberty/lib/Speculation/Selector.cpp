@@ -218,8 +218,8 @@ unsigned Selector::computeWeights(
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
 
-      std::unique_ptr<LoopDependenceInfo> ldi =
-          std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
+      //std::unique_ptr<LoopDependenceInfo> ldi =
+      //    std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
 
       // trying to find the best parallelization strategy for this loop
 
@@ -235,7 +235,8 @@ unsigned Selector::computeWeights(
       Critic_ptr sc;
 
       bool applicable = orch->findBestStrategy(
-          A, *pdg, *ldi, *perf, ctrlspec, loadedValuePred, mloops, tli, smtxMan,
+          A, *pdg, //ldi,
+          *perf, ctrlspec, loadedValuePred, mloops, tli, smtxMan,
           smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
           killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
@@ -281,7 +282,7 @@ unsigned Selector::computeWeights(
         strategies[ hA ] = std::move(ps);
         selectedRemedies[ hA ] = std::move(sr);
         selectedCritics[ hA ] = sc;
-        loopDepInfo [hA] = std::move(ldi);
+        //loopDepInfo [hA] = std::move(ldi);
         selectedLoops.insert(hA);
 
       } else {

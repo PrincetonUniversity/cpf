@@ -56,7 +56,7 @@ class Orchestrator {
 public:
   bool findBestStrategy(
       // Inputs
-      Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
+      Loop *loop, llvm::PDG &pdg, //LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
       TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
@@ -79,7 +79,7 @@ private:
   std::vector<Remediator_ptr> getRemediators(
       Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-      TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+      TargetLibraryInfo *tli, //LoopDependenceInfo &ldi,
       SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,

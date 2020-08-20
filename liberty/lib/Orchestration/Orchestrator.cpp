@@ -56,7 +56,8 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-    TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+    TargetLibraryInfo *tli,
+    //LoopDependenceInfo &ldi,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
@@ -66,9 +67,9 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
-  reduxRemed->setLoopOfInterest(A);
-  remeds.push_back(std::move(reduxRemed));
+  //auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
+  //reduxRemed->setLoopOfInterest(A);
+  //remeds.push_back(std::move(reduxRemed));
 
   // separation logic remediator (Privateer PLDI '12)
   //remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
@@ -274,7 +275,8 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 }
 
 bool Orchestrator::findBestStrategy(
-    Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
+    Loop *loop, llvm::PDG &pdg,
+    //LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
     TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
@@ -313,7 +315,7 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds =
-      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, ldi,
+      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
                      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
                      loopAA, kill, killflowA, callsiteA, &perf);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
