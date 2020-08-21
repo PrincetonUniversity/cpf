@@ -176,37 +176,6 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
       strategy.liveIns,
       repId,repFactor);
 
-    /*if(doChunking)
-    {
-      auto header = preheader->getUniqueSuccessor();
-      auto off_header = preheader_off->getUniqueSuccessor();
-      Instruction* term = off_header->getTerminator();
-      term->eraseFromParent();
-      BranchInst::Create(off_header, off_header);
-      //header->removePredecessor(off_header);
-      for (auto it = pred_begin(header), et = pred_end(header); it != et; ++it)
-      {
-        BasicBlock* bb = *it;
-        if(bb != preheader)
-        {
-          auto where = llvm::InstInsertPt::Beginning(bb);
-          for(auto iter = header->begin(); iter != header->end(); ++iter)
-          {
-            PHINode* phi = dyn_cast<PHINode>(iter);
-            if(!phi)
-              break;
-            if(phi->getName() == "chunk.phi")
-            {
-              Type* phiType = phi->getType();
-              Value *one = ConstantInt::get(phiType, 1);
-              auto AddChunk = llvm::BinaryOperator::CreateNSWAdd(cast<Value>(phi), one);
-              where << AddChunk;
-              phi->addIncoming(AddChunk, bb);
-            }
-          }
-        }
-      }
-    }*/
   }
 
   // Entry branches to loop header
@@ -312,9 +281,8 @@ BasicBlock *MTCG::stitchLoops(
       break;
 
     if (indVarPhis.count(phi))
-    {
       phiType = phi->getType();
-    }
+
     // Find the corresponding phi nodes on the ON/OFF versions.
     PHINode *phi_on  = 0, *phi_off = 0;
     VMap::const_iterator fnd = vmap_on.find(phi);
@@ -547,23 +515,48 @@ BasicBlock *MTCG::stitchLoops(
   Value *iter = CallInst::Create(getIterNum, "current.iteration", newHeader);
   Value *chunk_size = ConstantInt::get(phiType, 4);
   Value *zero = ConstantInt::get(phiType, 0);
+  Value *one = ConstantInt::get(phiType, 1);
   //unconditionally branch to the ON preheader
   Value *chunkPhiUpdate, *isChunkCompleted, *avail_worker;
   PHINode* chunkPHI;
   if(doChunking)
   {
     /*create chunkPHI*/
-
     chunkPHI = PHINode::Create(phiType, 0, "chunk.phi" ,
                             &*(newHeader->getFirstInsertionPt()));
         chunkPHI->addIncoming(zero, newPreheader);
-    //temporarily adding zeros to each incoming block
 
+    /*get num of workers*/
     Constant *numAvail = api.getNumWorkers();
     avail_worker = CallInst::Create(numAvail, "num.worker", newHeader);
+    Value* avail_worker_cast = new ZExtInst (avail_worker, phiType, "casted.num.worker", newHeader);
+    /*chunk step_size = (NUM_WORKERS - 1) * chunk_size*/
+    Value *avail_worker_minus_one = BinaryOperator::Create(Instruction::Sub, avail_worker_cast, one, "worker.minus.one", newHeader);
+    Instruction *chunk_step_size = BinaryOperator::Create(Instruction::Mul, avail_worker_minus_one, chunk_size, "chunk.step", newHeader);
+
+    /*check if chunk is completed*/
     isChunkCompleted  = CmpInst::Create(Instruction::ICmp,
         ICmpInst::ICMP_EQ, cast< Value > (chunkPHI), chunk_size, "isChunkCompleted", newHeader);
+
+    /*if chunk completed, chunkIV becomes 0, otherwise chunkIV++ */
     chunkPhiUpdate = SelectInst::Create(isChunkCompleted, zero, cast< Value > (chunkPHI), "chunk.phi.next", newHeader);
+    for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
+    {
+      PHINode *phi = dyn_cast<PHINode>( &*i );
+      if( !phi )
+        break;
+      if(indVarPhis.count(phi))
+      {
+        auto fnd = vmap_on.find(phi);
+        assert(fnd != vmap_on.end() && "couldn't find old ivPHI in vmap_on\n" );
+        PHINode* ivPHI_on = dyn_cast< PHINode > (fnd->second);
+        errs() << "Susan: ivPHI_on is" << *ivPHI_on << "\n";
+
+        /*for all the original ivPHI, change the step size based on isChunkComplete*/
+
+      }
+    }
+
     BranchInst::Create(preheader_on, newHeader);
   }
   else
@@ -590,8 +583,6 @@ BasicBlock *MTCG::stitchLoops(
 
   if(doChunking)
   {
-      //auto header = preheader->getUniqueSuccessor();
-     // auto off_header = preheader_off->getUniqueSuccessor();
       assert(chunkPHI && chunkPhiUpdate && isChunkCompleted && avail_worker && "chunkPHI, chunkPhiUpdate, isChunkCompleted and avail_worker should be initialized at line 553 with chunking\n ");
       Instruction* term = header_off->getTerminator();
       term->eraseFromParent();
