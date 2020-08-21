@@ -272,7 +272,8 @@ BasicBlock *MTCG::stitchLoops(
   auto indVarPhis = preprocessor.getIndVarPhis();
 
   Type* phiType = u32;//default
-  // For each PHI node which appears in both the ON and OFF versions of this stage.
+  // For each PHI node which appears in both the ON and OFF versions of this stage
+  VMap phiOn2newPHI;
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
   {
     PHINode *phi = dyn_cast<PHINode>( &*i );
@@ -351,12 +352,9 @@ BasicBlock *MTCG::stitchLoops(
       4,
       "", newHeader);
 
-    errs() << "Susan: phi_on is " << *phi_on << "\n";
-    errs() << "Susan: preheader_on is " << *preheader_on << "\n";
     if( phi_on )
       stitchPhi(preheader_on, phi_on, newPreheader, newPhi);
-    errs() << "Susan: new_phi is " << *newPhi << "\n";
-    errs() << "Susan: phi_on after stitch is " << *phi_on << "\n";
+    phiOn2newPHI[phi_on] = newPhi;
 
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
@@ -532,7 +530,7 @@ BasicBlock *MTCG::stitchLoops(
     Value* avail_worker_cast = new ZExtInst (avail_worker, phiType, "casted.num.worker", newHeader);
     /*chunk step_size = (NUM_WORKERS - 1) * chunk_size*/
     Value *avail_worker_minus_one = BinaryOperator::Create(Instruction::Sub, avail_worker_cast, one, "worker.minus.one", newHeader);
-    Instruction *chunk_step_size = BinaryOperator::Create(Instruction::Mul, avail_worker_minus_one, chunk_size, "chunk.step", newHeader);
+    Value *chunk_step_size = BinaryOperator::Create(Instruction::Mul, avail_worker_minus_one, chunk_size, "chunk.step", newHeader);
 
     /*check if chunk is completed*/
     isChunkCompleted  = CmpInst::Create(Instruction::ICmp,
@@ -549,11 +547,23 @@ BasicBlock *MTCG::stitchLoops(
       {
         auto fnd = vmap_on.find(phi);
         assert(fnd != vmap_on.end() && "couldn't find old ivPHI in vmap_on\n" );
-        PHINode* ivPHI_on = dyn_cast< PHINode > (fnd->second);
-        errs() << "Susan: ivPHI_on is" << *ivPHI_on << "\n";
+        PHINode* ivPHI = dyn_cast< PHINode > (fnd->second);
+        Value* newivPHI = phiOn2newPHI[cast < Value > (ivPHI)];
 
         /*for all the original ivPHI, change the step size based on isChunkComplete*/
+        Value* IVChunkIncrement = llvm::BinaryOperator::CreateNSWAdd(newivPHI, chunk_step_size, "iv.chunk.increment", newHeader);
+        Value* SelectNextIV = SelectInst::Create(isChunkCompleted, IVChunkIncrement, newivPHI, "iv.phi.next", newHeader);
 
+        /*replace all the use of original indvar to iv.phi.next*/
+        for(auto U : newivPHI->users())
+        {
+          auto I = dyn_cast<Instruction> (U);
+          if ( I && I->getParent() != newHeader )
+          {
+            errs() << "instruction is used by "<< *I << "\n";
+            I->replaceUsesOfWith(newivPHI, SelectNextIV);
+          }
+        }
       }
     }
 
