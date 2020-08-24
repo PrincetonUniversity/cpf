@@ -282,7 +282,10 @@ BasicBlock *MTCG::stitchLoops(
       break;
 
     if (indVarPhis.count(phi))
+    {
+      errs() << "Susan: is phi ever founded in indVarPhis?\n";
       phiType = phi->getType();
+    }
 
     // Find the corresponding phi nodes on the ON/OFF versions.
     PHINode *phi_on  = 0, *phi_off = 0;
@@ -383,7 +386,6 @@ BasicBlock *MTCG::stitchLoops(
 
       if (reduxObject) {
         // reducible live-out found
-        errs() << "SUSAN: is reduxObject every found?\n";
         phi_off =
             PHINode::Create(phi_on->getType(), 0, "phi_off." + phi->getName(),
                             &*(header_off->getFirstInsertionPt()));
@@ -535,7 +537,7 @@ BasicBlock *MTCG::stitchLoops(
 
     /*iv start = repid * chunk_size*/
     Value* repid_cast = new ZExtInst (repId, phiType, "casted.repId", newPre2newHead);
-    Value *iv_start = BinaryOperator::Create(Instruction::Mul, repid_cast, chunk_size, "iv.start", newPre2newHead);
+    Value *iv_start_mul = BinaryOperator::Create(Instruction::Mul, repid_cast, chunk_size, "iv.start.mul", newPre2newHead);
 
     /*check if chunk is completed*/
     isChunkCompleted  = CmpInst::Create(Instruction::ICmp,
@@ -558,6 +560,9 @@ BasicBlock *MTCG::stitchLoops(
         Value* newivPHI = phiOn2newPHI[cast < Value > (ivPHI)];
         PHINode* stitch_iv = dyn_cast < PHINode > (newivPHI);
         assert(stitch_iv && "stitch_iv has to be a PHI node\n");
+        auto preheader_idx = stitch_iv->getBasicBlockIndex(newPreheader);
+        Value* iv_livein = stitch_iv->getIncomingValue(preheader_idx);
+        Value *iv_start = BinaryOperator::Create(Instruction::Add, iv_start_mul, iv_livein, "iv.start", newPre2newHead);
         stitch_iv->setIncomingValueForBlock(newPreheader, iv_start);
         /*for all the original ivPHI, change the step size based on isChunkComplete*/
         Value* IVChunkIncrement = llvm::BinaryOperator::CreateNSWAdd(newivPHI, chunk_step_size, "iv.chunk.increment", newHeader);
