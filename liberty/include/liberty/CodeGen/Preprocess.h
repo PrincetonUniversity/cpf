@@ -19,7 +19,7 @@
 #include "liberty/Redux/Reduction.h"
 
 #include "PDG.hpp"
-
+#include "Noelle.hpp"
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
@@ -58,6 +58,9 @@ struct Preprocess : public ModulePass {
     return indVarPhis;
   }
 
+  std::unordered_set<const InductionVariable *> getIVs () const{
+    return IVs;
+  }
   std::unordered_set<const Instruction *> *
   getSelectedCtrlSpecDeps(const BasicBlock *loopHeader) {
     if (selectedCtrlSpecDeps.count(loopHeader))
@@ -124,6 +127,7 @@ private:
   std::unordered_map<const Instruction *, Reduction::ReduxInfo> redux2Info;
   std::unordered_map<const BasicBlock *, const Instruction *> reduxUpdateInst;
   std::unordered_set<const PHINode *> indVarPhis;
+  std::unordered_set<const InductionVariable *> IVs;
   //const PHINode *indVarPhi;
   bool Chunking;
 

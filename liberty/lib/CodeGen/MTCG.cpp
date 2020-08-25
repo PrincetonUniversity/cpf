@@ -6,6 +6,7 @@
 
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/CodeGen/PrintStage.h"
+#include "Noelle.hpp"
 
 #if (MTCG_CTRL_DEBUG || MTCG_VALUE_DEBUG)
 #include "liberty/Utilities/InsertPrintf.h"
@@ -270,6 +271,7 @@ BasicBlock *MTCG::stitchLoops(
   bool doChunking = preprocessor.getChunking();
   IntegerType *u32 = Type::getInt32Ty(ctx);
   auto indVarPhis = preprocessor.getIndVarPhis();
+  auto IVs = preprocessor.getIVs();
 
   Type* phiType = u32;//default
   // For each PHI node which appears in both the ON and OFF versions of this stage
@@ -533,11 +535,11 @@ BasicBlock *MTCG::stitchLoops(
 
     /*chunk step_size = (NUM_WORKERS - 1) * chunk_size*/
     Value *avail_worker_minus_one = BinaryOperator::Create(Instruction::Sub, avail_worker_cast, one, "worker.minus.one", newPre2newHead);
-    Value *chunk_step_size = BinaryOperator::Create(Instruction::Mul, avail_worker_minus_one, chunk_size, "chunk.step", newPre2newHead);
+    Value *chunk_step_mul = BinaryOperator::Create(Instruction::Mul, avail_worker_minus_one, chunk_size, "chunk.step.mul", newPre2newHead);
 
     /*iv start = repid * chunk_size*/
     Value* repid_cast = new ZExtInst (repId, phiType, "casted.repId", newPre2newHead);
-    Value *iv_start_mul = BinaryOperator::Create(Instruction::Mul, repid_cast, chunk_size, "iv.start.mul", newPre2newHead);
+    Value *iv_start_mul_1 = BinaryOperator::Create(Instruction::Mul, repid_cast, chunk_size, "iv.start.mul.1", newPre2newHead);
 
     /*check if chunk is completed*/
     isChunkCompleted  = CmpInst::Create(Instruction::ICmp,
@@ -554,6 +556,12 @@ BasicBlock *MTCG::stitchLoops(
         break;
       if(indVarPhis.count(phi))
       {
+        /*find the corresponding IV structure and fill out start_value and step size*/
+        Value* step_size = NULL;
+        for (const auto& iv: IVs)
+          if(iv->getLoopEntryPHI() == phi)
+            step_size = iv->getSingleComputedStepValue();
+        assert(step_size && "step size and start value of IV are not found\n");
         auto fnd = vmap_on.find(phi);
         assert(fnd != vmap_on.end() && "couldn't find old ivPHI in vmap_on\n" );
         PHINode* ivPHI = dyn_cast< PHINode > (fnd->second);
@@ -562,9 +570,12 @@ BasicBlock *MTCG::stitchLoops(
         assert(stitch_iv && "stitch_iv has to be a PHI node\n");
         auto preheader_idx = stitch_iv->getBasicBlockIndex(newPreheader);
         Value* iv_livein = stitch_iv->getIncomingValue(preheader_idx);
+        Value *iv_start_mul = BinaryOperator::Create(Instruction::Mul, iv_start_mul_1, step_size, "iv.start.mul", newPre2newHead);
         Value *iv_start = BinaryOperator::Create(Instruction::Add, iv_start_mul, iv_livein, "iv.start", newPre2newHead);
+        //Value *iv_start = BinaryOperator::Create(Instruction::Add, iv_start_mul, start_value, "iv.start", newPre2newHead);
         stitch_iv->setIncomingValueForBlock(newPreheader, iv_start);
         /*for all the original ivPHI, change the step size based on isChunkComplete*/
+        Value *chunk_step_size = BinaryOperator::Create(Instruction::Mul, chunk_step_mul, step_size, "chunk.step.size", newPre2newHead);
         Value* IVChunkIncrement = llvm::BinaryOperator::CreateNSWAdd(newivPHI, chunk_step_size, "iv.chunk.increment", newHeader);
         Value* SelectNextIV = SelectInst::Create(isChunkCompleted, IVChunkIncrement, newivPHI, "iv.phi.next", newHeader);
 

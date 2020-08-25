@@ -63,6 +63,7 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
         remedResp.depRes = DepResult::NoDep;
         auto PHIB = ivB->getLoopEntryPHI();
         remedy->ivPHI = PHIB;
+        remedy->IV    = ivB;
         break;
       }
     }
@@ -105,6 +106,7 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
     remedy->allIVInfo = livm;
     remedResp.depRes = DepResult::NoDep;
     remedy->ivPHI = govern_iv->getLoopEntryPHI();
+    remedy->IV = govern_iv;
   }
 
   remedResp.remedy = remedy;

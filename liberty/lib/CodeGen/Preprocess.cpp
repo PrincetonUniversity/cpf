@@ -637,6 +637,7 @@ void Preprocess::init(ModuleLoops &mloops)
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhis.insert(indVarRemed->ivPHI);
+        IVs.insert(indVarRemed->IV);
         Chunking = true;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
         MemVerRemedy *memVerRemed = (MemVerRemedy *)&*remed;

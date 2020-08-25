@@ -15,6 +15,7 @@ using namespace llvm;
 class CountedIVRemedy : public Remedy {
 public:
   const PHINode *ivPHI;
+  InductionVariable *IV;
   InductionVariableManager *allIVInfo;
 
   void apply(Task *task);
