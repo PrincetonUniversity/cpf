@@ -112,11 +112,13 @@ OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
   -spec-priv-apply-value-pred-spec
   -specpriv-mtcg
   -stats 
+  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,mtcg,specpriv-transform,locality-remed,classify,redux-remed,priv-remed,loaded-value-pred-remed
   $DBG "
 
 else
 OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
   -remed-selector
+  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,mtcg,specpriv-transform,locality-remed,classify,redux-remed,priv-remed,loaded-value-pred-remed
   -stats 
   $DBG "
 fi
