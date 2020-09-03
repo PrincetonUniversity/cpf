@@ -255,10 +255,7 @@ bool PreparedStrategy::rematerializeOnce(const PipelineStrategy::Stages &stages,
     // note the ones that the replicable part cannot rematerialize
     // TODO: maybe delete off_iterations whatsover
     if (stages[stageno].replicated.count(inst))
-    {
-      errs() << "Susan: replicated inst:" << *inst << "\n";
       continue;
-    }
 
     for(User::op_iterator j=inst->op_begin(), jj=inst->op_end(); j!=jj; ++j)
     {
@@ -520,7 +517,6 @@ bool PreparedStrategy::communicateOnce(const PipelineStrategy::Stages &stages,
   if (!nonRematNonMem.empty()) {
     // pick a random one from the rest to communicate
     auto pairI = *nonRematNonMem.begin();
-    errs() << "Susan: communicated value: \n" << *pairI.first;
     communicateValue(pairI.first, stages, stageno, available, pairI.second,
                      insts, avail, rel, cons);
     return true;

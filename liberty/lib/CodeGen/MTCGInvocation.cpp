@@ -63,14 +63,12 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     << cmp
     << br;
 
-  errs() << "Susan: header name is " << header->getName() << "\n";
   // Update PHIs in loop header
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i)
   {
     PHINode *phi = dyn_cast< PHINode >( &*i );
     if( !phi )
       continue;
-    errs() << "Susan: phi value at this point\n" << *phi << "\n";
     for(unsigned j=0, N=phi->getNumIncomingValues(); j<N; ++j)
       if( phi->getIncomingBlock(j) == preheader )
         phi->setIncomingBlock(j, should_invoc_bb);
@@ -306,7 +304,6 @@ void MTCG::createParallelInvocation(PreparedStrategy &strategy, unsigned loopID)
     Instruction *phiI = reduxLiveouts[i];
     PHINode *phi = dyn_cast<PHINode>(phiI);
     assert(phi && "Redux variable not a phi?");
-    errs() << "Susan: redux live out : \n" << *phi << "\n";
     LoadInst *load = new LoadInst( reduxObjects[i] );
     load->setName("initial:" + phi->getName() );
 

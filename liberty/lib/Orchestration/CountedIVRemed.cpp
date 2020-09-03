@@ -30,10 +30,6 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
                                                   const Instruction *B,
                                                   bool loopCarried, const Loop *loop){
   //add a check to unconditionally branch to ON header iff there is a countedIV remed other wise just chunking without
-  //Preprocess populate a ds that informs MTCG to change
-  //test it on 5xx lbm after finish detection
-  //do it all in preprocess
-  //
   //To disprove the loop carried dependence from instruction A, a
   //stepping instruction and instruction B, the IV PHI
   auto livm = ldi->getInductionVariableManager();
@@ -61,6 +57,7 @@ Remediator::RemedResp CountedIVRemediator::regdep(const Instruction *A,
         ++numNoRegDep;
         remedy->allIVInfo = livm;
         remedResp.depRes = DepResult::NoDep;
+				assert(ivB->getLoopEntryPHI() && "cannot find entry phi for governing IV");
         auto PHIB = ivB->getLoopEntryPHI();
         remedy->ivPHI = PHIB;
         remedy->IV    = ivB;
@@ -99,12 +96,15 @@ Remediator::RemedResp CountedIVRemediator::ctrldep(const Instruction *A,
       BdepA = true;
     return false;
   };
+
+	//find control dependent instructions on the IV branch inst
   LDG->iterateOverDependencesFrom(cast<Value>(iv_br), true, false, false, isCtrlDepOnA);
   if(BdepA)
   {
     ++numNoCtrlDep;
     remedy->allIVInfo = livm;
     remedResp.depRes = DepResult::NoDep;
+		assert(govern_iv->getLoopEntryPHI() && "cannot find entry phi for governing IV");
     remedy->ivPHI = govern_iv->getLoopEntryPHI();
     remedy->IV = govern_iv;
   }

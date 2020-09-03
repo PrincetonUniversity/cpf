@@ -159,9 +159,6 @@ Function *MTCG::createStage(PreparedStrategy &strategy, unsigned stageno, const 
 
   BasicBlock *preheader = 0;
 
-  const Preprocess &preprocessor = getAnalysis< Preprocess >();
-  bool doChunking = preprocessor.getChunking();
-
   if( stage.type == PipelineStage::Sequential )
     preheader = preheader_on;
 
@@ -269,6 +266,7 @@ BasicBlock *MTCG::stitchLoops(
   const Preprocess &preprocessor = getAnalysis< Preprocess >();
   bool checkpointNeeded = preprocessor.isCheckpointingNeeded(header);
   bool doChunking = preprocessor.getChunking();
+	bool detectedIV = false;
   IntegerType *u32 = Type::getInt32Ty(ctx);
   auto indVarPhis = preprocessor.getIndVarPhis();
   auto IVs = preprocessor.getIVs();
@@ -285,8 +283,9 @@ BasicBlock *MTCG::stitchLoops(
 
     if (indVarPhis.count(phi))
     {
-      errs() << "Susan: is phi ever founded in indVarPhis?\n";
       phiType = phi->getType();
+			detectedIV = true;
+			LLVM_DEBUG(errs() << "Governing IV detected, removing replicable stage\n");
     }
 
     // Find the corresponding phi nodes on the ON/OFF versions.
@@ -363,7 +362,7 @@ BasicBlock *MTCG::stitchLoops(
 
     if( phi_off )
       stitchPhi(preheader_off, phi_off, newPreheader, newPhi);
-    else if(!doChunking){
+    else if(!detectedIV){
       // For reducible live-outs create a dummy PHI whose incoming value is the
       // phi in the new stitch loop header (OFF iteration does not change the
       // value, just passes on the one it received).
@@ -494,50 +493,55 @@ BasicBlock *MTCG::stitchLoops(
           }
         }
       } else {
-        /*for(auto bb_iter = loop->block_begin(); bb_iter != loop->block_end(); bb_iter++)
-        {
-          BasicBlock* bb = *bb_iter;
-          for(BasicBlock::iterator j=bb->begin(), z=bb->end(); j!=z; ++j)
-            errs() << *j << "\n";
-        }
-        errs() << "SUSAN: Loop:\n" << *loop << "\n";*/
         assert(0 && "Loop-carried dep that is not reducible "
                     "should already have a phi node in both on,off iteration "
                     "(replicable inst)");
       }
-      // TODO: loop-carried deps that are not live-out and non reducible
-      // should still be stored before checkpoints on OFF iteration
     }
   }
 
   replaceIncomingEdgesExcept(header_off,preheader_off,newHeader);
 
-  // Alternate between the ON and OFF iterations.
+
+	/*transform the loop based on chunking options*/
   Constant *getIterNum = api.getCurrentIter();
   Value *iter = CallInst::Create(getIterNum, "current.iteration", newHeader);
-  Value *chunk_size = ConstantInt::get(phiType, 4);
+	Value *chunk_size;
   Value *zero = ConstantInt::get(phiType, 0);
   Value *one = ConstantInt::get(phiType, 1);
   //unconditionally branch to the ON preheader
   Value *chunkPhiUpdate, *isChunkCompleted, *avail_worker;
-  PHINode* chunkPHI;
-  if(doChunking)
+	PHINode* chunkPHI;
+
+	//doChunking option determines chunk size
+	if(doChunking){
+  	chunk_size = ConstantInt::get(phiType, 4);
+		LLVM_DEBUG(errs() << "Chunk Size is 4, chunking enabled\n");
+	}
+	else{
+		chunk_size = ConstantInt::get(phiType, 1);
+		LLVM_DEBUG(errs() << "Chunk Size is 1, chunking disabled\n");
+	}
+  if(detectedIV)
   {
-    /*create chunkPHI*/
+    /*create chunkPHI initialized to 0*/
     chunkPHI = PHINode::Create(phiType, 0, "chunk.phi" ,
                             &*(newHeader->getFirstInsertionPt()));
-        chunkPHI->addIncoming(zero, newPreheader);
+    chunkPHI->addIncoming(zero, newPreheader);
 
     /*get num of workers*/
     Constant *numAvail = api.getNumWorkers();
     avail_worker = CallInst::Create(numAvail, "num.worker", newPre2newHead);
     Value* avail_worker_cast = new ZExtInst (avail_worker, phiType, "casted.num.worker", newPre2newHead);
 
-    /*chunk step_size = (NUM_WORKERS - 1) * chunk_size*/
+    /*chunk step_size = (NUM_WORKERS - 1) * chunk_size * original_step_size*/
+		//here only computes (NUM_WORKERS-1) * chunk_size because original_step size requires
+		//iterating over the stitched loop;
     Value *avail_worker_minus_one = BinaryOperator::Create(Instruction::Sub, avail_worker_cast, one, "worker.minus.one", newPre2newHead);
     Value *chunk_step_mul = BinaryOperator::Create(Instruction::Mul, avail_worker_minus_one, chunk_size, "chunk.step.mul", newPre2newHead);
 
-    /*iv start = repid * chunk_size*/
+    /*iv start = original_start + repid * chunk_size * original_step_size*/
+		//here left out original_step_size as well
     Value* repid_cast = new ZExtInst (repId, phiType, "casted.repId", newPre2newHead);
     Value *iv_start_mul_1 = BinaryOperator::Create(Instruction::Mul, repid_cast, chunk_size, "iv.start.mul.1", newPre2newHead);
 
@@ -556,7 +560,7 @@ BasicBlock *MTCG::stitchLoops(
         break;
       if(indVarPhis.count(phi))
       {
-        /*find the corresponding IV structure and fill out start_value and step size*/
+        /*find the corresponding IV structure and fill out iv_livein  and step_size*/
         Value* step_size = NULL;
         for (const auto& iv: IVs)
           if(iv->getLoopEntryPHI() == phi)
@@ -570,9 +574,10 @@ BasicBlock *MTCG::stitchLoops(
         assert(stitch_iv && "stitch_iv has to be a PHI node\n");
         auto preheader_idx = stitch_iv->getBasicBlockIndex(newPreheader);
         Value* iv_livein = stitch_iv->getIncomingValue(preheader_idx);
+
+				/* calculate final multiplication of start and step size*/
         Value *iv_start_mul = BinaryOperator::Create(Instruction::Mul, iv_start_mul_1, step_size, "iv.start.mul", newPre2newHead);
         Value *iv_start = BinaryOperator::Create(Instruction::Add, iv_start_mul, iv_livein, "iv.start", newPre2newHead);
-        //Value *iv_start = BinaryOperator::Create(Instruction::Add, iv_start_mul, start_value, "iv.start", newPre2newHead);
         stitch_iv->setIncomingValueForBlock(newPreheader, iv_start);
         /*for all the original ivPHI, change the step size based on isChunkComplete*/
         Value *chunk_step_size = BinaryOperator::Create(Instruction::Mul, chunk_step_mul, step_size, "chunk.step.size", newPre2newHead);
@@ -589,6 +594,7 @@ BasicBlock *MTCG::stitchLoops(
             I->replaceUsesOfWith(newivPHI, SelectNextIV);
           }
         }
+				break;
       }
     }
 
@@ -616,9 +622,9 @@ BasicBlock *MTCG::stitchLoops(
       phi_on = dyn_cast<PHINode>( fnd->second );
   }
 
-  if(doChunking)
+  if(detectedIV)
   {
-      assert(chunkPHI && chunkPhiUpdate && isChunkCompleted && avail_worker && "chunkPHI, chunkPhiUpdate, isChunkCompleted and avail_worker should be initialized at line 553 with chunking\n ");
+      assert(chunkPHI && chunkPhiUpdate && isChunkCompleted && avail_worker && "chunkPHI, chunkPhiUpdate, isChunkCompleted and avail_worker should be initialized with chunking\n ");
       Instruction* term = header_off->getTerminator();
       term->eraseFromParent();
       BranchInst::Create(header_off, header_off);
@@ -733,7 +739,6 @@ BasicBlock *MTCG::createOffIteration(
 
   if( off_rel.empty() )
   {
-    errs() << "Susan: is off_rel empty?\n";
     // Degenerate case: create an empty OFF iteration.
     LLVMContext &ctx = fcn->getContext();
 
@@ -1268,36 +1273,26 @@ BasicBlock *MTCG::copyInstructions(
   for(unsigned i=0, N=liveIns.size(); i<N; ++i)
     ++ai;
 
-  errs() << "Susan: header name " << header->getName() << "\n";
   for(BasicBlock::iterator i=header->begin(), e=header->end(); i!=e; ++i, ++ai)
   {
     // PHI node in the original loop
     PHINode *phi = dyn_cast< PHINode >(&*i);
     if( !phi )
       break;
-    errs() << "Susan: phi in header" << *phi << "\n";
     VMap::iterator iter = vmap.find(phi);
     if( iter == vmap.end() )
       continue;
-    errs() << "Susan: phi found in vmap" << *phi << "\n";
 
     // Clone of that PHI node in the thread
     PHINode *my_phi = dyn_cast< PHINode >( iter->second );
     if( !my_phi )
-    {
-      errs() << "Susan: my_phi is null\n";
       continue; // (skip a consume of the phi node)
-    }
 
     const int idx = my_phi->getBasicBlockIndex(preheader);
     if( idx == -1 )
-    {
-      errs() << "Susan: idx is -1\n";
       continue;
-    }
 
     my_phi->setIncomingValue(idx, &*ai);
-    errs() << "my phi is " << *my_phi << "\n";
   }
 
   // How does this enter an iteration?

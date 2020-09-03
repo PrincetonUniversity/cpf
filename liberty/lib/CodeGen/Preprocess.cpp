@@ -43,6 +43,11 @@ namespace SpecPriv
 {
 using namespace llvm;
 
+//by default, chunking is disabled
+static cl::opt<bool> EnableChunking(
+  "enable-chunking", cl::init(false), cl::NotHidden,
+  cl::desc("Enable/Disable Chunking"));
+
 STATISTIC(numLiveOuts,      "Live-out values demoted to private memory");
 STATISTIC(numReduxLiveOuts, "Redux live-out values demoted to redux memory");
 
@@ -572,7 +577,7 @@ void Preprocess::init(ModuleLoops &mloops)
     bool specUsedFlag = false;
     bool memVerUsed = false;
     bool privUsed = false;
-    Chunking = false;
+    Chunking = EnableChunking;
     Ctx *loop_ctx = spresults.getCtx(loop);
     for (auto &remed : *selectedRemeds) {
       if (remed->getRemedyName().equals("ctrl-spec-remedy")) {
@@ -638,7 +643,8 @@ void Preprocess::init(ModuleLoops &mloops)
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhis.insert(indVarRemed->ivPHI);
         IVs.insert(indVarRemed->IV);
-        Chunking = true;
+        //Chunking = true;
+        //Chunking = false;
       } else if (remed->getRemedyName().equals("mem-ver-remedy")) {
         MemVerRemedy *memVerRemed = (MemVerRemedy *)&*remed;
         if (memVerRemed->waw) {
@@ -829,7 +835,6 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
         if( Instruction *user = dyn_cast< Instruction >( *k ) )
           if( ! loop->contains(user) ) {
             if (reduxV.count(inst)) {
-              errs() << "Susan: inst\n" << *inst << "\n added to reduxLiveoutSet\n";
               reduxLiveoutSet.insert(inst);
               reduxLiveouts.push_back(inst);
             } else
@@ -1034,7 +1039,6 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       StoreInst *store = new StoreInst(vdef, liveoutStructure.reduxObjects[i]);
       InstInsertPt::End(pred) << store;
 
-      errs() << "Susan: gravity is \n" << *phi << "\n";
       Instruction *gravity = phi;
       if (Instruction *idef = dyn_cast<Instruction>(vdef))
         gravity = idef;
