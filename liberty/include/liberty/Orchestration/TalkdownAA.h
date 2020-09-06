@@ -44,6 +44,12 @@ struct TalkdownAA : public ModulePass, public LoopAA // Not a pass!
                             Remedies &R,
                             DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
+  LoopAA::ModRefResult modref(const Instruction *A,
+                            TemporalRelation rel,
+                            const Instruction *B,
+                            const Loop *L,
+                            Remedies &R);
+
   void setLoopOfInterest(Loop *l) { loop = l; }
 
 private:

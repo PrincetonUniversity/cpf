@@ -13,7 +13,8 @@ namespace liberty
 {
 namespace AutoMP
 {
-STATISTIC(numTalkdownQueries, "Number of queries");
+STATISTIC(numTalkdownAliasQueries, "Number of alias queries");
+STATISTIC(numTalkdownModRefQueries, "Number of modref queries");
 STATISTIC(numTalkdownApplicable, "Number of queries applicable");
 STATISTIC(numAliasDisproved, "Number of alias queries disproved");
 
@@ -44,9 +45,19 @@ LoopAA::AliasResult TalkdownAA::alias(const Value *P1, unsigned S1, TemporalRela
   /* { */
   /*   LLVM_DEBUG(errs() << *meta_iter.first << ": " << *meta_iter.second << "\n";); */
   /* } */
-  numTalkdownQueries++;
-  LLVM_DEBUG(errs() << "TalkdownAA returned NoAlias from " << *P1 << " to " << *P2 << "\n";);
+  numTalkdownAliasQueries++;
+  // LLVM_DEBUG(errs() << "TalkdownAA returned NoAlias from " << *P1 << " to " << *P2 << "\n";);
   return NoAlias;
+}
+
+LoopAA::ModRefResult TalkdownAA::modref(const Instruction *A,
+                          TemporalRelation rel,
+                          const Instruction *B,
+                          const Loop *L,
+                          Remedies &R)
+{
+  numTalkdownModRefQueries++;
+  return NoModRef;
 }
 
 } // namespace AutoMP
