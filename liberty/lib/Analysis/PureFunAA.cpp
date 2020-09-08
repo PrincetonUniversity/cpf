@@ -129,10 +129,11 @@ bool PureFunAA::isRecursiveProperty(const Function *fun,
     return true;
   }
 
+  StringRef fcn_name = fun->getName();
   for(StringRef knownFun : knownFunSet) {
-    StringRef fcn_name = fun->getName();
-    if(fcn_name.contains(knownFun))
+    if(!knownFun.empty() && fcn_name.startswith(knownFun)) {
        return true;
+    }
   }
 
   if(fun->isDeclaration()) {

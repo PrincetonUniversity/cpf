@@ -160,22 +160,11 @@ DOALLCritic::getDOALLStrategy(PDG &pdg, Loop *loop) {
   return ps;
 }
 
-CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop,
-                                     LoopDependenceInfo &ldi) {
+CriticRes DOALLCritic::getCriticisms(PDG &pdg, Loop *loop) {
   // Produce criticisms using the applicability guard of DOALL
   LLVM_DEBUG(errs() << "Begin criticisms generation for DOALL critic\n");
 
   CriticRes res;
-
-  /*
-  if (ldi.numberOfExits() > 1) {
-  	LLVM_DEBUG(errs() << "DOALL:   More than 1 loop exit blocks\n");
-  }
-
-  if (!ldi.sccdagAttrs.areAllLiveOutValuesReducable(ldi.environment)) {
-  	LLVM_DEBUG(errs() << "DOALL:   Some post environment value is not reducable\n");
-  }
-  */
 
   unsigned criticismsTotal = 0;
   unsigned criticismsCovered = 0;

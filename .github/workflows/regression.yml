@@ -1,0 +1,48 @@
+
+# This is a basic workflow to help you get started with Actions
+
+name: Regression 
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+    workflow_dispatch:
+        inputs:
+            suite:
+                description: 'Benchmark suite (reg_fast/reg_all) to run'
+                required: true
+                default: 'reg_fast'
+#   pull_request:
+#     branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  reg:
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, Linux, X64]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    # Runs a single command using the runners shell
+    - name: Confirm
+      run: echo "Start building!"
+
+    # Runs a set of commands using the runners shell
+    - name: Build CPF
+      run: make -C bootstrap -f Makefile.github all
+
+    - name: Run regression
+      run: |
+          source /u/ziyangx/ve_py3/bin/activate
+          source /tmp/github-cpf-test/cpf-env-debug.rc
+          python ${GITHUB_WORKSPACE}/tests/scripts/GetResults.py -p ${GITHUB_WORKSPACE}/tests/regression -b ${GITHUB_WORKSPACE}/tests/regression/bmark_list_reg.json -r 1 -n 7 -s ${{ github.event.inputs.suite }} -f
+    - name: Archive partifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: results
+        path: |
+          tests/regression/results

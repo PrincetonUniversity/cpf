@@ -1,0 +1,202 @@
+#!/bin/bash
+
+if [[ x$CG != x ]]
+then
+  echo CodeGen enabled
+else
+  echo CodeGen disabled
+fi
+
+ECPROF=
+if [ -a ./llvmprof.out ]
+then
+  ECPROF="-pgo-instr-use -pgo-test-profile-file=./llvmprof.out"
+  echo Edge profile information available...
+fi
+
+SPPROF=
+if [ -a ./result.specpriv.profile.txt ]
+then
+  SPPROF="-read-specpriv-profile"
+  echo SpecPriv profile information available...
+fi
+
+LPROF=
+if [ -a ./result.lamp.profile ]
+then
+  echo Lamp profile available
+  LPROF=" -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "
+fi
+
+# Determine if the user specified a function
+FCN=
+if [[ x$2 != x ]]
+then
+  FCN="-target-fcn=$2"
+fi
+
+# Determine if the user specified a loop
+LOOP=
+if [[ x$3 != x ]]
+then
+  LOOP="-target-loop=$3"
+fi
+
+# Determine if the user provided a modifier.
+# Valid choices are:
+# - memcheck
+# - massif
+# - gdb
+PREFIX=time
+if [[ x$GDB != x ]]
+then
+  PREFIX="gdb --args "
+elif [[ x$MASSIF != x ]]
+then
+  PREFIX="valgrind --tool=massif --heap=yes --massif-out-file=massif.out "
+elif [[ x$MEMCHECK != x ]]
+then
+  PREFIX="valgrind --tool=memcheck --leak-check=full --malloc-fill=aa --free-fill=dd "
+fi
+
+if [[ x$TIMER == x ]]
+then
+  SPEX="$LIBERTY_LIBS_DIR/libspecprivexecutive.so"
+else
+  SPEX="$LIBERTY_LIBS_DIR/libspecprivexecutive_timer.so"
+fi
+
+LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+      -load $LIBERTY_LIBS_DIR/libExclusions.so
+      -load $NOELLE_LIBS_DIR/libSvf.so
+      -load $NOELLE_LIBS_DIR/libCudd.so
+      -load $LIBERTY_LIBS_DIR/libAnalysis.so
+      -load $LIBERTY_LIBS_DIR/libLoopProf.so
+      -load $LIBERTY_LIBS_DIR/libMetadata.so
+      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+      -load $LIBERTY_LIBS_DIR/libLAMP.so
+      -load $LIBERTY_LIBS_DIR/libSLAMP.so
+      -load $LIBERTY_LIBS_DIR/libRedux.so
+      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+      -load $NOELLE_LIBS_DIR/AllocAA.so
+      -load $NOELLE_LIBS_DIR/BasicUtilities.so
+      -load $NOELLE_LIBS_DIR/DataFlow.so
+      -load $NOELLE_LIBS_DIR/LoopStructure.so
+      -load $NOELLE_LIBS_DIR/TalkDown.so
+      -load $NOELLE_LIBS_DIR/PDGAnalysis.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
+      -load $NOELLE_LIBS_DIR/Architecture.so
+      -load $NOELLE_LIBS_DIR/HotProfiler.so
+      -load $NOELLE_LIBS_DIR/Loops.so
+      -load $LIBERTY_LIBS_DIR/libStrategy.so
+      -load $LIBERTY_LIBS_DIR/libOrchestration.so
+      -load $LIBERTY_LIBS_DIR/libSpeculation.so
+      -load $NOELLE_LIBS_DIR/Heuristics.so 
+      -load $NOELLE_LIBS_DIR/ParallelizationTechnique.so
+      -load $NOELLE_LIBS_DIR/DOALL.so
+      -load $LIBERTY_LIBS_DIR/libCodeGen.so"
+
+
+AA=`aa`
+#EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias"
+EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
+
+if [[ x$CG != x ]] || [[ x$PP != x ]]
+then
+OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
+  -remed-selector
+  -spec-priv-preprocess
+  -spec-priv-apply-separation-spec
+  -spec-priv-apply-control-spec
+  -spec-priv-apply-value-pred-spec
+  -specpriv-mtcg
+  -stats 
+  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,mtcg,specpriv-transform,locality-remed,classify,redux-remed,priv-remed,loaded-value-pred-remed
+  $DBG "
+
+else
+OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
+  -remed-selector
+  -debug-only=selector,pdgbuilder,critic,ps-dswp-critic,remediator,orchestrator,classify,mtcg,specpriv-transform,locality-remed,classify,redux-remed,priv-remed,loaded-value-pred-remed
+  -stats 
+  $DBG "
+fi
+
+NOPEEP=`basename $1 .bc`.collaborative-pipeline-nopeep.bc
+OUTFILE=`basename $1 .bc`.collaborative-pipeline.bc
+ASMOUT=`basename $1 .bc`.collaborative-pipeline.s
+OUTFILE_BC_LINKED=`basename $1 .bc`.collaborative.linked.bc
+OUTFILE_BC_OPT=`basename $1 .bc`.collaborative.opt.bc
+OUTFILE_BC_OPT_STRIP=`basename $1 .bc`.collaborative.opt.stripped.bc
+OUTFILE_OBJ=`basename $1 .bc`.collaborative.o
+OUTFILE_EXE=`basename $1 .bc`.collaborative.exe
+
+if [[ x$CG != x ]]
+then
+  DUMPFILE=`basename $1 .bc`.collaborative-parallelized.dump
+else
+  DUMPFILE=`basename $1 .bc`.collaborative-pipeline.dump
+fi
+
+if [[ x$PP != x ]] && [[ x$CG == x ]]
+then
+  DUMPFILE=`basename $1 .bc`.analysis.dump
+fi
+
+rm -f $NOPEEP
+OUT="-o $NOPEEP"
+
+CMD="$PREFIX opt $1 $LIBS $OPTS $FCN $LOOP $OUT"
+
+echo Running: $CMD
+ulimit -S -v $[48*1024*1024]
+## use .bc file to generate executable
+$CMD > $DUMPFILE 2>&1
+
+if [[ x$CG != x ]]
+then
+# procude executable
+#####
+RUNTIME_CFLAGS="-DDEBUG"
+OPT_LEVEL="-O3"
+CPP=clang++
+
+
+#### The peephole optimizer (aka the 'postprocessor')
+
+BEGIN="$PREFIX2 opt $LIBS $AA -spec-priv-postprocess-1 -dce -stats $DBG $EXTRA1 "
+MIDDLE="$PREFIX2 opt $LIBS $AA -loop-simplify -indvars -spec-priv-postprocess-2 -stats $DBG $EXTRA2"
+END="$PREFIX2 opt $LIBS $AA -spec-priv-postprocess-3 -stats $DBG $EXTRA3 "
+
+echo Postprocessor step 1
+$BEGIN $NOPEEP -o tmp1.bc 2>&1 || exit
+echo
+echo Postprocessor step 2a
+$MIDDLE tmp1.bc -o tmp2.bc 2>&1 || exit
+opt -O3 tmp2.bc -o tmp2.o3.bc 2>&1 || exit
+echo
+echo Postprocessor step 2b
+$MIDDLE tmp2.o3.bc -o tmp3.bc 2>&1 || exit
+opt -O3 tmp3.bc -o tmp3.o3.bc 2>&1 || exit
+echo
+echo Postprocessor step 2c
+$MIDDLE tmp3.o3.bc -o tmp4.bc 2>&1 || exit
+opt -O3 tmp4.bc -o tmp4.o3.bc 2>&1 || exit
+echo
+echo Postprocessor step 3
+$END tmp4.o3.bc -o tmp5.bc 2>&1 || exit
+opt -O3 tmp5.bc -o $OUTFILE 2>&1 || exit
+echo
+
+
+#### Link and Code Gen
+echo Produce executable
+$CPP $OPT_LEVEL -c -emit-llvm -o $OUTFILE_BC_OPT $OUTFILE
+opt -strip -o $OUTFILE_BC_OPT_STRIP $OUTFILE_BC_OPT
+
+$CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP -lm $SPEX -lrt -o $OUTFILE_EXE
+fi
+
+#### Cleanup
+rm -f tmp1.bc tmp2.bc tmp2.o3.bc tmp3.bc tmp3.o3.bc tmp4.bc tmp4.o3.bc tmp5.bc *.cvc3

@@ -44,7 +44,7 @@ public:
 
   StringRef getCriticName() const { return "ps-dswp-critic"; }
 
-  CriticRes getCriticisms(PDG &pdg, Loop *loop, LoopDependenceInfo &ldi);
+  CriticRes getCriticisms(PDG &pdg, Loop *loop);
 
   void critForPipelineProperty(const PDG &pdg, const PipelineStage &earlyStage,
                                const PipelineStage &lateStage,

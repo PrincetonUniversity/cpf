@@ -56,7 +56,8 @@ void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-    TargetLibraryInfo *tli, LoopDependenceInfo &ldi,
+    TargetLibraryInfo *tli,
+    //LoopDependenceInfo &ldi,
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
@@ -66,9 +67,9 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   std::vector<Remediator_ptr> remeds;
 
   // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
-  reduxRemed->setLoopOfInterest(A);
-  remeds.push_back(std::move(reduxRemed));
+  //auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
+  //reduxRemed->setLoopOfInterest(A);
+  //remeds.push_back(std::move(reduxRemed));
 
   // separation logic remediator (Privateer PLDI '12)
   //remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
@@ -258,15 +259,15 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   LLVM_DEBUG(errs() << "Selected Remedies:\n");
   for (Criticism *cr : criticisms) {
     //SetOfRemedies &sors = mapCriticismsToRemeds[cr];
-    const SetOfRemedies &sors = cr->getRemedies();
-    const Remedies_ptr cheapestR = *(sors.begin());
+    auto sors = cr->getRemedies();
+    const Remedies_ptr cheapestR = *(sors->begin());
     for (auto &r : *cheapestR) {
       if (!selectedRemedies.count(r)) {
         selectedRemediesCost += r->cost;
         selectedRemedies.insert(r);
       }
     }
-    printSelected(sors, cheapestR, *cr);
+    printSelected(*sors, cheapestR, *cr);
   }
   LLVM_DEBUG(errs() << "-====================================================-\n\n");
   printRemediatorSelectionCnt();
@@ -274,7 +275,8 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 }
 
 bool Orchestrator::findBestStrategy(
-    Loop *loop, llvm::PDG &pdg, LoopDependenceInfo &ldi,
+    Loop *loop, llvm::PDG &pdg,
+    //LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
     TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
@@ -313,7 +315,7 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds =
-      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, ldi,
+      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
                      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
                      loopAA, kill, killflowA, callsiteA, &perf);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
@@ -338,7 +340,6 @@ bool Orchestrator::findBestStrategy(
         // mapCriticismsToRemeds[c].insert(remedSet);
         c->setRemovable(true);
         c->addRemedies(remedSet);
-        c->processNewRemovalCost(tcost);
       }
     }
   }
@@ -412,7 +413,7 @@ bool Orchestrator::findBestStrategy(
   std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     LLVM_DEBUG(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
-    CriticRes res = (*criticIt)->getCriticisms(pdg, loop, ldi);
+    CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
     Criticisms &criticisms = res.criticisms;
     unsigned long expSpeedup = res.expSpeedup;
 

@@ -1,0 +1,64 @@
+#!/bin/bash
+
+IN=$1
+TMP=`basename $IN .bc`.specpriv-profile-noopt.bc
+OUT=`basename $IN .bc`.specpriv-profile.bc
+
+DBG=
+if [[ x$DEBUG != x ]]
+then
+  DBG=$DEBUG
+fi
+
+# Determine if the user provided a modifier.
+# Valid choices are:
+# - memcheck
+# - massif
+# - gdb
+PREFIX=time
+if [[ x$GDB != x ]]
+then
+  PREFIX="gdb --args "
+elif [[ x$MASSIF != x ]]
+then
+  PREFIX="valgrind --tool=massif --heap=yes --massif-out-file=massif.out "
+elif [[ x$MEMCHECK != x ]]
+then
+  PREFIX="valgrind --tool=memcheck --leak-check=yes "
+elif [[ x$ECHO != x ]]
+then
+  PREFIX="echo "
+fi
+
+AA=`aa`
+
+LIBS="
+  -load $LIBERTY_LIBS_DIR/libExclusions.so
+  -load $LIBERTY_LIBS_DIR/libUtil.so
+  -load $NOELLE_LIBS_DIR/libSvf.so
+  -load $NOELLE_LIBS_DIR/libCudd.so
+  -load $LIBERTY_LIBS_DIR/libAnalysis.so
+  -load $LIBERTY_LIBS_DIR/libLoopProf.so
+  -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+  -load $LIBERTY_LIBS_DIR/libSLAMP.so
+  -load $LIBERTY_LIBS_DIR/libRedux.so
+  -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+  -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+  -load $NOELLE_LIBS_DIR/AllocAA.so
+  -load $NOELLE_LIBS_DIR/TalkDown.so
+  -load $NOELLE_LIBS_DIR/PDGAnalysis.so
+  -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+  -load $NOELLE_LIBS_DIR/Architecture.so
+  -load $NOELLE_LIBS_DIR/HotProfiler.so
+  -load $NOELLE_LIBS_DIR/Loops.so
+  -load $NOELLE_LIBS_DIR/Parallelization.so
+  -load $LIBERTY_LIBS_DIR/libStrategy.so
+  -load $LIBERTY_LIBS_DIR/libOrchestration.so
+  -load $LIBERTY_LIBS_DIR/libSpeculation.so"
+
+EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -llvm-aa-results"
+
+$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler $IN -o $TMP -stats 2>&1
+#$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler -debug-only=$DBG $IN -o $TMP -stats 2>&1
+opt $TMP -O3 -o $OUT
+

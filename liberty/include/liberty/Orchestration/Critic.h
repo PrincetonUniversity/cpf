@@ -38,8 +38,7 @@ public:
   unsigned long getExpPipelineSpeedup(const ParallelizationPlan &ps,
                                       const PDG &pdg, Loop *loop);
 
-  virtual CriticRes getCriticisms(PDG &pdg, Loop *loop,
-                                  LoopDependenceInfo &ldi) = 0;
+  virtual CriticRes getCriticisms(PDG &pdg, Loop *loop) = 0;
   virtual StringRef getCriticName() const = 0;
 
   static const unsigned FixedPoint;
@@ -56,7 +55,7 @@ public:
   DOALLCritic(PerformanceEstimator *perf, unsigned threadBudget,
               LoopProfLoad *lpl)
       : Critic(perf, threadBudget, lpl) {}
-  CriticRes getCriticisms(PDG &pdg, Loop *loop, LoopDependenceInfo &ldi);
+  CriticRes getCriticisms(PDG &pdg, Loop *loop);
   std::unique_ptr<ParallelizationPlan> getDOALLStrategy(PDG &pdg, Loop *loop);
   StringRef getCriticName() const {return "doall-critic";};
 };
