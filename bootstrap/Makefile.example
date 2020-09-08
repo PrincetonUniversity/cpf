@@ -46,7 +46,9 @@ compile-cpf=1
 install-prefix=~/cpf-workspace-test
 cpf-root-path=/your/local/cpf/root
 
-# 1: verbose mode, print all internal cmake/make message to terminal
+# verbose output
+# 1: print all internal cmake/make message to terminal
+# 0: save all output to file only
 verbose=0
 
 # Number of workers to build LLVM/CPF, NOELLE will use as many core as possible
@@ -58,6 +60,12 @@ num-workers=16
 #######################################
 ## DON'T CHANGE ANYTHING BELOW HERE! ##
 #######################################
+
+# Check if unbuffer binary exists in verbose mode
+ifeq (${verbose}, 1)
+	_:=$(if $(shell which unbuffer),$(info unbuffer found for verbose mode),$(error Need "unbuffer" in verbose mode; please install it or turn off verbose))
+endif
+
 
 # if llvm is compiled from scratch, then is the default one
 ifeq (${compile-llvm}, 1)
@@ -102,7 +110,7 @@ ifeq (${compile-llvm}, 1)
 	- cp Makefile.llvm ${install-prefix}
 ifeq (${verbose}, 1)
 	set -o pipefail; \
-	$(MAKE) -C ${install-prefix} -f Makefile.llvm all 2>&1 | tee ${install-prefix}/llvm.log
+	unbuffer $(MAKE) -C ${install-prefix} -f Makefile.llvm all 2>&1 | tee ${install-prefix}/llvm.log
 else
 	$(MAKE) -C ${install-prefix} -f Makefile.llvm all > ${install-prefix}/llvm.log 2>&1
 endif
@@ -139,7 +147,7 @@ ifeq (${verbose}, 1)
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
 	NOELLE_REMOTE=${noelle-remote-url} \
 	NOELLE_BRANCH=${noelle-branch} \
-	${MAKE} -C ${install-prefix} -f Makefile.noelle all 2>&1 | tee ${install-prefix}/noelle.log
+	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.noelle all 2>&1 | tee ${install-prefix}/noelle.log
 else
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
@@ -174,7 +182,7 @@ ifeq (${compile-cpf}, 1)
 	- cp Makefile.cpf ${install-prefix}
 ifeq (${verbose}, 1)
 	set -o pipefail; \
-	${MAKE} -C ${install-prefix} -f Makefile.cpf all 2>&1 | tee ${install-prefix}/cpf.log
+    unbuffer ${MAKE} -C ${install-prefix} -f Makefile.cpf all 2>&1 | tee ${install-prefix}/cpf.log
 else
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
 endif
