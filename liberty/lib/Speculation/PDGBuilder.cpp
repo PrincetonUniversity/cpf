@@ -18,6 +18,7 @@
 #include "liberty/Analysis/LLVMAAResults.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include "Assumptions.h"
 
@@ -50,25 +51,25 @@ bool llvm::PDGBuilder::runOnModule (Module &M){
 std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>(loop);
 
-  LLVM_DEBUG(errs() << "constructEdgesFromMemory with CAF ...\n");
+  REPORT_DUMP(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
   LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
 
-  LLVM_DEBUG(errs() << "annotateMemDepsWithRemedies with SCAF ...\n");
+  REPORT_DUMP(errs() << "annotateMemDepsWithRemedies with SCAF ...\n");
   annotateMemDepsWithRemedies(*pdg,loop,aa);
 
-  LLVM_DEBUG(errs() << "constructEdgesFromControl ...\n");
+  REPORT_DUMP(errs() << "constructEdgesFromControl ...\n");
 
   constructEdgesFromControl(*pdg, loop);
 
-  LLVM_DEBUG(errs() << "constructEdgesFromUseDefs ...\n");
+  REPORT_DUMP(errs() << "constructEdgesFromUseDefs ...\n");
 
   // constructEdgesFromUseDefs adds external nodes for live-ins and live-outs
   constructEdgesFromUseDefs(*pdg, loop);
 
-  LLVM_DEBUG(errs() << "PDG construction completed\n");
+  REPORT_DUMP(errs() << "PDG construction completed\n");
 
   return pdg;
 }
@@ -408,7 +409,7 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
       queryIntraIterationMemoryDep(i, j, loop, aa, pdg);
     }
   }
-  LLVM_DEBUG(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
+  REPORT_DUMP(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
                << "\n");
 }
 
