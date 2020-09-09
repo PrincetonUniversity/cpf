@@ -12,7 +12,6 @@ This work builds upon Privateer (PLDI '12 by Johnson et al., https://dl.acm.org/
 If you use CPF in a publication, we would appreciate a citation to the ASPLOS '20 paper:
 
 ```
-@inproceedings{apostolakis:2020:pldi,
 @inproceedings{apostolakis:2020:asplos,
 author = {Apostolakis, Sotiris and Xu, Ziyang and Chan, Greg and Campanoni, Simone and August, David I.},
 title = {Perspective: A Sensible Approach to Speculative Automatic Parallelization},
