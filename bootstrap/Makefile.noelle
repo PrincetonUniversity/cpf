@@ -1,6 +1,6 @@
 BASE_DIR:=$(shell pwd)
 NOELLE_REMOTE?=https://github.com/sapostolakis/noelle.git
-NOELLE_BRANCH?=remedies_minor_fix
+NOELLE_BRANCH?=master
 ORIGINAL_PATH:=${PATH}
 
 ifndef LLVM_INSTALL_DEBUG
