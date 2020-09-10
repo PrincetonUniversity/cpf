@@ -784,9 +784,10 @@ bool Selector::doSelection(
     LateInliningOpportunities opportunities;
     numApplicable = computeWeights(vertices, edges, weights, scaledweights, opportunities);
 
-    if( DebugFlag
-    && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-      summarizeParallelizableLoops(vertices,scaledweights,numApplicable);
+    // if( DebugFlag
+    // && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
+
+    REPORT_DUMP(summarizeParallelizableLoops(vertices,scaledweights,numApplicable));
 
     if( opportunities.empty() )
       break; // We don't see any opportunity for late inlining
@@ -817,13 +818,13 @@ bool Selector::doSelection(
   // are the loops we have selected.
   const int wt = ebk(edges, scaledweights, maxClique);
 
-  if( DebugFlag
-  && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-  {
+  // if( DebugFlag
+  // && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
+  REPORT_DUMP(
     const unsigned tt = lpl.getTotTime();
     const double speedup = tt / (tt - wt/(double)FixedPoint);
     errs() << "  Total expected speedup: " << format("%.2f", speedup) << "x using " << NumThreads << " workers.\n";
-  }
+  );
 
   if( wt < 1 && ! IgnoreExpectedSpeedup )
     maxClique.clear();
@@ -846,10 +847,11 @@ bool Selector::doSelection(
                               *selectedRemedies[loop->getHeader()]);
 
     // 'loop' is a loop we will parallelize
-    if (DebugFlag &&
-        (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-      printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
-                           lpl, true, *perf);
+    // if (DebugFlag &&
+    //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
+    
+    REPORT_DUMP(printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
+                           lpl, true, *perf));
 
     Vertices::iterator j = std::find(toDelete.begin(), toDelete.end(), loop);
     if( j != toDelete.end() )
@@ -869,11 +871,12 @@ bool Selector::doSelection(
     }
 
     // 'deleteme' is a loop we will NOT parallelize.
-    if (DebugFlag &&
-        (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-      printOneLoopStrategy(errs(), deleteme,
+    // if (DebugFlag &&
+    //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
+  
+    REPORT_DUMP(printOneLoopStrategy(errs(), deleteme,
                            strategies[deleteme->getHeader()].get(), lpl, false,
-                           *perf);
+                           *perf));
 
     Loop2Strategy::iterator j = strategies.find( deleteme->getHeader() );
     if( j != strategies.end() )
