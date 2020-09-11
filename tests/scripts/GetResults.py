@@ -522,7 +522,7 @@ if __name__ == "__main__":
             for p in passes:
                 if not status[bmark][p]:
                     die = True
-                    print("%s failed on %s" % (bmark, p))
+                    print(colored("%s failed on %s" % (bmark, p)), 'red')
 
     if die:
         sys.exit(1)

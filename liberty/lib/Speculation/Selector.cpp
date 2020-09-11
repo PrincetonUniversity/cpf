@@ -27,6 +27,7 @@
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
+#include "liberty/Utilities/ReportDump.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 
@@ -118,7 +119,7 @@ void writeGraph(const std::string &filename, GT *graph) {
   if (!EC) {
     WriteGraph(File, &graphWrapper, false, Title);
   } else {
-    LLVM_DEBUG(errs() << "Error opening file for writing!\n");
+    REPORT_DUMP(errs() << "Error opening file for writing!\n");
     abort();
   }
 }
@@ -186,7 +187,7 @@ unsigned Selector::computeWeights(
     Function *fA = hA->getParent();
     //const Twine nA = fA->getName() + " :: " + hA->getName();
 
-    LLVM_DEBUG(errs()
+    REPORT_DUMP(errs()
           << "\n\n=--------------------------------------------------------"
              "----------------------=\nCompute weight for loop "
           << fA->getName() << " :: " << hA->getName() << "...\n");
@@ -223,7 +224,7 @@ unsigned Selector::computeWeights(
 
       // trying to find the best parallelization strategy for this loop
 
-      LLVM_DEBUG(
+      REPORT_DUMP(
           errs() << "Run Orchestrator:: find best parallelization strategy for "
                  << fA->getName() << " :: " << hA->getName() << "...\n");
 
@@ -273,7 +274,7 @@ unsigned Selector::computeWeights(
           scaledweights[i] = scaledwt;
         }
 
-        LLVM_DEBUG(errs() << "Parallelizable Loop " << fA->getName()
+        REPORT_DUMP(errs() << "Parallelizable Loop " << fA->getName()
                      << " :: " << hA->getName() << " has expected savings "
                      << weights[i] << '\n');
 
@@ -286,7 +287,7 @@ unsigned Selector::computeWeights(
         selectedLoops.insert(hA);
 
       } else {
-        LLVM_DEBUG(errs() << "No parallelizing transform applicable to "
+        REPORT_DUMP(errs() << "No parallelizing transform applicable to "
                      << fA->getName() << " :: " << hA->getName() << '\n';);
 
         weights[i] = 0;
@@ -376,7 +377,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
        * exclude one of the loops */
       if( mustBeSimultaneouslyActive(A, B, loopTransCallGraph,callGraph) )
       {
-        LLVM_DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+        REPORT_DUMP(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                      << " is incompatible with loop " << fB->getName()
                      << " :: " << hB->getName()
                      << " because of simultaneous activation.\n");
@@ -384,14 +385,14 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
       }
 
       if (!compatibleParallelizations(A, B)) {
-        LLVM_DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+        REPORT_DUMP(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                      << " is incompatible with loop " << fB->getName()
                      << " :: " << hB->getName()
                      << " because of incompatible assignments.\n");
         continue;
       }
 
-      LLVM_DEBUG(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
+      REPORT_DUMP(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                    << " is COMPATIBLE with loop " << fB->getName()
                    << " :: " << hB->getName() << ".\n");
       edges.insert(Edge(i, j));
@@ -783,9 +784,10 @@ bool Selector::doSelection(
     LateInliningOpportunities opportunities;
     numApplicable = computeWeights(vertices, edges, weights, scaledweights, opportunities);
 
-    if( DebugFlag
-    && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-      summarizeParallelizableLoops(vertices,scaledweights,numApplicable);
+    // if( DebugFlag
+    // && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
+
+    REPORT_DUMP(summarizeParallelizableLoops(vertices,scaledweights,numApplicable));
 
     if( opportunities.empty() )
       break; // We don't see any opportunity for late inlining
@@ -816,13 +818,13 @@ bool Selector::doSelection(
   // are the loops we have selected.
   const int wt = ebk(edges, scaledweights, maxClique);
 
-  if( DebugFlag
-  && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-  {
+  // if( DebugFlag
+  // && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
+  REPORT_DUMP(
     const unsigned tt = lpl.getTotTime();
     const double speedup = tt / (tt - wt/(double)FixedPoint);
     errs() << "  Total expected speedup: " << format("%.2f", speedup) << "x using " << NumThreads << " workers.\n";
-  }
+  );
 
   if( wt < 1 && ! IgnoreExpectedSpeedup )
     maxClique.clear();
@@ -845,10 +847,11 @@ bool Selector::doSelection(
                               *selectedRemedies[loop->getHeader()]);
 
     // 'loop' is a loop we will parallelize
-    if (DebugFlag &&
-        (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-      printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
-                           lpl, true, *perf);
+    // if (DebugFlag &&
+    //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
+    
+    REPORT_DUMP(printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
+                           lpl, true, *perf));
 
     Vertices::iterator j = std::find(toDelete.begin(), toDelete.end(), loop);
     if( j != toDelete.end() )
@@ -868,11 +871,12 @@ bool Selector::doSelection(
     }
 
     // 'deleteme' is a loop we will NOT parallelize.
-    if (DebugFlag &&
-        (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-      printOneLoopStrategy(errs(), deleteme,
+    // if (DebugFlag &&
+    //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
+  
+    REPORT_DUMP(printOneLoopStrategy(errs(), deleteme,
                            strategies[deleteme->getHeader()].get(), lpl, false,
-                           *perf);
+                           *perf));
 
     Loop2Strategy::iterator j = strategies.find( deleteme->getHeader() );
     if( j != strategies.end() )

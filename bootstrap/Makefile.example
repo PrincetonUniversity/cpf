@@ -12,8 +12,8 @@
 compile-llvm=1
 
 ## If compile-llvm=0, provide paths to both the debug and the release versions
-#llvm-install-dir-debug=/u/ziyangx/cpf-workspace-test/llvm-install-debug
-#llvm-install-dir-release=/u/ziyangx/cpf-workspace-test/llvm-install-release
+#llvm-install-dir-debug=/scratch/install/llvm-install-debug
+#llvm-install-dir-release=/scratch/install/llvm-install-release
 
 ##########
 # NOELLE #
@@ -21,13 +21,12 @@ compile-llvm=1
 compile-noelle=1
 
 ## If compile-noelle=0, provide paths to both the debug and the release versions
-#noelle-install-dir-debug=/u/ziyangx/cpf-workspace-test/noelle-install-debug
-#noelle-install-dir-release=/u/ziyangx/cpf-workspace-test/noelle-install-release
+#noelle-install-dir-debug=/scratch/install/noelle-install-debug
+#noelle-install-dir-release=/scratch/install/noelle-install-release
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
-#noelle-remote-url=https://github.com/scampanoni/noelle.git
-noelle-remote-url=/u/sa8/noelle
+noelle-remote-url=https://github.com/sapostolakis/noelle.git
 noelle-branch=master
 
 #######
@@ -35,8 +34,8 @@ noelle-branch=master
 #######
 compile-cpf=1
 ## If compile-cpf=0, provide paths to both the debug and the release versions
-#cpf-install-dir-debug=/u/ziyangx/cpf-workspace-test/cpf-install-debug
-#cpf-install-dir-release=/u/ziyangx/cpf-workspace-test/cpf-install-release
+#cpf-install-dir-debug=/scratch/install/cpf-install-debug
+#cpf-install-dir-release=/scratch/install/cpf-install-release
 
 ##############
 # Installing #

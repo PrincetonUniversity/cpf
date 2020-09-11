@@ -2,6 +2,7 @@
 //#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include <unordered_set>
 #include <climits>
@@ -95,7 +96,7 @@ struct IsParallel {
 
       if (edge->isLoopCarriedDependence()) {
 
-        // LLVM_DEBUG(errs() << "loop-carried edge(s) found from "
+        // REPORT_DUMP(errs() << "loop-carried edge(s) found from "
         //             << *edge->getOutgoingT() << " to " <<
         //             *edge->getIncomingT()
         //             << '\n');
@@ -121,7 +122,7 @@ bool checkIfRemateriazable(const DGEdge<SCC> *edge, const SCC &outgoingSCC) {
   // application of PS-DSWP
   // need also to check whether it is speculative or not.
   // determines whether rematerialization will be part of transaction
-  LLVM_DEBUG(errs() << "Remateriazable variable(s) found\n");
+  REPORT_DUMP(errs() << "Remateriazable variable(s) found\n");
   return true;
 }
 */
@@ -472,7 +473,7 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
 
       // check if the sequential part is less than 10% of total loop weight
       if ((seq_weight * 100.0) / total_weight >= 10.0) {
-        LLVM_DEBUG(errs()
+        REPORT_DUMP(errs()
               << "PS-DSWP not applicable to " << fcn->getName()
               << "::" << header->getName()
               << "\nThe first sequential part is not less than 10% of total "
@@ -496,7 +497,7 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
       if (findMaxReplicableStage(pdg, sccdag, before, perf, maxReplicable,
                                  notMaxReplicable)) {
         if (!notMaxReplicable.empty()) {
-          LLVM_DEBUG(errs() << "DOALL not applicable to " << fcn->getName()
+          REPORT_DUMP(errs() << "DOALL not applicable to " << fcn->getName()
                        << "::" << header->getName()
                        << "\nNot all SCCs of the first sequential stage are "
                           "replicable\n");
@@ -513,7 +514,7 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
 
         // check if the sequential part is less than 3% of total loop weight
         if ((seq_weight * 100.0) / total_weight >= 3.0) {
-          LLVM_DEBUG(errs() << "DOALL not applicable to " << fcn->getName()
+          REPORT_DUMP(errs() << "DOALL not applicable to " << fcn->getName()
                        << "::" << header->getName()
                        << "\nThe sequential part is not less than 3% of total "
                           "loop weight\n");
@@ -521,7 +522,7 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
         }
 
       } else {
-        LLVM_DEBUG(
+        REPORT_DUMP(
             errs()
             << "DOALL not applicable to " << fcn->getName()
             << "::" << header->getName()
@@ -548,7 +549,7 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
 
       // check if the sequential part is less than 10% of total loop weight
       if ((seq_weight * 100.0) / total_weight >= 10.0) {
-        LLVM_DEBUG(errs()
+        REPORT_DUMP(errs()
               << "PS-DSWP not applicable to " << fcn->getName()
               << "::" << header->getName()
               << "\nThe last sequential part is not less than 10% of total "
@@ -565,7 +566,7 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
 
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
-  LLVM_DEBUG(errs() << "PS-DSWP not applicable to " << fcn->getName() << "::"
+  REPORT_DUMP(errs() << "PS-DSWP not applicable to " << fcn->getName() << "::"
                << header->getName() << "\nCould not find a parallel stage\n");
 
   return false;
@@ -605,7 +606,7 @@ template <class GT, class T> void writeGraph(const std::string &filename, GT *gr
   if (!EC) {
     WriteGraph(File, &graphWrapper, false, Title);
   } else {
-    LLVM_DEBUG(errs() << "Error opening file for writing!\n");
+    REPORT_DUMP(errs() << "Error opening file for writing!\n");
     abort();
   }
 }
@@ -648,7 +649,7 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
         ++lcRegDepTotal;
 
       if (!edge->isRemovableDependence()) {
-        LLVM_DEBUG(errs() << "Cannot remove loop-carried ";
+        REPORT_DUMP(errs() << "Cannot remove loop-carried ";
               if (edge->isControlDependence()) errs() << "(Control)"; else {
                 if (edge->isMemoryDependence())
                   errs() << "(Mem, ";
@@ -680,7 +681,7 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   }
 
   for (auto edge : toBeRemovedEdges) {
-    // LLVM_DEBUG(errs() << " Removing loop-carried from " << *edge->getOutgoingT()
+    // REPORT_DUMP(errs() << " Removing loop-carried from " << *edge->getOutgoingT()
     //             << " to " << *edge->getIncomingT() << '\n');
 
     // all pdg nodes involved in a reduction should remain in the same scc (and
@@ -697,7 +698,7 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
     }
   }
 
-  LLVM_DEBUG(errs() << "\nRAW Memory Loop-Carried Deps Count: " << lcRAWMemDepTotal
+  REPORT_DUMP(errs() << "\nRAW Memory Loop-Carried Deps Count: " << lcRAWMemDepTotal
                << "\nWAW Memory Loop-Carried Deps Count: " << lcWAWMemDepTotal
                << "\nWAR Memory Loop-Carried Deps Count: " << lcWARMemDepTotal
                << "\nRegister Loop-Carried Deps Count: " << lcRegDepTotal
@@ -706,7 +707,7 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
 
   unsigned long lcDepCovered = lcDepTotal - lcDepNotCovered;
   double percentageCovered = (100.0 * lcDepCovered) / lcDepTotal;
-  LLVM_DEBUG(errs() << "\nCoverage of loop-carried dependences for hot loop "
+  REPORT_DUMP(errs() << "\nCoverage of loop-carried dependences for hot loop "
                << fcn->getName() << " :: " << header->getName() << " "
                << "covered=" << lcDepCovered << ", total=" << lcDepTotal
                << " , percentage=" << format("%.2f", percentageCovered)
@@ -902,25 +903,25 @@ bool PSDSWPCritic::avoidElimDep(
   if (moveFrontCost != ULONG_MAX && moveFrontCost <= moveBackCost) {
     edgesNotRemoved.insert(edge);
     offPStageWeight += moveFrontCost;
-    LLVM_DEBUG(errs() << "\nWill not remove edge(s) (removal cost: "
+    REPORT_DUMP(errs() << "\nWill not remove edge(s) (removal cost: "
                  << getMinRemovalCost(edge) << " ) from "
                  << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                  << '\n');
     for (Instruction *I : tmpInstsMovedToFront) {
       instsMovedToFront.insert(I);
-      LLVM_DEBUG(errs() << "Move inst to first sequential stage: " << *I << '\n');
+      REPORT_DUMP(errs() << "Move inst to first sequential stage: " << *I << '\n');
     }
     return true;
   } else if (moveBackCost != ULONG_MAX && moveBackCost < moveFrontCost) {
     edgesNotRemoved.insert(edge);
     offPStageWeight += moveBackCost;
-    LLVM_DEBUG(errs() << "\nWill not remove edge(s) (removal cost: "
+    REPORT_DUMP(errs() << "\nWill not remove edge(s) (removal cost: "
                  << getMinRemovalCost(edge) << " ) from "
                  << *edge->getOutgoingT() << " to " << *edge->getIncomingT()
                  << '\n');
     for (Instruction *I : tmpInstsMovedToBack) {
       instsMovedToBack.insert(I);
-      LLVM_DEBUG(errs() << "Move inst to last sequential stage: " << *I << '\n');
+      REPORT_DUMP(errs() << "Move inst to last sequential stage: " << *I << '\n');
     }
     return true;
   }
@@ -1168,7 +1169,7 @@ void PSDSWPCritic::adjustForRegLCFromSeqToPar(PipelineStrategy &ps, PDG &pdg,
   for (auto *inst : moveToSeqInsts) {
     parallelStage->instructions.erase(inst);
     firstStage->instructions.insert(inst);
-    LLVM_DEBUG(errs()
+    REPORT_DUMP(errs()
               << "Moved inst from parallel to previous sequential stage due to "
                  "a loop-carried, reg, RAW, non-removable dependence crossing "
                  "the two stages:\n    "
@@ -1218,19 +1219,19 @@ void PSDSWPCritic::moveIOToLastSeqStage(PipelineStrategy &ps, PDG &pdg,
 
       if (moveBackCost != ULONG_MAX) {
         tmpOffPStageWeight += moveBackCost;
-        LLVM_DEBUG(errs() << "Movable output I/O inst along with dependent insts to "
+        REPORT_DUMP(errs() << "Movable output I/O inst along with dependent insts to "
                         "last sequential stage, "
                      << *inst << '\n');
         for (auto *inst : tmpInstsMovedToBack) {
           moveIOToLastSeq.insert(inst);
         }
       } else {
-        LLVM_DEBUG(errs()
+        REPORT_DUMP(errs()
               << "Not movable output I/O inst along with dependent insts to "
                  "last sequential stage, "
               << *inst << '\n');
         for (auto *inst : tmpInstsMovedToBack) {
-          LLVM_DEBUG(errs() << "Part of non-movable insts: " << *inst << "\n";);
+          REPORT_DUMP(errs() << "Part of non-movable insts: " << *inst << "\n";);
         }
         movedAllIO = false;
         break;
@@ -1241,7 +1242,7 @@ void PSDSWPCritic::moveIOToLastSeqStage(PipelineStrategy &ps, PDG &pdg,
   if (movedAllIO) {
     offPStageWeight = tmpOffPStageWeight;
     for (auto *inst : moveIOToLastSeq) {
-      LLVM_DEBUG(errs()
+      REPORT_DUMP(errs()
             << "Moved output I/O or dependent inst to last sequential stage: "
             << *inst << '\n');
       if (parallelStage->instructions.count(inst))
@@ -1325,11 +1326,11 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
     if (moveFrontCost != ULONG_MAX) {
       offPStageWeight += moveFrontCost;
       if (firstStage && firstStage->type == PipelineStage::Sequential)
-        LLVM_DEBUG(errs() << "\nMove loop exit branch to first sequential stage to "
+        REPORT_DUMP(errs() << "\nMove loop exit branch to first sequential stage to "
                         "avoid control spec remedy on loop exit, "
                      << *loopExitBr << '\n');
       else
-        LLVM_DEBUG(errs() << "\nMove loop exit branch to replicable stage to "
+        REPORT_DUMP(errs() << "\nMove loop exit branch to replicable stage to "
                         "avoid control spec remedy on loop exit, "
                      << *loopExitBr << '\n');
       for (auto *I : tmpInstsMovedToFront) {
@@ -1340,22 +1341,22 @@ void PSDSWPCritic::avoidCtrlSpecOnLoopExits(PipelineStrategy &ps, PDG &pdg,
 
         if (firstStage && firstStage->type == PipelineStage::Sequential) {
           firstStage->instructions.insert(I);
-          LLVM_DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+          REPORT_DUMP(errs() << "Moved loop exit branch or dependent to loop exit "
                           "branch inst to first sequential stage: "
                        << *I << '\n');
         } else {
           parallelStage->replicated.insert(I);
-          LLVM_DEBUG(errs() << "Moved loop exit branch or dependent to loop exit "
+          REPORT_DUMP(errs() << "Moved loop exit branch or dependent to loop exit "
                           "branch inst to replicable stage: "
                        << *I << '\n');
         }
       }
     } else {
-      LLVM_DEBUG(errs() << "\nNot movable loop exit branch inst along with "
+      REPORT_DUMP(errs() << "\nNot movable loop exit branch inst along with "
                       "dependent insts to first sequential/replicable stage, "
                    << *loopExitBr << '\n');
       for (auto *I : tmpInstsMovedToFront) {
-        LLVM_DEBUG(errs() << "Part of non-movable insts: " << *I << "\n";);
+        REPORT_DUMP(errs() << "Part of non-movable insts: " << *I << "\n";);
       }
     }
   }
@@ -1489,7 +1490,7 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
 }
 
 CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
-  LLVM_DEBUG(errs() << "Begin criticisms generation for PS-DSWP critic\n");
+  REPORT_DUMP(errs() << "Begin criticisms generation for PS-DSWP critic\n");
 
   this->loop = loop;
   simplifyPDG(&pdg);
@@ -1505,7 +1506,7 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
   if (!doallAndPipeline(*optimisticPDG, *optimisticSCCDAG, *perf, ps->stages,
                         threadBudget, true /*includeReplicableStages*/,
                         true /*includeParallelStages*/)) {
-    LLVM_DEBUG(errs() << "PS-DSWP not applicable to " << fcn->getName()
+    REPORT_DUMP(errs() << "PS-DSWP not applicable to " << fcn->getName()
                  << "::" << header->getName()
                  << ": no large parallel stage found (2)\n");
     res.expSpeedup = 0;
@@ -1561,12 +1562,12 @@ CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
     //ps->assertPipelineProperty(pdg);
   }
 
-  LLVM_DEBUG(errs() << "\nPS-DSWP applicable to " << fcn->getName() << "::"
+  REPORT_DUMP(errs() << "\nPS-DSWP applicable to " << fcn->getName() << "::"
                << header->getName() << ": large parallel stage found\n");
 
   populateCrossStageDependences(*ps, res.criticisms, pdg);
 
-  LLVM_DEBUG(ps->dump_pipeline(errs()));
+  REPORT_DUMP(ps->dump_pipeline(errs()));
 
   res.ps = std::move(ps);
 

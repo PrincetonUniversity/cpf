@@ -35,6 +35,7 @@
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/StableHash.h"
 #include "liberty/Utilities/Timer.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include <set>
 
@@ -92,7 +93,7 @@ void Classify::getAnalysisUsage(AnalysisUsage &au) const
 
 bool Classify::runOnModule(Module &mod)
 {
-  LLVM_DEBUG(errs() << "#################################################\n"
+  REPORT_DUMP(errs() << "#################################################\n"
                << " Classification\n\n\n");
   ModuleLoops &mloops = getAnalysis< ModuleLoops >();
   Targets &targets = getAnalysis< Targets >();
@@ -251,7 +252,7 @@ static void strip_undefined_objects(AUs &out)
   {
     if( out[i]->type == AU_Undefined )
     {
-      LLVM_DEBUG(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
+      REPORT_DUMP(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
       std::swap( out[i], out.back() );
       out.pop_back();
       --i;
@@ -266,7 +267,7 @@ static void strip_undefined_objects(HeapAssignment::AUSet &out)
     AU *au = *i;
     if( au->type == AU_Undefined )
     {
-      LLVM_DEBUG(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
+      REPORT_DUMP(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
       out.erase(i);
       i = out.begin();
     }
@@ -282,7 +283,7 @@ static void strip_undefined_objects(HeapAssignment::ReduxAUSet &out)
     AU *au = i->first;
     if( au->type == AU_Undefined )
     {
-      LLVM_DEBUG(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
+      REPORT_DUMP(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
       out.erase(i);
       i = out.begin();
     }
@@ -448,7 +449,7 @@ bool Classify::getUnderlyingAUs(const CtxInst &src, const Ctx *src_ctx,
   intersect_into(wi, rj, aus);
 
   // Print the new AUs.
-  LLVM_DEBUG(
+  REPORT_DUMP(
     if (printDbgFlows) {
     const unsigned N = aus.size();
     if (N > size_before) {
@@ -998,7 +999,7 @@ bool HeapAssignment::isLocalPrivateStackAU(const Value *V, const Loop *L) {
     if (!L->contains(lifetimeStart) || !L->contains(lifetimeEnd))
       return false;
 
-    LLVM_DEBUG(errs() << "Alloca found to be local: " << *alloca << "\n");
+    REPORT_DUMP(errs() << "Alloca found to be local: " << *alloca << "\n");
     return true;
   }
   return false;
@@ -1008,7 +1009,7 @@ bool HeapAssignment::isLocalPrivateGlobalAU(const Value *ptr, const Loop *L) {
   if (const GlobalValue *gv = dyn_cast<GlobalValue>(ptr)) {
     // if global variable is not used outside the loop then it is a local
     if (isGlobalLocalToLoop(gv, L)) {
-      LLVM_DEBUG(errs() << "Global found to be local: " << *gv << "\n");
+      REPORT_DUMP(errs() << "Global found to be local: " << *gv << "\n");
       return true;
     }
   }
@@ -1024,7 +1025,7 @@ bool Classify::runOnLoop(Loop *loop)
   if( !spresults.resultsValid() )
     return false;
 
-  LLVM_DEBUG(errs() << "***************** Classify: "
+  REPORT_DUMP(errs() << "***************** Classify: "
     << fcn->getName() << " :: " << header->getName()
     << " *****************\n");
 
@@ -1032,7 +1033,7 @@ bool Classify::runOnLoop(Loop *loop)
   ctrlspec->setLoopOfInterest(loop->getHeader());
   if( ctrlspec->isNotLoop(loop) )
   {
-    LLVM_DEBUG(errs() << "- This loop never takes its backedge.\n");
+    REPORT_DUMP(errs() << "- This loop never takes its backedge.\n");
     return false;
   }
 
@@ -1056,7 +1057,7 @@ bool Classify::runOnLoop(Loop *loop)
   ReduxAUs reductions;
   if( !spresults.getFootprint(loop, ctx, reads, writes, reductions) )
   {
-    LLVM_DEBUG(errs() << "Classify: Failed to get write footprint of loop; abort\n");
+    REPORT_DUMP(errs() << "Classify: Failed to get write footprint of loop; abort\n");
     return false;
   }
 
@@ -1126,7 +1127,7 @@ bool Classify::runOnLoop(Loop *loop)
     HeapAssignment::ReduxAUSet::iterator j=reductionAUs.find(au);
     if( j != reductionAUs.end() && j->second != rt )
     {
-      LLVM_DEBUG(errs() << "Not redux: au " << *au
+      REPORT_DUMP(errs() << "Not redux: au " << *au
                    << " is sometimes " << Reduction::names[rt]
                    << " but other times " << Reduction::names[j->second] << '\n');
       inconsistent.insert(au);
@@ -1207,7 +1208,7 @@ bool Classify::runOnLoop(Loop *loop)
   HeapAssignment::AUToRemeds auToRemeds;
   if( !getLoopCarriedAUs(loop, ctx, loopCarried, auToRemeds) )
   {
-    LLVM_DEBUG(errs() << "Wild object spoiled classification.\n");
+    REPORT_DUMP(errs() << "Wild object spoiled classification.\n");
     return false;
   }
 
@@ -1277,7 +1278,7 @@ bool Classify::runOnLoop(Loop *loop)
   HeapAssignment::AUSet wawDepAUs;
   if (!getNoFullOverwritePrivAUs(loop, ctx, noFullOverwriteAUs, wawDepAUs,
                                  noWAWRemeds)) {
-    LLVM_DEBUG(errs() << "Wild object spoiled classification.\n");
+    REPORT_DUMP(errs() << "Wild object spoiled classification.\n");
     return false;
   }
 
@@ -1340,7 +1341,7 @@ bool Classify::runOnLoop(Loop *loop)
 
   assignment.setValidFor(loop);
   ++numClassified;
-  LLVM_DEBUG( errs() << assignment );
+  REPORT_DUMP( errs() << assignment );
 
   return false;
 }
