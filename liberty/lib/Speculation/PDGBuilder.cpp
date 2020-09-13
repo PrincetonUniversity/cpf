@@ -18,6 +18,7 @@
 #include "liberty/Analysis/LLVMAAResults.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include "Assumptions.h"
 
@@ -39,7 +40,6 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<KillFlow_CtrlSpecAware>();
   AU.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   AU.addRequired< ProfilePerformanceEstimator >();
-  /* AU.addRequired<Talkdown>(); */
   AU.setPreservesAll();
 }
 
@@ -50,8 +50,6 @@ bool llvm::PDGBuilder::runOnModule (Module &M){
 
 std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   auto pdg = std::make_unique<llvm::PDG>(loop);
-
-  /* talkdown = &getAnalysis<Talkdown>(); */
 
   REPORT_DUMP(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());
@@ -389,7 +387,6 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
                                                  LoopAA *aa) {
   noctrlspec.setLoopOfInterest(loop->getHeader());
   unsigned long memDepQueryCnt = 0;
-  unsigned long talkdownDisproved = 0;
   for (auto nodeI : make_range(pdg.begin_nodes(), pdg.end_nodes())) {
     Value *pdgValueI = nodeI->getT();
     Instruction *i = dyn_cast<Instruction>(pdgValueI);
@@ -405,11 +402,6 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
 
       if (!j->mayReadOrWriteMemory())
         continue;
-      /* if ( talkdown->areIndependent(i, j) ) */
-      /* { */
-      /*   talkdownDisproved++; */
-      /*   continue; */
-      /* } */
 
       ++memDepQueryCnt;
 
@@ -419,7 +411,6 @@ void llvm::PDGBuilder::constructEdgesFromMemory(PDG &pdg, Loop *loop,
   }
   REPORT_DUMP(errs() << "Total memory dependence queries to CAF: " << memDepQueryCnt
                << "\n");
-  REPORT_DUMP(errs() << "Total memory dependence queries resolved by Talkdown: " << talkdownDisproved << "\n");
 }
 
 // query memory dep conservatively (with only memory analysis modules in the
