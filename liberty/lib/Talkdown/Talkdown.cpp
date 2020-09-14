@@ -20,6 +20,7 @@ namespace llvm
   /*
    * Options for talkdown
    */
+  // This was useful in noelle. But in cpf we have the `aa` script that we can add or remove LoopAA passes to/from
   static cl::opt<bool> TalkdownDisable("noelle-talkdown-disable", cl::ZeroOrMore, cl::Hidden, cl::desc("Disable Talkdown"));
 
   bool Talkdown::runOnModule(Module &M)

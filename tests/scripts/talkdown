@@ -1,0 +1,11 @@
+#!/bin/bash
+
+PREFIX=
+
+LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+      -load $LIBERTY_LIBS_DIR/libLoopProf.so
+      -load $LIBERTY_LIBS_DIR/libTalkdown.so"
+
+IN="$1"
+
+$PREFIX opt ${LIBS} -Talkdown -debug-only=talkdown $IN -o benchmark.talkdown.bc >talkdown.dump 2>&1

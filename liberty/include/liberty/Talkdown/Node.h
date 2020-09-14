@@ -7,6 +7,7 @@
 
 #include <set>
 #include <vector>
+#include <unordered_set>
 
 #include "Annotation.h"
 
@@ -14,11 +15,10 @@ using namespace llvm;
 
 namespace AutoMP {
 
-	/// Node class for representing SESE regions or loops or a function (only root node).
-	/// Note that nodes not attached to a tree are not allowed, since how_many will be screwed up
   struct Node
   {
   public:
+    // constructors and destructors
     Node() : Node(nullptr, nullptr, nullptr) {}
 		Node( Node *p, Loop *l = nullptr, BasicBlock *bb = nullptr, std::vector<Annotation> v = std::vector<Annotation>() ) :
 			parent(p), loop(l), basic_block(bb) {}
@@ -43,6 +43,7 @@ namespace AutoMP {
     bool containsAnnotationWithKey(std::string s) const;
     bool containsAnnotation(const Annotation &a) const;
 
+    // printing stuff
     std::ostream &recursivePrint(std::ostream &) const;
     friend std::ostream &operator<<(std::ostream &, const Node *);
 
@@ -55,14 +56,19 @@ namespace AutoMP {
     int ID;
     Node *parent;
     std::set<Node *> children;
-    Loop *loop; // XXX: Duplicated from annotation for now
+    Loop *loop;
     BasicBlock *basic_block;
   };
 
+  // XXX To be used later
   struct LoopContainerNode : public Node
   {
+  private:
+    // basic blocks contained within this loop (including subloops)
+    std::unordered_set<BasicBlock *> contained_bbs;
   };
 
+  // XXX To be used later
   struct BasicBlockNode : public Node
   {
   };

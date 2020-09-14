@@ -151,7 +151,8 @@ namespace AutoMP
 
   // this function adds loop-container nodes to the tree that will end up being parents to all respective subloops (both
   // subloop-container nodes and basic blocks )
-  void FunctionTree::addLoopsToTree(LoopInfo &li)
+  // Note that this does not add any basic blocks to the tree
+  void FunctionTree::addLoopContainersToTree(LoopInfo &li)
   {
     std::set<Loop *> visited_loops;
     auto loops = li.getLoopsInPreorder(); // this shit is amazing!
@@ -192,7 +193,6 @@ namespace AutoMP
 
   // This function is pretty stupid right now as FunctionTree doesn't have an iterator yet.
   // Seems like metadata is only attached to branch instruction in loop header and not the icmp instruction before...
-  // Should be called immediately and only after addLoopsToTree()
   void FunctionTree::annotateLoops()
   {
     // traverse nodes in tree
@@ -408,7 +408,7 @@ namespace AutoMP
     modified |= splitBasicBlocksByAnnotation();
 
     // add all loops (including subloops) to the tree
-    addLoopsToTree( li );
+    addLoopContainersToTree( li );
 
     // supposedly adds annotations to loop container...
     // XXX (gc14): Make sure this is correct

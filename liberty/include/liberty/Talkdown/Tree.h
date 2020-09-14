@@ -21,7 +21,6 @@ namespace AutoMP {
     FunctionTree() : root(nullptr), num_nodes(0) {}
     FunctionTree(Function *f);
     ~FunctionTree();
-    bool constructTree(Function *f, liberty::ModuleLoops &m);
     bool constructTree(Function *f, LoopInfo &li); // should use this instead
 
     bool constructTreeFromNode(Node *n); // use subtrees later for something???
@@ -41,7 +40,7 @@ namespace AutoMP {
     std::vector<Node *> getNodesInPreorder(Node *start);
     std::vector<Node *> getAllLoopContainerNodes(void);
 
-    void addLoopsToTree( LoopInfo &li );
+    void addLoopContainersToTree( LoopInfo &li );
     void annotateLoops();
 
     // Change these to use the node instead so we don't have to traverse the tree?

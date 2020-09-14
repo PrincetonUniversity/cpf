@@ -4,8 +4,9 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
 
-#include "liberty/Talkdown/Node.h"
-#include "liberty/Talkdown/Tree.h"
+#include "Node.h"
+#include "Tree.h"
+#include "Annotation.h"
 
 #include <algorithm>
 #include <map>
@@ -17,20 +18,6 @@ using namespace AutoMP;
 
 namespace llvm
 {
-  // XXX Temporary to test in TalkdownAA! This should be a static function
-	/* struct pair_hash */
-	/* { */
-	/* 	template <class T1, class T2> */
-	/* 	std::size_t operator () (std::pair<T1, T2> const &pair) const */
-	/* 	{ */
-	/* 		std::size_t h1 = std::hash<T1>()(pair.first); */
-	/* 		std::size_t h2 = std::hash<T2>()(pair.second); */
-
-	/* 		return h1 ^ h2; */
-	/* 	} */
-	/* }; */
-  /* std::unordered_set<std::pair<std::string, std::string>, pair_hash<std::string, std::string> > getMetadataAsStrings(Value *i); */
-
   struct Talkdown : public ModulePass
   {
     public:
@@ -42,11 +29,7 @@ namespace llvm
       bool runOnModule(Module &M);
       void getAnalysisUsage(AnalysisUsage &AU) const;
 
-      /* SESENode *getInnermostRegion(Instruction *); */
-      /* SESENode *getParent(SESENode *); */
-      /* SESENode *getInnermostCommonAncestor(SESENode *, SESENode *); */
-      /* std::map<std::string, std::string> &getMetadata(SESENode *); // common metadata */
-      bool areIndependent(Instruction *i1, Instruction *i2);
+      LoopToAnnotationMap getAnnotationsForInst(Instruction *i) const;
 
     private:
       bool enabled;

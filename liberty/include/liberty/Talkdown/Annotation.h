@@ -4,6 +4,7 @@
 #include "llvm/IR/Instructions.h"
 #include <string>
 #include <set>
+#include <unordered_map>
 
 using namespace llvm;
 
@@ -30,8 +31,9 @@ namespace AutoMP
     Loop *loop;
     std::string key;
     std::string value;
-
   };
+
+  typedef std::unordered_map<Loop *, Annotation> LoopToAnnotationMap;
 
   /*
    * Syntax for reductions:
