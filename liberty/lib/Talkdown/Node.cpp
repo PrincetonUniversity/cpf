@@ -53,6 +53,8 @@ namespace AutoMP
     os << "\tID: " << node->ID << "\n";
     if ( node->parent )
       os << "\tParent ID: " << node->parent->ID << "\n";
+    if ( node->getBB() )
+      os << "\tBasic block: " << node->getBB() << "\n";
     os << "\tAnnotations:\n";
     for ( auto &annot : node->annotations )
     {

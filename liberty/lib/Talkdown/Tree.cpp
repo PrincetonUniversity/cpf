@@ -34,6 +34,7 @@ namespace AutoMP
 		}
 	};
 
+  // returns pairs of annotations with the "note noelle" prefix
   std::unordered_set<std::pair<std::string, std::string>, pair_hash > getMetadataAsStrings(Instruction *i)
   {
     std::unordered_set<std::pair<std::string, std::string>, pair_hash > meta_vec;
@@ -76,6 +77,7 @@ namespace AutoMP
 
   }
 
+  // returns inner-most loop container for loop l
   Node *FunctionTree::findNodeForLoop( Node *start, Loop *l )
   {
     if ( start->getLoop() == l )
@@ -169,7 +171,7 @@ namespace AutoMP
       else
       {
         Node *tmp1 = findNodeForLoop( root, l->getParentLoop() ); // pretty stupid but I'll change it later maybe
-        assert( tmp != nullptr && "Subloop doesn't have a parent loop -- something is wrong with getLoopsInPreorder()" );
+        assert( tmp1 != nullptr && "Subloop doesn't have a parent loop -- something is wrong with getLoopsInPreorder()" );
         tmp->setParent( tmp1 );
         tmp1->addChild( tmp );
       }
@@ -210,6 +212,7 @@ namespace AutoMP
 
       // for each instruction in loop header, check if it has noelle metadata attached. If so, add the annotation
       // to the loop container node
+      // XXX (gc14): Pretty sure this is wrong...
       for ( auto &i : *header )
       {
         auto meta_vec = getMetadataAsStrings( &i );
@@ -219,6 +222,7 @@ namespace AutoMP
     }
   }
 
+  // creates nodes for basic blocks that belong to a loop and links to the correct loop container node
   // should be called after annotateLoops()
   void FunctionTree::addBasicBlocksToLoops(LoopInfo &li)
   {
@@ -240,6 +244,7 @@ namespace AutoMP
       tmp->annotations.emplace(nullptr, "__loop_bb", "true");
       if ( l->getHeader() == &bb )
         tmp->annotations.emplace(nullptr, "__loop_header", "true");
+      nodes.push_back( tmp );
       num_nodes++;
     }
   }
@@ -249,6 +254,8 @@ namespace AutoMP
 
   }
 
+  // Splits a basic block between two instructions when their respective annotations differ
+  // TODO (gc14): not complete at all
   bool FunctionTree::splitBasicBlocksByAnnotation(void)
   {
     for ( auto &bb : *associated_function )
@@ -256,6 +263,7 @@ namespace AutoMP
       std::unordered_set<std::pair<std::string, std::string>, pair_hash > prev_meta; // seen metadata
       for ( auto &i : bb )
       {
+        // XXX Once we transition to intrinsics, this will have to be changed
         if ( isa<IntrinsicInst>(&i) )
         {
           /* LLVM_DEBUG(errs() << "Encountered llvm intrinsic -- " << *&i << "; continuing\n";); */
@@ -285,6 +293,7 @@ namespace AutoMP
     return false;
   }
 
+#if 0
   // need to find out which loop the critical annotation corresponds to
   // returns true if modified
   bool FunctionTree::handleCriticalAnnotations(void)
@@ -346,6 +355,7 @@ namespace AutoMP
       new_node->setBB( new_block );
       (n->getParent())->addChild( new_node );
       new_node->setID( num_nodes );
+      nodes.push_back( new_node );
       num_nodes++;
     }
 
@@ -360,11 +370,13 @@ namespace AutoMP
       new_node->setBB( new_block );
       (n->getParent())->addChild( new_node );
       new_node->setID( num_nodes );
+      nodes.push_back( new_node );
       num_nodes++;
     }
 
     return true;
   }
+#endif
 
   bool FunctionTree::handleOwnedAnnotations(void)
   {
@@ -392,9 +404,17 @@ namespace AutoMP
     num_nodes++;
     nodes.push_back( root ); // BAD: remove once iterator done
 
+    // split basic blocks based on annotation before adding them to the tree
+    modified |= splitBasicBlocksByAnnotation();
+
+    // add all loops (including subloops) to the tree
     addLoopsToTree( li );
+
+    // supposedly adds annotations to loop container...
+    // XXX (gc14): Make sure this is correct
     annotateLoops();
 
+    // add basic blocks that don't belong to any loop to tree
     for ( auto &bb : *f )
     {
       // skip bbs that are already handled
@@ -403,7 +423,7 @@ namespace AutoMP
 
       Loop *l = li.getLoopFor( &bb );
 
-      // Basic blocks that don't belong to any loop
+      // Add blocks that don't belong to any loop to the tree as direct children of root node
       if ( !l )
       {
         Node *tmp = new Node();
@@ -411,16 +431,14 @@ namespace AutoMP
         root->addChild( tmp );
         tmp->annotations.emplace( nullptr, "__non_loop_bbs", "true" );
         tmp->setID( num_nodes );
-        visited_bbs.insert( &bb );
+        tmp->setBB( &bb );
         num_nodes++;
         nodes.push_back( tmp ); // BAD: remove once iterator done
       }
+      visited_bbs.insert( &bb );
     }
 
     addBasicBlocksToLoops( li );
-
-    modified |= splitBasicBlocksByAnnotation();
-    /* modified |= handleCriticalAnnotations(); */
 
     return modified;
   }
@@ -481,9 +499,32 @@ namespace AutoMP
     // NOTE(greg): Use GraphWriter to print out the tree better
   }
 
+  void FunctionTree::printNodeToInstructionMap(void) const
+  {
+    for ( const auto &n : nodes )
+    {
+      BasicBlock *bb = n->getBB();
+      Instruction *first_inst = nullptr;
+      if ( bb )
+        first_inst = bb->getFirstNonPHI();
+      else
+      {
+        errs() << "Node " << n->getID() << " has no basic block\n";
+        continue;
+      }
+
+      if ( !first_inst )
+        errs() << "Node " << n->getID() << " has no non-PHI instructions\n";
+      else
+        errs() << "Node " << n->getID() << " ==> BB " << bb << ":" << *first_inst << "\n";
+    }
+  }
+
   std::ostream &operator<<(std::ostream &os, const FunctionTree &tree)
   {
-    os << "Tree for function " << tree.associated_function->getName().str() << ":\n";
+    os << "Tree for function " << tree.associated_function->getName().str() << ":\n\n";
+    os << "Nodes to instruction map:\n";
+    tree.printNodeToInstructionMap();
     return tree.root->recursivePrint( os );
   }
 

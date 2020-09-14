@@ -24,19 +24,22 @@ namespace AutoMP {
 			parent(p), loop(l), basic_block(bb) {}
 		~Node();
 
+    // Linking nodes together
     Node *getParent(void) { return parent; }
     void setParent(Node *p) { parent = p; }
     void addChild(Node *p) { children.emplace(p); }
     void removeChild(Node *p) { children.erase(p); }
     const std::set<Node *> &getChildren(void) { return children; }
 
+    // Getting and setting data of nodes
     void setID(int i) { ID = i; }
-    int getID(void) { return ID; }
+    int getID(void) const { return ID; }
     void setLoop(Loop *l) { loop = l; }
-    Loop *getLoop(void) { return loop; }
+    Loop *getLoop(void) const { return loop; }
     void setBB(BasicBlock *bb) { basic_block = bb; }
-    BasicBlock *getBB(void) { return basic_block; }
+    BasicBlock *getBB(void) const { return basic_block; }
 
+    // Dealing with annotations
     bool containsAnnotationWithKey(std::string s) const;
     bool containsAnnotation(const Annotation &a) const;
 
@@ -54,5 +57,13 @@ namespace AutoMP {
     std::set<Node *> children;
     Loop *loop; // XXX: Duplicated from annotation for now
     BasicBlock *basic_block;
+  };
+
+  struct LoopContainerNode : public Node
+  {
+  };
+
+  struct BasicBlockNode : public Node
+  {
   };
 } // namespace llvm

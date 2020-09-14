@@ -26,6 +26,7 @@ namespace AutoMP {
 
     bool constructTreeFromNode(Node *n); // use subtrees later for something???
 
+    void printNodeToInstructionMap(void) const;
     friend std::ostream &operator<<(std::ostream &, const FunctionTree &);
 
     void print();

@@ -4,7 +4,6 @@ namespace AutoMP
 {
   Annotation::Annotation()
   {
-
   }
 
   ReduxAnnotation::ReduxAnnotation()

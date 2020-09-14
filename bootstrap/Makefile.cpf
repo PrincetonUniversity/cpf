@@ -39,15 +39,17 @@ cpf-objects-debug: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_DEBUG}
 cpf-objects-debug:
 	mkdir -p cpf-build-debug
 	cd ./cpf-build-debug && \
-	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_DEBUG)" -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_UNWIND_TABLES=On ${CPF_ROOT_PATH}/liberty && \
+	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_DEBUG)" -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_UNWIND_TABLES=On ${CPF_ROOT_PATH}/liberty && \
 	make -j${JOBS} && \
 	make install
+	ln -sf $(CPF_INSTALL_DEBUG)/compile_commands.json $(CPF_ROOT_PATH)
 
 cpf-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 cpf-objects-release: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_RELEASE}
 cpf-objects-release:
 	mkdir -p cpf-build-release
 	cd ./cpf-build-release && \
-	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_RELEASE)" -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_UNWIND_TABLES=On ${CPF_ROOT_PATH}/liberty && \
+	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_RELEASE)" -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_UNWIND_TABLES=On ${CPF_ROOT_PATH}/liberty && \
 	make -j${JOBS} && \
 	make install
+	ln -sf $(CPF_INSTALL_RELEASE)/compile_commands.json $(CPF_ROOT_PATH)
