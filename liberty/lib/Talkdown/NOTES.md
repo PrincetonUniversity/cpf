@@ -1,6 +1,6 @@
 ## Steps for constructing a FunctionTree
 
-1. Split basic blocks that belong to a loop if annotations change within
+1. Split basic blocks if annotations change within
 2. Construct root node and add loop container nodes as children to the tree
 
 ## What kind of information you can query from the Talkdown module
@@ -19,7 +19,11 @@
 
 ## Notes
 
-If annotation belongs to a loop header
+If annotation belongs to a loop header, then it should be attached to the loop container node (???)
+Check in SemiLocalFunAA how LoopAA::alias() is called within a modref
+Also look at KillFlow and CallSiteDepthCombinator to see how to get the topAA()
+In PipelineStrategy, dump the number of sequential and parallel SCCs.
+  Probably in PipelineStrategy::pStageWeightPrint()
 
 ## Caveats
 

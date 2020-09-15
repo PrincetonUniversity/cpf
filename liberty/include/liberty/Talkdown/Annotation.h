@@ -5,8 +5,8 @@
 #include <string>
 #include <set>
 #include <unordered_map>
-
-using namespace llvm;
+#include <unordered_set>
+#include <utility>
 
 namespace AutoMP
 {
@@ -14,27 +14,54 @@ namespace AutoMP
   class Annotation
   {
   public:
-    Annotation();
-    Annotation(Loop *l, std::string k, std::string v) : loop(l), key(k), value(v) {}
+    Annotation() { loop = nullptr, key = "", value = ""; }
+    Annotation(llvm::Loop *l, std::string k, std::string v) : loop(l), key(k), value(v) {}
 
     // probably unecessary
-    std::string get_key() const { return key; }
-    std::string get_value() const { return value; }
-    void setLoop(Loop *l) { loop = l; }
-    Loop *getLoop() { return loop; }
+    std::string getKey() const { return key; }
+    std::string getValue() const { return value; }
+    void setLoop(llvm::Loop *l) { loop = l; }
+    llvm::Loop *getLoop() const { return loop; }
 
-    // for having annotations in a set
+    // functions that are needed by some stdlib things like unordered_map, unordered_set, etc
     bool operator<(const Annotation &a) const { return true; } // for std::set::insert
-    bool operator=(const Annotation &a) const { return !key.compare(a.key) && !value.compare(a.value); }
+    bool operator==(const Annotation &a) const { return !key.compare(a.key) && !value.compare(a.value); }
+
+    // printing stuff
+    // NOTE: Could have made this template but that seems weird...
+    friend std::ostream &operator<<(std::ostream &, const Annotation &) { assert(false && "Not implemented"); }
+    friend llvm::raw_ostream &operator<<(llvm::raw_ostream &, const Annotation &);
 
   private:
-    Loop *loop;
+    llvm::Loop *loop;
     std::string key;
     std::string value;
   };
 
-  typedef std::unordered_map<Loop *, Annotation> LoopToAnnotationMap;
+  // Could have done the custom specialization of std::hash as well, described in the example at
+  // https://en.cppreference.com/w/cpp/utility/hash
+  class AnnotHashFn
+  {
+  public:
+    size_t operator()(const Annotation &a) const
+    {
+      using namespace std;
+      return hash<string>()( a.getKey() )
+        ^ ((hash<string>()( a.getValue() ) << 1) >> 1)
+        ^ ((hash<llvm::Loop *>()( a.getLoop())) << 1);
+    }
+  };
 
+  // store annotations in these things
+  typedef std::unordered_set<Annotation, AnnotHashFn> AnnotationSet;
+  typedef std::unordered_map<llvm::Loop *, Annotation> LoopToAnnotationMap;
+
+  // Used for debugging purposes
+  llvm::raw_ostream &operator<<(llvm::raw_ostream &, const std::pair<const llvm::Instruction *, const AnnotationSet &> &);
+
+  /******************************************************************************
+   * XXX BELOW THIS IS NOT WORKING XXX
+   */
   /*
    * Syntax for reductions:
    *    #pragma note noelle reduction = <type>:<variable1>,<variable2>,...
@@ -55,8 +82,8 @@ namespace AutoMP
 
   private:
     Type type;
-    Value *redux_var; // is Value specific enough?
-    std::set<Value *> associated_vars; // better naming later
+    llvm::Value *redux_var; // is Value specific enough?
+    std::set<llvm::Value *> associated_vars; // better naming later
   };
 
   class PrivateAnnotation : public Annotation

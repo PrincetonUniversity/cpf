@@ -22,12 +22,12 @@ namespace AutoMP
   bool Node::containsAnnotationWithKey(std::string s) const
   {
     for ( auto &a : annotations )
-      if ( !a.get_key().compare( s ) )
+      if ( !a.getKey().compare( s ) )
         return true;
     return false;
   }
 
-  std::ostream &Node::recursivePrint(std::ostream &os) const
+  llvm::raw_ostream & Node::recursivePrint(llvm::raw_ostream &os) const
   {
     os << this << "\n";
     if ( children.size() != 0 )
@@ -40,7 +40,7 @@ namespace AutoMP
     // return;
   }
 
-  std::ostream &operator<<(std::ostream &os, const Node *node)
+  llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Node *node)
   {
     if ( !node->parent )
       /* os << "\033[1;31m** Root node **\033[0m\n"; */
@@ -58,9 +58,9 @@ namespace AutoMP
     os << "\tAnnotations:\n";
     for ( auto &annot : node->annotations )
     {
-      errs() << "\t\t" << annot.get_key() << " : " << annot.get_value() << "\n";
+      os << "\t\t" << annot.getKey() << " : " << annot.getValue() << "\n";
     }
-    errs() << "\n";
+    os << "\n";
 
 #if 0
     if ( !node->is_leaf )

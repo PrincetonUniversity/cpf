@@ -9,51 +9,53 @@
 
 #include <string>
 
-using namespace llvm;
-using namespace AutoMP;
-
 namespace AutoMP {
 
 
   class FunctionTree
   {
   public:
+    // constructors
     FunctionTree() : root(nullptr), num_nodes(0) {}
-    FunctionTree(Function *f);
+    FunctionTree(llvm::Function *f);
     ~FunctionTree();
-    bool constructTree(Function *f, LoopInfo &li); // should use this instead
 
+    bool constructTree(llvm::Function *f, llvm::LoopInfo &li); // should use this instead
     bool constructTreeFromNode(Node *n); // use subtrees later for something???
 
+    // getters and setters
+    llvm::Function *getFunction(void) const { return associated_function; }
+
+    // printing stuff
     void printNodeToInstructionMap(void) const;
     friend std::ostream &operator<<(std::ostream &, const FunctionTree &);
+    friend llvm::raw_ostream &operator<<(llvm::raw_ostream &, const FunctionTree &);
 
-    void print();
     void writeDotFile(const std::string filename);
 
     std::vector<Node *> nodes; // remove this once an iterator is developed
 
   private:
-    Node *findNodeForLoop(Node *start, Loop *l); // level-order traversal
-    Node *findNodeForBasicBlock(Node *start, BasicBlock *bb);
+    Node *findNodeForLoop(Node *start, llvm::Loop *l); // level-order traversal
+    Node *findNodeForBasicBlock(Node *start, llvm::BasicBlock *bb);
     Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a); // search upward from a node to find first node with matching annotation
     std::vector<Node *> getNodesInPreorder(Node *start);
     std::vector<Node *> getAllLoopContainerNodes(void);
 
-    void addLoopContainersToTree( LoopInfo &li );
+    void addLoopContainersToTree(llvm::LoopInfo &li);
     void annotateLoops();
 
     // Change these to use the node instead so we don't have to traverse the tree?
-    void addBasicBlocksToLoops(LoopInfo &li);
+    void addBasicBlocksToLoops(llvm::LoopInfo &li);
 
     // If something like a "critical" pragma is attached to a basic block, do something
-    void backAnnotateLoopFromBasicBlocks(Loop *l);
+    void backAnnotateLoopFromBasicBlocks(llvm::Loop *l);
 
     bool splitBasicBlocksByAnnotation(void);
     bool handleCriticalAnnotations(void);
     bool handleOwnedAnnotations(void);
 
-    Function *associated_function;
+    llvm::Function *associated_function;
     Node *root;
 
     int num_nodes;

@@ -3,8 +3,10 @@
 #include "SystemHeaders.hpp"
 
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Support/CommandLine.h"
 
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include "liberty/Talkdown/Talkdown.h"
 
@@ -21,7 +23,8 @@ namespace llvm
    * Options for talkdown
    */
   // This was useful in noelle. But in cpf we have the `aa` script that we can add or remove LoopAA passes to/from
-  static cl::opt<bool> TalkdownDisable("noelle-talkdown-disable", cl::ZeroOrMore, cl::Hidden, cl::desc("Disable Talkdown"));
+  static cl::opt<bool> TalkdownDisable("talkdown-disable", cl::ZeroOrMore, cl::Hidden, cl::desc("Disable Talkdown"));
+  static cl::opt<bool> PrintFunctionTrees("print-function-trees", cl::ZeroOrMore, cl::Hidden, cl::desc("Print out function trees"));
 
   bool Talkdown::runOnModule(Module &M)
   {
@@ -89,14 +92,15 @@ namespace llvm
     /* std::cerr << "Should be initialized\n"; */
     /* std::cerr << "There are " << function_trees.size() << " function trees\n"; */
 
-    LLVM_DEBUG(
-    errs() << "\n-------- Begin printing of function trees --------\n";
-    for ( auto &tree : function_trees )
+    if ( PrintFunctionTrees.getNumOccurrences() != 0 )
     {
-      std::cerr << tree;
+      errs() << "\n-------- Begin printing of function trees --------\n";
+      for ( auto &tree : function_trees )
+      {
+        llvm::errs() << tree;
+      }
+      errs() << "\n-------- Done printing function trees --------\n";
     }
-    errs() << "\n-------- Done printing function trees --------\n";
-    );
 
     return false;
   }

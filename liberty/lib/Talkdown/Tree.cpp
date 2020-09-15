@@ -5,8 +5,11 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "liberty/Utilities/ReportDump.h"
 #include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Talkdown/Tree.h"
+#include "liberty/Talkdown/Annotation.h"
+#include "liberty/Talkdown/AnnotationParser.h"
 
 #include <algorithm>
 #include <iostream>
@@ -15,6 +18,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <utility>
 
 using namespace llvm;
 
@@ -115,7 +119,7 @@ namespace AutoMP
       for ( auto &annot : start->annotations )
       {
         // if key and value match an annotaion of the current node, return that node
-        if ( !annot.get_key().compare(a.first) && !annot.get_value().compare(a.second) )
+        if ( !annot.getKey().compare(a.first) && !annot.getValue().compare(a.second) )
           return start;
       }
 
@@ -260,33 +264,36 @@ namespace AutoMP
   {
     for ( auto &bb : *associated_function )
     {
-      std::unordered_set<std::pair<std::string, std::string>, pair_hash > prev_meta; // seen metadata
+      AnnotationSet prev_annots; // seen annotations
       for ( auto &i : bb )
       {
         // XXX Once we transition to intrinsics, this will have to be changed
         if ( isa<IntrinsicInst>(&i) )
         {
-          /* LLVM_DEBUG(errs() << "Encountered llvm intrinsic -- " << *&i << "; continuing\n";); */
           continue;
         }
 
-        auto meta = getMetadataAsStrings( &i );
-        std::unordered_set<std::pair<std::string, std::string>, pair_hash > current_meta =
-          std::unordered_set<std::pair<std::string, std::string>, pair_hash >(meta);
+        /* auto meta = getMetadataAsStrings( &i ); */
+        /* std::unordered_set<std::pair<std::string, std::string>, pair_hash > current_meta = */
+        /*   std::unordered_set<std::pair<std::string, std::string>, pair_hash >(meta); */
+        auto annots = parseAnnotationsForInst( &i );
 
-        if ( prev_meta.size() != 0 && meta != prev_meta ) // found mismatch
+        // found mismatch -- should split basic block between i-1 and i
+        if ( prev_annots.size() != 0 && annots != prev_annots )
         {
           // invalidated_bbs.insert( i.getParent() );
-          LLVM_DEBUG(errs() << "Found mismatch at " << *&i << "\n";);
-          LLVM_DEBUG(errs() << "Previous metadata was:\n";);
-          for ( auto &m : prev_meta )
-            LLVM_DEBUG(errs() << m.first << ": " << m.second << "\n";);
-          LLVM_DEBUG(errs() << "Current metadata is:\n";);
-          for ( auto &m : current_meta )
-            LLVM_DEBUG(errs() << m.first << ": " << m.second << "\n";);
+          REPORT_DUMP(
+          errs() << "Found mismatch at " << *&i << "\n";
+          errs() << "Previous metadata was:\n";
+          for ( const auto &m : prev_annots )
+            errs() << m;
+          errs() << "Current metadata is:\n";
+          for ( const auto &m : annots )
+            errs() << m;
+          );
         }
 
-        prev_meta = current_meta;
+        prev_annots = annots;
       }
     }
 
@@ -378,10 +385,6 @@ namespace AutoMP
   }
 #endif
 
-  bool FunctionTree::handleOwnedAnnotations(void)
-  {
-  }
-
   // construct a tree for each function in program order
   // steps:
   //  1. Basic blocks that don't belong to any loops don't have any annotations. They should be direct children of the root node
@@ -393,6 +396,7 @@ namespace AutoMP
     bool modified = false;
     std::set<BasicBlock *> visited_bbs;
 
+    errs() << "Associated function: " << f->getName() << "\n";
     associated_function = f;
 
     // construct root node
@@ -520,11 +524,23 @@ namespace AutoMP
     }
   }
 
-  std::ostream &operator<<(std::ostream &os, const FunctionTree &tree)
+  raw_ostream &operator<<(raw_ostream &os, const FunctionTree &tree)
   {
     os << "Tree for function " << tree.associated_function->getName().str() << ":\n\n";
     os << "Nodes to instruction map:\n";
     tree.printNodeToInstructionMap();
+    Function *af = tree.getFunction();
+    assert( af && "Function associated with a FunctionTree null" );
+
+    for ( auto &bb : *af)
+    {
+      for ( auto &i : bb )
+      {
+        const AnnotationSet as = parseAnnotationsForInst( &i );
+        const std::pair<const llvm::Instruction *, const AnnotationSet &> inst_annot = std::make_pair(&i, as);
+        os << inst_annot;
+      }
+    }
     return tree.root->recursivePrint( os );
   }
 

@@ -8,4 +8,4 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
 
 IN="$1"
 
-$PREFIX opt ${LIBS} -Talkdown -debug-only=talkdown $IN -o benchmark.talkdown.bc >talkdown.dump 2>&1
+$PREFIX opt ${LIBS} -Talkdown -print-function-trees -debug-only=talkdown $IN -o benchmark.talkdown.bc >talkdown.dump 2>&1

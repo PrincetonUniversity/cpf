@@ -11,8 +11,6 @@
 
 #include "Annotation.h"
 
-using namespace llvm;
-
 namespace AutoMP {
 
   struct Node
@@ -20,7 +18,7 @@ namespace AutoMP {
   public:
     // constructors and destructors
     Node() : Node(nullptr, nullptr, nullptr) {}
-		Node( Node *p, Loop *l = nullptr, BasicBlock *bb = nullptr, std::vector<Annotation> v = std::vector<Annotation>() ) :
+		Node( Node *p, llvm::Loop *l = nullptr, llvm::BasicBlock *bb = nullptr, std::vector<Annotation> v = std::vector<Annotation>() ) :
 			parent(p), loop(l), basic_block(bb) {}
 		~Node();
 
@@ -34,18 +32,19 @@ namespace AutoMP {
     // Getting and setting data of nodes
     void setID(int i) { ID = i; }
     int getID(void) const { return ID; }
-    void setLoop(Loop *l) { loop = l; }
-    Loop *getLoop(void) const { return loop; }
-    void setBB(BasicBlock *bb) { basic_block = bb; }
-    BasicBlock *getBB(void) const { return basic_block; }
+    void setLoop(llvm::Loop *l) { loop = l; }
+    llvm::Loop *getLoop(void) const { return loop; }
+    void setBB(llvm::BasicBlock *bb) { basic_block = bb; }
+    llvm::BasicBlock *getBB(void) const { return basic_block; }
 
     // Dealing with annotations
     bool containsAnnotationWithKey(std::string s) const;
     bool containsAnnotation(const Annotation &a) const;
 
     // printing stuff
-    std::ostream &recursivePrint(std::ostream &) const;
+    llvm::raw_ostream &recursivePrint(llvm::raw_ostream &) const;
     friend std::ostream &operator<<(std::ostream &, const Node *);
+    friend llvm::raw_ostream &operator<<(llvm::raw_ostream &, const Node *);
 
     // TODO: make this private
     std::set<Annotation> annotations; // should this be a set? most likely
@@ -56,8 +55,8 @@ namespace AutoMP {
     int ID;
     Node *parent;
     std::set<Node *> children;
-    Loop *loop;
-    BasicBlock *basic_block;
+    llvm::Loop *loop;
+    llvm::BasicBlock *basic_block;
   };
 
   // XXX To be used later
@@ -65,7 +64,7 @@ namespace AutoMP {
   {
   private:
     // basic blocks contained within this loop (including subloops)
-    std::unordered_set<BasicBlock *> contained_bbs;
+    std::unordered_set<llvm::BasicBlock *> contained_bbs;
   };
 
   // XXX To be used later
