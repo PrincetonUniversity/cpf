@@ -1,5 +1,7 @@
 #include "liberty/Talkdown/Annotation.h"
 
+#include "TempDebugInfo.h"
+
 namespace AutoMP
 {
   using namespace llvm;
@@ -18,6 +20,9 @@ namespace AutoMP
 
   llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Annotation &a)
   {
+    // TODO get this working... segfaulting now
+    // os << "Loop " << getLoopLineNum(a.getLoop()) << " | " << a.getKey() << " : " << a.getValue() << "\n";
+
     os << "Loop " << a.getLoop() << " | " << a.getKey() << " : " << a.getValue() << "\n";
     return os;
   }

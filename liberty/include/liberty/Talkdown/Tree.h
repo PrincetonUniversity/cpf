@@ -49,14 +49,17 @@ namespace AutoMP {
     const Node *findNodeForBasicBlock(const Node *, const llvm::BasicBlock *) const;
     const Node *findNodeForInstruction(const Node *, const llvm::Instruction *) const;
     Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a) __attribute__ ((deprecated)); // search upward from a node to find first node with matching annotation
-    std::vector<Node *> getNodesInPreorder(Node *start);
-    std::vector<Node *> getAllLoopContainerNodes(void);
+    std::vector<Node *> getNodesInPreorder(Node *start) const;
+    std::vector<LoopContainerNode *> getAllLoopContainerNodes(void) const;
+    std::vector<Node *> getAllLoopBasicBlockNodes(void) const;
 
     void addLoopContainersToTree(llvm::LoopInfo &li);
-    void annotateLoops();
+    void annotateBasicBlocks(void);
+    void annotateLoops(void);
 
     // Change these to use the node instead so we don't have to traverse the tree?
     void addBasicBlocksToLoops(llvm::LoopInfo &li);
+    void addNonLoopBasicBlocks(llvm::LoopInfo &li);
 
     // If something like a "critical" pragma is attached to a basic block, do something
     void backAnnotateLoopFromBasicBlocks(llvm::Loop *l);

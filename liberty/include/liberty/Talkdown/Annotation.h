@@ -20,7 +20,7 @@ namespace AutoMP
     // probably unecessary
     std::string getKey() const { return key; }
     std::string getValue() const { return value; }
-    void setLoop(llvm::Loop *l) { loop = l; }
+    void setLoop(const llvm::Loop *l) { loop = const_cast<llvm::Loop *>(l); }
     llvm::Loop *getLoop() const { return loop; }
 
     // functions that are needed by some stdlib things like unordered_map, unordered_set, etc

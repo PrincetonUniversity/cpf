@@ -4,9 +4,7 @@
 
 #include "llvm/Support/Debug.h"
 
-#include <iostream>
-#include <map>
-#include <unordered_map>
+#include <algorithm>
 
 using namespace llvm;
 
@@ -14,9 +12,10 @@ namespace AutoMP
 {
   unsigned int Node::how_many = 0;
 
-  Node::~Node()
+  void Node::addAnnotations(AnnotationSet &&as)
+
   {
-    how_many--;
+    annotations.insert( as.begin(), as.end() );
   }
 
   bool Node::containsAnnotationWithKey(std::string s) const
@@ -25,6 +24,22 @@ namespace AutoMP
       if ( !a.getKey().compare( s ) )
         return true;
     return false;
+  }
+
+  AnnotationSet Node::getRealAnnotations(void) const
+  {
+    using namespace std;
+    AnnotationSet as;
+    for ( auto &a : annotations )
+    {
+      // not a restricted annotation
+      if ( end(restricted_keys) == find(begin(restricted_keys), end(restricted_keys), a.getKey()) )
+      {
+        as.emplace(a);
+      }
+    }
+
+    return as;
   }
 
   llvm::raw_ostream & Node::recursivePrint(llvm::raw_ostream &os) const
@@ -55,10 +70,16 @@ namespace AutoMP
       os << "\tParent ID: " << node->parent->ID << "\n";
     if ( node->getBB() )
       os << "\tBasic block: " << node->getBB() << "\n";
+
+    // XXX this would be pretty cool to get working
+    /* if ( dyn_cast<const LoopContainerNode *>(node) ) */
+    /*   os << ""; */
+
     os << "\tAnnotations:\n";
     for ( auto &annot : node->annotations )
     {
-      os << "\t\t" << annot.getKey() << " : " << annot.getValue() << "\n";
+      // os << "\t\t" << annot.getKey() << " : " << annot.getValue() << "\n";
+      os << annot;
     }
     os << "\n";
 
