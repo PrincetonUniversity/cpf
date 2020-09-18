@@ -47,6 +47,7 @@ namespace llvm
       function_trees.push_back( tree );
     }
 
+    // maybe use REPORT_DUMP for this?
     if ( PrintFunctionTrees.getNumOccurrences() != 0 )
     {
       errs() << "\n-------- Begin printing of function trees --------\n";

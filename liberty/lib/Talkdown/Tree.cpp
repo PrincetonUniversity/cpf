@@ -292,7 +292,6 @@ namespace AutoMP
         if ( prev_annots.size() != 0 && annots.size() != 0 && annots != prev_annots )
         {
           // invalidated_bbs.insert( i.getParent() );
-          REPORT_DUMP(
           errs() << "Split point found at " << *&i << "\n";
           errs() << "Previous metadata was:\n";
           for ( const auto &m : prev_annots )
@@ -300,7 +299,6 @@ namespace AutoMP
           errs() << "Current metadata is:\n";
           for ( const auto &m : annots )
             errs() << m;
-          );
           split_points.push_back( &i );
         }
 
@@ -337,41 +335,20 @@ namespace AutoMP
         if ( md )
           break;
       }
-#if 0
-      // find where annotations start for this basic block
-      // TODO FIXME this is really slow... we don't really need to calculate an AnnotationSet
-      for ( auto &i : bb )
-      {
-        AnnotationSet as = parseAnnotationsForInst( &i );
-        if ( as.size() != 0 )
-        {
-          md_found = &i;
-          break;
-        }
-      }
 
-      // if no annotations in this basic block, no need to fix it
-      if ( as.size() == 0 )
+      // if no metadata in the basic block
+      if ( !md )
         continue;
 
-      // construct metadata node
-      for ( auto &a : as )
+      // insert it into each instruction in the basic block
+      for (auto &i : bb )
       {
-        MDString *key = MDString::get( ctx, a.getKey() );
-        MDString *value = MDString::get( ctx, a.getValue() );
-        MDNode *n = MDNode::get( ctx, {key, value} );
+        MDNode *meta = i.getMetadata("note.noelle");
+        if ( !meta )
+          i.setMetadata("note.noelle", md);
       }
-#endif
-
-      if ( !md )
-        return false;
-
-      // insert it into each instruction in the basic block if it's not already there
-      /* for (auto &i : bb ) */
-      /* { */
-      /*   i.setMetadata("note.noelle", md); */
-      /* } */
     }
+    return false;
   }
 
 #if 0
@@ -485,7 +462,7 @@ namespace AutoMP
     modified |= splitBasicBlocksByAnnotation();
 
     // fix the fact that the frontend misses adding annotations to some instructions
-    // modified |= fixBasicBlockAnnotations();
+    modified |= fixBasicBlockAnnotations();
 
     // add all loops (including subloops) to the tree
     addLoopContainersToTree( li );
@@ -619,15 +596,16 @@ namespace AutoMP
     Function *af = tree.getFunction();
     assert( af && "Function associated with a FunctionTree null" );
 
-    for ( auto &bb : *af)
-    {
-      for ( auto &i : bb )
-      {
-        const AnnotationSet as = parseAnnotationsForInst( &i );
-        const std::pair<const llvm::Instruction *, const AnnotationSet &> inst_annot = std::make_pair(&i, as);
-        os << inst_annot;
-      }
-    }
+    // XXX For heavy debugging
+    /* for ( auto &bb : *af) */
+    /* { */
+    /*   for ( auto &i : bb ) */
+    /*   { */
+    /*     const AnnotationSet as = parseAnnotationsForInst( &i ); */
+    /*     const std::pair<const llvm::Instruction *, const AnnotationSet &> inst_annot = std::make_pair(&i, as); */
+    /*     os << inst_annot; */
+    /*   } */
+    /* } */
     return tree.root->recursivePrint( os );
   }
 

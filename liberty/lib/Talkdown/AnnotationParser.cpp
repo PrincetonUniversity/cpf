@@ -28,7 +28,8 @@ namespace AutoMP
         MDString *value = dyn_cast<MDString>(casted_meta->getOperand(1));
         assert( key && value && "Couldn't cast key or value from annotation" );
 
-        // errs() << "In parseAnnotationsForInst found annotation -- " << key->getString() << " : " << value->getString() << "\n";
+        /* errs() << "In parseAnnotationsForInst -- " << *i << "\n"; */
+        /* errs() << "\t\t" << key->getString() << " : " << value->getString() << "\n"; */
 
         // don't care about the loop right now...
         annots.emplace(nullptr, key->getString(), value->getString());
