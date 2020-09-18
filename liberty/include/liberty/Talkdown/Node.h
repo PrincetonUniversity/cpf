@@ -18,7 +18,7 @@ namespace AutoMP {
   public:
     // constructors and destructors
     Node() : Node(nullptr, nullptr, nullptr) {}
-		Node( Node *p, llvm::Loop *l = nullptr, llvm::BasicBlock *bb = nullptr, std::vector<Annotation> v = std::vector<Annotation>() ) :
+		Node( Node *p, llvm::Loop *l = nullptr, llvm::BasicBlock *bb = nullptr ) :
 			parent(p), loop(l), basic_block(bb) {}
 		~Node();
 
@@ -27,7 +27,7 @@ namespace AutoMP {
     void setParent(Node *p) { parent = p; }
     void addChild(Node *p) { children.emplace(p); }
     void removeChild(Node *p) { children.erase(p); }
-    const std::set<Node *> &getChildren(void) { return children; }
+    const std::set<Node *> &getChildren(void) const { return children; }
 
     // Getting and setting data of nodes
     void setID(int i) { ID = i; }
@@ -52,7 +52,7 @@ namespace AutoMP {
 		static unsigned int how_many;
 
   private:
-    int ID;
+    int ID; // XXX this can be a static int so that it is easy to assign an ID to a node
     Node *parent;
     std::set<Node *> children;
     llvm::Loop *loop;
@@ -64,11 +64,21 @@ namespace AutoMP {
   {
   private:
     // basic blocks contained within this loop (including subloops)
+    // used to speed up finding basic blocks?
     std::unordered_set<llvm::BasicBlock *> contained_bbs;
   };
 
-  // XXX To be used later
-  struct BasicBlockNode : public Node
+  // XXX Not used currently
+  // All children of a BasicBlockContainerNode have the same annotation and belong
+  // to the same loop.
+  // It does however add some unnecessary nodes so maybe not use this...
+  struct BasicBlockContainerNode : public Node
   {
+  public:
+    BasicBlockContainerNode()
+    {
+      assert(0 && "BasicBlockContainerNode not implemented yet");
+    }
+  private:
   };
 } // namespace llvm

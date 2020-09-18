@@ -4,5 +4,5 @@
 
 namespace AutoMP
 {
-  AnnotationSet parseAnnotationsForInst(llvm::Instruction *i);
+  AnnotationSet parseAnnotationsForInst(const llvm::Instruction *i);
 };

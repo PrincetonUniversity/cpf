@@ -2,8 +2,15 @@
 
 namespace AutoMP
 {
+  using namespace llvm;
+
+  /*
+   * XXX This function gets called a lot on the same instructions when constructing the tree
+   * This is bad and we should maybe cache the results?
+   */
+
   // Note that this does not populate the "loop" field of Annotation
-  AnnotationSet parseAnnotationsForInst(llvm::Instruction *i)
+  AnnotationSet parseAnnotationsForInst(const Instruction *i)
   {
     using namespace llvm;
     AnnotationSet annots;
@@ -20,6 +27,8 @@ namespace AutoMP
         MDString *key = dyn_cast<MDString>(casted_meta->getOperand(0));
         MDString *value = dyn_cast<MDString>(casted_meta->getOperand(1));
         assert( key && value && "Couldn't cast key or value from annotation" );
+
+        // errs() << "In parseAnnotationsForInst found annotation -- " << key->getString() << " : " << value->getString() << "\n";
 
         // don't care about the loop right now...
         annots.emplace(nullptr, key->getString(), value->getString());

@@ -35,48 +35,6 @@ namespace llvm
 
     liberty::ModuleLoops &mloops = getAnalysis<liberty::ModuleLoops>();
 
-    // TESTING
-#if 0
-    std::cerr << "Functions in module:\n";
-    for ( auto &f : M )
-    {
-      if ( f.isDeclaration() )
-        continue;
-      LLVM_DEBUG(std::cerr << "\t" << f.getName().str() << "\n";);
-    }
-
-    // TESTING
-    for ( auto &f : M )
-    {
-      // skip going through function declarations
-      if ( f.isDeclaration() )
-        continue;
-
-      LoopInfo &loop_info = getAnalysis<LoopInfoWrapperPass>(f).getLoopInfo();
-
-      // print each loop in function
-      errs() << "Loops in function " << f.getName().str() << ":\n";
-      for ( auto &l : loop_info )
-        errs() << *l << "\n";
-      errs() << "\n";
-
-      // go thru each bb and print what loop it is in
-      for ( auto &bb : f )
-      {
-        errs() << "Loop info for basic block " << *&bb << ":\n";
-        Loop *l = loop_info.getLoopFor( &bb );
-        if ( l )
-        {
-          int depth = loop_info.getLoopDepth( &bb );
-          errs() << "At loop depth " << depth << "\n\n";
-        }
-        else
-          errs() << "\tDoes not belong to any loop\n\n";
-      }
-
-    }
-#endif
-
     // construct tree for each function
     for ( auto &f : M )
     {
@@ -88,9 +46,6 @@ namespace llvm
       modified |= tree.constructTree( &f, loop_info );
       function_trees.push_back( tree );
     }
-
-    /* std::cerr << "Should be initialized\n"; */
-    /* std::cerr << "There are " << function_trees.size() << " function trees\n"; */
 
     if ( PrintFunctionTrees.getNumOccurrences() != 0 )
     {
@@ -118,6 +73,29 @@ namespace llvm
   {
 		this->enabled = (TalkdownDisable.getNumOccurrences() == 0);
     return false;
+  }
+
+  const AnnotationSet &Talkdown::getAnnotationsForInst(const Instruction *i) const
+  {
+    assert(0);
+  }
+
+  const AnnotationSet &Talkdown::getAnnotationsForInst(const Instruction *i, const Loop *l) const
+  {
+    Function *f = l->getHeader()->getParent();
+    const FunctionTree &tree = findTreeForFunction( f );
+    return tree.getAnnotationsForInst(i, l);
+  }
+
+  const FunctionTree &Talkdown::findTreeForFunction(Function *f) const
+  {
+    for ( const auto &ft : function_trees )
+    {
+      auto *af = ft.getFunction();
+      assert( af && "Could not find function tree in Talkdown" );
+      if ( f == af )
+        return ft;
+    }
   }
 
 } // namespace llvm

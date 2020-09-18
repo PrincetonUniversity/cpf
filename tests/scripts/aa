@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo -talkdown-aa
 echo -basic-loop-aa
 echo -scev-loop-aa
 echo -auto-restrict-aa

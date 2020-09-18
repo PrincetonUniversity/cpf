@@ -29,11 +29,14 @@ namespace llvm
       bool runOnModule(Module &M);
       void getAnalysisUsage(AnalysisUsage &AU) const;
 
-      LoopToAnnotationMap getAnnotationsForInst(Instruction *i) const;
+      const AnnotationSet &getAnnotationsForInst(const Instruction *i) const;
+      const AnnotationSet &getAnnotationsForInst(const Instruction *i, const Loop *l) const;
 
     private:
       bool enabled;
 
       std::vector<FunctionTree> function_trees;
+
+      const FunctionTree &findTreeForFunction(Function *f) const;
   };
 } // namespace llvm

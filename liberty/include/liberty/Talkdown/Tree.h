@@ -6,6 +6,7 @@
 
 #include "liberty/Utilities/ModuleLoops.h"
 #include "Node.h"
+#include "Annotation.h"
 
 #include <string>
 
@@ -31,14 +32,23 @@ namespace AutoMP {
     friend std::ostream &operator<<(std::ostream &, const FunctionTree &);
     friend llvm::raw_ostream &operator<<(llvm::raw_ostream &, const FunctionTree &);
 
+    const AnnotationSet &getAnnotationsForInst(const llvm::Instruction *) const;
+    const AnnotationSet &getAnnotationsForInst(const llvm::Instruction *, const llvm::Loop *) const;
+
     void writeDotFile(const std::string filename);
 
     std::vector<Node *> nodes; // remove this once an iterator is developed
 
   private:
-    Node *findNodeForLoop(Node *start, llvm::Loop *l); // level-order traversal
-    Node *findNodeForBasicBlock(Node *start, llvm::BasicBlock *bb);
-    Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a); // search upward from a node to find first node with matching annotation
+    llvm::Function *associated_function;
+    Node *root;
+
+    int num_nodes;
+
+    const Node *findNodeForLoop(const Node *, const llvm::Loop *) const; // level-order traversal
+    const Node *findNodeForBasicBlock(const Node *, const llvm::BasicBlock *) const;
+    const Node *findNodeForInstruction(const Node *, const llvm::Instruction *) const;
+    Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a) __attribute__ ((deprecated)); // search upward from a node to find first node with matching annotation
     std::vector<Node *> getNodesInPreorder(Node *start);
     std::vector<Node *> getAllLoopContainerNodes(void);
 
@@ -52,13 +62,10 @@ namespace AutoMP {
     void backAnnotateLoopFromBasicBlocks(llvm::Loop *l);
 
     bool splitBasicBlocksByAnnotation(void);
+    bool fixBasicBlockAnnotations(void);
+
     bool handleCriticalAnnotations(void);
     bool handleOwnedAnnotations(void);
-
-    llvm::Function *associated_function;
-    Node *root;
-
-    int num_nodes;
 
   public:
     // XXX: First attempt at creating custom iterator. Maybe at a const_iterator later?

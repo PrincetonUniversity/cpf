@@ -82,14 +82,14 @@ namespace AutoMP
   }
 
   // returns inner-most loop container for loop l
-  Node *FunctionTree::findNodeForLoop( Node *start, Loop *l )
+  const Node *FunctionTree::findNodeForLoop( const Node *start, const Loop *l ) const
   {
     if ( start->getLoop() == l )
       return start;
 
     for ( auto &n : start->getChildren() )
     {
-      Node *found = findNodeForLoop( n, l );
+      const Node *found = findNodeForLoop( n, l );
       if ( found )
         return found;
     }
@@ -97,19 +97,24 @@ namespace AutoMP
     return nullptr;
   }
 
-  Node *FunctionTree::findNodeForBasicBlock( Node *start, BasicBlock *bb )
+  const Node *FunctionTree::findNodeForBasicBlock( const Node *start, const BasicBlock *bb ) const
   {
     if ( start->getBB() == bb )
       return start;
 
     for ( auto &n : start->getChildren() )
     {
-      Node *found = findNodeForBasicBlock( n, bb );
+      const Node *found = findNodeForBasicBlock( n, bb );
       if ( found )
         return found;
     }
 
     return nullptr;
+  }
+
+  const Node *FunctionTree::findNodeForInstruction(const Node *start, const llvm::Instruction *i) const
+  {
+    return findNodeForBasicBlock( start, i->getParent() );
   }
 
   Node *searchUpForAnnotation(Node *start, std::pair<std::string, std::string> a)
@@ -175,7 +180,7 @@ namespace AutoMP
       // find the node containing parent loop and add as child to that node
       else
       {
-        Node *tmp1 = findNodeForLoop( root, l->getParentLoop() ); // pretty stupid but I'll change it later maybe
+        Node *tmp1 = const_cast<Node *>(findNodeForLoop( root, l->getParentLoop() )); // pretty stupid but I'll change it later maybe
         assert( tmp1 != nullptr && "Subloop doesn't have a parent loop -- something is wrong with getLoopsInPreorder()" );
         tmp->setParent( tmp1 );
         tmp1->addChild( tmp );
@@ -237,7 +242,7 @@ namespace AutoMP
       if ( !l )
         continue;
 
-      Node *insert_pt = findNodeForLoop( root, l );
+      Node *insert_pt = const_cast<Node *>(findNodeForLoop( root, l ));
       assert( insert_pt && "No node found for loop" );
 
       Node *tmp = new Node();
@@ -262,6 +267,9 @@ namespace AutoMP
   // TODO (gc14): not complete at all
   bool FunctionTree::splitBasicBlocksByAnnotation(void)
   {
+    std::vector<Instruction *> split_points; // points to split basic blocks
+
+    // go through all basic blocks first before performing the split to keep iterators valid
     for ( auto &bb : *associated_function )
     {
       AnnotationSet prev_annots; // seen annotations
@@ -273,17 +281,19 @@ namespace AutoMP
           continue;
         }
 
-        /* auto meta = getMetadataAsStrings( &i ); */
-        /* std::unordered_set<std::pair<std::string, std::string>, pair_hash > current_meta = */
-        /*   std::unordered_set<std::pair<std::string, std::string>, pair_hash >(meta); */
         auto annots = parseAnnotationsForInst( &i );
 
+        /* sometimes the frontend doesn't attach metadata to instructions that should have metadata attached
+         * (e.g. on some getelementptr instructions)
+         * for now, ignore these and consider them as having the same annotations as the previous instruction
+         */
+
         // found mismatch -- should split basic block between i-1 and i
-        if ( prev_annots.size() != 0 && annots != prev_annots )
+        if ( prev_annots.size() != 0 && annots.size() != 0 && annots != prev_annots )
         {
           // invalidated_bbs.insert( i.getParent() );
           REPORT_DUMP(
-          errs() << "Found mismatch at " << *&i << "\n";
+          errs() << "Split point found at " << *&i << "\n";
           errs() << "Previous metadata was:\n";
           for ( const auto &m : prev_annots )
             errs() << m;
@@ -291,13 +301,77 @@ namespace AutoMP
           for ( const auto &m : annots )
             errs() << m;
           );
+          split_points.push_back( &i );
         }
 
         prev_annots = annots;
       }
     }
 
-    return false;
+    // if no split points are found, don't do anything
+    if ( !split_points.size() )
+      return false;
+
+    // actually do the basic block splitting
+    for ( auto &i : split_points )
+    {
+      BasicBlock *old = i->getParent();
+      BasicBlock *new_block = SplitBlock( old, i );
+    }
+
+    return true;
+  }
+
+  // fix when the frontend doesn't attach annotation to every instructions
+  bool FunctionTree::fixBasicBlockAnnotations(void)
+  {
+    LLVMContext &ctx = associated_function->getContext(); // a function is contained within a single context
+
+    for ( auto &bb : *associated_function )
+    {
+      MDNode *md = nullptr;
+
+      for ( auto &i : bb )
+      {
+        md = i.getMetadata( "note.noelle" );
+        if ( md )
+          break;
+      }
+#if 0
+      // find where annotations start for this basic block
+      // TODO FIXME this is really slow... we don't really need to calculate an AnnotationSet
+      for ( auto &i : bb )
+      {
+        AnnotationSet as = parseAnnotationsForInst( &i );
+        if ( as.size() != 0 )
+        {
+          md_found = &i;
+          break;
+        }
+      }
+
+      // if no annotations in this basic block, no need to fix it
+      if ( as.size() == 0 )
+        continue;
+
+      // construct metadata node
+      for ( auto &a : as )
+      {
+        MDString *key = MDString::get( ctx, a.getKey() );
+        MDString *value = MDString::get( ctx, a.getValue() );
+        MDNode *n = MDNode::get( ctx, {key, value} );
+      }
+#endif
+
+      if ( !md )
+        return false;
+
+      // insert it into each instruction in the basic block if it's not already there
+      /* for (auto &i : bb ) */
+      /* { */
+      /*   i.setMetadata("note.noelle", md); */
+      /* } */
+    }
   }
 
 #if 0
@@ -396,7 +470,6 @@ namespace AutoMP
     bool modified = false;
     std::set<BasicBlock *> visited_bbs;
 
-    errs() << "Associated function: " << f->getName() << "\n";
     associated_function = f;
 
     // construct root node
@@ -411,12 +484,17 @@ namespace AutoMP
     // split basic blocks based on annotation before adding them to the tree
     modified |= splitBasicBlocksByAnnotation();
 
+    // fix the fact that the frontend misses adding annotations to some instructions
+    // modified |= fixBasicBlockAnnotations();
+
     // add all loops (including subloops) to the tree
     addLoopContainersToTree( li );
 
     // supposedly adds annotations to loop container...
     // XXX (gc14): Make sure this is correct
     annotateLoops();
+
+    return false;
 
     // add basic blocks that don't belong to any loop to tree
     for ( auto &bb : *f )
@@ -497,6 +575,15 @@ namespace AutoMP
   }
 #endif
 
+  const AnnotationSet &FunctionTree::getAnnotationsForInst(const Instruction *) const
+  {
+    assert(0 && "getAnnotationsForInst(llvm::Instruction *) not implemented yet");
+  }
+
+  const AnnotationSet &FunctionTree::getAnnotationsForInst(const Instruction *, const Loop *) const
+  {
+    assert(0 && "getAnnotationsForInst(llvm::Instruction *, llvm::Loop *) not implemented yet");
+  }
 
   void FunctionTree::writeDotFile( const std::string filename )
   {
@@ -526,7 +613,7 @@ namespace AutoMP
 
   raw_ostream &operator<<(raw_ostream &os, const FunctionTree &tree)
   {
-    os << "Tree for function " << tree.associated_function->getName().str() << ":\n\n";
+    os << "------- FunctionTree for function " << tree.associated_function->getName().str() << " --------\n\n";
     os << "Nodes to instruction map:\n";
     tree.printNodeToInstructionMap();
     Function *af = tree.getFunction();

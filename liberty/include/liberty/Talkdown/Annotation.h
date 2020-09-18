@@ -25,7 +25,7 @@ namespace AutoMP
 
     // functions that are needed by some stdlib things like unordered_map, unordered_set, etc
     bool operator<(const Annotation &a) const { return true; } // for std::set::insert
-    bool operator==(const Annotation &a) const { return !key.compare(a.key) && !value.compare(a.value); }
+    bool operator==(const Annotation &a) const { return !key.compare(a.key) && !value.compare(a.value) && a.getLoop() == loop; }
 
     // printing stuff
     // NOTE: Could have made this template but that seems weird...
@@ -55,6 +55,9 @@ namespace AutoMP
   // store annotations in these things
   typedef std::unordered_set<Annotation, AnnotHashFn> AnnotationSet;
   typedef std::unordered_map<llvm::Loop *, Annotation> LoopToAnnotationMap;
+
+  // return true if matches an annotation annotation set
+  bool withinAnnotationSet(const AnnotationSet &, std::string, std::string, const llvm::Loop *);
 
   // Used for debugging purposes
   llvm::raw_ostream &operator<<(llvm::raw_ostream &, const std::pair<const llvm::Instruction *, const AnnotationSet &> &);

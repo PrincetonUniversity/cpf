@@ -20,10 +20,16 @@
 ## Notes
 
 If annotation belongs to a loop header, then it should be attached to the loop container node (???)
+
 Check in SemiLocalFunAA how LoopAA::alias() is called within a modref
+
 Also look at KillFlow and CallSiteDepthCombinator to see how to get the topAA()
+
 In PipelineStrategy, dump the number of sequential and parallel SCCs.
+
   Probably in PipelineStrategy::pStageWeightPrint()
+
+Do we want to add BasicBlockContainerNode?
 
 ## Caveats
 
