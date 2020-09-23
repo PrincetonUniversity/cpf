@@ -31,8 +31,14 @@
   "_ZNSo3putEc", //std::basic_ostream<char, std::char_traits<char> >::put(char)
   "_Znwm", // C++ operator new
   "_Znam", // C++ operator new[]
+  "_ZnwmRKSt9nothrow_t", // C++ operator new no throw
+  "_ZnamRKSt9nothrow_t", // C++ operator new[] no throw
   "_ZdlPv", // C++ operator delete
   "_ZdaPv", // C++ operator delete[]
+  "_ZdlPvm", // C++ operator delete with size
+  "_ZdaPvm", // C++ operator delete[] with size
+  "_ZdlPvRKSt9nothrow_t", // C++ operator delete no throw
+  "_ZdaPvRKSt9nothrow_t", // C++ operator delete[] no throw
   "abort",
   "access",
   "atexit",

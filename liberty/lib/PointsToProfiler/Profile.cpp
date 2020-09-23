@@ -48,6 +48,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/Utilities/CallSiteFactory.h"
@@ -401,37 +402,6 @@ private:
     return modified;
   }
 
-  bool realign_instruction(Instruction *inst)
-  {
-    if( AllocaInst *alloca = dyn_cast<AllocaInst>(inst) )
-      return realign_object(alloca);
-
-    CallSite cs = getCallSite(inst);
-    if( cs.getInstruction() )
-    {
-      if( Indeterminate::isMalloc(cs) )
-      {
-        ++numRealigned;
-        cs.setCalledFunction(malloc16);
-        return true;
-      }
-      else if( Indeterminate::isCalloc(cs) )
-      {
-        ++numRealigned;
-        cs.setCalledFunction(calloc16);
-        return true;
-      }
-      else if( Indeterminate::isRealloc(cs) )
-      {
-        ++numRealigned;
-        cs.setCalledFunction(realloc16);
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   bool realign_instructions(Function *fcn)
   {
     if( DontTrackResidues )
@@ -439,14 +409,61 @@ private:
 
     // Allocas and calls to malloc, calloc, realloc, ...
     bool modified = false;
+    std::set<Instruction*> toBeReplacedInsts;
     for(Function::iterator i=fcn->begin(), e=fcn->end(); i!=e; ++i)
     {
       BasicBlock *bb = &*i;
       for(BasicBlock::iterator j=bb->begin(), z=bb->end(); j!=z; ++j)
       {
         Instruction *inst = &*j;
-        modified |= realign_instruction(inst);
+
+        if( AllocaInst *alloca = dyn_cast<AllocaInst>(inst) )
+          modified |= realign_object(alloca);
+
+        CallSite cs = getCallSite(inst);
+        if( cs.getInstruction() )
+        {
+          if( Indeterminate::isMalloc(cs) )
+          {
+            ++numRealigned;
+            if( Indeterminate::isNewNoThrow(cs) )
+            {
+              // this is to avoid invalidate the bb iterator
+              toBeReplacedInsts.insert(inst);
+              modified = true;
+            }
+            else {
+              cs.setCalledFunction(malloc16);
+            }
+            modified = true;
+          }
+          else if( Indeterminate::isCalloc(cs) )
+          {
+            ++numRealigned;
+            cs.setCalledFunction(calloc16);
+            modified = true;
+          }
+          else if( Indeterminate::isRealloc(cs) )
+          {
+            ++numRealigned;
+            cs.setCalledFunction(realloc16);
+            modified = true;
+          }
+        }
+
       }
+    }
+
+    // replace all No Throw New and New[]
+    for (Instruction* inst : toBeReplacedInsts){
+      CallSite cs = getCallSite(inst);
+      // need to ignore the second actual arg
+      SmallVector<Value *, 8> Args(cs.arg_begin(), cs.arg_end() - 1); // remove the last arg
+      CallInst *newCall= CallInst::Create(malloc16, Args);
+
+      BasicBlock::iterator ii(inst);
+      ReplaceInstWithInst(inst->getParent()->getInstList(), ii,
+          newCall);
     }
 
     return modified;
