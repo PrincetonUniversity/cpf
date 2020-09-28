@@ -138,8 +138,6 @@ uint64_t worker_total_invocation_time = 0;
   uint64_t worker_committed_killpriv_to_partial_time = 0;
   uint64_t worker_acquire_lock_time = 0;
 
-uint64_t total_produces, total_consumes;
-
 CheckpointRecord checkpoints[ MAX_CHECKPOINTS ];
 unsigned numCheckpoints;
 
