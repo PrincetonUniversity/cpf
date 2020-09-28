@@ -8,7 +8,7 @@
 #define ALLOCATE LAMP_external_allocate
 #define DEALLOCATE LAMP_external_deallocate
 
-#include "../utils/profile_function_wrappers.h"
+// #include "../utils/profile_function_wrappers.h"
 
 #undef ALLOCATE
 #undef DEALLOCATE
@@ -21,6 +21,8 @@
 #include <map>
 #include <vector>
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 
 // Generality-is-slow implies:
 //  - do not collect stats on total number of dynamic loads, stores
