@@ -24,13 +24,15 @@ clean:
 	rm -rf noelle-install-release
 
 noelle-objects-debug: export PDG_INSTALL_DIR=${BASE_DIR}/noelle-install-debug
-noelle-objects-debug: export PATH=${LLVM_INSTALL_DEBUG}/bin/:${ORIGINAL_PATH}
+noelle-objects-debug: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
+noelle-objects-debug: export LLVM_CMAKE_DIR=${LLVM_INSTALL_DEBUG}/lib/cmake/llvm
 noelle-objects-debug: noelle
 	make -C noelle clean
 	make -C noelle all
-	
+
 noelle-objects-release: export PDG_INSTALL_DIR=${BASE_DIR}/noelle-install-release
 noelle-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
+noelle-objects-release: export LLVM_CMAKE_DIR=${LLVM_INSTALL_RELEASE}/lib/cmake/llvm
 noelle-objects-release: noelle
 	make -C noelle clean
-	make -C noelle all 
+	make -C noelle all
