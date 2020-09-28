@@ -12,7 +12,6 @@ $(error LLVM_INSTALL_RELEASE is not set)
 endif
 
 all: noelle-objects-debug noelle-objects-release
-# all: noelle-objects-debug
 .PHONY: noelle-objects-debug noelle-objects-release clean
 
 noelle:
@@ -28,8 +27,6 @@ noelle-objects-debug: export PDG_INSTALL_DIR=${BASE_DIR}/noelle-install-debug
 noelle-objects-debug: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 noelle-objects-debug: export LLVM_CMAKE_DIR=/home/greg/cpf-workspace/llvm-install-debug/lib/cmake/llvm
 noelle-objects-debug: noelle
-	# make -C noelle/src clean
-	# make -C noelle/src all
 	make -C noelle clean
 	make -C noelle all
 	
@@ -37,7 +34,5 @@ noelle-objects-release: export PDG_INSTALL_DIR=${BASE_DIR}/noelle-install-releas
 noelle-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 noelle-objects-release: export LLVM_CMAKE_DIR=/home/greg/cpf-workspace/llvm-install-release/lib/cmake/llvm
 noelle-objects-release: noelle
-	# make -C noelle/src clean
-	# make -C noelle/src all
 	make -C noelle clean
 	make -C noelle all
