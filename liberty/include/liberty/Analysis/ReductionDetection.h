@@ -4,7 +4,6 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/LoopInfo.h"
 
-#include "typedefs.h"
 #include "liberty/Redux/Reduction.h"
 
 #include "PDG.hpp"

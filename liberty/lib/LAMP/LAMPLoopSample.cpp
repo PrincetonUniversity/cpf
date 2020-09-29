@@ -59,7 +59,6 @@
 #include "liberty/Utilities/GlobalCtors.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/InsertPrintf.h"
-#include "typedefs.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include <stdio.h>
 #include "liberty/Utilities/LiveValues.h"

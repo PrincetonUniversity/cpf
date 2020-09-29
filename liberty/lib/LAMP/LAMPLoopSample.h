@@ -2,7 +2,6 @@
 #define LLVM_LIBERTY_LAMP_LOOP_SAMPLE
 
 #include "llvm/Pass.h"
-#include "typedefs.h"
 
 namespace liberty {
   using namespace llvm;
