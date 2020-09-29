@@ -1,4 +1,3 @@
-# add_subdirectory(SLAMP)
 add_subdirectory(LAMP)
 add_subdirectory(Analysis)
 add_subdirectory(Strategy)
