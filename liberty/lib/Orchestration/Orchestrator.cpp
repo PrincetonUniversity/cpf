@@ -22,38 +22,6 @@ namespace liberty {
 namespace SpecPriv {
 using namespace llvm;
 
-/*
-static cl::opt<bool>
-    PrintFullPDG("specpriv-print-full-dag-scc", cl::init(false), cl::NotHidden,
-                 cl::desc("Print full DAG-SCC-PDG for each hot loop"));
-
-static unsigned filename_nonce = 0;
-
-void printFullPDG(const Loop *loop, const PDG &pdg, const SCCs &sccs,
-                  bool bailout = false) {
-  if (!PrintFullPDG)
-    return;
-  const BasicBlock *header = loop->getHeader();
-  const Function *fcn = header->getParent();
-
-  std::string hname = header->getName();
-  std::string fname = fcn->getName();
-
-  ++filename_nonce;
-
-  char fn[256];
-  snprintf(fn, 256, "pdg-%s-%s--%d.dot", fname.c_str(), hname.c_str(),
-           filename_nonce);
-
-  char fn2[256];
-  snprintf(fn2, 256, "pdg-%s-%s--%d.tred", fname.c_str(), hname.c_str(),
-           filename_nonce);
-
-  sccs.print_dot(pdg, fn, fn2, bailout);
-  errs() << "See " << fn << " and " << fn2 << '\n';
-}
-*/
-
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
@@ -67,26 +35,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     PerformanceEstimator *perf) {
   std::vector<Remediator_ptr> remeds;
 
-  // reduction remediator
-  //auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
-  //reduxRemed->setLoopOfInterest(A);
-  //remeds.push_back(std::move(reduxRemed));
-
-  // separation logic remediator (Privateer PLDI '12)
-  //remeds.push_back(std::make_unique<LocalityRemediator>(rd, asgn, proxy));
-
-  // pointer-residue remediator (Nick Johnson's thesis)
-  //remeds.push_back(std::make_unique<PtrResidueRemediator>(&ptrResMan));
-
-  //// memory specualation remediator (with SLAMP)
-  ////remeds.push_back(std::make_unique<SmtxSlampRemediator>(&smtxMan));
-
-  // memory speculation remediator 2 (with LAMP)
-  //remeds.push_back(std::make_unique<SmtxLampRemediator>(&smtxLampMan, proxy, perf));
-
-  // Loop-Invariant Loaded-Value Prediction
-  //remeds.push_back(
-  //    std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
+  /* produce remedies for control deps */
 
   // control speculation remediator
   ctrlspec->setLoopOfInterest(A->getHeader());
@@ -94,28 +43,25 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   ctrlSpecRemed->processLoopOfInterest(A);
   remeds.push_back(std::move(ctrlSpecRemed));
 
-  // privitization remediator
-  //auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
-  //    ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
-  //remeds.push_back(std::move(privRemed));
+
+  /* produce remedies for register deps */
+  //TODO: re-enable these two remediators
+
+  // reduction remediator
+  //auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
+  //reduxRemed->setLoopOfInterest(A);
+  //remeds.push_back(std::move(reduxRemed));
 
   // counted induction variable remediator
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage
   //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
-  // TXIO remediator
-  //remeds.push_back(std::make_unique<TXIORemediator>());
 
-  // memory versioning remediator
-  //remeds.push_back(std::make_unique<MemVerRemediator>());
+  /* produce remedies for memory deps */
 
-  // commutative libs remediator
-  remeds.push_back(std::make_unique<CommutativeLibsRemediator>());
-
-  // mem speculation combining lamp, ctrl spec, value prediction, points-to
-  // spec, separation logic spec, txio, commlibsaa, ptr-residue and static
-  // analysis. both SCAF and transformation analysis.
-  // all flow deps are remediated via this remediator stack
+  // full speculative analysis stack combining lamp, ctrl spec, value prediction,
+  // points-to spec, separation logic spec, txio, commlibsaa, ptr-residue and
+  // static analysis.
   remeds.push_back(std::make_unique<MemSpecAARemediator>(
       proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
       &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
