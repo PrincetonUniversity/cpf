@@ -67,7 +67,6 @@ else
 fi
 
 LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
-      -load $LIBERTY_LIBS_DIR/libExclusions.so
       -load $NOELLE_LIBS_DIR/libSvf.so
       -load $NOELLE_LIBS_DIR/libCudd.so
       -load $LIBERTY_LIBS_DIR/libAnalysis.so
@@ -75,7 +74,6 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $LIBERTY_LIBS_DIR/libMetadata.so
       -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
       -load $LIBERTY_LIBS_DIR/libLAMP.so
-      -load $LIBERTY_LIBS_DIR/libSLAMP.so
       -load $LIBERTY_LIBS_DIR/libRedux.so
       -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
