@@ -34,7 +34,7 @@ all: cpf-objects-debug cpf-objects-release
 clean:
 	rm -rf cpf-build-debug cpf-build-release $(CPF_INSTALL_DEBUG) $(CPF_INSTALL_RELEASE)
 
-cpf-objects-debug: export PATH=${LLVM_INSTALL_DEBUG}/bin/:${ORIGINAL_PATH}
+cpf-objects-debug: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 cpf-objects-debug: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_DEBUG}
 cpf-objects-debug:
 	mkdir -p cpf-build-debug

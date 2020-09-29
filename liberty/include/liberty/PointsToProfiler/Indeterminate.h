@@ -37,6 +37,7 @@ struct Indeterminate
 
   static bool isMallocOrCalloc(const CallSite &cs);
   static bool isMalloc(const CallSite &cs);
+  static bool isNewNoThrow(const CallSite &cs);
   static bool isCalloc(const CallSite &cs);
   static bool isRealloc(const CallSite &cs);
 

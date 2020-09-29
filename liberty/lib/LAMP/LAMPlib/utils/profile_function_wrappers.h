@@ -398,7 +398,7 @@ void functions_init(void) {
     memprof_write_region(&stdin, sizeof(stdin));
     memprof_write_region(&stderr, sizeof(stderr));
     memprof_write_region(&stdout, sizeof(stdout));
-    memprof_write_region(&sys_nerr, sizeof(sys_nerr));
+    // memprof_write_region(&sys_nerr, sizeof(sys_nerr));
 
     {
         const unsigned short int *ctype_ptr = (*__ctype_b_loc()) - 128;

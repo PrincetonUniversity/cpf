@@ -276,7 +276,7 @@ void __prof_begin()
   sigaction( SIGIO, &action, 0 );
   sigaction( SIGPWR, &action, 0 );
 //  sigaction( SIGLOST, &action, 0 );
-  sigaction( SIGUNUSED, &action, 0 );
+  sigaction( SIGSYS, &action, 0 );
 
   atexit( &end_helper );
 }

@@ -206,7 +206,14 @@ bool Indeterminate::isMalloc(const CallSite &cs)
 {
   return calls(cs,"malloc")
   ||     calls(cs,"_Znwm") // C++ operator new
-  ||     calls(cs,"_Znam"); // C++ operator new[]
+  ||     calls(cs,"_Znam") // C++ operator new[]
+  ||     isNewNoThrow(cs);
+}
+
+bool Indeterminate::isNewNoThrow(const CallSite &cs)
+{
+  return calls(cs,"_ZnwmRKSt9nothrow_t") // C++ operator new no throw
+  ||     calls(cs,"_ZnamRKSt9nothrow_t"); // C++ operator new[] no throw
 }
 
 bool Indeterminate::isCalloc(const CallSite &cs)
@@ -235,7 +242,11 @@ bool Indeterminate::isFree(const CallSite &cs)
 {
   return calls(cs,"free")
   ||     calls(cs,"_ZdlPv") // C++ operator delete
-  ||     calls(cs,"_ZdaPv"); // C++ operator delete[];
+  ||     calls(cs,"_ZdaPv") // C++ operator delete[];
+  ||     calls(cs,"_ZdlPvm") // C++ operator delete with size
+  ||     calls(cs,"_ZdaPvm") // C++ operator delete[] with size
+  ||     calls(cs,"_ZdlPvRKSt9nothrow_t") // C++ operator delete no throw
+  ||     calls(cs,"_ZdaPvRKSt9nothrow_t"); // C++ operator delete[] no throw
 }
 
 bool Indeterminate::isFopen(const CallSite &cs)
