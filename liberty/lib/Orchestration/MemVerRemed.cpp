@@ -15,7 +15,6 @@ STATISTIC(numNoMemDep,
           "Number of false mem deps removed with memory versioning");
 
 void MemVerRemedy::apply(Task *task) {
-  // TODO: code for application of memory versioning here.
   // doing process-based parallelization suffices
 }
 

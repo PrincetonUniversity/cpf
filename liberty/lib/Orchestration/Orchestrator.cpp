@@ -66,6 +66,11 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
       proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
       &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
 
+  // memory versioning remediator (used separately from the rest since it cannot
+  // collaborate with analysis modules. It cannot answer modref or alias
+  // queries. Only addresses dependence queries about false deps)
+  remeds.push_back(std::make_unique<MemVerRemediator>());
+
   return remeds;
 }
 
