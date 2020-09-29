@@ -32,12 +32,8 @@
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 
 #include "liberty/GraphAlgorithms/Ebk.h"
-//#include "PtrResidueAA.h"
-//#include "LocalityAA.h"
-//#include "RoI.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
-//#include "Transform.h"
 #include "liberty/Orchestration/LocalityAA.h"
 
 #include "LoopDependenceInfo.hpp"
@@ -85,7 +81,6 @@ void Selector::analysisUsage(AnalysisUsage &au)
   au.addRequired< TargetLibraryInfoWrapperPass >();
   au.addRequired< BlockFrequencyInfoWrapperPass >();
   au.addRequired< BranchProbabilityInfoWrapperPass >();
-  //au.addRequired< LoopAA >();
   au.addRequired< PDGBuilder >();
   au.addRequired< ModuleLoops >();
   au.addRequired< LoopProfLoad >();
@@ -146,9 +141,6 @@ unsigned Selector::computeWeights(
 {
   unsigned numApplicable = 0;
 
-  //ControlSpeculation *ctrlspec = getControlSpeculation();
-  //PredictionSpeculation *predspec = getPredictionSpeculation();
-
   Pass &proxy = getPass();
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
   PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
@@ -185,7 +177,6 @@ unsigned Selector::computeWeights(
     Loop *A = vertices[i];
     BasicBlock *hA = A->getHeader();
     Function *fA = hA->getParent();
-    //const Twine nA = fA->getName() + " :: " + hA->getName();
 
     REPORT_DUMP(errs()
           << "\n\n=--------------------------------------------------------"
@@ -363,7 +354,6 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 
     BasicBlock *hA = A->getHeader();
     Function *fA = hA->getParent();
-    //const Twine nA = fA->getName() + " :: " + hA->getName();
 
     for(unsigned j=i+1; j<N; ++j)
     {
@@ -371,7 +361,6 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
 
       BasicBlock *hB = B->getHeader();
       Function *fB = hB->getParent();
-      //const Twine nB = fB->getName() + " :: " + hB->getName();
 
       /* If we can prove simultaneous activation,
        * exclude one of the loops */
@@ -675,13 +664,6 @@ bool Selector::doInlining(LateInliningOpportunities &opportunities)
   //   of resetAfterInline)
   Pass &proxy = getPass();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
-  //sot
-  //ProfileInfo &edgeprof = proxy.getAnalysis< ProfileInfo >();
-  // since BranchProbabilityInfo and BlockFrequencyInfo are FunctionPasses we cannot call them here.
-  // need to point to specific functions. Call getAnalysis when resetAfterInline
-  //BranchProbabilityInfo &bpi = proxy.getAnalysis< BranchProbabilityInfoWrapperPass >().getBPI();
-  //BlockFrequencyInfo &bfi = proxy.getAnalysis< BlockFrequencyInfoWrapperPass >().getBFI();
-
   LoopProfLoad &loopprof = proxy.getAnalysis< LoopProfLoad >();
   UpdateEdgeLoopProfilers edgeloop( proxy, loopprof );
 
@@ -784,9 +766,6 @@ bool Selector::doSelection(
     LateInliningOpportunities opportunities;
     numApplicable = computeWeights(vertices, edges, weights, scaledweights, opportunities);
 
-    // if( DebugFlag
-    // && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
-
     REPORT_DUMP(summarizeParallelizableLoops(vertices,scaledweights,numApplicable));
 
     if( opportunities.empty() )
@@ -818,8 +797,6 @@ bool Selector::doSelection(
   // are the loops we have selected.
   const int wt = ebk(edges, scaledweights, maxClique);
 
-  // if( DebugFlag
-  // && (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify") ) )
   REPORT_DUMP(
     const unsigned tt = lpl.getTotTime();
     const double speedup = tt / (tt - wt/(double)FixedPoint);
@@ -849,7 +826,7 @@ bool Selector::doSelection(
     // 'loop' is a loop we will parallelize
     // if (DebugFlag &&
     //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-    
+
     REPORT_DUMP(printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
                            lpl, true, *perf));
 
@@ -871,9 +848,6 @@ bool Selector::doSelection(
     }
 
     // 'deleteme' is a loop we will NOT parallelize.
-    // if (DebugFlag &&
-    //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-  
     REPORT_DUMP(printOneLoopStrategy(errs(), deleteme,
                            strategies[deleteme->getHeader()].get(), lpl, false,
                            *perf));

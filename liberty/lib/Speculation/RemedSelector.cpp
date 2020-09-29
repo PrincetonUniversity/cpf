@@ -13,19 +13,13 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-//#include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/SmtxSlampManager.h"
 #include "liberty/Speculation/SmtxManager.h"
 #include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/ModuleLoops.h"
 
-
-//#include "PtrResidueAA.h"
-//#include "LocalityAA.h"
-//#include "RoI.h"
 #include "liberty/Speculation/RemedSelector.h"
-//#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 
 namespace liberty
 {
@@ -111,7 +105,6 @@ void RemedSelector::resetAfterInline(
   const CallsPromotedToInvoke &call2invoke)
 {
   Classify &classify = getAnalysis< Classify >();
-  //PtrResidueSpeculationManager &prman = getAnalysis< PtrResidueSpeculationManager >();
   ControlSpeculation *ctrlspec = getAnalysis< ProfileGuidedControlSpeculator >().getControlSpecPtr();
   ProfileGuidedPredictionSpeculator &predspec = getAnalysis< ProfileGuidedPredictionSpeculator >();
   LAMPLoadProfile &lampprof = getAnalysis< LAMPLoadProfile >();
@@ -163,7 +156,6 @@ void RemedSelector::resetAfterInline(
   spresults.removeInstruction( callsite_no_longer_exists );
 
   predspec.reset();
-  //prman.reset();
   ctrlspec->reset();
 }
 
