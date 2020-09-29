@@ -1,13 +1,11 @@
 #define DEBUG_TYPE "ctrlspec"
 
-#include "liberty/Exclusions/Exclusions.h"
 #include "liberty/Analysis/CallsiteSearch.h"
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Analysis/CallsiteSearch.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
-//#include "liberty/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/Timer.h"
 
 #include "llvm/IR/IntrinsicInst.h"

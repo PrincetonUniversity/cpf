@@ -2,7 +2,6 @@
 #define MEMORY_SPACE_ASSUMPTIONS_H
 
 #include "typedefs.h"
-#include "liberty/Exclusions/Exclusions.h"
 #include "liberty/Target/QueueLibrary.h"
 
 namespace liberty {
