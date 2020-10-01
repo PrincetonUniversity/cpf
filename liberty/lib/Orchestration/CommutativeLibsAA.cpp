@@ -23,6 +23,12 @@ STATISTIC(numFunCallsMemDepRemoved,
 STATISTIC(numRegQueries, "Num register deps queries");
 STATISTIC(numRegDepRemoved, "Num register deps removed");
 
+bool CommutativeLibsRemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<CommutativeLibsRemedy> commLibsRhs =
+      std::static_pointer_cast<CommutativeLibsRemedy>(rhs);
+  return (this->functionName.compare(commLibsRhs->functionName) == -1);
+}
+
 // set of functions that are usually considered commutative
 // only address self commutative for now ( TODO: could also create CommSets or
 // assume that some fun calls are pure)
