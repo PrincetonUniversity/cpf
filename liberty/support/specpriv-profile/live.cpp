@@ -176,6 +176,15 @@ AUHolder AllocationUnitTable::add_temporary(const AUHolder &au)
       // std::cerr << "Address collision:\n"
       //           << " Old temporary at " << i->second->extents << ": "  << i->second << '\n'
       //           << " New temporary at " << au->extents << ": " << au << '\n';
+      // Ziyang 9/26: This can happen if the object is deleted by the deleting destructor
+      //              and the points-to profiler doesn't see in the deleting destructor;
+      //              or any other pattern where a virtual function that is not addressed
+      //              by devirtualization delete the object; or both.
+      //              FIXME: add new patterns;
+      //              (1) recognize D0Ev deleting destructor, and if it's an external function,
+      //              register it as if it's a delete
+      //              (2) recognize a virtual function call site with the pointer as an argument
+      //              and when the collision happens, assume the object is released.
       trailing_assert( false && "repeat address t-t" );
     }
   }
