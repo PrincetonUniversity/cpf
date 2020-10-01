@@ -3,7 +3,6 @@
 #define LAMP_COLLECTS_OUTPUT_DEPENDENCES  (0)
 
 #include "liberty/Orchestration/SmtxAA.h"
-#include "liberty/Orchestration/SmtxLampRemed.h"
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -28,6 +27,27 @@ namespace SpecPriv
     "smtx-threshhold", cl::init(0),
     cl::NotHidden,
     cl::desc("Maximum number of observed flows to report NoModRef"));
+
+  bool SmtxLampRemedy::compare(const Remedy_ptr rhs) const {
+    std::shared_ptr<SmtxLampRemedy> smtxRhs =
+        std::static_pointer_cast<SmtxLampRemedy>(rhs);
+    if (this->writeI == smtxRhs->writeI) {
+      if (this->readI == smtxRhs->readI) {
+        return this->memI < smtxRhs->memI;
+      }
+      return this->readI < smtxRhs->readI;
+    }
+    return this->writeI < smtxRhs->writeI;
+  }
+
+  unsigned long SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
+    assert(this->memI && "no memI in SmtxLampRemedy remedy???");
+    unsigned validation_weight = 0.0000738;
+    if (isa<LoadInst>(this->memI))
+      validation_weight = 0.0000276;
+    // multiply validation cost time with number of estimated invocations
+    this->cost = perf->weight_with_gravity(this->memI, validation_weight);
+  }
 
   LoopAA::AliasResult SmtxAA::alias(const Value *ptrA, unsigned sizeA,
                                     TemporalRelation rel, const Value *ptrB,

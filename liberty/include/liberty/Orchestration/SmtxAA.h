@@ -3,13 +3,27 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
-
+#include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/SmtxManager.h"
 
 namespace liberty {
 namespace SpecPriv {
 
 using namespace llvm;
+
+class SmtxLampRemedy : public Remedy {
+public:
+  const Instruction *writeI;
+  const Instruction *readI;
+  const Instruction *memI;
+
+  //void apply(Task *task);
+  bool compare(const Remedy_ptr rhs) const;
+  unsigned long setCost(PerformanceEstimator *perf);
+  StringRef getRemedyName() const { return "smtx-lamp-remedy"; };
+
+  bool isExpensive() { return true; }
+};
 
 struct SmtxAA : public LoopAA // Not a pass!
 {
