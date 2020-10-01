@@ -34,7 +34,7 @@ struct MinMaxReductionInfo {
   bool cmpTrueOnMinMax;
 
   // Other values that are live out with the min/max
-  ValueList reductionLiveOuts;
+  std::vector<Value*> reductionLiveOuts;
 
   /// List of edges affected by this reduction.
   typedef std::vector<DGEdge<Value *> *> Edges;
