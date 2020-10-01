@@ -39,6 +39,9 @@ using namespace llvm;
 using namespace std;
 using namespace liberty;
 
+static cl::opt<bool> RequiresDefaultCase(
+  "requires-default-case", cl::init(true), cl::NotHidden,
+  cl::desc("Whether to generate a default indirect call case. (default: true"));
 
   class ExternICallPromote: public ModulePass {
     public:
@@ -83,7 +86,7 @@ void ExternICallPromote::getAnalysisUsage(AnalysisUsage &AU) const
 bool ExternICallPromote::promoteExternalCallsite(Instruction *inst, SymbolList &symbols, Module &M) {
   CallSite cs(inst);
   const unsigned NumDirectCalls = symbols.size();
-  const unsigned N_alternatives = NumDirectCalls + 1; 
+  const unsigned N_alternatives = RequiresDefaultCase ? (NumDirectCalls +1) : NumDirectCalls;
 
   LLVM_DEBUG(errs() << "Transforming callsite (" << N_alternatives
       << ") ``" << *inst << "'':\n");
@@ -126,13 +129,17 @@ bool ExternICallPromote::promoteExternalCallsite(Instruction *inst, SymbolList &
         ctx, "direct_call_to_" + symbol, fcn, after);
 
     callees[i] = makeNewCall(cs, &symbol, alternatives[i], after, return_value_phi, M);
+    default_case = alternatives[i]; // arbitrary default case
   }
 
   // In all cases for external indirect call, we must emit a default case, which
   // falls-back to an indirect call.
-  default_case = BasicBlock::Create(ctx, "default_indirect", fcn, after);
 
-  makeNewCall(cs, nullptr, default_case, after, return_value_phi, M);
+  if (RequiresDefaultCase){
+    default_case = BasicBlock::Create(ctx, "default_indirect", fcn, after);
+
+    makeNewCall(cs, nullptr, default_case, after, return_value_phi, M);
+  }
 
   // Add instructions to dispatch to the appropriate direct call.
   // a sequence of compare and branch instructions.
@@ -185,7 +192,7 @@ bool ExternICallPromote::promoteExternalCallsite(Instruction *inst, SymbolList &
 // 'cs'.  Place this new call in 'where'.  Branches to 'after', and
 // update 'return_value_phi' if supplied.  If 'callee' is supplied,
 // redirect the call to 'callee'.
-Value* makeNewCall(const CallSite &cs, string *callee, BasicBlock *where,
+Value* ExternICallPromote::makeNewCall(const CallSite &cs, string *callee, BasicBlock *where,
     BasicBlock *after, PHINode *return_value_phi, Module &M)
 {
   Value *fcn_ptr = cs.getCalledValue();
@@ -195,11 +202,11 @@ Value* makeNewCall(const CallSite &cs, string *callee, BasicBlock *where,
   const SmallVector<Value*,4> actuals(cs.arg_begin(), cs.arg_end());
 
   // What are we going to call?
-  Value *target = fcn_ptr;
+  Value *target = nullptr;
   if( callee )
   {
     // Declare this function and get callee
-    target = M.getOrInsertFunction(*callee, fcn_ptr->getType()).getCallee();
+    target = M.getOrInsertFunction(*callee, cs.getFunctionType()).getCallee();
   }
   else {
     target = fcn_ptr; // default case
