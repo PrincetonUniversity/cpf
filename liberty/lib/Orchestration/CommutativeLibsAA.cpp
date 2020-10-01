@@ -6,7 +6,6 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Orchestration/CommutativeLibsAA.h"
-#include "liberty/Orchestration/CommutativeLibsRemed.h"
 
 #ifndef DEFAULT_COMM_LIBS_REMED_COST
 #define DEFAULT_COMM_LIBS_REMED_COST 100

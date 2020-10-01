@@ -17,7 +17,7 @@
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/SmtxSlampRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
-#include "liberty/Orchestration/CommutativeLibsRemed.h"
+#include "liberty/Orchestration/CommutativeLibsAA.h"
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
 #include "liberty/Orchestration/Remediator.h"

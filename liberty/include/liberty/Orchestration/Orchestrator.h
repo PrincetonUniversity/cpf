@@ -26,7 +26,7 @@
 //#include "liberty/Orchestration/MemAllocRemed.h"
 #include "liberty/Orchestration/LoopFissionRemed.h"
 //#include "liberty/Orchestration/ReplicaRemed.h"
-#include "liberty/Orchestration/CommutativeLibsRemed.h"
+#include "liberty/Orchestration/CommutativeLibsAA.h"
 //#include "liberty/Orchestration/CommutativeGuessRemed.h"
 //#include "liberty/Orchestration/PureFunRemed.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
