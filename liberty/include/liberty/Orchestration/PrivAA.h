@@ -4,10 +4,58 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
+#include "liberty/Orchestration/Remediator.h"
 
 namespace liberty {
 using namespace llvm;
 using namespace SpecPriv;
+
+class PrivRemedy : public Remedy {
+public:
+  //const StoreInst *storeI;
+  const Value *privPtr;
+  const Value *altPrivPtr;
+  const Value *localPtr;
+  bool ctrlSpecUsed;
+
+  enum PrivRemedType {
+    Normal = 0, // PartialOverlap
+    FullOverlap,
+    Local
+  };
+
+  PrivRemedType type;
+
+  //void apply(Task *task);
+  bool compare(const Remedy_ptr rhs) const;
+
+  StringRef getPrivRemedyName() const {
+    return "priv-remedy";
+    /*switch (type) {
+    case Normal:
+      return "priv-remedy";
+      break;
+    case FullOverlap:
+      return "priv-full-overlap-remedy";
+      break;
+    case Local:
+      return "priv-local-remedy";
+      break;
+    default:
+      assert(false && "No priv-remedy type?");
+    }*/
+  }
+
+  StringRef getRemedyName() const { return getPrivRemedyName(); };
+
+  bool isExpensive() {
+    if (type == Normal)
+      return true;
+    else
+      return false;
+  }
+};
+
 
 /// Adapts separation speculation to LoopAA.
 struct PrivAA : public LoopAA // Not a pass!

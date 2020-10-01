@@ -25,6 +25,23 @@ using namespace llvm;
 
 STATISTIC(numPrivNoMemDep, "Number of false mem deps removed by privitization");
 
+bool PrivRemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<PrivRemedy> privRhs =
+      std::static_pointer_cast<PrivRemedy>(rhs);
+  if (this->privPtr == privRhs->privPtr) {
+    if (this->altPrivPtr == privRhs->altPrivPtr) {
+      if (this->type == privRhs->type) {
+        return this->localPtr < privRhs->localPtr;
+      } else {
+        return this->type < privRhs->type;
+      }
+    } else {
+      this->altPrivPtr < privRhs->altPrivPtr;
+    }
+  }
+  return this->privPtr < privRhs->privPtr;
+}
+
 BasicBlock *PrivAA::getLoopEntryBB(const Loop *loop) {
   BasicBlock *header = loop->getHeader();
   BranchInst *term = dyn_cast<BranchInst>(header->getTerminator());
