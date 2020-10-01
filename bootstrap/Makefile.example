@@ -42,7 +42,7 @@ compile-cpf=1
 ##############
 
 # Make sure you have write privilege to both directories here
-install-prefix=~/cpf-workspace-test
+install-prefix=~/cpf-workspace
 cpf-root-path=/your/local/cpf/root
 
 # verbose output
