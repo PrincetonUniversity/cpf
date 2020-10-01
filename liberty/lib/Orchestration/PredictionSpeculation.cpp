@@ -23,10 +23,6 @@ bool NoPredictionSpeculation::isPredictable(const Instruction *I, const Loop *lo
   return false;
 }
 
-void LoadedValuePredRemedy::apply(Task *task) {
-  // code for application of loaded-value-pred-remed here.
-}
-
 bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
   std::shared_ptr<LoadedValuePredRemedy> valPredRhs =
       std::static_pointer_cast<LoadedValuePredRemedy>(rhs);
