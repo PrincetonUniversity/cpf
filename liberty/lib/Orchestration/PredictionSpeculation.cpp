@@ -6,7 +6,6 @@
 #include "llvm/Analysis/ValueTracking.h"
 
 #include "liberty/Utilities/FindUnderlyingObjects.h"
-#include "liberty/Orchestration/LoadedValuePredRemed.h"
 
 #ifndef DEFAULT_LOADED_VALUE_PRED_REMED_COST
 #define DEFAULT_LOADED_VALUE_PRED_REMED_COST 58

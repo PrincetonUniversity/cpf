@@ -3,7 +3,7 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Orchestration/LocalityRemed.h"
+#include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
 #include "liberty/Utilities/GetMemOper.h"
 

@@ -3,7 +3,7 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Orchestration/LocalityRemed.h"
+#include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/ShortLivedAA.h"
 
 #ifndef DEFAULT_LOCALITY_REMED_COST
