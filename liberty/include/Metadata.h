@@ -2,7 +2,6 @@
 #define LLVM_LIBERTY_METADATA_MANAGER
 
 #include "llvm/Pass.h"
-#include "typedefs.h"
 
 namespace liberty {
 	using namespace llvm;
