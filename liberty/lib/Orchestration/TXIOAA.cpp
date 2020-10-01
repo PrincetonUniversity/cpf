@@ -4,7 +4,6 @@
 #include "liberty/Utilities/FindUnderlyingObjects.h"
 
 #include "liberty/Orchestration/TXIOAA.h"
-#include "liberty/Orchestration/TXIORemed.h"
 #include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/GetMemOper.h"
 
@@ -17,6 +16,12 @@ namespace liberty
 using namespace llvm;
 
 STATISTIC(numTXIO, "Number of NoModRef from txio");
+
+bool TXIORemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<TXIORemedy> txioRhs =
+      std::static_pointer_cast<TXIORemedy>(rhs);
+  return this->printI < txioRhs->printI;
+}
 
 bool TXIOAA::isTXIOFcn(const Instruction *inst) {
   CallSite cs = getCallSite(inst);

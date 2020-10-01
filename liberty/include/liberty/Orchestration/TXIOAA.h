@@ -2,9 +2,20 @@
 #define LLVM_LIBERTY_DSMTX_TXIOAA_H
 
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Orchestration/Remediator.h"
+
 namespace liberty
 {
 using namespace llvm;
+
+class TXIORemedy : public Remedy {
+public:
+  const Instruction *printI;
+
+  void apply(Task *task);
+  bool compare(const Remedy_ptr rhs) const;
+  StringRef getRemedyName() const { return "txio-remedy"; };
+};
 
 struct TXIOAA: public LoopAA // Not a pass!
 {
