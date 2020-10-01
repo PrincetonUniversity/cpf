@@ -23,6 +23,28 @@ bool NoPredictionSpeculation::isPredictable(const Instruction *I, const Loop *lo
   return false;
 }
 
+void LoadedValuePredRemedy::apply(Task *task) {
+  // code for application of loaded-value-pred-remed here.
+}
+
+bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<LoadedValuePredRemedy> valPredRhs =
+      std::static_pointer_cast<LoadedValuePredRemedy>(rhs);
+  //if (this->ptr == valPredRhs->ptr)
+  //  return this->write < valPredRhs->write;
+  return this->ptr < valPredRhs->ptr;
+}
+
+unsigned long LoadedValuePredRemedy::setCost(PerformanceEstimator *perf,
+                                             const Loop *loop) {
+  // 1 cmp, 1 branch
+  unsigned validation_weight = 101;
+  const Instruction *gravity = loop->getHeader()->getTerminator();
+  assert(gravity && "no terminator in BB??");
+  this->cost =
+      Remediator::estimate_validation_weight(perf, gravity, validation_weight);
+}
+
 void PredictionAA::setLoopOfInterest(Loop *loop) {
   predictableMemLocs.clear();
   nonPredictableMemLocs.clear();

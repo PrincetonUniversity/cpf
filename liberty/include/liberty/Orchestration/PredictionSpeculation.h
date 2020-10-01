@@ -17,6 +17,7 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/Orchestration/Remediator.h"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -39,6 +40,18 @@ struct PredictionSpeculation
 struct NoPredictionSpeculation : public PredictionSpeculation
 {
   virtual bool isPredictable(const Instruction *I, const Loop *loop);
+};
+
+class LoadedValuePredRemedy : public Remedy {
+public:
+  const Value *ptr; // pointer of loop-invariant load instruction
+  bool write;
+  const Instruction *loadI;
+
+  void apply(Task *task);
+  bool compare(const Remedy_ptr rhs) const;
+  unsigned long setCost(PerformanceEstimator *perf, const Loop *loop);
+  StringRef getRemedyName() const { return "invariant-value-pred-remedy"; };
 };
 
 // You can use it as a LoopAA too!
