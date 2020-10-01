@@ -13,12 +13,29 @@
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/Orchestration/Remediator.h"
 
 namespace liberty
 {
 namespace SpecPriv
 {
 using namespace llvm;
+
+class PtrResidueRemedy : public Remedy {
+public:
+  const Value *ptr1;
+  const Ctx *ctx1;
+  const Value *ptr2;
+  const Ctx *ctx2;
+
+  const Value *ptr;
+  const Ctx *ctx;
+
+  //void apply(Task *task);
+  bool compare(const Remedy_ptr rhs) const;
+  unsigned long setCost(PerformanceEstimator *perf, const Value *ptr);
+  StringRef getRemedyName() const { return "ptr-residue-remedy"; };
+};
 
 struct PtrResidueAA : public LoopAA // Not a pass!
 {

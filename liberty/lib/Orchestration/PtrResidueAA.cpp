@@ -4,7 +4,6 @@
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 
 #include "liberty/Orchestration/PtrResidueAA.h"
-#include "liberty/Orchestration/PtrResidueRemed.h"
 
 #ifndef DEFAULT_PTR_RESIDUE_REMED_COST
 #define DEFAULT_PTR_RESIDUE_REMED_COST 60
@@ -21,6 +20,37 @@ STATISTIC(numApplicable, "Num applicable queries");
 STATISTIC(numNoAlias, "Num no-alias / no-modref");
 STATISTIC(numBeneChecks, "Num times we had to check for benefit");
 STATISTIC(numBenefit, "Num no-alias / no-modref which require speculation");
+
+bool PtrResidueRemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<PtrResidueRemedy> ptrResRhs =
+      std::static_pointer_cast<PtrResidueRemedy>(rhs);
+  if (this->ptr == ptrResRhs->ptr) {
+    return this->ctx < ptrResRhs->ctx;
+  }
+  return this->ptr < ptrResRhs->ptr;
+  /*
+  if (this->ptr1 == ptrResRhs->ptr1) {
+    if (this->ctx1 == ptrResRhs->ctx1) {
+      if (this->ptr2 == ptrResRhs->ptr2) {
+        return this->ctx2 < ptrResRhs->ctx2;
+      }
+      return this->ptr2 < ptrResRhs->ptr2;
+    }
+    return this->ctx1 < ptrResRhs->ctx1;
+  }
+  return this->ptr1 < ptrResRhs->ptr1;
+  */
+}
+
+unsigned long PtrResidueRemedy::setCost(PerformanceEstimator *perf,
+                                        const Value *ptr) {
+  // 1 cmp, 1 bitwise, 1 branch
+  unsigned validation_weight = 201;
+  this->cost = 0;
+  if (const Instruction *gravity = dyn_cast<Instruction>(ptr))
+    this->cost += Remediator::estimate_validation_weight(perf, gravity,
+                                                         validation_weight);
+}
 
 // Rotate bv to the left by N bits
 static uint16_t rol_i16(uint16_t bv, unsigned N)
