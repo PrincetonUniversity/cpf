@@ -52,7 +52,9 @@ void DevirtualizationAnalysis::studyModule(Module &mod)
   unsigned numS = 0;
   for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i, ++numS)
   {
+    // go through each function
     studyFunction(&*i);
+
     LLVM_DEBUG(
       if( (numS % 25) == 0 )
         errs() << "Studied " << numS << " / " << mod.size() << " functions.\n";
