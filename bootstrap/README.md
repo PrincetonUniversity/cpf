@@ -5,7 +5,7 @@ The bootstrap scripts for the CPF infrastructure.
 1. `cp Makefile.example Makefile`
 2. Edit Makefile and configure whether to recompile LLVM and NOELLE, where to
    install, verbosity, etc
-3. `make all` (this will start to compile and install with 32 threads)
+3. `make all` (this will start to compile and install with 16 threads)
 4. If a target failed and the verbose mode was not turned on, check out
    TARGET.log (e.g., llvm.log) under `install-prefix`.
 
