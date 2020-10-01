@@ -40,6 +40,64 @@ STATISTIC(numReusedPriv,      "Num avoid extra private inst");
 STATISTIC(numUnclassifiedPtrs,"Num of unclassified pointers");
 STATISTIC(numSubSep,          "Num separated via subheaps");
 
+void LocalityRemedy::apply(Task *task) {}
+
+bool LocalityRemedy::compare(const Remedy_ptr rhs) const {
+  std::shared_ptr<LocalityRemedy> sepRhs =
+      std::static_pointer_cast<LocalityRemedy>(rhs);
+
+  if (this->privateI == sepRhs->privateI) {
+    if (this->privateLoad == sepRhs->privateLoad) {
+      if (this->reduxS == sepRhs->reduxS) {
+        if (this->ptr1 == sepRhs->ptr1) {
+          if (this->ptr2 == sepRhs->ptr2) {
+            return this->ptr < sepRhs->ptr;
+          }
+          return this->ptr2 < sepRhs->ptr2;
+        }
+        return this->ptr1 < sepRhs->ptr1;
+      }
+      return this->reduxS < sepRhs->reduxS;
+    }
+    return this->privateLoad < sepRhs->privateLoad;
+  }
+  return this->privateI < sepRhs->privateI;
+}
+
+void LocalityRemedy::setCost(PerformanceEstimator *perf) {
+  unsigned validation_weight;
+  switch (type) {
+  case ReadOnly:
+  case Redux:
+  case Local: // local also need to increment and decrement alloc count during
+              // alloc. Ignored for now
+  case KillPriv:  // not exactly for free
+  case SharePriv: // not exactly for free
+  case Separated: // no expected to be used
+  case Subheaps:  // no expected to be used
+    this->cost = 0;
+    break;
+  case Private:
+    assert(this->privateI && "no privateI in Private remedy???");
+    validation_weight = 0.0000738;
+    if (isa<LoadInst>(this->privateI))
+      validation_weight = 0.0000276;
+    // multiply validation cost time with number of estimated invocations
+    this->cost = perf->weight_with_gravity(this->privateI, validation_weight);
+    break;
+  case UOCheck:
+    this->cost = 0;
+    validation_weight = 0.0000208;
+    assert(this->ptr && "no pointer in UOCheck remedy???");
+    if (const Instruction *gravity = dyn_cast<Instruction>(this->ptr))
+      // multiply validation cost time with number of estimated invocations
+      this->cost = perf->weight_with_gravity(gravity, validation_weight);
+    break;
+  default:
+    assert(false && "No locality-remedy type?");
+  }
+}
+
 void LocalityAA::populateCheapPrivRemedies(Ptrs aus, Remedies &R) {
   Remedies privR = asgn.getRemedForPrivAUs(aus);
   for (auto remed : privR)
