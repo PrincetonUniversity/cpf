@@ -27,7 +27,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
     TargetLibraryInfo *tli,
     //LoopDependenceInfo &ldi,
-    SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
+    SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
     KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
@@ -230,7 +230,7 @@ bool Orchestrator::findBestStrategy(
     //LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-    TargetLibraryInfo *tli, SmtxSlampSpeculationManager &smtxMan,
+    TargetLibraryInfo *tli,
     SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
@@ -257,7 +257,7 @@ bool Orchestrator::findBestStrategy(
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds =
       getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
-                     smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
+                     smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
                      loopAA, kill, killflowA, callsiteA, &perf);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {

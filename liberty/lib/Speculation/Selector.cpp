@@ -151,8 +151,6 @@ unsigned Selector::computeWeights(
       proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
   PredictionSpeculation *loadedValuePred =
       &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
-  SmtxSlampSpeculationManager &smtxMan =
-      proxy.getAnalysis<SmtxSlampSpeculationManager>();
   SmtxSpeculationManager &smtxLampMan =
       proxy.getAnalysis<SmtxSpeculationManager>();
   PtrResidueSpeculationManager &ptrResMan =
@@ -228,7 +226,7 @@ unsigned Selector::computeWeights(
 
       bool applicable = orch->findBestStrategy(
           A, *pdg, //ldi,
-          *perf, ctrlspec, loadedValuePred, mloops, tli, smtxMan,
+          *perf, ctrlspec, loadedValuePred, mloops, tli,
           smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
           killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),

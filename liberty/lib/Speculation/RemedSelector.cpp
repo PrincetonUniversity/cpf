@@ -13,7 +13,6 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Speculation/SmtxSlampManager.h"
 #include "liberty/Speculation/SmtxManager.h"
 #include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Utilities/CallSiteFactory.h"
@@ -31,7 +30,6 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
   Selector::analysisUsage(au);
 
   au.addRequired< SLAMPLoadProfile >();
-  au.addRequired< SmtxSlampSpeculationManager >();
   au.addRequired< SmtxSpeculationManager >();
   au.addRequired< PtrResidueSpeculationManager >();
   au.addRequired< ProfileGuidedControlSpeculator >();
