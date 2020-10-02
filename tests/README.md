@@ -1,3 +1,5 @@
+This directory contains a limited set of benchmarks and scripts for regression testing.
+
 ## Benchmark Directory Structure
 
 - `./scripts` directory contains scripts to automate profiling and experiments for individual benchmark
