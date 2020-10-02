@@ -49,12 +49,6 @@ struct ShortLivedAA : public LoopAA, Remediator // Not a pass!
   LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
                               const Instruction *B, const Loop *L, Remedies &R);
 
-  /*
-  virtual AliasResult aliasCheck(const Pointer &P1, TemporalRelation rel,
-                                 const Pointer &P2, const Loop *L, Remedies &R,
-                                 DesiredAliasResult dAliasRes = DNoOrMustAlias);
-  */
-
   LoopAA::ModRefResult modref_with_ptrs(const Instruction *A, const Value *ptrA,
                                         TemporalRelation rel,
                                         const Instruction *B, const Value *ptrB,

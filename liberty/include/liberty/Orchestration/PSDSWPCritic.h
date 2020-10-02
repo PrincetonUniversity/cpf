@@ -3,23 +3,23 @@
 
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/Analysis/DOTGraphTraitsPass.h"
-#include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/DOTGraphTraits.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/GraphWriter.h"
 
 #include "liberty/GraphAlgorithms/EdmondsKarp.h"
 #include "liberty/GraphAlgorithms/Graphs.h"
-#include "liberty/Orchestration/Critic.h"
-#include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
-#include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
+#include "liberty/Orchestration/Critic.h"
+#include "liberty/Orchestration/ReduxRemed.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
+#include "DGGraphTraits.hpp"
+#include "LoopDependenceInfo.hpp"
 #include "PDG.hpp"
 #include "SCC.hpp"
 #include "SCCDAG.hpp"
-#include "DGGraphTraits.hpp"
-#include "LoopDependenceInfo.hpp"
 
 #include <memory>
 #include <queue>

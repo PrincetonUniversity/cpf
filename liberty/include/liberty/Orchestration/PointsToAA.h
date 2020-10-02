@@ -9,10 +9,8 @@
 
 #include "Assumptions.h"
 
-namespace liberty
-{
-namespace SpecPriv
-{
+namespace liberty {
+namespace SpecPriv {
 using namespace llvm;
 
 class PointsToRemedy : public Remedy {
@@ -20,7 +18,7 @@ public:
   const Value *ptr1;
   const Value *ptr2;
 
-  //void apply(Task *task) {};
+  // void apply(Task *task) {};
   bool compare(const Remedy_ptr rhs) const;
   StringRef getRemedyName() const { return "points-to-remedy"; };
 
@@ -46,8 +44,8 @@ private:
   const Read &read;
 };
 
-}
-}
+} // namespace SpecPriv
+} // namespace liberty
 
 #endif
 

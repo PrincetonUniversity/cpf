@@ -17,7 +17,7 @@ public:
   const Instruction *readI;
   const Instruction *memI;
 
-  //void apply(Task *task);
+  // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   unsigned long setCost(PerformanceEstimator *perf);
   StringRef getRemedyName() const { return "smtx-lamp-remedy"; };
@@ -31,7 +31,7 @@ struct SmtxAA : public LoopAA // Not a pass!
       : LoopAA(), smtxMan(man), perf(pf) {}
 
   virtual SchedulingPreference getSchedulingPreference() const {
-    return SchedulingPreference(Bottom+1);
+    return SchedulingPreference(Bottom + 1);
   }
 
   StringRef getLoopAAName() const { return "smtx-aa"; }

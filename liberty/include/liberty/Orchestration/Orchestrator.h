@@ -1,8 +1,14 @@
 #ifndef LLVM_LIBERTY_ORCHESTRATOR_H
 #define LLVM_LIBERTY_ORCHESTRATOR_H
 
+#include "LoopDependenceInfo.hpp"
+#include "PDG.hpp"
+#include "SCCDAG.hpp"
 #include "liberty/Analysis/KillFlow.h"
+#include "liberty/Analysis/LoopAA.h"
+#include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Orchestration/CommutativeLibsAA.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
 #include "liberty/Orchestration/Critic.h"
@@ -12,23 +18,17 @@
 #include "liberty/Orchestration/PSDSWPCritic.h"
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
+#include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Utilities/PrintDebugInfo.h"
-#include "liberty/Orchestration/CommutativeLibsAA.h"
-#include "liberty/LAMP/LAMPLoadProfile.h"
-#include "liberty/Speculation/Read.h"
-#include "liberty/Orchestration/SmtxAA.h"
-#include "liberty/Analysis/LoopAA.h"
-#include "PDG.hpp"
-#include "SCCDAG.hpp"
-#include "LoopDependenceInfo.hpp"
 
-#include <vector>
 #include <memory>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace liberty {
 namespace SpecPriv {
@@ -44,11 +44,10 @@ class Orchestrator {
 public:
   bool findBestStrategy(
       // Inputs
-      Loop *loop, llvm::PDG &pdg, //LoopDependenceInfo &ldi,
+      Loop *loop, llvm::PDG &pdg, // LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-      TargetLibraryInfo *tli,
-      SmtxSpeculationManager &smtxLampMan,
+      TargetLibraryInfo *tli, SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
       KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
@@ -62,18 +61,17 @@ public:
       bool abortIfNoParallelStage = true);
 
 private:
-  //std::map<Criticism*, SetOfRemedies> mapCriticismsToRemeds;
-
-  std::vector<Remediator_ptr> getRemediators(
-      Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-      PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-      TargetLibraryInfo *tli, //LoopDependenceInfo &ldi,
-      SmtxSpeculationManager &smtxLampMan,
-      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-      CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
-      PerformanceEstimator *perf);
+  std::vector<Remediator_ptr>
+  getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+                 PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
+                 TargetLibraryInfo *tli, // LoopDependenceInfo &ldi,
+                 SmtxSpeculationManager &smtxLampMan,
+                 PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+                 const Read &rd, const HeapAssignment &asgn, Pass &proxy,
+                 LoopAA *loopAA, KillFlow &kill,
+                 KillFlow_CtrlSpecAware *killflowA,
+                 CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+                 PerformanceEstimator *perf);
 
   std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                      unsigned threadBudget, LoopProfLoad *lpl);
@@ -89,7 +87,6 @@ private:
   void printAllRemedies(const SetOfRemedies &sors, Criticism &cr);
 
   unordered_map<std::string, unsigned> remediatorSelectionCnt;
-
 };
 
 } // namespace SpecPriv

@@ -1,18 +1,18 @@
 #ifndef LLVM_LIBERTY_REDUX_REMED_H
 #define LLVM_LIBERTY_REDUX_REMED_H
 
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/DataLayout.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Analysis/ReductionDetection.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Redux/Reduction.h"
 #include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Analysis/ReductionDetection.h"
 
 #include "LoopDependenceInfo.hpp"
 
@@ -20,8 +20,7 @@
 
 #define DEFAULT_REDUX_REMED_COST 2
 
-namespace liberty
-{
+namespace liberty {
 
 using namespace llvm;
 using namespace SpecPriv;
@@ -75,7 +74,7 @@ public:
 
 private:
   std::unordered_set<const Instruction *> regReductions;
-  std::unordered_set<const StoreInst*> memReductions;
+  std::unordered_set<const StoreInst *> memReductions;
   ModuleLoops *mloops;
   ScalarEvolution *se;
   LoopDependenceInfo *loopDepInfo;

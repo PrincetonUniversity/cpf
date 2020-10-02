@@ -4,8 +4,7 @@
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 
-namespace liberty
-{
+namespace liberty {
 using namespace llvm;
 
 class TXIORemedy : public Remedy {
@@ -17,9 +16,9 @@ public:
   StringRef getRemedyName() const { return "txio-remedy"; };
 };
 
-struct TXIOAA: public LoopAA // Not a pass!
+struct TXIOAA : public LoopAA // Not a pass!
 {
-  TXIOAA() : LoopAA(){}
+  TXIOAA() : LoopAA() {}
 
   StringRef getLoopAAName() const { return "txio-aa"; }
 
@@ -41,7 +40,7 @@ struct TXIOAA: public LoopAA // Not a pass!
   }
 };
 
-}
+} // namespace liberty
 
 #endif
 

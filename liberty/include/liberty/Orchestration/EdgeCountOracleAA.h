@@ -11,15 +11,13 @@
 
 #include "llvm/IR/Instructions.h"
 
-#include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/LoopAA.h"
 
 #include <set>
 
-namespace liberty
-{
+namespace liberty {
 using namespace llvm;
-
 
 // Serves as an adaptor between LoopAA and ControlSpeculator
 struct EdgeCountOracle : public LoopAA // Not a pass!
@@ -43,8 +41,7 @@ private:
   ControlSpeculation *speculator;
 };
 
-
-}
+} // namespace liberty
 
 #endif
 

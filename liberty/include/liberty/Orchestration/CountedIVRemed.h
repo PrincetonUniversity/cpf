@@ -3,11 +3,11 @@
 
 #include "llvm/IR/Instructions.h"
 
-#include "liberty/Utilities/ModuleLoops.h"
+#include "Noelle.hpp"
+#include "PDG.hpp"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
-#include "PDG.hpp"
-#include "Noelle.hpp"
+#include "liberty/Utilities/ModuleLoops.h"
 
 namespace liberty {
 using namespace llvm;
@@ -23,11 +23,12 @@ public:
 
 class CountedIVRemediator : public Remediator {
 public:
-  CountedIVRemediator(LoopDependenceInfo* LDI) : Remediator(), ldi(LDI) {}
+  CountedIVRemediator(LoopDependenceInfo *LDI) : Remediator(), ldi(LDI) {}
 
   StringRef getRemediatorName() const { return "counted-iv-remediator"; }
 
-  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried);
+  RemedResp regdep(const Instruction *A, const Instruction *B,
+                   bool loopCarried);
 
   RemedResp ctrldep(const Instruction *A, const Instruction *B);
 

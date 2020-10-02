@@ -1,18 +1,18 @@
 #ifndef LLVM_LIBERTY_CRITIC_H
 #define LLVM_LIBERTY_CRITIC_H
 
-#include "liberty/Strategy/PerformanceEstimator.h"
-#include "liberty/LoopProf/LoopProfLoad.h"
-#include "liberty/Utilities/PrintDebugInfo.h"
 #include "PDG.hpp"
 #include "SCC.hpp"
 #include "SCCDAG.hpp"
+#include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
+#include "liberty/Utilities/PrintDebugInfo.h"
 
 #include "Assumptions.h"
 #include "LoopDependenceInfo.hpp"
 
-#include <set>
 #include <memory>
+#include <set>
 #include <tuple>
 #include <vector>
 
@@ -57,7 +57,7 @@ public:
       : Critic(perf, threadBudget, lpl) {}
   CriticRes getCriticisms(PDG &pdg, Loop *loop);
   std::unique_ptr<ParallelizationPlan> getDOALLStrategy(PDG &pdg, Loop *loop);
-  StringRef getCriticName() const {return "doall-critic";};
+  StringRef getCriticName() const { return "doall-critic"; };
 };
 
 } // namespace liberty

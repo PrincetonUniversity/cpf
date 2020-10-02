@@ -12,11 +12,9 @@
 #include "liberty/Speculation/Read.h"
 #include "liberty/Utilities/GetMemOper.h"
 
-namespace liberty
-{
+namespace liberty {
 using namespace llvm;
 using namespace SpecPriv;
-
 
 class LocalityRemedy : public Remedy {
 public:
@@ -29,7 +27,7 @@ public:
   // eventually might need to keep the private and local AUs (of type Ptrs
   // defined in Pieces.h). Also need to keep all the insts involved in private
   // accesses. These insts need to be guarded
-	//
+  //
   // maybe need split to multiple separated remedies. For example,
   // separation cost maybe should be separated from cost for private objects.
   // remedies maybe need to also record all the AUs assumed to be part of a
@@ -62,7 +60,7 @@ public:
 
   LocalityRemedType type;
 
-	void apply(Task *task);
+  void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   void setCost(PerformanceEstimator *perf);
   StringRef getRemedyName() const { return "locality-remedy"; };
@@ -113,7 +111,8 @@ public:
 };
 
 /// Adapts separation speculation to LoopAA.
-struct LocalityAA : public LoopAA, Remediator // Not a pass!
+struct LocalityAA : public LoopAA,
+                    Remediator // Not a pass!
 {
   LocalityAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx,
              PerformanceEstimator *pf)
@@ -121,7 +120,9 @@ struct LocalityAA : public LoopAA, Remediator // Not a pass!
 
   StringRef getLoopAAName() const { return "spec-priv-locality-oracle-aa"; }
 
-  StringRef getRemediatorName() const { return "spec-priv-locality-oracle-remed"; }
+  StringRef getRemediatorName() const {
+    return "spec-priv-locality-oracle-remed";
+  }
 
   LoopAA::AliasResult alias(const Value *P1, unsigned S1, TemporalRelation rel,
                             const Value *P2, unsigned S2, const Loop *L,
@@ -131,7 +132,6 @@ struct LocalityAA : public LoopAA, Remediator // Not a pass!
   LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
                               const Value *ptrB, unsigned sizeB, const Loop *L,
                               Remedies &R);
-
 
   LoopAA::ModRefResult modref(const Instruction *I1, TemporalRelation Rel,
                               const Instruction *I2, const Loop *L,
@@ -152,13 +152,13 @@ private:
   const Ctx *ctx;
   PerformanceEstimator *perf;
 
-  unordered_set<const Value*> privateInsts;
+  unordered_set<const Value *> privateInsts;
 
   void populateCheapPrivRemedies(Ptrs aus, Remedies &R);
   void populateNoWAWRemedies(Ptrs aus, Remedies &R);
 };
 
-}
+} // namespace liberty
 
 #endif
 

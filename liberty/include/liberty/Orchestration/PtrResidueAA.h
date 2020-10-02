@@ -10,15 +10,13 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/PtrResidueManager.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
-#include "liberty/Orchestration/Remediator.h"
 
-namespace liberty
-{
-namespace SpecPriv
-{
+namespace liberty {
+namespace SpecPriv {
 using namespace llvm;
 
 class PtrResidueRemedy : public Remedy {
@@ -31,7 +29,7 @@ public:
   const Value *ptr;
   const Ctx *ctx;
 
-  //void apply(Task *task);
+  // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   unsigned long setCost(PerformanceEstimator *perf, const Value *ptr);
   StringRef getRemedyName() const { return "ptr-residue-remedy"; };
@@ -54,17 +52,12 @@ struct PtrResidueAA : public LoopAA // Not a pass!
                             Remedies &R,
                             DesiredAliasResult dAliasRes = DNoOrMustAlias);
 
-  virtual ModRefResult modref(
-    const Instruction *A,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L, Remedies &R);
+  virtual ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Value *ptrB, unsigned sizeB, const Loop *L,
+                              Remedies &R);
 
-  virtual ModRefResult modref(
-    const Instruction *A,
-    TemporalRelation rel,
-    const Instruction *B,
-    const Loop *L, Remedies &R);
+  virtual ModRefResult modref(const Instruction *A, TemporalRelation rel,
+                              const Instruction *B, const Loop *L, Remedies &R);
 
 private:
   const DataLayout &td;
@@ -72,26 +65,20 @@ private:
   PerformanceEstimator *perf;
 
   /// Can there be an alias?  If so, report necessary assumptions
-  bool may_alias(
-    const Value *P1, unsigned S1,
-    TemporalRelation rel,
-    const Value *P2, unsigned S2,
-    const Loop *L,
-    PtrResidueSpeculationManager::Assumption &a1_out,
-    PtrResidueSpeculationManager::Assumption &a2_out) const;
+  bool may_alias(const Value *P1, unsigned S1, TemporalRelation rel,
+                 const Value *P2, unsigned S2, const Loop *L,
+                 PtrResidueSpeculationManager::Assumption &a1_out,
+                 PtrResidueSpeculationManager::Assumption &a2_out) const;
 
   /// Can there be a mod-ref?  If so, report necessary assumptions
-  bool may_modref(
-    const Instruction *A,
-    TemporalRelation rel,
-    const Value *ptrB, unsigned sizeB,
-    const Loop *L,
-    PtrResidueSpeculationManager::Assumption &a1_out,
-    PtrResidueSpeculationManager::Assumption &a2_out) const;
+  bool may_modref(const Instruction *A, TemporalRelation rel, const Value *ptrB,
+                  unsigned sizeB, const Loop *L,
+                  PtrResidueSpeculationManager::Assumption &a1_out,
+                  PtrResidueSpeculationManager::Assumption &a2_out) const;
 };
 
-}
-}
+} // namespace SpecPriv
+} // namespace liberty
 
 #endif
 

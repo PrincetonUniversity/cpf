@@ -12,23 +12,21 @@
 #ifndef LLVM_LIBERTY_ANALYSIS_PREDICTION_SPECULATION_H
 #define LLVM_LIBERTY_ANALYSIS_PREDICTION_SPECULATION_H
 
-#include "llvm/IR/Instruction.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/Instruction.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/Orchestration/Remediator.h"
+#include "liberty/Strategy/PerformanceEstimator.h"
 
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 
-namespace liberty
-{
+namespace liberty {
 using namespace llvm;
 using namespace SpecPriv;
 
-struct PredictionSpeculation
-{
+struct PredictionSpeculation {
   virtual ~PredictionSpeculation() {}
 
   // Overload this method
@@ -37,8 +35,7 @@ struct PredictionSpeculation
   virtual PredictionSpeculation *getPredictionSpecPtr() { return this; }
 };
 
-struct NoPredictionSpeculation : public PredictionSpeculation
-{
+struct NoPredictionSpeculation : public PredictionSpeculation {
   virtual bool isPredictable(const Instruction *I, const Loop *loop);
 };
 
@@ -48,7 +45,7 @@ public:
   bool write;
   const Instruction *loadI;
 
-  //void apply(Task *task);
+  // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
   unsigned long setCost(PerformanceEstimator *perf, const Loop *loop);
   StringRef getRemedyName() const { return "invariant-value-pred-remedy"; };
@@ -78,7 +75,7 @@ struct PredictionAA : public LoopAA // Not a pass!
 
   LoopAA::SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Low - 3);
-    }
+  }
 
 private:
   PredictionSpeculation *predspec;
@@ -97,10 +94,8 @@ private:
   bool mustAlias(const Value *ptr1, const Value *ptr2);
 
   bool isPredictablePtr(const Value *ptr);
-
 };
 
-
-}
+} // namespace liberty
 #endif
 

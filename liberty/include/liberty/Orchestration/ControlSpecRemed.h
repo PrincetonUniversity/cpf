@@ -3,14 +3,14 @@
 
 #include "llvm/IR/Instructions.h"
 
-#include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/ControlSpeculation.h"
-#include "liberty/Orchestration/Remediator.h"
 #include "PDG.hpp"
+#include "liberty/Analysis/ControlSpeculation.h"
+#include "liberty/Analysis/LoopAA.h"
+#include "liberty/Orchestration/Remediator.h"
 
-#include <unordered_set>
-#include <unordered_map>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 #define DEFAULT_CTRL_REMED_COST 45
 #define EXPENSIVE_CTRL_REMED_COST 48
@@ -29,7 +29,6 @@ public:
 
 class ControlSpecRemediator : public Remediator {
 public:
-
   typedef std::set<DGEdge<Value> *> EdgeSet;
 
   ControlSpecRemediator(ControlSpeculation *ctrlspec)
@@ -47,7 +46,7 @@ public:
 
   void processLoopOfInterest(Loop *l);
 
-  //void buildTransitiveIntraIterationControlDependenceCache(EdgeSet &cache);
+  // void buildTransitiveIntraIterationControlDependenceCache(EdgeSet &cache);
 
 private:
   ControlSpeculation *speculator;

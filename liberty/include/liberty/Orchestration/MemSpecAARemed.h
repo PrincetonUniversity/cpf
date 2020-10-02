@@ -72,7 +72,7 @@ private:
   ControlSpeculation *ctrlspec;
   EdgeCountOracle *edgeaa;
   LAMPLoadProfile *lamp;
-  //LampOracle *lampaa;
+  // LampOracle *lampaa;
   SmtxAA *smtxaa;
   const Read &spresults;
   PointsToAA *pointstoaa;

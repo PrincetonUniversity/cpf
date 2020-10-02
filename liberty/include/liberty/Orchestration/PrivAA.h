@@ -2,9 +2,9 @@
 #define LIBERTY_PRIV_AA_H
 
 #include "liberty/Analysis/LoopAA.h"
+#include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
-#include "liberty/Orchestration/Remediator.h"
 
 namespace liberty {
 using namespace llvm;
@@ -12,7 +12,7 @@ using namespace SpecPriv;
 
 class PrivRemedy : public Remedy {
 public:
-  //const StoreInst *storeI;
+  // const StoreInst *storeI;
   const Value *privPtr;
   const Value *altPrivPtr;
   const Value *localPtr;
@@ -26,7 +26,7 @@ public:
 
   PrivRemedType type;
 
-  //void apply(Task *task);
+  // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
 
   StringRef getPrivRemedyName() const {
@@ -55,7 +55,6 @@ public:
       return false;
   }
 };
-
 
 /// Adapts separation speculation to LoopAA.
 struct PrivAA : public LoopAA // Not a pass!

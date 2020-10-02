@@ -6,26 +6,23 @@
 #ifndef LIBERTY_SPEC_PRIV_READ_ONLY_AA_H
 #define LIBERTY_SPEC_PRIV_READ_ONLY_AA_H
 
-//#include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
 
-namespace liberty
-{
+namespace liberty {
 using namespace llvm;
 using namespace SpecPriv;
 
-//struct ReadOnlyAA : public ClassicLoopAA // Not a pass!
-struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
+struct ReadOnlyAA : public LoopAA,
+                    Remediator // Not a pass!
 {
   ReadOnlyAA(const Read &rd, const HeapAssignment &ha, const Ctx *cx,
              PerformanceEstimator *pf)
       : LoopAA(), read(rd), asgn(&ha), readOnlyAUs(nullptr), ctx(cx), perf(pf) {
   }
-  //: ClassicLoopAA(), read(rd), asgn(ha), ctx(cx) {}
 
   ReadOnlyAA(const Read &rd, const HeapAssignment::AUSet *roAUs, const Ctx *cx,
              PerformanceEstimator *pf)
@@ -52,14 +49,6 @@ struct ReadOnlyAA : public LoopAA, Remediator // Not a pass!
   LoopAA::ModRefResult modref(const Instruction *A, TemporalRelation rel,
                               const Instruction *B, const Loop *L, Remedies &R);
 
-  /*
-  virtual AliasResult aliasCheck(
-    const Pointer &P1,
-    TemporalRelation rel,
-    const Pointer &P2,
-    const Loop *L);
-  */
-
   LoopAA::ModRefResult modref_with_ptrs(const Instruction *A, const Value *ptrA,
                                         TemporalRelation rel,
                                         const Instruction *B, const Value *ptrB,
@@ -76,7 +65,7 @@ private:
                                     const Loop *L, Remedies &R);
 };
 
-}
+} // namespace liberty
 
 #endif
 
