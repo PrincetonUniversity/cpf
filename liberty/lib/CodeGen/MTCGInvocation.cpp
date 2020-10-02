@@ -2,6 +2,7 @@
 
 #include "liberty/CodeGen/MTCG.h"
 #include "liberty/Utilities/AllocaHacks.h"
+#include "liberty/Utilities/CallSiteFactory.h"
 #include "liberty/Utilities/GepAndLoad.h"
 
 namespace liberty
