@@ -34,7 +34,7 @@ struct TXIOAA: public LoopAA // Not a pass!
   ModRefResult modref(const Instruction *A, TemporalRelation rel,
                       const Instruction *B, const Loop *L, Remedies &R);
 
-  bool isTXIOFcn(const Instruction *inst);
+  static bool isTXIOFcn(const Instruction *inst);
 
   LoopAA::SchedulingPreference getSchedulingPreference() const {
     return SchedulingPreference(Low - 9);

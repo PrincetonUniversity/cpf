@@ -2,6 +2,7 @@
 //#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Orchestration/TXIOAA.h"
 #include "liberty/Utilities/ReportDump.h"
 
 #include <unordered_set>
@@ -1197,7 +1198,7 @@ void PSDSWPCritic::moveIOToLastSeqStage(PipelineStrategy &ps, PDG &pdg,
       Instruction *inst = *j;
 
       // check if IO deferral inst
-      if (!TXIORemediator::isTXIOFcn(inst))
+      if (!TXIOAA::isTXIOFcn(inst))
         continue;
 
       if (!pdg.isInternal(inst))
