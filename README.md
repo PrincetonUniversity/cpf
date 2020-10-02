@@ -4,11 +4,11 @@
 CPF is a compiler infrastructure that automatically parallelizes sequential C/C++ programs to run efficiently on shared-memory multicore systems.
 
 ### Publications
-This work is described in the ASPLOS '20 paper by Apostolakis et al. titled "Perspective: A Sensible Approach to Speculative Automatic Parallelization" (https://dl.acm.org/doi/10.1145/3373376.3378458).
+This work is described in the ASPLOS '20 paper by Apostolakis et al. titled "Perspective: A Sensible Approach to Speculative Automatic Parallelization" ([ACM DL](https://dl.acm.org/doi/10.1145/3373376.3378458)).
 
 To reproduce the evaluation results presented in the ASPLOS 2020 paper, please refer to the artifact of the paper: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3606885.svg)](https://doi.org/10.5281/zenodo.3606885)
 
-This work builds upon Privateer (PLDI '12 by Johnson et al., https://dl.acm.org/doi/10.1145/2254064.2254107).
+This work builds upon Privateer (PLDI '12 by Johnson et al., [ACM DL](https://dl.acm.org/doi/10.1145/2254064.2254107)).
 
 If you use CPF in a publication, we would appreciate a citation to the ASPLOS '20 paper:
 
