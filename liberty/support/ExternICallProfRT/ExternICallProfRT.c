@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <stdint.h>
-
+//#define DEBUG_EXTERN_ICALL_PROF
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,7 +52,7 @@ void __extern_icall_prof_invoc(void *fnPtr, void *node, int id, int maxNumTarget
 
 #ifdef DEBUG_EXTERN_ICALL_PROF
       printf("#%d first time calling %p\n", id, fnPtr);
-      printf("%p: (%s) %s\n", fnPtr, icall_info->dli_fname, icall_info-<dli_sname);
+      printf("%p: (%s) %s\n", fnPtr, icall_info->dli_fname, icall_info->dli_sname);
 #endif
       vnode->dl_info = icall_info;
       break;
@@ -102,6 +102,7 @@ void ExternIcallProfFinish()
     }
     else {
       fprintf(fp, "0\n");
+      continue;
     }
 
     int j = 0;
