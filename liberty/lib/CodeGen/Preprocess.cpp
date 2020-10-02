@@ -5,7 +5,6 @@
 #include "llvm/Pass.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Speculation/SmtxSlampManager.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
@@ -61,7 +60,6 @@ void Preprocess::getAnalysisUsage(AnalysisUsage &au) const
   //au.addPreserved< PtrResidueSpeculationManager >();
   au.addPreserved< SmtxSpeculationManager >();
   //au.addPreserved< HeaderPhiPredictionSpeculation >();
-  au.addPreserved< SmtxSlampSpeculationManager >();
   au.addPreserved< Selector >();
   //au.addPreserved< NoSpecSelector >();
   //au.addPreserved< SpecPrivSelector >();
