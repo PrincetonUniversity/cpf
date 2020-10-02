@@ -7,7 +7,6 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
-#include "liberty/SLAMP/SLAMPLoad.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
@@ -29,7 +28,6 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
 {
   Selector::analysisUsage(au);
 
-  au.addRequired< SLAMPLoadProfile >();
   au.addRequired< SmtxSpeculationManager >();
   au.addRequired< PtrResidueSpeculationManager >();
   au.addRequired< ProfileGuidedControlSpeculator >();
