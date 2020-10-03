@@ -32,7 +32,7 @@ series = {ASPLOS ’20}
 ```
 
 ### Build
-CPF relies on LLVM and NOELLE. Follow `bootstrap/README.md` to install all dependences automatically or cutomize it.
+CPF relies on LLVM, SCAF and NOELLE. Follow `bootstrap/README.md` to install all dependences automatically or cutomize it.
 
 ### Users
 If you have any trouble using this framework feel free to reach out to us for help (contact sapostolakis@princeton.edu).
