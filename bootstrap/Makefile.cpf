@@ -48,6 +48,6 @@ cpf-objects-release: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_RELEASE}
 cpf-objects-release:
 	mkdir -p cpf-build-release
 	cd ./cpf-build-release && \
-	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_RELEASE)" -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_UNWIND_TABLES=On ${CPF_ROOT_PATH}/liberty && \
+	cmake -DCMAKE_INSTALL_PREFIX="$(CPF_INSTALL_RELEASE)" -DCMAKE_BUILD_TYPE=Release ${CPF_ROOT_PATH}/liberty && \
 	make -j${JOBS} && \
 	make install
