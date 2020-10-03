@@ -27,11 +27,13 @@ scaf-objects-debug: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 scaf-objects-debug: export LLVM_CMAKE_DIR=${LLVM_INSTALL_DEBUG}/lib/cmake/llvm
 scaf-objects-debug: scaf
 	make -C scaf clean
-	make -C scaf
+	make -C scaf uninstall
+	make -C scaf scaf-debug
 
 scaf-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 scaf-objects-release: export LLVM_CMAKE_DIR=${LLVM_INSTALL_RELEASE}/lib/cmake/llvm
 scaf-objects-release: scaf
 	make -C scaf clean
-	make -C scaf
+	make -C scaf uninstall
+	make -C scaf scaf-release
 
