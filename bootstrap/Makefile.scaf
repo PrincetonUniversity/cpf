@@ -1,0 +1,37 @@
+BASE_DIR:=$(shell pwd)
+SCAF_REMOTE?=https://github.com/PrincetonUniversity/SCAF.git
+SCAF_BRANCH?=master
+ORIGINAL_PATH:=${PATH}
+
+ifndef LLVM_INSTALL_DEBUG
+$(error LLVM_INSTALL_DEBUG is not set)
+endif
+
+ifndef LLVM_INSTALL_RELEASE
+$(error LLVM_INSTALL_RELEASE is not set)
+endif
+
+all: scaf-objects-debug scaf-objects-release
+.PHONY: scaf-objects-debug scaf-objects-release clean
+
+scaf:
+	git clone -n ${SCAF_REMOTE} scaf
+	cd scaf && git checkout ${SCAF_BRANCH}
+
+clean:
+	rm -rf scaf
+	rm -rf scaf-install-debug
+	rm -rf scaf-install-release
+
+scaf-objects-debug: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
+scaf-objects-debug: export LLVM_CMAKE_DIR=${LLVM_INSTALL_DEBUG}/lib/cmake/llvm
+scaf-objects-debug: scaf
+	make -C scaf clean
+	make -C scaf
+
+scaf-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
+scaf-objects-release: export LLVM_CMAKE_DIR=${LLVM_INSTALL_RELEASE}/lib/cmake/llvm
+scaf-objects-release: scaf
+	make -C scaf clean
+	make -C scaf
+
