@@ -16,6 +16,20 @@ compile-llvm=1
 #llvm-install-dir-release=/scratch/install/llvm-install-release
 
 ##########
+# SCAF #
+##########
+compile-scaf=1
+
+## If compile-scaf=0, provide paths to both the debug and the release versions
+#scaf-install-dir-debug=/scratch/install/scaf-install-debug
+#scaf-install-dir-release=/scratch/install/scaf-install-release
+
+## If compile-scaf=1, use this url to clone and build SCAF from scratch
+## Don't use quotes
+scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
+scaf-branch=master
+
+##########
 # NOELLE #
 ##########
 compile-noelle=1
@@ -72,6 +86,12 @@ ifeq (${compile-llvm}, 1)
 	llvm-install-dir-release=${install-prefix}/llvm-install-release
 endif
 
+# if scaf is compiled from scratch, then is the default one
+ifeq (${compile-scaf}, 1)
+	scaf-install-dir-debug=${install-prefix}/scaf-install-debug
+	scaf-install-dir-release=${install-prefix}/scaf-install-release
+endif
+
 # if noelle is compiled from scratch, then is the default one
 ifeq (${compile-noelle}, 1)
 	noelle-install-dir-debug=${install-prefix}/noelle-install-debug
@@ -91,8 +111,8 @@ default:
 	@echo After the initial installation, run \`make cpf\` to only update cpf.
 	@echo Nothing has been done.
 
-all: copy-makefile llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc
-.PHONY: copy-makefile llvm noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
+all: copy-makefile llvm scaf noelle cpf cpf-env-debug.rc cpf-env-release.rc
+.PHONY: copy-makefile llvm scaf noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
 
 clean:
 	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
@@ -122,6 +142,46 @@ endif
 	@echo Using provided LLVM Debug and Release versions
     @echo LLVM Debug: ${llvm-install-dir-debug}
     @echo LLVM Release: ${llvm-install-dir-release}
+endif
+
+scaf:
+ifeq (${compile-scaf}, 1)
+	@echo Compiling SCAF from Scratch
+ifndef scaf-remote-url
+	$(error Chose to SCAF but scaf-remote-url is not set)
+endif
+
+ifndef scaf-branch 
+	$(error Chose to compile SCAF but scaf-branch is not set)
+endif
+	mkdir -p ${install-prefix}
+	- cp Makefile.scaf ${install-prefix}
+ifeq (${verbose}, 1)
+	set -o pipefail; \
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	SCAF_REMOTE=${scaf-remote-url} \
+	SCAF_BRANCH=${scaf-branch} \
+	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.scaf all 2>&1 | tee ${install-prefix}/scaf.log
+else
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	SCAF_REMOTE=${scaf-remote-url} \
+	SCAF_BRANCH=${scaf-branch} \
+	${MAKE} -C ${install-prefix} -f Makefile.scaf all > ${install-prefix}/scaf.log 2>&1
+endif
+
+else
+
+ifndef scaf-install-dir-debug 
+	$(error Chose not to compile scaf but scaf-install-dir-debug is not set)
+endif
+ifndef scaf-install-dir-release
+	$(error Chose not to compile scaf but scaf-install-dir-release is not set)
+endif
+	@echo Using provided SCAF Debug and Release versions
+	@echo SCAF Debug: ${scaf-install-dir-debug}
+	@echo SCAF Release: ${scaf-install-dir-release}
 endif
 
 noelle:
@@ -199,7 +259,7 @@ cpf-env-debug.rc:
 	rm -f ${install-prefix}/$@
 	@echo Generating ${install-prefix}/$@
 	cp cpf-env.rc.template ${install-prefix}/$@
-	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
+	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-SCAF%${scaf-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
 	@echo Debug environment variables stored in ${install-prefix}/$@
 	@echo
 
@@ -207,7 +267,7 @@ cpf-env-release.rc:
 	rm -f ${install-prefix}/$@
 	@echo Generating ${install-prefix}/$@ 
 	cp cpf-env.rc.template ${install-prefix}/$@
-	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
+	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-SCAF%${scaf-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
 	@echo  Release environment variables stored in ${install-prefix}/$@
 	@echo
 
