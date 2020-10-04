@@ -111,7 +111,7 @@ default:
 	@echo After the initial installation, run \`make cpf\` to only update cpf.
 	@echo Nothing has been done.
 
-all: copy-makefile llvm scaf noelle cpf cpf-env-debug.rc cpf-env-release.rc
+all: copy-makefile llvm scaf noelle cpf-env-debug.rc cpf-env-release.rc cpf
 .PHONY: copy-makefile llvm scaf noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
 
 clean:
