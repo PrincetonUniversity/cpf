@@ -224,6 +224,9 @@ endif
 	@echo NOELLE Release: ${noelle-install-dir-release}
 endif
 
+	- rm -rf ${noelle-install-dir-debug}/include/Assumptions.h ${noelle-install-dir-debug}/include/scaf ${noelle-install-dir-debug}/lib/libMemoryAnalysisModules* ${noelle-install-dir-debug}/lib/libSCAFUtilities* ${noelle-install-dir-debug}/lib/libSpeculationModules*
+	- rm -rf ${noelle-install-dir-release}/include/Assumptions.h ${noelle-install-dir-release}/include/scaf ${noelle-install-dir-release}/lib/libMemoryAnalysisModules* ${noelle-install-dir-release}/lib/libSCAFUtilities* ${noelle-install-dir-release}/lib/libSpeculationModules*
+
 cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
 cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
 cpf: export NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug}
