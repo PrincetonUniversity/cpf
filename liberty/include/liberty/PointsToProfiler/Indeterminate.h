@@ -10,7 +10,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 namespace liberty
 {

@@ -9,7 +9,7 @@
 #include "llvm/IR/DataLayout.h"
 
 #include "liberty/PointsToProfiler/Pieces.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 #include <set>
 

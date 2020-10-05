@@ -9,7 +9,7 @@
 #include "llvm/IR/DataLayout.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 #include "liberty/Analysis/FindSource.h"
 
 namespace liberty

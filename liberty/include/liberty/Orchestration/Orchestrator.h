@@ -23,7 +23,7 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PipelineStrategy.h"
-#include "liberty/Utilities/PrintDebugInfo.h"
+#include "scaf/Utilities/PrintDebugInfo.h"
 
 #include <memory>
 #include <unordered_map>

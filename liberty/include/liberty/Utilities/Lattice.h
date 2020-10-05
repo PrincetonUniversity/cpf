@@ -9,7 +9,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Support/raw_ostream.h"
-#include "liberty/Utilities/TwoList.h"
+#include "scaf/Utilities/TwoList.h"
 
 #include <list>
 

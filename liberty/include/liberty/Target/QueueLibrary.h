@@ -44,7 +44,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/DenseMap.h"
 
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 
 namespace liberty {

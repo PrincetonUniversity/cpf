@@ -1,7 +1,7 @@
 #ifndef LLVM_LIBERTY_GEP_AND_LOAD_H
 #define LLVM_LIBERTY_GEP_AND_LOAD_H
 
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 namespace liberty
 {

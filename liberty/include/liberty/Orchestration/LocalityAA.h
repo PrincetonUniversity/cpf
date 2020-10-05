@@ -10,7 +10,7 @@
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GetMemOper.h"
 
 namespace liberty {
 using namespace llvm;

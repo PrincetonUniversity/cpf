@@ -15,8 +15,8 @@
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
-#include "liberty/Utilities/InsertPrintf.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 #include "Assumptions.h"
 #include "PDG.hpp"

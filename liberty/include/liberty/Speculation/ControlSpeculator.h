@@ -9,7 +9,7 @@
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/ADT/SmallBitVector.h"
 
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 #include "liberty/Speculation/UpdateOnClone.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 

@@ -13,7 +13,7 @@
 #include <unordered_set>
 #include <map>
 
-#include "liberty/Utilities/InlineFunctionWithVmap.h"
+#include "scaf/Utilities/InlineFunctionWithVmap.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/GraphAlgorithms/Graphs.h"
 #include "liberty/Speculation/UpdateOnClone.h"

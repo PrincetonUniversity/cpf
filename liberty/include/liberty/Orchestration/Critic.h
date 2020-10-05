@@ -6,7 +6,7 @@
 #include "SCCDAG.hpp"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
-#include "liberty/Utilities/PrintDebugInfo.h"
+#include "scaf/Utilities/PrintDebugInfo.h"
 
 #include "Assumptions.h"
 #include "LoopDependenceInfo.hpp"

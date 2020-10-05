@@ -7,7 +7,7 @@
 #include "PDG.hpp"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 namespace liberty {
 using namespace llvm;

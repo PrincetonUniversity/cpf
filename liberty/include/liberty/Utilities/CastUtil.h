@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "llvm/IR/Instruction.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 namespace liberty {
 

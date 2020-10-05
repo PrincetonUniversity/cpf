@@ -12,7 +12,7 @@
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Speculation/LoopDominators.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 namespace liberty
 {

@@ -28,7 +28,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CallSiteFactory.h"
 
 #include <map>
 #include <set>

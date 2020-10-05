@@ -12,7 +12,7 @@
 #include "liberty/Analysis/ReductionDetection.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Redux/Reduction.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include "LoopDependenceInfo.hpp"
 

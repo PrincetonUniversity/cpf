@@ -6,7 +6,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Analysis/LoopInfo.h"
 
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Recovery.h"

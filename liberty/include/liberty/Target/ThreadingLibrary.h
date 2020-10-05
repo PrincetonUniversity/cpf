@@ -1,7 +1,7 @@
 #ifndef THREADING_LIBRARY_H
 #define THREADING_LIBRARY_H
 
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 #include "liberty/Target/MemorySpaceAssumptions.h"
 #include "liberty/Target/QueueLibrary.h"
 

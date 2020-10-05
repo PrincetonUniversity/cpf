@@ -2,7 +2,7 @@
 #define LLVM_LIBERTY_TARGET_LOOP_HIERARCHY
 
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 namespace liberty
 {

@@ -7,7 +7,7 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Type.h"
 
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 
 namespace liberty
