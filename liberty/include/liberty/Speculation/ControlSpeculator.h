@@ -11,7 +11,7 @@
 
 #include "scaf/Utilities/ModuleLoops.h"
 #include "liberty/Speculation/UpdateOnClone.h"
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 
 #include <set>
 

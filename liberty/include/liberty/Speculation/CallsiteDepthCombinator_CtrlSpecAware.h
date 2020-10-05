@@ -19,7 +19,7 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Analysis/QueryCacheing.h"
 #include "liberty/Speculation/CallsiteSearch_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"

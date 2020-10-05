@@ -1,7 +1,7 @@
 #ifndef LLVM_LIBERTY_SPECPRIV_MTCG_H
 #define LLVM_LIBERTY_SPECPRIV_MTCG_H
 
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Speculation/LoopDominators.h"
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"

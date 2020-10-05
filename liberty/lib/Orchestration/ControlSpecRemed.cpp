@@ -1,7 +1,7 @@
 #define DEBUG_TYPE "ctrlspec-remed"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/Remediator.h"

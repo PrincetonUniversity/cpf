@@ -6,7 +6,7 @@
 #include "llvm/IR/Module.h"
 
 #include "liberty/Analysis/ControlSpecIterators.h"
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/SimpleAA.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"

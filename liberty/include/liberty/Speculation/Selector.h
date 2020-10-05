@@ -20,7 +20,7 @@
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Orchestration/Remediator.h"

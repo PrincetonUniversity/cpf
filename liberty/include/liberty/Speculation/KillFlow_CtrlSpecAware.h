@@ -8,7 +8,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Analysis/ControlSpeculation.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Speculation/LoopDominators.h"
