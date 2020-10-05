@@ -1,7 +1,7 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_UPATE_ON_CLONE_ADAPTORS_H
 #define LLVM_LIBERTY_SPEC_PRIV_UPATE_ON_CLONE_ADAPTORS_H
 
-#include "scaf/Utilities/InlineFunctionWithVmap.h"
+#include "liberty/Utilities/InlineFunctionWithVmap.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
