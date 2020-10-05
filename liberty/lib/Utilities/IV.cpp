@@ -23,7 +23,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "scaf/Utilities/IV.h"
+#include "liberty/Utilities/IV.h"
 
 using namespace llvm;
 

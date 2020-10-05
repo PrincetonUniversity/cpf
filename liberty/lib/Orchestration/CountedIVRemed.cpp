@@ -7,7 +7,7 @@
 #include "llvm/IR/Instructions.h"
 
 #include "liberty/Orchestration/CountedIVRemed.h"
-#include "scaf/Utilities/IV.h"
+#include "liberty/Utilities/IV.h"
 
 #define DEFAULT_COUNTED_IV_REMED_COST 0
 
