@@ -105,7 +105,7 @@ void CloneFunctionIntoWithVMap(Function *NewFunc, const Function *OldFunc,
                              SmallVectorImpl<ReturnInst*> &Returns,
                              StringRef NameSuffix, ClonedCodeInfo *CodeInfo=0,
                              ValueMapTypeRemapper *TypeMapper=0) {
-  assert(NameSuffix && "NameSuffix cannot be null!");
+  assert(!NameSuffix.empty() && "NameSuffix cannot be null!");
 
 #ifndef NDEBUG
   for (Function::const_arg_iterator I = OldFunc->arg_begin(),
@@ -167,11 +167,12 @@ void CloneFunctionIntoWithVMap(Function *NewFunc, const Function *OldFunc,
 
   // Loop over all of the instructions in the function, fixing up operand
   // references as we go.  This uses VMap to do all the hard work.
-  for (Function::iterator BB = cast<BasicBlock>(VMap[OldFunc->begin()]),
-         BE = NewFunc->end(); BB != BE; ++BB)
+  Function::iterator BB (cast<BasicBlock>(VMap[&*(OldFunc->begin())]));
+  Function::iterator BE;
+  for (BE = NewFunc->end(); BB != BE; ++BB)
     // Loop over all instructions, fixing each one as we find it...
     for (BasicBlock::iterator II = BB->begin(); II != BB->end(); ++II)
-      RemapInstruction(II, VMap,
+      RemapInstruction(&*II, VMap,
                        ModuleLevelChanges ? RF_None : RF_NoModuleLevelChanges,
                        TypeMapper);
 }
@@ -182,7 +183,8 @@ BasicBlock *InvokeInliningInfo::getInnerResumeDest() {
   if (InnerResumeDest) return InnerResumeDest;
 
   // Split the landing pad.
-  BasicBlock::iterator SplitPoint = CallerLPad; ++SplitPoint;
+  BasicBlock::iterator SplitPoint (CallerLPad);
+  ++SplitPoint;
   InnerResumeDest =
     OuterResumeDest->splitBasicBlock(SplitPoint,
                                      OuterResumeDest->getName() + ".body");
@@ -197,14 +199,14 @@ BasicBlock *InvokeInliningInfo::getInnerResumeDest() {
     PHINode *OuterPHI = cast<PHINode>(I);
     PHINode *InnerPHI = PHINode::Create(OuterPHI->getType(), PHICapacity,
                                         OuterPHI->getName() + ".lpad-body",
-                                        InsertPoint);
+                                        &*InsertPoint);
     OuterPHI->replaceAllUsesWith(InnerPHI);
     InnerPHI->addIncoming(OuterPHI, OuterResumeDest);
   }
 
   // Create a PHI for the exception values.
   InnerEHValuesPHI = PHINode::Create(CallerLPad->getType(), PHICapacity,
-                                     "eh.lpad-body", InsertPoint);
+                                     "eh.lpad-body", &*InsertPoint);
   CallerLPad->replaceAllUsesWith(InnerEHValuesPHI);
   InnerEHValuesPHI->addIncoming(CallerLPad, OuterResumeDest);
 
@@ -243,7 +245,7 @@ static bool HandleCallsInBlockInlinedThroughInvoke(BasicBlock *BB,
   LandingPadInst *LPI = Invoke.getLandingPadInst();
 
   for (BasicBlock::iterator BBI = BB->begin(), E = BB->end(); BBI != E; ) {
-    Instruction *I = BBI++;
+    Instruction *I = &*(BBI++);
 
     if (LandingPadInst *L = dyn_cast<LandingPadInst>(I)) {
       unsigned NumClauses = LPI->getNumClauses();
@@ -324,9 +326,10 @@ static void HandleInlinedInvoke(InvokeInst *II, BasicBlock *FirstNewBlock,
 
   InvokeInliningInfo Invoke(II);
 
-  for (Function::iterator BB = FirstNewBlock, E = Caller->end(); BB != E; ++BB){
+	Function::iterator BB (FirstNewBlock);
+  for (Function::iterator E = Caller->end(); BB != E; ++BB){
     if (InlinedCodeInfo.ContainsCalls)
-      if (HandleCallsInBlockInlinedThroughInvoke(BB, Invoke, call2invoke)) {
+      if (HandleCallsInBlockInlinedThroughInvoke(&*BB, Invoke, call2invoke)) {
         // Honor a request to skip the next block.
         ++BB;
         continue;
@@ -343,16 +346,16 @@ static void HandleInlinedInvoke(InvokeInst *II, BasicBlock *FirstNewBlock,
   InvokeDest->removePredecessor(II->getParent());
 }
 
-/// UpdateCallGraphAfterInlining - Once we have cloned code over from a callee
-/// into the caller, update the specified callgraph to reflect the changes we
-/// made.  Note that it's possible that not all code was copied over, so only
+/// Once we have cloned code over from a callee into the caller,
+/// update the specified callgraph to reflect the changes we made.
+/// Note that it's possible that not all code was copied over, so only
 /// some edges of the callgraph may remain.
 static void UpdateCallGraphAfterInlining(CallSite CS,
                                          Function::iterator FirstNewBlock,
                                          ValueToValueMapTy &VMap,
                                          InlineFunctionInfo &IFI) {
   CallGraph &CG = *IFI.CG;
-  const Function *Caller = CS.getInstruction()->getParent()->getParent();
+  const Function *Caller = CS.getCaller();
   const Function *Callee = CS.getCalledFunction();
   CallGraphNode *CalleeNode = CG[Callee];
   CallGraphNode *CallerNode = CG[Caller];
@@ -374,13 +377,20 @@ static void UpdateCallGraphAfterInlining(CallSite CS,
 
     ValueToValueMapTy::iterator VMI = VMap.find(OrigCall);
     // Only copy the edge if the call was inlined!
-    if (VMI == VMap.end() || VMI->second == 0)
+    if (VMI == VMap.end() || VMI->second == nullptr)
       continue;
 
     // If the call was inlined, but then constant folded, there is no edge to
     // add.  Check for this case.
-    Instruction *NewCall = dyn_cast<Instruction>(VMI->second);
-    if (NewCall == 0) continue;
+    auto *NewCall = dyn_cast<CallBase>(VMI->second);
+    if (!NewCall)
+      continue;
+
+    // We do not treat intrinsic calls like real function calls because we
+    // expect them to become inline code; do not add an edge for an intrinsic.
+    if (NewCall->getCalledFunction() &&
+        NewCall->getCalledFunction()->isIntrinsic())
+      continue;
 
     // Remember that this call site got inlined for the client of
     // InlineFunction.
@@ -391,20 +401,20 @@ static void UpdateCallGraphAfterInlining(CallSite CS,
     // happens, set the callee of the new call site to a more precise
     // destination.  This can also happen if the call graph node of the caller
     // was just unnecessarily imprecise.
-    if (I->second->getFunction() == 0)
-      if (Function *F = CallSite(NewCall).getCalledFunction()) {
+    if (!I->second->getFunction())
+      if (Function *F = NewCall->getCalledFunction()) {
         // Indirect call site resolved to direct call.
-        CallerNode->addCalledFunction(CallSite(NewCall), CG[F]);
+        CallerNode->addCalledFunction(NewCall, CG[F]);
 
         continue;
       }
 
-    CallerNode->addCalledFunction(CallSite(NewCall), I->second);
+    CallerNode->addCalledFunction(NewCall, I->second);
   }
 
   // Update the call graph by deleting the edge from Callee to Caller.  We must
   // do this after the loop above in case Caller and Callee are the same.
-  CallerNode->removeCallEdgeFor(CS);
+  CallerNode->removeCallEdgeFor(*cast<CallBase>(CS.getInstruction()));
 }
 
 /// HandleByValArgument - When inlining a call site that has a byval argument,
@@ -414,6 +424,9 @@ static Value *HandleByValArgument(Value *Arg, Instruction *TheCall,
                                   InlineFunctionInfo &IFI,
                                   unsigned ByValAlignment) {
   Type *AggTy = cast<PointerType>(Arg->getType())->getElementType();
+
+  Function *Caller = TheCall->getFunction();
+  const DataLayout &DL = Caller->getParent()->getDataLayout();
 
   // If the called function is readonly, then it could not mutate the caller's
   // copy of the byval'd memory.  In this case, it is safe to elide the copy and
@@ -425,58 +438,31 @@ static Value *HandleByValArgument(Value *Arg, Instruction *TheCall,
     if (ByValAlignment <= 1)  // 0 = unspecified, 1 = no particular alignment.
       return Arg;
 
+    AssumptionCache *AC =
+        IFI.GetAssumptionCache ? &(*IFI.GetAssumptionCache)(*Caller) : nullptr;
+
     // If the pointer is already known to be sufficiently aligned, or if we can
     // round it up to a larger alignment, then we don't need a temporary.
-    if (getOrEnforceKnownAlignment(Arg, ByValAlignment,
-                                   IFI.TD) >= ByValAlignment)
+    if (getOrEnforceKnownAlignment(Arg, ByValAlignment, DL, TheCall, AC) >=
+        ByValAlignment)
       return Arg;
 
     // Otherwise, we have to make a memcpy to get a safe alignment.  This is bad
     // for code quality, but rarely happens and is required for correctness.
   }
 
-  LLVMContext &Context = Arg->getContext();
-
-  Type *VoidPtrTy = Type::getInt8PtrTy(Context);
-
   // Create the alloca.  If we have DataLayout, use nice alignment.
-  unsigned Align = 1;
-  if (IFI.TD)
-    Align = IFI.TD->getPrefTypeAlignment(AggTy);
+  unsigned Align = DL.getPrefTypeAlignment(AggTy);
 
   // If the byval had an alignment specified, we *must* use at least that
   // alignment, as it is required by the byval argument (and uses of the
   // pointer inside the callee).
   Align = std::max(Align, ByValAlignment);
 
-  Function *Caller = TheCall->getParent()->getParent();
-
-  Value *NewAlloca = new AllocaInst(AggTy, 0, Align, Arg->getName(),
+  Value *NewAlloca = new AllocaInst(AggTy, DL.getAllocaAddrSpace(),
+                                    nullptr, Align, Arg->getName(),
                                     &*Caller->begin()->begin());
-  // Emit a memcpy.
-  Type *Tys[3] = {VoidPtrTy, VoidPtrTy, Type::getInt64Ty(Context)};
-  Function *MemCpyFn = Intrinsic::getDeclaration(Caller->getParent(),
-                                                 Intrinsic::memcpy,
-                                                 Tys);
-  Value *DestCast = new BitCastInst(NewAlloca, VoidPtrTy, "tmp", TheCall);
-  Value *SrcCast = new BitCastInst(Arg, VoidPtrTy, "tmp", TheCall);
-
-  Value *Size;
-  if (IFI.TD == 0)
-    Size = ConstantExpr::getSizeOf(AggTy);
-  else
-    Size = ConstantInt::get(Type::getInt64Ty(Context),
-                            IFI.TD->getTypeStoreSize(AggTy));
-
-  // Always generate a memcpy of alignment 1 here because we don't know
-  // the alignment of the src pointer.  Other optimizations can infer
-  // better alignment.
-  Value *CallArgs[] = {
-    DestCast, SrcCast, Size,
-    ConstantInt::get(Type::getInt32Ty(Context), 1),
-    ConstantInt::getFalse(Context) // isVolatile
-  };
-  IRBuilder<>(TheCall).CreateCall(MemCpyFn, CallArgs);
+  IFI.StaticAllocas.push_back(cast<AllocaInst>(NewAlloca));
 
   // Uses of the argument in the function should use our new alloca
   // instead.
@@ -518,43 +504,105 @@ static bool hasLifetimeMarkers(AllocaInst *AI) {
   return false;
 }
 
-/// updateInlinedAtInfo - Helper function used by fixupLineNumbers to
-/// recursively update InlinedAtEntry of a DebugLoc.
-static DebugLoc updateInlinedAtInfo(const DebugLoc &DL,
-                                    const DebugLoc &InlinedAtDL,
-                                    LLVMContext &Ctx) {
-  if (MDNode *IA = DL.getInlinedAt(Ctx)) {
-    DebugLoc NewInlinedAtDL
-      = updateInlinedAtInfo(DebugLoc::getFromDILocation(IA), InlinedAtDL, Ctx);
-    return DebugLoc::get(DL.getLine(), DL.getCol(), DL.getScope(Ctx),
-                         NewInlinedAtDL.getAsMDNode(Ctx));
-  }
-
-  return DebugLoc::get(DL.getLine(), DL.getCol(), DL.getScope(Ctx),
-                       InlinedAtDL.getAsMDNode(Ctx));
+/// Return the result of AI->isStaticAlloca() if AI were moved to the entry
+/// block. Allocas used in inalloca calls and allocas of dynamic array size
+/// cannot be static.
+static bool allocaWouldBeStaticInEntry(const AllocaInst *AI ) {
+  return isa<Constant>(AI->getArraySize()) && !AI->isUsedWithInAlloca();
 }
 
-/// fixupLineNumbers - Update inlined instructions' line numbers to
+/// Returns a DebugLoc for a new DILocation which is a clone of \p OrigDL
+/// inlined at \p InlinedAt. \p IANodes is an inlined-at cache.
+static DebugLoc inlineDebugLoc(DebugLoc OrigDL, DILocation *InlinedAt,
+                               LLVMContext &Ctx,
+                               DenseMap<const MDNode *, MDNode *> &IANodes) {
+  auto IA = DebugLoc::appendInlinedAt(OrigDL, InlinedAt, Ctx, IANodes);
+  return DebugLoc::get(OrigDL.getLine(), OrigDL.getCol(), OrigDL.getScope(),
+                       IA);
+}
+
+/// Returns the LoopID for a loop which has has been cloned from another
+/// function for inlining with the new inlined-at start and end locs.
+static MDNode *inlineLoopID(const MDNode *OrigLoopId, DILocation *InlinedAt,
+                            LLVMContext &Ctx,
+                            DenseMap<const MDNode *, MDNode *> &IANodes) {
+  assert(OrigLoopId && OrigLoopId->getNumOperands() > 0 &&
+         "Loop ID needs at least one operand");
+  assert(OrigLoopId && OrigLoopId->getOperand(0).get() == OrigLoopId &&
+         "Loop ID should refer to itself");
+
+  // Save space for the self-referential LoopID.
+  SmallVector<Metadata *, 4> MDs = {nullptr};
+
+  for (unsigned i = 1; i < OrigLoopId->getNumOperands(); ++i) {
+    Metadata *MD = OrigLoopId->getOperand(i);
+    // Update the DILocations to encode the inlined-at metadata.
+    if (DILocation *DL = dyn_cast<DILocation>(MD))
+      MDs.push_back(inlineDebugLoc(DL, InlinedAt, Ctx, IANodes));
+    else
+      MDs.push_back(MD);
+  }
+
+  MDNode *NewLoopID = MDNode::getDistinct(Ctx, MDs);
+  // Insert the self-referential LoopID.
+  NewLoopID->replaceOperandWith(0, NewLoopID);
+  return NewLoopID;
+}
+
+/// Update inlined instructions' line numbers to
 /// to encode location where these instructions are inlined.
 static void fixupLineNumbers(Function *Fn, Function::iterator FI,
-                             Instruction *TheCall) {
-  DebugLoc TheCallDL = TheCall->getDebugLoc();
-  if (TheCallDL.isUnknown())
+                             Instruction *TheCall, bool CalleeHasDebugInfo) {
+  const DebugLoc &TheCallDL = TheCall->getDebugLoc();
+  if (!TheCallDL)
     return;
+
+  auto &Ctx = Fn->getContext();
+  DILocation *InlinedAtNode = TheCallDL;
+
+  // Create a unique call site, not to be confused with any other call from the
+  // same location.
+  InlinedAtNode = DILocation::getDistinct(
+      Ctx, InlinedAtNode->getLine(), InlinedAtNode->getColumn(),
+      InlinedAtNode->getScope(), InlinedAtNode->getInlinedAt());
+
+  // Cache the inlined-at nodes as they're built so they are reused, without
+  // this every instruction's inlined-at chain would become distinct from each
+  // other.
+  DenseMap<const MDNode *, MDNode *> IANodes;
 
   for (; FI != Fn->end(); ++FI) {
     for (BasicBlock::iterator BI = FI->begin(), BE = FI->end();
          BI != BE; ++BI) {
-      DebugLoc DL = BI->getDebugLoc();
-      if (!DL.isUnknown()) {
-        BI->setDebugLoc(updateInlinedAtInfo(DL, TheCallDL, BI->getContext()));
-        if (DbgValueInst *DVI = dyn_cast<DbgValueInst>(BI)) {
-          LLVMContext &Ctx = BI->getContext();
-          MDNode *InlinedAt = BI->getDebugLoc().getInlinedAt(Ctx);
-          DVI->setOperand(2, createInlinedVariable(DVI->getVariable(),
-                                                   InlinedAt, Ctx));
-        }
+      // Loop metadata needs to be updated so that the start and end locs
+      // reference inlined-at locations.
+      if (MDNode *LoopID = BI->getMetadata(LLVMContext::MD_loop)) {
+        MDNode *NewLoopID =
+            inlineLoopID(LoopID, InlinedAtNode, BI->getContext(), IANodes);
+        BI->setMetadata(LLVMContext::MD_loop, NewLoopID);
       }
+
+      if (DebugLoc DL = BI->getDebugLoc()) {
+        DebugLoc IDL =
+            inlineDebugLoc(DL, InlinedAtNode, BI->getContext(), IANodes);
+        BI->setDebugLoc(IDL);
+        continue;
+      }
+
+      if (CalleeHasDebugInfo)
+        continue;
+
+      // If the inlined instruction has no line number, make it look as if it
+      // originates from the call location. This is important for
+      // ((__always_inline__, __nodebug__)) functions which must use caller
+      // location for all instructions in their function body.
+
+      // Don't update static allocas, as they may get moved later.
+      if (auto *AI = dyn_cast<AllocaInst>(BI))
+        if (allocaWouldBeStaticInEntry(AI))
+          continue;
+
+      BI->setDebugLoc(TheCallDL);
     }
   }
 }
@@ -605,40 +653,32 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
   }
 
   // Get the personality function from the callee if it contains a landing pad.
-  Value *CalleePersonality = 0;
-  for (Function::const_iterator I = CalledFunc->begin(), E = CalledFunc->end();
-       I != E; ++I)
-    if (const InvokeInst *II = dyn_cast<InvokeInst>(I->getTerminator())) {
-      const BasicBlock *BB = II->getUnwindDest();
-      const LandingPadInst *LP = BB->getLandingPadInst();
-      CalleePersonality = LP->getPersonalityFn();
-      break;
-    }
+  Constant *CalleePersonality =
+      CalledFunc->hasPersonalityFn()
+          ? CalledFunc->getPersonalityFn()->stripPointerCasts()
+          : nullptr;
 
   // Find the personality function used by the landing pads of the caller. If it
   // exists, then check to see that it matches the personality function used in
   // the callee.
+  Constant *CallerPersonality =
+      Caller->hasPersonalityFn()
+          ? Caller->getPersonalityFn()->stripPointerCasts()
+          : nullptr;
   if (CalleePersonality) {
-    for (Function::const_iterator I = Caller->begin(), E = Caller->end();
-         I != E; ++I)
-      if (const InvokeInst *II = dyn_cast<InvokeInst>(I->getTerminator())) {
-        const BasicBlock *BB = II->getUnwindDest();
-        const LandingPadInst *LP = BB->getLandingPadInst();
-
-        // If the personality functions match, then we can perform the
-        // inlining. Otherwise, we can't inline.
-        // TODO: This isn't 100% true. Some personality functions are proper
-        //       supersets of others and can be used in place of the other.
-        if (LP->getPersonalityFn() != CalleePersonality)
-          return false;
-
-        break;
-      }
+    if (!CallerPersonality)
+      Caller->setPersonalityFn(CalleePersonality);
+    // If the personality functions match, then we can perform the
+    // inlining. Otherwise, we can't inline.
+    // TODO: This isn't 100% true. Some personality functions are proper
+    //       supersets of others and can be used in place of the other.
+    else if (CalleePersonality != CallerPersonality)
+      return false;
   }
 
   // Get an iterator to the last basic block in the function, which will have
   // the new function inlined after it.
-  Function::iterator LastBlock = &Caller->back();
+  Function::iterator LastBlock (&Caller->back());
 
   // Make sure to capture all of the return instructions from the cloned
   // function.
@@ -691,8 +731,11 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
   if (IFI.CG)
     UpdateCallGraphAfterInlining(CS, FirstNewBlock, VMap, IFI);
 
-  // Update inlined instructions' line number information.
-  fixupLineNumbers(Caller, FirstNewBlock, TheCall);
+	// For 'nodebug' functions, the associated DISubprogram is always null.
+	// Conservatively avoid propagating the callsite debug location to
+	// instructions inlined from a function whose DISubprogram is not null.
+	fixupLineNumbers(Caller, FirstNewBlock, TheCall,
+									 CalledFunc->getSubprogram() != nullptr);
 
   // If there are any alloca instructions in the block that used to be the entry
   // block for the callee, move them to the entry block of the caller.  First
@@ -730,16 +773,15 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
       // Transfer all of the allocas over in a block.  Using splice means
       // that the instructions aren't removed from the symbol table, then
       // reinserted.
-      Caller->getEntryBlock().getInstList().splice(InsertPoint,
-                                                   FirstNewBlock->getInstList(),
-                                                   AI, I);
+      Caller->getEntryBlock().getInstList().splice(
+          InsertPoint, FirstNewBlock->getInstList(), AI->getIterator(), I);
     }
   }
 
   // Leave lifetime markers for the static alloca's, scoping them to the
   // function we just inlined.
   if (InsertLifetime && !IFI.StaticAllocas.empty()) {
-    IRBuilder<> builder(FirstNewBlock->begin());
+    IRBuilder<> builder(&FirstNewBlock->front());
     for (unsigned ai = 0, ae = IFI.StaticAllocas.size(); ai != ae; ++ai) {
       AllocaInst *AI = IFI.StaticAllocas[ai];
 
@@ -765,8 +807,8 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
     Function *StackRestore=Intrinsic::getDeclaration(M,Intrinsic::stackrestore);
 
     // Insert the llvm.stacksave.
-    CallInst *SavedPtr = IRBuilder<>(FirstNewBlock, FirstNewBlock->begin())
-      .CreateCall(StackSave, "savedstack");
+    CallInst *SavedPtr = IRBuilder<>(&*FirstNewBlock, FirstNewBlock->begin())
+      .CreateCall(StackSave, {},"savedstack");
 
     // Insert a call to llvm.stackrestore before any return instructions in the
     // inlined function.
@@ -796,7 +838,7 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
   // any call instructions into invoke instructions.
   if (InvokeInst *II = dyn_cast<InvokeInst>(TheCall))
     // TODO
-    HandleInlinedInvoke(II, FirstNewBlock, InlinedFunctionInfo, call2invoke);
+    HandleInlinedInvoke(II, &*FirstNewBlock, InlinedFunctionInfo, call2invoke);
 
   // Otherwise, we have the normal case, of more than one block to inline or
   // multiple return sites.
@@ -827,29 +869,29 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
   // Change the branch that used to go to AfterCallBB to branch to the first
   // basic block of the inlined function.
   //
-  TerminatorInst *Br = OrigBB->getTerminator();
+  Instruction *Br = OrigBB->getTerminator();
   assert(Br && Br->getOpcode() == Instruction::Br &&
          "splitBasicBlock broken!");
-  Br->setOperand(0, FirstNewBlock);
-
+  Br->setOperand(0, &*FirstNewBlock);
 
   // Now that the function is correct, make it a little bit nicer.  In
   // particular, move the basic blocks inserted from the end of the function
   // into the space made by splitting the source basic block.
-  Caller->getBasicBlockList().splice(AfterCallBB, Caller->getBasicBlockList(),
-                                     FirstNewBlock, Caller->end());
+  Caller->getBasicBlockList().splice(AfterCallBB->getIterator(),
+                                     Caller->getBasicBlockList(), FirstNewBlock,
+                                     Caller->end());
 
   // Handle all of the return instructions that we just cloned in, and eliminate
   // any users of the original call/invoke instruction.
   Type *RTy = CalledFunc->getReturnType();
 
-  PHINode *PHI = 0;
-  if (Returns.size() > 0) {
+  PHINode *PHI = nullptr;
+  if (Returns.size() > 1) {
     // The PHI node should go at the front of the new basic block to merge all
     // possible incoming values.
     if (!TheCall->use_empty()) {
       PHI = PHINode::Create(RTy, Returns.size(), TheCall->getName(),
-                            AfterCallBB->begin());
+                            &AfterCallBB->front());
       // Anything that used the result of the function call should now use the
       // PHI node as their operand.
       TheCall->replaceAllUsesWith(PHI);
@@ -866,16 +908,38 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
       }
     }
 
-
     // Add a branch to the merge points and remove return instructions.
+    DebugLoc Loc;
     for (unsigned i = 0, e = Returns.size(); i != e; ++i) {
       ReturnInst *RI = Returns[i];
-      BranchInst::Create(AfterCallBB, RI);
-      // TODO
+      BranchInst* BI = BranchInst::Create(AfterCallBB, RI);
+      Loc = RI->getDebugLoc();
+      BI->setDebugLoc(Loc);
       RI->eraseFromParent();
     }
-  }
-  else if (!TheCall->use_empty()) {
+  } else if (!Returns.empty()) {
+    // Otherwise, if there is exactly one return value, just replace anything
+    // using the return value of the call with the computed value.
+    if (!TheCall->use_empty()) {
+      if (TheCall == Returns[0]->getReturnValue())
+        TheCall->replaceAllUsesWith(UndefValue::get(TheCall->getType()));
+      else
+        TheCall->replaceAllUsesWith(Returns[0]->getReturnValue());
+    }
+
+    // Update PHI nodes that use the ReturnBB to use the AfterCallBB.
+    BasicBlock *ReturnBB = Returns[0]->getParent();
+    ReturnBB->replaceAllUsesWith(AfterCallBB);
+
+    // Splice the code from the return block into the block that it will return
+    // to, which contains the code that was after the call.
+    AfterCallBB->getInstList().splice(AfterCallBB->begin(),
+                                      ReturnBB->getInstList());
+
+    // Delete the return instruction now and empty ReturnBB now.
+    Returns[0]->eraseFromParent();
+    ReturnBB->eraseFromParent();
+  } else if (!TheCall->use_empty()) {
     // No returns, but something is using the return value of the call.  Just
     // nuke the result.
     TheCall->replaceAllUsesWith(UndefValue::get(TheCall->getType()));
@@ -889,13 +953,26 @@ bool InlineFunctionWithVmap(CallSite CS, InlineFunctionInfo &IFI, ValueToValueMa
   assert(cast<BranchInst>(Br)->isUnconditional() && "splitBasicBlock broken!");
   BasicBlock *CalleeEntry = cast<BranchInst>(Br)->getSuccessor(0);
 
+  // Splice the code entry block into calling block, right before the
+  // unconditional branch.
+  CalleeEntry->replaceAllUsesWith(OrigBB);  // Update PHI nodes
+  OrigBB->getInstList().splice(Br->getIterator(), CalleeEntry->getInstList());
+
+  // Remove the unconditional branch.
+  OrigBB->getInstList().erase(Br);
+
+  // Now we can remove the CalleeEntry block, which is now empty.
+  Caller->getBasicBlockList().erase(CalleeEntry);
+
   // If we inserted a phi node, check to see if it has a single value (e.g. all
   // the entries are the same or undef).  If so, remove the PHI so it doesn't
   // block other optimizations.
   if (PHI) {
-    if (Value *V = SimplifyInstruction(PHI, IFI.TD)) {
+    AssumptionCache *AC =
+        IFI.GetAssumptionCache ? &(*IFI.GetAssumptionCache)(*Caller) : nullptr;
+    auto &DL = Caller->getParent()->getDataLayout();
+    if (Value *V = SimplifyInstruction(PHI, {DL, nullptr, nullptr, AC})) {
       PHI->replaceAllUsesWith(V);
-      // TODO
       PHI->eraseFromParent();
     }
   }
