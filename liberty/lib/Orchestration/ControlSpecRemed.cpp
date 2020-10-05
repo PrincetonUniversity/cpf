@@ -2,10 +2,10 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/ControlSpecIterators.h"
+#include "scaf/Utilities/ControlSpecIterators.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/Remediator.h"
-#include "liberty/Speculation/LoopDominators.h"
+#include "scaf/Utilities/LoopDominators.h"
 #include "scaf/Utilities/Timer.h"
 
 #include "llvm/IR/IntrinsicInst.h"

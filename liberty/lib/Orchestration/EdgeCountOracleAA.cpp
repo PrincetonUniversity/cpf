@@ -3,7 +3,7 @@
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/ControlSpecIterators.h"
+#include "scaf/Utilities/ControlSpecIterators.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "scaf/Utilities/Timer.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"

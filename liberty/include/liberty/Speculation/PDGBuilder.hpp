@@ -5,7 +5,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 
-#include "liberty/Analysis/ControlSpecIterators.h"
+#include "scaf/Utilities/ControlSpecIterators.h"
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/SimpleAA.h"
@@ -19,7 +19,7 @@
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
-#include "liberty/Speculation/LoopDominators.h"
+#include "scaf/Utilities/LoopDominators.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
 

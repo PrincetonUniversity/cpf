@@ -11,7 +11,7 @@
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Speculation/LoopDominators.h"
+#include "scaf/Utilities/LoopDominators.h"
 #include "scaf/Utilities/ModuleLoops.h"
 
 namespace liberty
