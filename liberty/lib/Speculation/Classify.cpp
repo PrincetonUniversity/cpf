@@ -34,7 +34,7 @@
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/StableHash.h"
 #include "scaf/Utilities/Timer.h"
-#include "scaf/Utilities/ReportDump.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include <set>
 

@@ -14,7 +14,7 @@
 #include "scaf/Utilities/InstInsertPt.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/Timer.h"
-#include "scaf/Utilities/ReportDump.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include <iterator>
 

@@ -11,7 +11,7 @@
 #include "liberty/Orchestration/Remediator.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/GetMemOper.h"
-#include "scaf/Utilities/ReportDump.h"
+#include "liberty/Utilities/ReportDump.h"
 
 namespace liberty
 {

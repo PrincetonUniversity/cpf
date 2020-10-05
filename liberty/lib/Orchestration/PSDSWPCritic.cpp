@@ -3,7 +3,7 @@
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
 #include "liberty/Orchestration/TXIOAA.h"
-#include "scaf/Utilities/ReportDump.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include <unordered_set>
 #include <climits>

@@ -18,7 +18,7 @@
 #include "liberty/Analysis/LLVMAAResults.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "scaf/Utilities/ReportDump.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include "Assumptions.h"
 

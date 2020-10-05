@@ -27,7 +27,7 @@
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/ModuleLoops.h"
-#include "scaf/Utilities/ReportDump.h"
+#include "liberty/Utilities/ReportDump.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 
