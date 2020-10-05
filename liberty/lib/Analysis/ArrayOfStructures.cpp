@@ -13,7 +13,7 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/NoCaptureFcn.h"
 #include "liberty/Analysis/TraceData.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include "NoEscapeFieldsAA.h"
 

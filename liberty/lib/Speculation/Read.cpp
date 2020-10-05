@@ -10,9 +10,9 @@
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Speculation/Read.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/GetMemOper.h"
 
 #include <stdio.h>
 #include <sstream>

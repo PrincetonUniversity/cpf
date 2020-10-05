@@ -1,11 +1,11 @@
 #define DEBUG_TYPE "asap"
 
 #include "llvm/ADT/Statistic.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 #include "liberty/Orchestration/TXIOAA.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetMemOper.h"
 
 #ifndef DEFAULT_TXIO_REMED_COST
 #define DEFAULT_TXIO_REMED_COST 20

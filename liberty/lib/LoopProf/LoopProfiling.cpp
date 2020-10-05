@@ -21,9 +21,9 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Passes.h"
 
-#include "liberty/Utilities/GlobalCtors.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/SplitEdge.h"
+#include "scaf/Utilities/GlobalCtors.h"
+#include "scaf/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/SplitEdge.h"
 
 #include <iostream>
 #include <fstream>

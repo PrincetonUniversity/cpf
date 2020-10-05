@@ -9,9 +9,9 @@
 
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/Timer.h"
+#include "scaf/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/Timer.h"
 #include "liberty/Utilities/Tred.h"
 
 //#include "Classify.h"

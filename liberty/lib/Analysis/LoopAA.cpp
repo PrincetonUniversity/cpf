@@ -5,8 +5,8 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetMemOper.h"
 #include "liberty/Analysis/LoopAA.h"
 
 #include <cstdio>

@@ -3,7 +3,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
-#include "liberty/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CallSiteFactory.h"
 
 #include "liberty/PointsToProfiler/Indeterminate.h"
 

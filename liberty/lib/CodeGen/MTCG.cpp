@@ -4,12 +4,12 @@
 
 #include "liberty/CodeGen/MTCG.h"
 
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include "liberty/CodeGen/PrintStage.h"
 
 #if (MTCG_CTRL_DEBUG || MTCG_VALUE_DEBUG)
-#include "liberty/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/InsertPrintf.h"
 #endif
 
 #if MTCG_VALUE_DEBUG

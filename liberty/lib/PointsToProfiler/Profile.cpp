@@ -51,13 +51,13 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "liberty/Analysis/KillFlow.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/InsertPrintf.h"
-#include "liberty/Utilities/SplitEdge.h"
-#include "liberty/Utilities/GlobalCtors.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/SplitEdge.h"
+#include "scaf/Utilities/GlobalCtors.h"
 #include "liberty/PointsToProfiler/Indeterminate.h"
 #include "liberty/PointsToProfiler/Remat.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include <sstream>
 

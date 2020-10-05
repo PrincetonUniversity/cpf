@@ -6,10 +6,10 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Orchestration/PrivAA.h"
-#include "liberty/Utilities/GepRange.h"
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/GlobalMalloc.h"
-#include "liberty/Utilities/ReachabilityUtil.h"
+#include "scaf/Utilities/GepRange.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GlobalMalloc.h"
+#include "scaf/Utilities/ReachabilityUtil.h"
 
 #ifndef DEFAULT_PRIV_REMED_COST
 #define DEFAULT_PRIV_REMED_COST 100

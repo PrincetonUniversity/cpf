@@ -13,11 +13,11 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/SplitEdge.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/SplitEdge.h"
 #include "liberty/PointsToProfiler/Remat.h"
 #include "liberty/Speculation/Api.h"
 

@@ -1,8 +1,8 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/GetSize.h"
-#include "liberty/Utilities/IsVolatile.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GetSize.h"
+#include "scaf/Utilities/IsVolatile.h"
 
 using namespace llvm;
 using namespace liberty;

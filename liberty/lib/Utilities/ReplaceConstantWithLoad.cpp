@@ -5,9 +5,9 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ReplaceConstantWithLoad.h"
-#include "liberty/Utilities/SplitEdge.h"
+#include "scaf/Utilities/SplitEdge.h"
 
 #include <map>
 

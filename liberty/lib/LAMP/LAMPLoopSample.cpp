@@ -56,12 +56,12 @@
 
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 
-#include "liberty/Utilities/GlobalCtors.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/GlobalCtors.h"
+#include "scaf/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InsertPrintf.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include <stdio.h>
-#include "liberty/Utilities/LiveValues.h"
+#include "scaf/Utilities/LiveValues.h"
 //#include "SimpleProfReader.h"
 
 #include "LAMPLoopSample.h"

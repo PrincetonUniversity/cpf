@@ -15,7 +15,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Analysis/TypeSanity.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 #include "NoEscapeFieldsAA.h"
 

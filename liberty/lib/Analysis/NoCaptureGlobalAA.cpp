@@ -9,8 +9,8 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Utilities/CaptureUtil.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/CaptureUtil.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 #include "liberty/Analysis/Introspection.h"
 

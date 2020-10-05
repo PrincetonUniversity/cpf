@@ -19,8 +19,8 @@
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/SmtxAA.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include <queue>
 #include <unordered_set>

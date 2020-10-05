@@ -6,7 +6,7 @@
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/LoopDominators.h"
-#include "liberty/Utilities/Timer.h"
+#include "scaf/Utilities/Timer.h"
 
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/ADT/Statistic.h"

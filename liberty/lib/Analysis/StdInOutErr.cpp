@@ -9,7 +9,7 @@
 
 #include "StdInOutErr.h"
 #include "liberty/Analysis/Introspection.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 namespace liberty
 {

@@ -16,7 +16,7 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Utilities/CaptureUtil.h"
+#include "scaf/Utilities/CaptureUtil.h"
 
 
 using namespace llvm;

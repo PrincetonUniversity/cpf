@@ -12,8 +12,8 @@
 #include "llvm/Analysis/ValueTracking.h"
 
 #include "liberty/Analysis/PureFunAA.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetSize.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetSize.h"
 
 #include "RefineCFG.h"
 

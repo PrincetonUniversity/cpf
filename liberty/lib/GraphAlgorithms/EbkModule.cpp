@@ -2,7 +2,7 @@
 #include "llvm/Support/CommandLine.h"
 
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include <assert.h>
 #include <iostream>

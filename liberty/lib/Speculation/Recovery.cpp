@@ -8,9 +8,9 @@
 
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/Selector.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/InsertPrintf.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 // For debugging
 #include "llvm/IR/InstIterator.h"

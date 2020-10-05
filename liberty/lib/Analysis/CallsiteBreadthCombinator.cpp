@@ -6,8 +6,8 @@
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/QueryCacheing.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/CaptureUtil.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CaptureUtil.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Statistic.h"

@@ -1,7 +1,7 @@
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/Dominators.h"
 
-#include "liberty/Utilities/GetOrInsertCIV.h"
+#include "scaf/Utilities/GetOrInsertCIV.h"
 #include "liberty/PointsToProfiler/Remat.h"
 
 namespace liberty

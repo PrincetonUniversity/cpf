@@ -22,9 +22,9 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Analysis/TypeSanity.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
-#include "liberty/Utilities/InsertPrintf.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 #include <cstdio>
 

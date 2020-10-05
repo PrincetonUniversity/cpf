@@ -7,7 +7,7 @@
 
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
-#include "liberty/Utilities/GetSize.h"
+#include "scaf/Utilities/GetSize.h"
 
 
 namespace liberty {

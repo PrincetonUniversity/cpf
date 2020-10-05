@@ -3,8 +3,8 @@
 #include "llvm/ADT/Statistic.h"
 
 #include "liberty/Analysis/SVFResults.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetMemOper.h"
 
 namespace liberty {
 using namespace llvm;

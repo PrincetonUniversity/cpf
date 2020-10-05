@@ -5,7 +5,7 @@
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/ControlSpecIterators.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
-#include "liberty/Utilities/Timer.h"
+#include "scaf/Utilities/Timer.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 
 #include "llvm/IR/IntrinsicInst.h"

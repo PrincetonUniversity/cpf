@@ -2,7 +2,7 @@
 
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 namespace liberty
 {

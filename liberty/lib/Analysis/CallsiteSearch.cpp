@@ -8,7 +8,7 @@
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/Analysis/PureFunAA.h"
 #include "liberty/Analysis/SemiLocalFunAA.h"
-#include "liberty/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CallSiteFactory.h"
 
 namespace liberty
 {

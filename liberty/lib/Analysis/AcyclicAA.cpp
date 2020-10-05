@@ -18,8 +18,8 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/TypeSanity.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 #include "AcyclicAA.h"
 #include "NoEscapeFieldsAA.h"
 

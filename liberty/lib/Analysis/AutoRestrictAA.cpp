@@ -14,7 +14,7 @@
 
 #include "liberty/Analysis/FindSource.h"
 
-#include "liberty/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CallSiteFactory.h"
 
 using namespace llvm;
 using namespace liberty;

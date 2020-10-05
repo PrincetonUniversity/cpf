@@ -27,14 +27,14 @@
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GepRange.h"
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/GlobalMalloc.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/StableHash.h"
-#include "liberty/Utilities/Timer.h"
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GepRange.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GlobalMalloc.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/StableHash.h"
+#include "scaf/Utilities/Timer.h"
+#include "scaf/Utilities/ReportDump.h"
 
 #include <set>
 

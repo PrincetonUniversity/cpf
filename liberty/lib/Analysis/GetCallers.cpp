@@ -1,6 +1,6 @@
 #include "llvm/IR/Constants.h"
 #include "liberty/Analysis/LoopAA.h"  // for FULL_UNIVERSAL
-#include "liberty/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CallSiteFactory.h"
 #include "liberty/Analysis/GetCallers.h"
 
 namespace liberty

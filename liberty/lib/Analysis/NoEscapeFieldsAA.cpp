@@ -17,9 +17,9 @@
 #include "NoEscapeFieldsAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/TypeSanity.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/GetSize.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GetSize.h"
 
 namespace liberty
 {

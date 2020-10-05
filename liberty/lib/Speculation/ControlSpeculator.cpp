@@ -6,8 +6,8 @@
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Speculation/ControlSpeculator.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/Timer.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/Timer.h"
 
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Metadata.h"

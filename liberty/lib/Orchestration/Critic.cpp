@@ -5,7 +5,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "liberty/Orchestration/Critic.h"
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/ReportDump.h"
 
 #define DEFAULT_THREADS 24
 

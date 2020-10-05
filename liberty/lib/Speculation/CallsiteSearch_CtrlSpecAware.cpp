@@ -8,7 +8,7 @@
 #include "liberty/Analysis/SemiLocalFunAA.h"
 #include "liberty/Speculation/CallsiteSearch_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
-#include "liberty/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CallSiteFactory.h"
 
 namespace liberty
 {

@@ -5,7 +5,7 @@
 #include "liberty/CodeGen/MTCG.h"
 
 #include "liberty/Utilities/AllocaHacks.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 #include "liberty/Utilities/GepAndLoad.h"
 #include "liberty/Speculation/Selector.h"
 

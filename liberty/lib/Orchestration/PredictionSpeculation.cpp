@@ -2,10 +2,10 @@
 
 #include "llvm/ADT/Statistic.h"
 #include "liberty/Orchestration/PredictionSpeculation.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GetMemOper.h"
 #include "llvm/Analysis/ValueTracking.h"
 
-#include "liberty/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 #ifndef DEFAULT_LOADED_VALUE_PRED_REMED_COST
 #define DEFAULT_LOADED_VALUE_PRED_REMED_COST 58

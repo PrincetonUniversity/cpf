@@ -14,8 +14,8 @@
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Speculation/SmtxManager.h"
 #include "liberty/Speculation/PtrResidueManager.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include "liberty/Speculation/RemedSelector.h"
 

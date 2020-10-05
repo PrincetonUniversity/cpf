@@ -10,13 +10,13 @@
 #include "liberty/Analysis/Introspection.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/FindUnderlyingObjects.h"
-#include "liberty/Utilities/GepRange.h"
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/GlobalMalloc.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/ReachabilityUtil.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
+#include "scaf/Utilities/GepRange.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GlobalMalloc.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ReachabilityUtil.h"
 
 #include <ctime>
 #include <cmath>

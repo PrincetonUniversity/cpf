@@ -11,9 +11,9 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Redux/Reduction.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/SplitEdge.h"
+#include "scaf/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/SplitEdge.h"
 #include "PDG.hpp"
 
 

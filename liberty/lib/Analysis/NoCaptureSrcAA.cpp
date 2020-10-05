@@ -9,8 +9,8 @@
 
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
-#include "liberty/Utilities/CaptureUtil.h"
-#include "liberty/Utilities/FindAllTransUses.h"
+#include "scaf/Utilities/CaptureUtil.h"
+#include "scaf/Utilities/FindAllTransUses.h"
 
 using namespace llvm;
 

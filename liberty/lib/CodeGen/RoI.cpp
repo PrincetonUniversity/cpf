@@ -12,8 +12,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/ReplaceConstantWithLoad.h"
 
 

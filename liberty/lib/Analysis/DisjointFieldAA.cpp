@@ -14,8 +14,8 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/FindSource.h"
 #include "liberty/Analysis/TypeSanity.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/CaptureUtil.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/CaptureUtil.h"
 
 #include "NoEscapeFieldsAA.h"
 

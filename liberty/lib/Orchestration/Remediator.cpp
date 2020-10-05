@@ -9,9 +9,9 @@
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/ReportDump.h"
 
 namespace liberty
 {

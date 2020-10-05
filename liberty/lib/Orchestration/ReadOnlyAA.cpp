@@ -5,7 +5,7 @@
 
 #include "liberty/Orchestration/LocalityAA.h"
 #include "liberty/Orchestration/ReadOnlyAA.h"
-#include "liberty/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GetMemOper.h"
 
 #ifndef DEFAULT_LOCALITY_REMED_COST
 #define DEFAULT_LOCALITY_REMED_COST 50

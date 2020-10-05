@@ -59,7 +59,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Passes.h"  //TRM 7/21/08
 
-#include "liberty/Utilities/GlobalCtors.h"
+#include "scaf/Utilities/GlobalCtors.h"
 #include "liberty/LAMP/LAMPFlags.h"
 
 #if defTLAMP

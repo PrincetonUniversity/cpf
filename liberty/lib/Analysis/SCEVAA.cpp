@@ -10,7 +10,7 @@
 #include "llvm/IR/Constants.h"
 
 #include "liberty/Analysis/ClassicLoopAA.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 namespace liberty
 {

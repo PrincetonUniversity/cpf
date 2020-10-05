@@ -25,9 +25,9 @@
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/ModuleLoops.h"
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/ReportDump.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 

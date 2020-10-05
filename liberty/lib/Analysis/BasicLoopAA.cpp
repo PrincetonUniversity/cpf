@@ -33,8 +33,8 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 
-#include "liberty/Utilities/GetMemOper.h"
-#include "liberty/Utilities/GetSize.h"
+#include "scaf/Utilities/GetMemOper.h"
+#include "scaf/Utilities/GetSize.h"
 #include "liberty/Analysis/ClassicLoopAA.h"
 #include "liberty/Analysis/LoopAA.h"
 

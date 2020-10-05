@@ -1,8 +1,8 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/LLVMContext.h"
 
-#include "liberty/Utilities/CastUtil.h"
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/CastUtil.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 
 

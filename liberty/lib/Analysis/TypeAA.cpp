@@ -19,9 +19,9 @@
 
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Analysis/TypeSanity.h"
-#include "liberty/Utilities/CallSiteFactory.h"
-#include "liberty/Utilities/Count.h"
-#include "liberty/Utilities/GetSize.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "scaf/Utilities/Count.h"
+#include "scaf/Utilities/GetSize.h"
 
 
 namespace liberty
