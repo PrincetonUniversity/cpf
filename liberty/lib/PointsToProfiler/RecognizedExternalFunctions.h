@@ -185,7 +185,7 @@
   "waitpid",
   "write",
 // Note that the last entry still has a comma.
-#include "./../Analysis/PureFun.h"
+#include "scaf/MemoryAnalysisModules/PureFun.h"
 #endif
 
 

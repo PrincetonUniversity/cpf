@@ -8,16 +8,15 @@
 #include "liberty/Analysis/Devirtualize.h"
 #include "scaf/MemoryAnalysisModules/NoCaptureFcn.h"
 #include "scaf/MemoryAnalysisModules/TraceData.h"
+#include "scaf/MemoryAnalysisModules/NoEscapeFieldsAA.h"
+#include "scaf/MemoryAnalysisModules/TypeSanity.h"
+#include "scaf/Utilities/FindUnderlyingObjects.h"
 
 #include "llvm/IR/Operator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "scaf/MemoryAnalysisModules/TypeSanity.h"
-#include "scaf/Utilities/FindUnderlyingObjects.h"
-
-#include "NoEscapeFieldsAA.h"
 
 namespace liberty
 {
