@@ -9,8 +9,8 @@
 #include "llvm/IR/DataLayout.h"
 
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/FindSource.h"
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/FindSource.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "scaf/Utilities/LoopDominators.h"
 #include "scaf/Utilities/ModuleLoops.h"
 

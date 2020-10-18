@@ -1,7 +1,7 @@
 #ifndef LLVM_LIBERTY_LAMP_ORACLE_AA_H
 #define LLVM_LIBERTY_LAMP_ORACLE_AA_H
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "LAMPLoadProfile.h"
 
 namespace liberty

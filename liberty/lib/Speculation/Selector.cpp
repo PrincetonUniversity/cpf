@@ -16,7 +16,7 @@
 #include "llvm/Support/DOTGraphTraits.h"
 
 #include "PDG.hpp"
-#include "liberty/Analysis/KillFlow.h"
+#include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Speculation/PDGBuilder.hpp"

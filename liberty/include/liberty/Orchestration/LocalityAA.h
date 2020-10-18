@@ -6,7 +6,7 @@
 #ifndef LIBERTY_SPEC_PRIV_LOCALITY_ORACLE_AA_H
 #define LIBERTY_SPEC_PRIV_LOCALITY_ORACLE_AA_H
 
-#include "liberty/Analysis/ClassicLoopAA.h"
+#include "scaf/MemoryAnalysisModules/ClassicLoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"

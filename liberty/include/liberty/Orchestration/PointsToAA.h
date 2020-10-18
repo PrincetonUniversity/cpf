@@ -4,7 +4,7 @@
 #ifndef LIBERTY_SPEC_PRIV_POINTS_TO_ORACLE_AA_H
 #define LIBERTY_SPEC_PRIV_POINTS_TO_ORACLE_AA_H
 
-#include "liberty/Analysis/ClassicLoopAA.h"
+#include "scaf/MemoryAnalysisModules/ClassicLoopAA.h"
 #include "liberty/Speculation/Read.h"
 
 #include "Assumptions.h"

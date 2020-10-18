@@ -7,8 +7,8 @@
 
 #include "scaf/Utilities/ControlSpecIterators.h"
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/SimpleAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/SimpleAA.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"
 #include "liberty/Orchestration/PointsToAA.h"
 #include "liberty/Orchestration/PredictionSpeculation.h"

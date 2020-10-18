@@ -2,7 +2,7 @@
 #define LLVM_LIBERTY_LOOP_PROF_TARGETS_H
 
 #include "llvm/Pass.h"
-//#include "liberty/Analysis/ProfileInfo.h" // deprecated
+//#include "scaf/MemoryAnalysisModules/ProfileInfo.h" // deprecated
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 

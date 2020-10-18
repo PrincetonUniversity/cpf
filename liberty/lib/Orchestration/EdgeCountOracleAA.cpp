@@ -1,7 +1,7 @@
 #define DEBUG_TYPE "ctrlspec"
 
-#include "liberty/Analysis/Introspection.h"
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/Introspection.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/Utilities/ControlSpecIterators.h"
 #include "liberty/Orchestration/EdgeCountOracleAA.h"

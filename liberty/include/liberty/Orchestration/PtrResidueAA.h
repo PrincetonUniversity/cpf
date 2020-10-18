@@ -9,7 +9,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/PtrResidueManager.h"

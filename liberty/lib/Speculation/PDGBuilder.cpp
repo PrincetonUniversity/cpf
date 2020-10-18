@@ -15,7 +15,7 @@
 
 #include "llvm/ADT/iterator_range.h"
 
-#include "liberty/Analysis/LLVMAAResults.h"
+#include "scaf/MemoryAnalysisModules/LLVMAAResults.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/ReportDump.h"

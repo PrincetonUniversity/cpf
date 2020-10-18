@@ -6,8 +6,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Analysis/AnalysisTimeout.h"
-#include "liberty/Analysis/Introspection.h"
+#include "scaf/MemoryAnalysisModules/AnalysisTimeout.h"
+#include "scaf/MemoryAnalysisModules/Introspection.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "scaf/Utilities/CallSiteFactory.h"

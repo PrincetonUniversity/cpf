@@ -5,7 +5,7 @@
 
 #include "PDG.hpp"
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 
 #include <set>

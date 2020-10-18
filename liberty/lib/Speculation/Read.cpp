@@ -7,8 +7,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 
-#include "liberty/Analysis/PureFunAA.h"
-#include "liberty/Analysis/SemiLocalFunAA.h"
+#include "scaf/MemoryAnalysisModules/PureFunAA.h"
+#include "scaf/MemoryAnalysisModules/SemiLocalFunAA.h"
 #include "liberty/Speculation/Read.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/FindUnderlyingObjects.h"

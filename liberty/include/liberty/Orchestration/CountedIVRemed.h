@@ -5,7 +5,7 @@
 
 #include "Noelle.hpp"
 #include "PDG.hpp"
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "scaf/Utilities/ModuleLoops.h"
 

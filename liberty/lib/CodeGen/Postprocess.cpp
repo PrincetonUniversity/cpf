@@ -12,7 +12,7 @@
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/FindUnderlyingObjects.h"
 #include "scaf/Utilities/InstInsertPt.h"

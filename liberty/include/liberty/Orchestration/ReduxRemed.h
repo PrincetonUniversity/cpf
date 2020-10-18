@@ -8,8 +8,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/ReductionDetection.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/ReductionDetection.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Redux/Reduction.h"
 #include "scaf/Utilities/ModuleLoops.h"

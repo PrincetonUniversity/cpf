@@ -6,8 +6,8 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-#include "liberty/Analysis/ClassicLoopAA.h"
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/ClassicLoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/GetMemOper.h"

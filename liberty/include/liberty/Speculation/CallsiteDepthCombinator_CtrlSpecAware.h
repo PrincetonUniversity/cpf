@@ -20,7 +20,7 @@
 #include "llvm/IR/DataLayout.h"
 
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/QueryCacheing.h"
+#include "scaf/MemoryAnalysisModules/QueryCacheing.h"
 #include "liberty/Speculation/CallsiteSearch_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 

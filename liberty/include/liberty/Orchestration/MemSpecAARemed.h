@@ -3,10 +3,10 @@
 
 #include "llvm/IR/DataLayout.h"
 
-#include "liberty/Analysis/KillFlow.h"
-#include "liberty/Analysis/LoopAA.h"
-#include "liberty/Analysis/QueryCacheing.h"
-#include "liberty/Analysis/SimpleAA.h"
+#include "scaf/MemoryAnalysisModules/KillFlow.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/QueryCacheing.h"
+#include "scaf/MemoryAnalysisModules/SimpleAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LampOracleAA.h"
 #include "liberty/Orchestration/CommutativeLibsAA.h"

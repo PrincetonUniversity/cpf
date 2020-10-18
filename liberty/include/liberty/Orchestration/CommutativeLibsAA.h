@@ -1,7 +1,7 @@
 #ifndef LLVM_LIBERTY_COMM_LIBS_AA_H
 #define LLVM_LIBERTY_COMM_LIBS_AA_H
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 
 namespace liberty {

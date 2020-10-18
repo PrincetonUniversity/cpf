@@ -1,6 +1,6 @@
 #define DEBUG_TYPE "redux-remed"
 
-#include "liberty/Analysis/Introspection.h"
+#include "scaf/MemoryAnalysisModules/Introspection.h"
 
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/ADT/Statistic.h"

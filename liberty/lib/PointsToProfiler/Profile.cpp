@@ -50,7 +50,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
-#include "liberty/Analysis/KillFlow.h"
+#include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/InsertPrintf.h"
 #include "scaf/Utilities/SplitEdge.h"

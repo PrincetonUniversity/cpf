@@ -5,16 +5,16 @@
 
 #define DEBUG_TYPE "devirtualize-analysis"
 
-#include "liberty/Analysis/Devirtualize.h"
-#include "liberty/Analysis/NoCaptureFcn.h"
-#include "liberty/Analysis/TraceData.h"
+#include "scaf/MemoryAnalysisModules/Devirtualize.h"
+#include "scaf/MemoryAnalysisModules/NoCaptureFcn.h"
+#include "scaf/MemoryAnalysisModules/TraceData.h"
 
 #include "llvm/IR/Operator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/TypeSanity.h"
+#include "scaf/MemoryAnalysisModules/TypeSanity.h"
 #include "scaf/Utilities/FindUnderlyingObjects.h"
 
 #include "NoEscapeFieldsAA.h"

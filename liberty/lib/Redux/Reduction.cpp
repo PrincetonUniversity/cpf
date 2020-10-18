@@ -9,7 +9,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Redux/Reduction.h"
 #include "scaf/Utilities/InstInsertPt.h"
 #include "scaf/Utilities/ModuleLoops.h"

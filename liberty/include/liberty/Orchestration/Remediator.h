@@ -9,7 +9,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Speculation/Api.h"
 #include "liberty/Speculation/Classify.h"

@@ -6,7 +6,7 @@
 #ifndef LIBERTY_SPEC_PRIV_READ_ONLY_AA_H
 #define LIBERTY_SPEC_PRIV_READ_ONLY_AA_H
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"

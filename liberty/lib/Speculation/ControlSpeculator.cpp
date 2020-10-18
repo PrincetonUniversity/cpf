@@ -1,9 +1,9 @@
 #define DEBUG_TYPE "ctrlspec"
 
-#include "liberty/Analysis/CallsiteSearch.h"
+#include "scaf/MemoryAnalysisModules/CallsiteSearch.h"
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/Utilities/ControlSpecIterators.h"
-#include "liberty/Analysis/Introspection.h"
+#include "scaf/MemoryAnalysisModules/Introspection.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "scaf/Utilities/ModuleLoops.h"

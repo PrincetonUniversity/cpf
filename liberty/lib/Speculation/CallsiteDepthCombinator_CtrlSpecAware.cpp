@@ -3,8 +3,8 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 
-#include "liberty/Analysis/AnalysisTimeout.h"
-#include "liberty/Analysis/Introspection.h"
+#include "scaf/MemoryAnalysisModules/AnalysisTimeout.h"
+#include "scaf/MemoryAnalysisModules/Introspection.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"

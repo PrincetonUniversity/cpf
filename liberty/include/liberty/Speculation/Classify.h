@@ -7,7 +7,7 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
 
-#include "liberty/Analysis/CallsiteSearch.h"
+#include "scaf/MemoryAnalysisModules/CallsiteSearch.h"
 #include "liberty/Speculation/Read.h"
 
 namespace liberty

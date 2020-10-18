@@ -4,7 +4,7 @@
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/ReductionDetection.h"
+#include "scaf/MemoryAnalysisModules/ReductionDetection.h"
 
 namespace liberty
 {

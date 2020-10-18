@@ -2,7 +2,7 @@
 
 #define LAMP_COLLECTS_OUTPUT_DEPENDENCES  (0)
 
-#include "liberty/Analysis/Introspection.h"
+#include "scaf/MemoryAnalysisModules/Introspection.h"
 #include "liberty/LAMP/LampOracleAA.h"
 
 #include "llvm/ADT/Statistic.h"

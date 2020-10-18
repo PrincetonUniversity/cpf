@@ -5,14 +5,14 @@
 // ControlSpeculation, and manually insert it into the
 // LoopAA stack.
 //
-// See also: include/liberty/Analysis/ControlSpeculation.h
+// See also: include/scaf/MemoryAnalysisModules/ControlSpeculation.h
 #ifndef LLVM_LIBERTY_SPEC_PRIV_EDGE_COUNT_ORACLE_AA_H
 #define LLVM_LIBERTY_SPEC_PRIV_EDGE_COUNT_ORACLE_AA_H
 
 #include "llvm/IR/Instructions.h"
 
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 
 #include <set>
 

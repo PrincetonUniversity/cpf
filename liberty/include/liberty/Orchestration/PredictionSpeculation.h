@@ -15,7 +15,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Instruction.h"
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
 

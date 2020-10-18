@@ -3,8 +3,8 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/Statistic.h"
 
-#include "liberty/Analysis/ClassicLoopAA.h"
-#include "liberty/Analysis/FindSource.h"
+#include "scaf/MemoryAnalysisModules/ClassicLoopAA.h"
+#include "scaf/MemoryAnalysisModules/FindSource.h"
 #include "liberty/Orchestration/PrivAA.h"
 #include "scaf/Utilities/GepRange.h"
 #include "scaf/Utilities/GetMemOper.h"

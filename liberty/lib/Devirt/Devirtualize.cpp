@@ -14,14 +14,14 @@
 
 #define DEBUG_TYPE "devirtualize"
 
-#include "liberty/Analysis/Devirtualize.h"
+#include "scaf/MemoryAnalysisModules/Devirtualize.h"
 
 #include "llvm/IR/Operator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Analysis/TypeSanity.h"
+#include "scaf/MemoryAnalysisModules/TypeSanity.h"
 #include "scaf/Utilities/FindUnderlyingObjects.h"
 #include "scaf/Utilities/InsertPrintf.h"
 #include "scaf/Utilities/InstInsertPt.h"

@@ -6,7 +6,7 @@
 #ifndef LIBERTY_SPEC_PRIV_SHORT_LIVED_AA_H
 #define LIBERTY_SPEC_PRIV_SHORT_LIVED_AA_H
 
-#include "liberty/Analysis/LoopAA.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Read.h"
