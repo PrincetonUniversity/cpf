@@ -45,7 +45,7 @@ then
 fi
 
 $PREFIX opt \
-  -load $LIBERTY_LIBS_DIR/libUtil.so -load $NOELLE_LIBS_DIR/libSvf.so -load $NOELLE_LIBS_DIR/libCudd.so -load $LIBERTY_LIBS_DIR/libAnalysis.so \
+  -load $LIBERTY_LIBS_DIR/libUtil.so -load $SCAF_LIBS_DIR/libSCAFUtilities.so -load $NOELLE_LIBS_DIR/libSvf.so -load $NOELLE_LIBS_DIR/libCudd.so -load $LIBERTY_LIBS_DIR/libAnalysis.so \
   -load $LIBERTY_LIBS_DIR/libDevirt.so \
   $EXTRA -devirtualize -simplifycfg -simplifycfg-sink-common=false $IN -o $OUT $FCN $LOOP -stats -specpriv-devirt-stats
 
