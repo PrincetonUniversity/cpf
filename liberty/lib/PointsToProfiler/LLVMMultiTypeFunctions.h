@@ -49,7 +49,7 @@
   "llvm.masked.expandload",
   "llvm.masked.compressstor",
 // Note that the last entry still has a comma.
-#include "./../Analysis/MultiTypePureFun.h"
+#include "scaf/MemoryAnalysisModules/MultiTypePureFun.h"
 #endif
 
 
