@@ -50,8 +50,6 @@ LIBS=" \
        -load $NOELLE_LIBS_DIR/libCudd.so
        -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so
        -load $LIBERTY_LIBS_DIR/libAnalysis.so 
-       -load $LIBERTY_LIBS_DIR/libUtil.so 
-       -load $LIBERTY_LIBS_DIR/libAnalysis.so
        -load $LIBERTY_LIBS_DIR/libLoopProf.so 
 "
 
