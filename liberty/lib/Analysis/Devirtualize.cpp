@@ -5,7 +5,7 @@
 
 #define DEBUG_TYPE "devirtualize-analysis"
 
-#include "scaf/MemoryAnalysisModules/Devirtualize.h"
+#include "liberty/Analysis/Devirtualize.h"
 #include "scaf/MemoryAnalysisModules/NoCaptureFcn.h"
 #include "scaf/MemoryAnalysisModules/TraceData.h"
 
@@ -184,7 +184,7 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
   }
 
   // Do we need a default case?
-  
+
   // If there's a struct, conservatively add a default a case
   bool existStructArg = false;
   for ( CallSite::arg_iterator cs_arg_it = cs.arg_begin(), z = cs.arg_end(); cs_arg_it != z; cs_arg_it++){
@@ -193,7 +193,7 @@ void DevirtualizationAnalysis::studyCallSite(CallSite &cs, Strategy &output,
        break;
      }
   }
-  
+
 
   const TypeSanityAnalysis &typeaa = getAnalysis< TypeSanityAnalysis >();
   output.requiresDefaultCase =

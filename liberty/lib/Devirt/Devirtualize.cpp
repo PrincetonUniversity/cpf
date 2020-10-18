@@ -14,7 +14,7 @@
 
 #define DEBUG_TYPE "devirtualize"
 
-#include "scaf/MemoryAnalysisModules/Devirtualize.h"
+#include "liberty/Analysis/Devirtualize.h"
 
 #include "llvm/IR/Operator.h"
 #include "llvm/ADT/Statistic.h"
