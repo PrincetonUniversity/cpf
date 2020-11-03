@@ -63,6 +63,9 @@ char LoopProf::ID = 0;
 static RegisterPass<LoopProf> RP10("loop-prof", "Insert loop profiling instrumentation", false, false);
 
 
+// getFunctionExits - get a set of exit instructions of a function
+// count ReturnInst and ResumeInst as exits of a function
+// TODO: Does unreachable count as a function exit?
 void getFunctionExits(Function &F,set<BasicBlock*> &bbSet)
 {
   for(Function::iterator bbit = F.begin(), end = F.end();

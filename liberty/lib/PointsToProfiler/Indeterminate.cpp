@@ -27,6 +27,15 @@ static bool calls(const CallSite &cs, const char *fcnname)
   return fcn->getName() == fcnname;
 }
 
+static bool calls_declare_endswith(const CallSite &cs, const char *fcnname)
+{
+  if( !cs.getInstruction() )
+    return false;
+  const Function *fcn = cs.getCalledFunction();
+  if( !fcn )
+    return false;
+  return fcn->isDeclaration() && fcn->getName().endswith(fcnname);
+}
 
 void Indeterminate::findIndeterminateObjects(BasicBlock &bb, UO &objects)
 {
@@ -246,7 +255,8 @@ bool Indeterminate::isFree(const CallSite &cs)
   ||     calls(cs,"_ZdlPvm") // C++ operator delete with size
   ||     calls(cs,"_ZdaPvm") // C++ operator delete[] with size
   ||     calls(cs,"_ZdlPvRKSt9nothrow_t") // C++ operator delete no throw
-  ||     calls(cs,"_ZdaPvRKSt9nothrow_t"); // C++ operator delete[] no throw
+  ||     calls(cs,"_ZdaPvRKSt9nothrow_t") // C++ operator delete[] no throw
+  ||     calls_declare_endswith(cs, "D0Ev"); // FIXME: deleting destructor
 }
 
 bool Indeterminate::isFopen(const CallSite &cs)

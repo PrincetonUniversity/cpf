@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <stdint.h>
-
+//#define DEBUG_EXTERN_ICALL_PROF
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,7 +52,7 @@ void __extern_icall_prof_invoc(void *fnPtr, void *node, int id, int maxNumTarget
 
 #ifdef DEBUG_EXTERN_ICALL_PROF
       printf("#%d first time calling %p\n", id, fnPtr);
-      printf("%p: (%s) %s\n", fnPtr, icall_info->dli_fname, icall_info-<dli_sname);
+      printf("%p: (%s) %s\n", fnPtr, icall_info->dli_fname, icall_info->dli_sname);
 #endif
       vnode->dl_info = icall_info;
       break;
@@ -92,16 +92,17 @@ void ExternIcallProfFinish()
 
   fp  = fopen("./extern_icall_prof.out", "w+");
 
-  fprintf(fp, "Total Instrumented CallSite: %u\n", TotalNumICall);
-  for(int i = 0; i < TotalNumICall; ++i)
-  {
-
-    fprintf(fp, "ID: %d", i);
+  // Total Instrumented CallSite 
+  fprintf(fp, "%u %u\n", TotalNumICall, MaxNumTarget);
+  for(int i = 0; i < TotalNumICall; ++i){
+    // ID
+    fprintf(fp, "%d ", i);
     if (all_nodes[i] != NULL){
-      fprintf(fp, "; Total Count: %u\n", all_nodes[i]->total_cnt);
+      fprintf(fp, "%u\n", all_nodes[i]->total_cnt);
     }
     else {
-      fprintf(fp, " is empty");
+      fprintf(fp, "0\n");
+      continue;
     }
 
     int j = 0;
@@ -111,7 +112,8 @@ void ExternIcallProfFinish()
       if (vnode->fn_ptr == NULL)
         break;
       assert(vnode->dl_info != NULL);
-      fprintf(fp, "  Target: %p; Count: %u; Library %s; Symbol: %s\n", vnode->fn_ptr, vnode->cnt, vnode->dl_info->dli_fname, vnode->dl_info->dli_sname);
+      //  Target: %p Count: %u Library %s Symbol: %s
+      fprintf(fp, "  %p %u %s %s\n", vnode->fn_ptr, vnode->cnt, vnode->dl_info->dli_fname, vnode->dl_info->dli_sname);
       free(vnode->dl_info);
       j++;
       vnode++;
