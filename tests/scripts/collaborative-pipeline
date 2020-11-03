@@ -71,7 +71,6 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $NOELLE_LIBS_DIR/libSvf.so
       -load $NOELLE_LIBS_DIR/libCudd.so
       -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so
-      -load $LIBERTY_LIBS_DIR/libAnalysis.so
       -load $LIBERTY_LIBS_DIR/libLoopProf.so
       -load $LIBERTY_LIBS_DIR/libMetadata.so
       -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
