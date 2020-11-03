@@ -5,10 +5,10 @@
 
 #define DEBUG_TYPE "devirtualize-analysis"
 
-#include "liberty/Analysis/Devirtualize.h"
+#include "liberty/Devirt/DevirtualizationAnalysis.h"
 #include "scaf/MemoryAnalysisModules/NoCaptureFcn.h"
-#include "scaf/MemoryAnalysisModules/TraceData.h"
 #include "scaf/MemoryAnalysisModules/NoEscapeFieldsAA.h"
+#include "scaf/MemoryAnalysisModules/TraceData.h"
 #include "scaf/MemoryAnalysisModules/TypeSanity.h"
 #include "scaf/Utilities/FindUnderlyingObjects.h"
 
