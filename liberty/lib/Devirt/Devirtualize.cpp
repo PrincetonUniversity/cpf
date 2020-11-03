@@ -14,7 +14,7 @@
 
 #define DEBUG_TYPE "devirtualize"
 
-#include "liberty/Analysis/Devirtualize.h"
+#include "liberty/Devirt/DevirtualizationAnalysis.h"
 
 #include "llvm/IR/Operator.h"
 #include "llvm/ADT/Statistic.h"

@@ -23,7 +23,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Passes.h"
 
-#include "liberty/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/InstInsertPt.h"
 
 #include <iostream>
 #include <fstream>
