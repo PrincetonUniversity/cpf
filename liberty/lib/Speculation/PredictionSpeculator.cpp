@@ -32,6 +32,7 @@ ProfileGuidedPredictionSpeculator::load_iterator ProfileGuidedPredictionSpeculat
   return predictedLoads.upper_bound( loop->getHeader() );
 }
 
+//susan: Function that uses value prof infos
 bool ProfileGuidedPredictionSpeculator::isPredictable(const Instruction *inst, const Loop *loop)
 {
   if( !loop )
@@ -43,6 +44,7 @@ bool ProfileGuidedPredictionSpeculator::isPredictable(const Instruction *inst, c
 
   ProfileGuidedPredictionSpeculator::Loop2Load::value_type key( loop->getHeader(), load );
 
+  //susan: reading profile info
   const Read &read = getAnalysis< ReadPass >().getProfileInfo();
   if( !read.resultsValid() )
     return false;

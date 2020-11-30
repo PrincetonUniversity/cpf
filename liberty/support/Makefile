@@ -8,6 +8,6 @@ LEVEL=..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS=tpool ppool nq txio specpriv-profile specpriv-executive FullLoopProf nospec-executive headerphi_prof
+DIRS=tpool ppool nq txio specpriv-profile specpriv-executive FullLoopProf nospec-executive headerphi_prof FullSpiceProf
 
 include $(LEVEL)/Makefile.common

@@ -89,15 +89,20 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //    std::make_unique<LoadedValuePredRemediator>(loadedValuePred, loopAA));
 
   // control speculation remediator
-  ctrlspec->setLoopOfInterest(A->getHeader());
-  auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
-  ctrlSpecRemed->processLoopOfInterest(A);
-  remeds.push_back(std::move(ctrlSpecRemed));
+  //ctrlspec->setLoopOfInterest(A->getHeader());
+  //auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
+  //ctrlSpecRemed->processLoopOfInterest(A);
+  //remeds.push_back(std::move(ctrlSpecRemed));
 
   // privitization remediator
-  auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
-      ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
-  remeds.push_back(std::move(privRemed));
+  //auto privRemed = std::make_unique<PrivRemediator>(mloops, tli, loopAA,
+  //    ctrlspec, kill, rd, asgn); privRemed->setLoopPDG(pdg, A);
+  //remeds.push_back(std::move(privRemed));
+
+  // Spice remediator
+  auto spiceRemed = std::make_unique<SpiceRemediator>(mloops, loopAA);
+  spiceRemed->setLoopPDG(pdg, A);
+  remeds.push_back(std::move(spiceRemed));
 
   // counted induction variable remediator
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage
@@ -110,15 +115,15 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::make_unique<MemVerRemediator>());
 
   // commutative libs remediator
-  remeds.push_back(std::make_unique<CommutativeLibsRemediator>());
+  //remeds.push_back(std::make_unique<CommutativeLibsRemediator>());
 
   // mem speculation combining lamp, ctrl spec, value prediction, points-to
   // spec, separation logic spec, txio, commlibsaa, ptr-residue and static
   // analysis. both SCAF and transformation analysis.
   // all flow deps are remediated via this remediator stack
-  remeds.push_back(std::make_unique<MemSpecAARemediator>(
-      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
-      &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
+  //remeds.push_back(std::make_unique<MemSpecAARemediator>(
+     // proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
+     // &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
 
   return remeds;
 }

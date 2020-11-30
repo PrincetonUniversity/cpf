@@ -5,6 +5,7 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
+#include "liberty/Orchestration/SpiceRemed.h"
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Orchestration/LoadedValuePredRemed.h"
 #include "liberty/Orchestration/LocalityAA.h"
