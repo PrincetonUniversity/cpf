@@ -80,17 +80,20 @@ void getFunctionExits(Function &F,set<BasicBlock*> &bbSet)
 bool SpiceProf::runOnLoop(Loop *Lp) {
   assert(Lp->isLoopSimplifyForm() && "did not run loop simplify\n");
 
-  //get preheader and header
+  //get preheader, header, Module, exit blocks
   BasicBlock *preHeader = Lp->getLoopPreheader();
   BasicBlock *header = Lp->getHeader();
-
-  //get Module
   Module *M = (header->getParent())->getParent();
-
-
-  //get all the exit blocks
   SmallVector<BasicBlock*, 16> exitBlocks;
   Lp->getExitBlocks(exitBlocks);
+
+  //debugs: print out preheader and exitblocks
+  LLVM_DEBUG( errs() << "Loop with preheader " << preHeader->getName() << ": " << numLoops << "\n" );
+  LLVM_DEBUG( errs() << "Exit blocks for loop with preheader " << preHeader->getName() << ":\n" );
+  for ( auto bb : exitBlocks )
+    LLVM_DEBUG( errs() << "\t" << bb->getName() << "\n" );
+  LLVM_DEBUG( errs() << *Lp );
+  LLVM_DEBUG( errs() << "\n" );
 
   //get all the PHINodes in header
   SmallVector<PHINode*, 16> headerPHIs;
@@ -102,16 +105,40 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
     else break;
   }
 
-  // insert bit cast of headerphis in the successor of header
+  //create function type for void spice_profile_load(void* ptr, int staticNum)
+  std::vector<Type*>FuncTy_load_args(2);
+  FuncTy_load_args[0]=Type::getInt8PtrTy(M->getContext()); /*1st arg: bitcast type*/
+  FuncTy_load_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
+
+  FunctionType* FuncTy_profile_load_ty = FunctionType::get(
+      /*Result=*/Type::getVoidTy(M->getContext()),
+      /*Params=*/FuncTy_load_args,
+      /*isVarArg=*/false);
+  FunctionCallee wrapper_ProfileLdFn = M->getOrInsertFunction("__spice_profile_load", FuncTy_profile_load_ty);
+  Constant *ProfileLdFn = cast<Constant>(wrapper_ProfileLdFn.getCallee());
+
+  // insert bit cast of headerphis in the successor of header and call profile_load
   BasicBlock* latch = Lp->getLoopLatch();
   for(BasicBlock::iterator ii = latch->begin(), ie = latch->end(); ii != ie; ++ii){
     if( !isa<PHINode>(ii) ){
-      for(auto &phi : headerPHIs)
-      {
+
+      SmallVector<Instruction*, 16> phiCasts;
+      //insert bitcast
+      for(auto &phi : headerPHIs){
         Constant* phiV = dyn_cast<Constant>(phi);
         const Twine bitcastName = "scast." + phi->getName();
         Type* int8ptrT = Type::getInt8PtrTy(M->getContext());
         CastInst* phiCast = CastInst::CreateBitOrPointerCast(phi, int8ptrT, bitcastName, &*ii);
+        phiCasts.push_back(phiCast);
+      }
+
+      int phiCnt = 0;
+      std::vector<Value*> Args(2);
+      for(auto &phiCast : phiCasts){
+        Args[0] = phiCast;
+        Args[1] = ConstantInt::get(Type::getInt32Ty(M->getContext()), phiCnt);
+        CallInst::Create(ProfileLdFn, Args, "", &*ii);
+        phiCnt++;
       }
       break;
     }
@@ -131,37 +158,7 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
     CallInst::Create(InvocFn, Args, "", (preHeader));
 
 
-  //debugs
-  LLVM_DEBUG( errs() << "Loop with preheader " << preHeader->getName() << ": " << numLoops << "\n" );
-  LLVM_DEBUG( errs() << "Exit blocks for loop with preheader " << preHeader->getName() << ":\n" );
-  for ( auto bb : exitBlocks )
-    LLVM_DEBUG( errs() << "\t" << bb->getName() << "\n" );
-  LLVM_DEBUG( errs() << *Lp );
-  LLVM_DEBUG( errs() << "\n" );
 
-  /*
-  // insert iteration begin function at beginning of header (called each loop)
-  const char* IterBeginName = "LAMP_loop_iteration_begin";
-  Constant *IterBeginFn = M->getOrInsertFunction(IterBeginName, Type::getVoidTy(M->getContext()), (Type *)0);
-
-  // find insertion point (after PHI nodes) -KF 11/18/2008
-  for (BasicBlock::iterator ii = header->begin(), ie = header->end(); ii != ie; ++ii) {
-  if (!isa<PHINode>(ii)) {
-  CallInst::Create(IterBeginFn, "", ii);
-  break;
-  }
-  }
-
-  // insert iteration at cannonical backedge.  exiting block insertions removed in favor of exit block
-  const char* IterEndName = "LAMP_loop_iteration_end";
-  Constant *IterEndFn = M->getOrInsertFunction(IterEndName, Type::getVoidTy(M->getContext()), (Type *)0);
-
-  // cannonical backedge
-  if (!latch->empty())
-  CallInst::Create(IterEndFn, "", (latch->getTerminator()));
-  else
-  CallInst::Create(IterEndFn, "", (latch));
-  */
 
   // insert end invocation at beginning of exit blocks
   std::vector<Type*>FuncTy_0_args;

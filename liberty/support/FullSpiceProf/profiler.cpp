@@ -68,7 +68,7 @@ namespace std{
     fprintf(stderr, "loopCnt = %d\n", loopCnt);
 
     //for each loop
-    /*for(auto &x : per_loop_vals)
+    for(auto &x : per_loop_vals)
     {
       int loop_name = x.first;
       LoopVal_t loop_vals = *(x.second);
@@ -111,7 +111,7 @@ namespace std{
             fwrite((char*)&vals[k], sizeof(long), 1, wf);
         }
       }
-    }*/
+    }
     fclose(wf);
   }
 
