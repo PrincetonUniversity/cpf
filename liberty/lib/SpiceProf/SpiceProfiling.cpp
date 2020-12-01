@@ -188,6 +188,7 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
 bool SpiceProf::runOnModule(Module& M)
 {
   numLoops = 0;
+  std::set<BasicBlock*> ExitBBs;
 
   // Go through and instrument each loop,
   for(Module::iterator IF = M.begin(), E = M.end(); IF != E; ++IF)
@@ -195,51 +196,6 @@ bool SpiceProf::runOnModule(Module& M)
     Function &F = *IF;
     if(F.isDeclaration())
       continue;
-
-    // First collect all call sites in this function, before we add more
-    // and mess-up our iterators.
-    /*typedef std::vector<Instruction*> Calls;
-    Calls calls;
-    for(Function::iterator i=F.begin(), e=F.end(); i!=e; ++i)
-      for(BasicBlock::iterator j=i->begin(), z=i->end(); j!=z; ++j)
-      {
-        Instruction *inst = &*j;
-
-        if( CallBase  *call = dyn_cast<CallBase>(inst) ){
-          calls.push_back(inst);
-        }
-      }*/
-    /* Using the same structures as loops to track time spent in functions
-     * This should probably be done a different way
-     **/
-   // ++numLoops;
-   // const char* InvocName = "loopProf_invocation";
-   // FunctionCallee wrapper_Invoc =  M.getOrInsertFunction(InvocName,
-   //     Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()));
-   // Constant *InvocFn = cast<Constant>(wrapper_Invoc.getCallee());
-   // std::vector<Value*> Args(1);
-   // Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops);
-   // CallInst::Create(InvocFn, Args, "", F.getEntryBlock().getFirstNonPHI() );
-   // LLVM_DEBUG( errs() << "Function " << IF->getName() << ": " << numLoops << "\n" );
-
-  //  const char* LoopEndName = "loop_exit";
-  //  FunctionCallee wrapper_LoopEndFn= M.getOrInsertFunction(LoopEndName,
-  //    Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()));
-  //  Constant *LoopEndFn=cast<Constant>(wrapper_LoopEndFn.getCallee());
-      //Type::getVoidTy(M.getContext()), Type::getInt32Ty(M.getContext()), (Type *)0);
-  //  set <BasicBlock *> BBSet;
-  //  BBSet.clear();
-
- //   getFunctionExits(F,BBSet);
- //   for(set<BasicBlock*>::iterator it = BBSet.begin(), end = BBSet.end();
- //       it != end; ++it)
- //   {
- //     BasicBlock *bb = *it;
- //     BasicBlock::iterator bbit = bb->end();
- //     --bbit; //--bbit;
- //     Instruction *inst = &*bbit;
- //     CallInst::Create(LoopEndFn, Args, "", inst);
- //   }
 
     // Finished inserting calls for function, now handle its loops
     LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
@@ -260,78 +216,34 @@ bool SpiceProf::runOnModule(Module& M)
 
       ++numLoops; // calls start with integer 0
     }
+
+    ExitBBs.clear();
+    getFunctionExits(F,ExitBBs);
   }
 
-    // Instrument every callsite within this function
-    /*for(Calls::const_iterator i=calls.begin(), e=calls.end(); i!=e; ++i)
-    {
-      Instruction *inst = *i;
-
-      ++numLoops;
-
-      // Ziyang: need to ignore all llvm.* instrinsics
-
-      Function *fcn = dyn_cast<CallBase>(inst)->getCalledFunction();
-      if (fcn){ // the other case is indirect call
-        if (fcn->getName().startswith("llvm."))
-          continue;
-      }
-
-      Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops );
-      InstInsertPt::Before(inst) << CallInst::Create(InvocFn, Args);
-
-      if( InvokeInst *invoke = dyn_cast<InvokeInst>(inst) )
-      {
-        // Two successors: normal vs unwind
-        // normal
-        BasicBlock *upon_normal = split(invoke->getParent(), invoke->getNormalDest(), "after.invoke.normal.");
-        InstInsertPt::Beginning(upon_normal) << CallInst::Create(LoopEndFn,Args);
-
-        // Unwind
-        BasicBlock *upon_exception = split(invoke->getParent(), invoke->getUnwindDest(), "after.invoke.exception.");
-        InstInsertPt::Beginning(upon_exception) << CallInst::Create(LoopEndFn,Args);
-        LLVM_DEBUG( errs() << "Invokesite " << *inst << ": " << numLoops << "\n" );
-      }
-      else
-      {
-        // CallInst
-        InstInsertPt::After(inst) << CallInst::Create(LoopEndFn, Args);
-        LLVM_DEBUG( errs() << "Callsite " << *inst << ": " << numLoops << "\n" );
-      }
-
-    }
-  }*/
-
-  /*FunctionCallee wrapper_InitFn =  M.getOrInsertFunction("loopProfInit",
-      Type::getVoidTy(M.getContext()),
-      Type::getInt32Ty(M.getContext()));
-
-  Constant *InitFn = cast<Constant>(wrapper_InitFn.getCallee());
-      //sot
-      //(Type *)0);
-
-  std::vector<Value*> Args(1);
-  Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops, false);
-*/
-  // Create the GlobalCtor function
+  //create the printall function
   std::vector<Type*>FuncTy_0_args;
   FunctionType* FuncTy_void_void = FunctionType::get(
       /*Result=*/Type::getVoidTy( M.getContext() ),
       /*Params=*/FuncTy_0_args,
       /*isVarArg=*/false);
 
-  Function* func_printall = Function::Create(
+  Function* func_beforeMain = Function::Create(
       /*FunctionType=*/FuncTy_void_void,
       /*Linkage=*/GlobalValue::ExternalLinkage,
-      /*Name=*/"__spice_profile_printAll", &M);
+      /*Name=*/"__spice_before_main", &M);
 
-  //BasicBlock *printall_entry = BasicBlock::Create(M.getContext(), "entry", func_printall,0);
-  //CallInst::Create(InitFn, Args, "", initor_entry);
-  //ReturnInst::Create(M.getContext(), initor_entry);
 
-  // Function has been created, now add it to the global ctor list
-  callAfterMain(func_printall, 0);
-
+  //insert printall at every exit
+  //for(auto const &bb : ExitBBs){
+    //for (BasicBlock::iterator ii = bb->begin(), ie = bb->end(); ii != ie; ++ii) {
+      //if (isa<ReturnInst>(ii)) {
+        //LLVM_DEBUG( errs() << "inst: " << *ii << " is a returnInst\n");
+        //CallInst::Create(func_printall, "", &*ii);
+      //}
+    //}
+  //}
+  callBeforeMain(func_beforeMain);
 
   return false;
 }

@@ -3,50 +3,47 @@
 #include <map>
 #include <stdio.h>
 #include <stack>
+#include <assert.h>
 
 extern "C"{
 namespace std{
-  //profile values per invocation
-  typedef vector<long> vals_t;
-
-  //profile/count per static variable
-  typedef map<int, vals_t*> InvokeVal_t;
-
-  //map of static variable to its profile/count
-  typedef vector<InvokeVal_t*> LoopVal_t;
-
-  //map of loop to its profiles/counts
-  map<int, LoopVal_t*> per_loop_vals;
-
-  InvokeVal_t* curr_InvokeVal;
+  //map of loop to its invoke_count
+  map<int, int> loop_invoke_cnts;
 
   //record currently executing loops
   stack<int> loopStack;
 
+  FILE* wf;
+
   void __spice_profile_load(void* ptr, int staticNum)
   {
-    //get the current invoke val
+    wf = fopen("spice.prof", "wb");
+    assert(wf && "did you insert __spice_before_main?\n");
+
+    //print loop
     int currLoopNum = loopStack.top();
-    fprintf(stderr, "profile_load in loop %d\n", currLoopNum);
-    curr_InvokeVal = (per_loop_vals[currLoopNum])->back();
+    fwrite((char*)&currLoopNum, sizeof(int), 1, wf);
+    //fprintf(stderr, "print loop %d\n", currLoopNum);
 
-    //if the current variable has no profile then create one
-    if(!curr_InvokeVal->count(staticNum))
-      curr_InvokeVal->insert({staticNum, new vals_t()});
+    //print invoke_count
+    int invoke_count = loop_invoke_cnts[currLoopNum];
+    fwrite((char*)&invoke_count, sizeof(int), 1, wf);
+    //fprintf(stderr, "print invoke_count %d\n", invoke_count);
 
-      auto vals = (*curr_InvokeVal)[staticNum];
-      vals->push_back((long)ptr);
+    //print static var count
+    fwrite((char*)&staticNum, sizeof(int), 1, wf);
+    //fprintf(stderr, "print static var Num %d\n", staticNum);
+
+    //print ptr
+    fwrite((char*)&ptr, sizeof(void*), 1, wf);
+    //fprintf(stderr, "print ptr %ld\n", (long)ptr);
   }
 
   void __spice_start_invocation(int loop_num){
 
     //create a loop profile if not created
-    if(!per_loop_vals.count(loop_num)) // if there is no profile yet for this loop
-      per_loop_vals.insert({loop_num, new LoopVal_t()});
-
-    //create a new loop invocation
-    LoopVal_t* curr_loop_vals = per_loop_vals[loop_num];
-    curr_loop_vals->push_back(new InvokeVal_t());
+    if(!loop_invoke_cnts.count(loop_num)) // if there is no profile yet for this loop
+      loop_invoke_cnts.insert({loop_num, 0});
 
     //push the loop onto the stack;
     loopStack.push(loop_num);
@@ -55,64 +52,14 @@ namespace std{
 
   void __spice_end_invocation(){
     fprintf(stderr, "leaving loop: %d\n", loopStack.top());
+    int currLoopNum = loopStack.top();
+    loop_invoke_cnts[currLoopNum] ++;
     loopStack.pop();
   }
 
-  void __spice_profile_printAll(){
+  void __spice_before_main(){
     //open prof file
-    FILE *wf= fopen("spice.prof", "wb");
-
-    //print number of loops
-    int loopCnt = per_loop_vals.size();
-    fwrite((char*)&loopCnt, sizeof(int), 1, wf);
-    fprintf(stderr, "loopCnt = %d\n", loopCnt);
-
-    //for each loop
-    for(auto &x : per_loop_vals)
-    {
-      int loop_name = x.first;
-      LoopVal_t loop_vals = *(x.second);
-      //LoopIter_t loop_iters = *per_loop_itercounts[loop_name];
-      int invoke_count = loop_vals.size();
-
-      //print invocation counts
-      fwrite((char*)&invoke_count, sizeof(int), 1, wf);
-      fprintf(stderr, "invoke count = %d\n", invoke_count);
-
-      //print loop name
-      fwrite((char*)&loop_name, sizeof(int), 1, wf);
-      fprintf(stderr, "loop name = %d\n", loop_name);
-
-      for(int j=0; j<invoke_count; j++)
-      {
-        InvokeVal_t invoke_vals = *(loop_vals[j]);
-        //InvokeIter_t invoke_iters = *loop_iters[j];
-        int numVars = invoke_vals.size();
-
-        //print num of vars in one invoke
-        fwrite((char*)&numVars, sizeof(int), 1, wf);
-        fprintf(stderr, "num of vars = %d\n", numVars);
-
-        for(auto &y : invoke_vals)
-        {
-          int varId = y.first;
-
-          //print current var Id
-          fwrite((char*)&varId, sizeof(int), 1, wf);
-          fprintf(stderr, "varId = %d\n", varId);
-          vals_t vals = *(y.second);
-          int iters = vals.size();
-
-          //print current var iter counts
-          fwrite((char*)&iters,sizeof(int), 1, wf);
-          fprintf(stderr, "iters = %d\n", iters);
-          //print curr var values
-          for(int k=0; k<iters; k++)
-            fwrite((char*)&vals[k], sizeof(long), 1, wf);
-        }
-      }
-    }
-    fclose(wf);
+    wf = fopen("spice.prof", "wb");
   }
 
 }
