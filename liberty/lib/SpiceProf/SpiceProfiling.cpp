@@ -35,7 +35,7 @@ using namespace llvm;
 using namespace std;
 using namespace liberty;
 
-namespace
+namespace liberty
 {
   class SpiceProf : public ModulePass
   {
@@ -105,39 +105,65 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
     else break;
   }
 
-  //create function type for void spice_profile_load(void* ptr, int staticNum)
-  std::vector<Type*>FuncTy_load_args(2);
-  FuncTy_load_args[0]=Type::getInt8PtrTy(M->getContext()); /*1st arg: bitcast type*/
-  FuncTy_load_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
+  //create function type for void spice_profile_load_ptr(void* ptr, int staticNum)
+  std::vector<Type*>FuncTy_load_ptr_args(2);
+  FuncTy_load_ptr_args[0]=Type::getInt8PtrTy(M->getContext()); /*1st arg: bitcast type*/
+  FuncTy_load_ptr_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
 
-  FunctionType* FuncTy_profile_load_ty = FunctionType::get(
+  FunctionType* FuncTy_profile_load_ptr_ty = FunctionType::get(
       /*Result=*/Type::getVoidTy(M->getContext()),
-      /*Params=*/FuncTy_load_args,
+      /*Params=*/FuncTy_load_ptr_args,
       /*isVarArg=*/false);
-  FunctionCallee wrapper_ProfileLdFn = M->getOrInsertFunction("__spice_profile_load", FuncTy_profile_load_ty);
-  Constant *ProfileLdFn = cast<Constant>(wrapper_ProfileLdFn.getCallee());
+  FunctionCallee wrapper_ProfileLdPtrFn = M->getOrInsertFunction("__spice_profile_load_ptr", FuncTy_profile_load_ptr_ty);
+  Constant *ProfileLdPtrFn = cast<Constant>(wrapper_ProfileLdPtrFn.getCallee());
+
+
+  //create function type for void spice_profile_load_double(double ptr, int staticNum)
+  std::vector<Type*>FuncTy_load_double_args(2);
+  FuncTy_load_double_args[0]=Type::getDoubleTy(M->getContext());
+  FuncTy_load_double_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
+
+  FunctionType* FuncTy_profile_load_double_ty = FunctionType::get(
+      /*Result=*/Type::getVoidTy(M->getContext()),
+      /*Params=*/FuncTy_load_double_args,
+      /*isVarArg=*/false);
+  FunctionCallee wrapper_ProfileLdDbFn = M->getOrInsertFunction("__spice_profile_load_double", FuncTy_profile_load_double_ty);
+  Constant *ProfileLdDbFn = cast<Constant>(wrapper_ProfileLdDbFn.getCallee());
 
   // insert bit cast of headerphis in the successor of header and call profile_load
   BasicBlock* latch = Lp->getLoopLatch();
   for(BasicBlock::iterator ii = latch->begin(), ie = latch->end(); ii != ie; ++ii){
     if( !isa<PHINode>(ii) ){
 
-      SmallVector<Instruction*, 16> phiCasts;
+      SmallVector<Instruction*, 16> phiPtrCasts;
+      SmallVector<Instruction*, 16> phiDoubles;
       //insert bitcast
       for(auto &phi : headerPHIs){
-        Constant* phiV = dyn_cast<Constant>(phi);
+        Type* phiType = phi->getType();
         const Twine bitcastName = "scast." + phi->getName();
-        Type* int8ptrT = Type::getInt8PtrTy(M->getContext());
-        CastInst* phiCast = CastInst::CreateBitOrPointerCast(phi, int8ptrT, bitcastName, &*ii);
-        phiCasts.push_back(phiCast);
+        if(!phiType->isDoubleTy()){
+          Type* int8ptrT = Type::getInt8PtrTy(M->getContext());
+          CastInst* phiCast = CastInst::CreateBitOrPointerCast(phi, int8ptrT, bitcastName, &*ii);
+          phiPtrCasts.push_back(phiCast);
+        }
+        else{
+          phiDoubles.push_back(phi);
+        }
       }
 
       int phiCnt = 0;
       std::vector<Value*> Args(2);
-      for(auto &phiCast : phiCasts){
+      for(auto &phiCast : phiPtrCasts){
         Args[0] = phiCast;
         Args[1] = ConstantInt::get(Type::getInt32Ty(M->getContext()), phiCnt);
-        CallInst::Create(ProfileLdFn, Args, "", &*ii);
+        CallInst::Create(ProfileLdPtrFn, Args, "", &*ii);
+        phiCnt++;
+      }
+
+      for(auto &phiDouble : phiDoubles){
+        Args[0] = phiDouble;
+        Args[1] = ConstantInt::get(Type::getInt32Ty(M->getContext()), phiCnt);
+        CallInst::Create(ProfileLdDbFn, Args, "", &*ii);
         phiCnt++;
       }
       break;

@@ -5,6 +5,7 @@
 #include <stack>
 #include <assert.h>
 
+#define RECORD_THRESHOLD 20
 extern "C"{
 namespace std{
   //map of loop to its invoke_count
@@ -13,30 +14,55 @@ namespace std{
   //record currently executing loops
   stack<int> loopStack;
 
+  //reduce invocations
+  int count=0;
+
   FILE* wf;
 
-  void __spice_profile_load(void* ptr, int staticNum)
+  void __spice_profile_load_ptr(void* ptr, int staticNum)
   {
-    wf = fopen("spice.prof", "wb");
     assert(wf && "did you insert __spice_before_main?\n");
 
-    //print loop
     int currLoopNum = loopStack.top();
+    int invoke_count = loop_invoke_cnts[currLoopNum];
+    if(invoke_count % RECORD_THRESHOLD)
+      return;
+
+    invoke_count /= RECORD_THRESHOLD;
+    //print loop
     fwrite((char*)&currLoopNum, sizeof(int), 1, wf);
-    //fprintf(stderr, "print loop %d\n", currLoopNum);
 
     //print invoke_count
-    int invoke_count = loop_invoke_cnts[currLoopNum];
     fwrite((char*)&invoke_count, sizeof(int), 1, wf);
-    //fprintf(stderr, "print invoke_count %d\n", invoke_count);
 
     //print static var count
     fwrite((char*)&staticNum, sizeof(int), 1, wf);
-    //fprintf(stderr, "print static var Num %d\n", staticNum);
 
     //print ptr
     fwrite((char*)&ptr, sizeof(void*), 1, wf);
-    //fprintf(stderr, "print ptr %ld\n", (long)ptr);
+  }
+
+  void __spice_profile_load_double(double ptr, int staticNum)
+  {
+    assert(wf && "did you insert __spice_before_main?\n");
+
+    int currLoopNum = loopStack.top();
+    int invoke_count = loop_invoke_cnts[currLoopNum];
+    if(invoke_count % RECORD_THRESHOLD)
+      return;
+
+    invoke_count /= RECORD_THRESHOLD;
+    //print loop
+    fwrite((char*)&currLoopNum, sizeof(int), 1, wf);
+
+    //print invoke_count
+    fwrite((char*)&invoke_count, sizeof(int), 1, wf);
+
+    //print static var count
+    fwrite((char*)&staticNum, sizeof(int), 1, wf);
+
+    //print ptr
+    fwrite((char*)&ptr, sizeof(double), 1, wf);
   }
 
   void __spice_start_invocation(int loop_num){
