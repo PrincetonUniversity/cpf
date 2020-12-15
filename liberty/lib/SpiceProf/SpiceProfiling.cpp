@@ -44,6 +44,7 @@ namespace
   {
     bool runOnModule(Module& M);
     bool runOnLoop(Loop *lp);
+    bool isTargetLoop(Loop *lp);
 
     int numLoops;
 
@@ -52,7 +53,7 @@ namespace
     {
       AU.addRequired<LoopInfoWrapperPass>();
       AU.addRequired<Targets>();
-      AU.addRequired<LoopProfLoad>();
+      //AU.addRequired<LoopProfLoad>();
       AU.setPreservesAll();
     }
 
@@ -215,11 +216,9 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
   return true;
 }
 
-
-bool SpiceProf::runOnModule(Module& M)
+bool SpiceProf::isTargetLoop(Loop* l)
 {
   // get required loop prof
-  LoopProfLoad &load = getAnalysis< LoopProfLoad >();
   Targets &tg = getAnalysis<Targets>();
 
   for(Targets::header_iterator i=tg.begin(), e=tg.end(); i!=e; ++i)
@@ -227,22 +226,20 @@ bool SpiceProf::runOnModule(Module& M)
     BasicBlock *header = *i;
     Function *fcn = header->getParent();
 
-    char percent[10];
-    const unsigned long loop_time = load.getLoopTime(header);
-    snprintf(percent,10, "%.1f", 100.0 * loop_time / load.getTotTime());
-
-    errs() << " - " << fcn->getName() << " :: " << header->getName();
-    Instruction *term = header->getTerminator();
-    if (term)
-      liberty::printInstDebugInfo(term);
-    errs() << "\tTime " << loop_time << " / " << load.getTotTime()
-           << " Coverage: " << percent << "%\n";
+    if(header == l->getHeader())
+    {
+      errs() << " - " << fcn->getName() << " :: " << header->getName();
+      errs() << "this loop is found\n";
+      return true;
+    }
   }
+  return false;
+}
 
+bool SpiceProf::runOnModule(Module& M)
+{
+  //get target loops according to loop prof
   numLoops = 0;
-  std::set<BasicBlock*> ExitBBs;
-
-  // Go through and instrument each loop,
   for(Module::iterator IF = M.begin(), E = M.end(); IF != E; ++IF)
   {
     Function &F = *IF;
@@ -258,19 +255,15 @@ bool SpiceProf::runOnModule(Module& M)
     {
 
       Loop *loop = loops.front();
+      if(isTargetLoop(loop)){
+        runOnLoop(loop);
+        ++numLoops; // calls start with integer 0
+      }
       loops.pop_front();
-
-      runOnLoop(loop);
-
       loops.insert( loops.end(),
           loop->getSubLoops().begin(),
           loop->getSubLoops().end());
-
-      ++numLoops; // calls start with integer 0
     }
-
-    ExitBBs.clear();
-    getFunctionExits(F,ExitBBs);
   }
 
   //create the printall function
@@ -284,17 +277,6 @@ bool SpiceProf::runOnModule(Module& M)
       /*FunctionType=*/FuncTy_void_void,
       /*Linkage=*/GlobalValue::ExternalLinkage,
       /*Name=*/"__spice_before_main", &M);
-
-
-  //insert printall at every exit
-  //for(auto const &bb : ExitBBs){
-    //for (BasicBlock::iterator ii = bb->begin(), ie = bb->end(); ii != ie; ++ii) {
-      //if (isa<ReturnInst>(ii)) {
-        //LLVM_DEBUG( errs() << "inst: " << *ii << " is a returnInst\n");
-        //CallInst::Create(func_printall, "", &*ii);
-      //}
-    //}
-  //}
   callBeforeMain(func_beforeMain);
 
   return false;
