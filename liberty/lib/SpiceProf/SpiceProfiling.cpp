@@ -25,6 +25,9 @@
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/SplitEdge.h"
 
+#include "liberty/LoopProf/Targets.h"
+#include "liberty/LoopProf/LoopProfLoad.h"
+
 #include <iostream>
 #include <fstream>
 #include <set>
@@ -35,7 +38,7 @@ using namespace llvm;
 using namespace std;
 using namespace liberty;
 
-namespace liberty
+namespace
 {
   class SpiceProf : public ModulePass
   {
@@ -48,6 +51,8 @@ namespace liberty
     virtual void getAnalysisUsage(AnalysisUsage &AU) const
     {
       AU.addRequired<LoopInfoWrapperPass>();
+      AU.addRequired<Targets>();
+      AU.addRequired<LoopProfLoad>();
       AU.setPreservesAll();
     }
 
@@ -213,6 +218,27 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
 
 bool SpiceProf::runOnModule(Module& M)
 {
+  // get required loop prof
+  LoopProfLoad &load = getAnalysis< LoopProfLoad >();
+  Targets &tg = getAnalysis<Targets>();
+
+  for(Targets::header_iterator i=tg.begin(), e=tg.end(); i!=e; ++i)
+  {
+    BasicBlock *header = *i;
+    Function *fcn = header->getParent();
+
+    char percent[10];
+    const unsigned long loop_time = load.getLoopTime(header);
+    snprintf(percent,10, "%.1f", 100.0 * loop_time / load.getTotTime());
+
+    errs() << " - " << fcn->getName() << " :: " << header->getName();
+    Instruction *term = header->getTerminator();
+    if (term)
+      liberty::printInstDebugInfo(term);
+    errs() << "\tTime " << loop_time << " / " << load.getTotTime()
+           << " Coverage: " << percent << "%\n";
+  }
+
   numLoops = 0;
   std::set<BasicBlock*> ExitBBs;
 
