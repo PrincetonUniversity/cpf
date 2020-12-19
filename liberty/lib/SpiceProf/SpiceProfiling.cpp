@@ -228,8 +228,8 @@ bool SpiceProf::isTargetLoop(Loop* l)
 
     if(header == l->getHeader())
     {
-      errs() << " - " << fcn->getName() << " :: " << header->getName();
-      errs() << "this loop is found\n";
+      errs() << "loop num: " << numLoops << "\n";
+      errs() << " - " << fcn->getName() << " :: " << header->getName() << "\n";
       return true;
     }
   }

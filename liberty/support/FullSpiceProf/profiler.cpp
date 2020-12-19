@@ -28,6 +28,7 @@ namespace std{
     if(invoke_count % RECORD_THRESHOLD)
       return;
 
+
     invoke_count /= RECORD_THRESHOLD;
     //print loop
     fwrite((char*)&currLoopNum, sizeof(int), 1, wf);
