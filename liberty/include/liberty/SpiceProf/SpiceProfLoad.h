@@ -15,6 +15,7 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Function.h"
 
+#include "liberty/LoopProf/Targets.h"
 #define SPICE_PROF_FILE "spice.prof"
 #define SPICE_OUT_FILE "spice.out"
 

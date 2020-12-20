@@ -3,6 +3,7 @@
 
 #include "liberty/Analysis/KillFlow.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/SpiceProf/SpiceProfLoad.h"
 #include "liberty/Orchestration/ControlSpecRemed.h"
 #include "liberty/Orchestration/CountedIVRemed.h"
 #include "liberty/Orchestration/SpiceRemed.h"
@@ -65,7 +66,8 @@ public:
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
       KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-      CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
+      CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+      LoopProfLoad &lpl, SpiceProfLoad &spice,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -84,7 +86,7 @@ private:
       SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
       PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
       const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA, SpiceProfLoad &spice,
       CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
       PerformanceEstimator *perf);
 

@@ -10,6 +10,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "liberty/SpiceProf/SpiceProfLoad.h"
 #include "liberty/Analysis/ControlSpeculation.h"
 #include "liberty/Analysis/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
@@ -40,8 +41,8 @@ public:
 
 class SpiceRemediator : public Remediator {
 public:
-  SpiceRemediator(ModuleLoops &ml, LoopAA *aa)
-      : Remediator(), mloops(ml), loopAA(aa){}
+  SpiceRemediator(SpiceProfLoad &spice, ModuleLoops &ml, LoopAA *aa)
+      : Remediator(), mloops(ml), loopAA(aa), spice_profile(spice){}
 
   Remedies satisfy(const PDG &pdg, Loop *loop, const Criticisms &criticisms);
 
@@ -67,6 +68,7 @@ private:
   PostDominatorTree *pdt;
   LoopInfo *li;
   ScalarEvolution *se;
+  SpiceProfLoad &spice_profile;
 
 };
 

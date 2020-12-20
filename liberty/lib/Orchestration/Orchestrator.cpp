@@ -62,7 +62,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
     SmtxSlampSpeculationManager &smtxMan, SmtxSpeculationManager &smtxLampMan,
     PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA, SpiceProfLoad &spice,
     CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
     PerformanceEstimator *perf) {
   std::vector<Remediator_ptr> remeds;
@@ -100,7 +100,7 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::move(privRemed));
 
   // Spice remediator
-  auto spiceRemed = std::make_unique<SpiceRemediator>(mloops, loopAA);
+  auto spiceRemed = std::make_unique<SpiceRemediator>(spice, mloops, loopAA);
   spiceRemed->setLoopPDG(pdg, A);
   remeds.push_back(std::move(spiceRemed));
 
@@ -291,7 +291,7 @@ bool Orchestrator::findBestStrategy(
     const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
     KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
     CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
-    std::unique_ptr<PipelineStrategy> &strat,
+    SpiceProfLoad &spice, std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
     bool constrainSubLoops, bool abortIfNoParallelStage) {
@@ -323,7 +323,7 @@ bool Orchestrator::findBestStrategy(
   std::vector<Remediator_ptr> remeds =
       getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
                      smtxMan, smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
-                     loopAA, kill, killflowA, callsiteA, &perf);
+                     loopAA, kill, killflowA, spice, callsiteA, &perf);
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);

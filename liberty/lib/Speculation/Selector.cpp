@@ -30,6 +30,7 @@
 #include "liberty/Utilities/ReportDump.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
+#include "liberty/SpiceProf/SpiceProfLoad.h"
 
 #include "liberty/GraphAlgorithms/Ebk.h"
 //#include "PtrResidueAA.h"
@@ -92,6 +93,7 @@ void Selector::analysisUsage(AnalysisUsage &au)
   au.addRequired< LAMPLoadProfile >();
   au.addRequired< KillFlow >();
   au.addRequired< Targets >();
+  au.addRequired< SpiceProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
   au.setPreservesAll();
 }
@@ -151,6 +153,7 @@ unsigned Selector::computeWeights(
 
   Pass &proxy = getPass();
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
+  SpiceProfLoad &spice = proxy.getAnalysis<SpiceProfLoad>();
   PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
   TargetLibraryInfo *tli =
@@ -239,7 +242,7 @@ unsigned Selector::computeWeights(
           A, *pdg, //ldi,
           *perf, ctrlspec, loadedValuePred, mloops, tli, smtxMan,
           smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
-          killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
+          killflowA, callsiteA, lpl, spice, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
@@ -849,7 +852,7 @@ bool Selector::doSelection(
     // 'loop' is a loop we will parallelize
     // if (DebugFlag &&
     //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-    
+
     REPORT_DUMP(printOneLoopStrategy(errs(), loop, strategies[loop->getHeader()].get(),
                            lpl, true, *perf));
 
@@ -873,7 +876,7 @@ bool Selector::doSelection(
     // 'deleteme' is a loop we will NOT parallelize.
     // if (DebugFlag &&
     //     (isCurrentDebugType(DEBUG_TYPE) || isCurrentDebugType("classify")))
-  
+
     REPORT_DUMP(printOneLoopStrategy(errs(), deleteme,
                            strategies[deleteme->getHeader()].get(), lpl, false,
                            *perf));
