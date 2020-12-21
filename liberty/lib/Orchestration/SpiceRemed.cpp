@@ -24,6 +24,28 @@ bool SpiceRemedy::compare(const Remedy_ptr rhs) const {
   return false;
 }
 
+Remediator::RemedResp SpiceRemediator::regdep(const Instruction *A,
+                                              const Instruction *B,
+                                              bool loopCarried, const Loop *L){
+  Remediator::RemedResp remedResp;
+  remedResp.depRes = DepResult::Dep;
+  auto remedy = std::make_shared<SpiceRemedy>();
+  remedy->cost = DEFAULT_SPICE_REMED_COST;
+  remedResp.remedy = remedy;
+  return remedResp;
+}
+
+Remediator::RemedResp SpiceRemediator::ctrldep(const Instruction *A,
+                                                    const Instruction *B,
+                                                    const Loop *L) {
+  Remediator::RemedResp remedResp;
+  remedResp.depRes = DepResult::Dep;
+  auto remedy = std::make_shared<SpiceRemedy>();
+  remedy->cost = DEFAULT_SPICE_REMED_COST;
+  remedResp.remedy = remedy;
+  return remedResp;
+}
+
 Remediator::RemedResp SpiceRemediator::memdep(const Instruction *A, const Instruction *B, bool loopCarried,
                    DataDepType dataDepTy, const Loop *L){
   Remediator::RemedResp remedResp;
@@ -31,7 +53,6 @@ Remediator::RemedResp SpiceRemediator::memdep(const Instruction *A, const Instru
   auto remedy = std::make_shared<SpiceRemedy>();
   remedy->cost = DEFAULT_SPICE_REMED_COST;
   remedResp.remedy = remedy;
-  errs() << "SUSAN: SPICE IS UP!\n";
   return remedResp;
 }
 

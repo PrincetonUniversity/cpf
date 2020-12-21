@@ -58,8 +58,11 @@ public:
     return "spice-remediator";
   }
 
-  RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried,
-                   DataDepType dataDepTy, const Loop *L);
+  RemedResp memdep(const Instruction *A, const Instruction *B, bool loopCarried, DataDepType dataDepTy, const Loop *L);
+
+  RemedResp regdep(const Instruction *A, const Instruction *B, bool loopCarried, const Loop *L);
+
+  RemedResp ctrldep(const Instruction *A, const Instruction *B, const Loop *L);
 
 private:
   PDG *pdg;
