@@ -32,6 +32,24 @@ Remediator::RemedResp SpiceRemediator::regdep(const Instruction *A,
   auto remedy = std::make_shared<SpiceRemedy>();
   remedy->cost = DEFAULT_SPICE_REMED_COST;
   remedResp.remedy = remedy;
+  double bPred = spice_profile.predictability(const_cast<Instruction*>(B));
+  if(loopCarried && bPred > 0.80)
+  {
+    errs() << "Instruction A: \n" << *A << "\n";
+    errs() << "Instruction B: \n" << *B << "\n";
+    for(const Use &U : B->operands())
+    {
+      Value* uv = U.get();
+      if(!isa<Instruction>(uv))
+        continue;
+      Instruction* uInst = dyn_cast<Instruction>(uv);
+      if(uInst == A)
+      {
+        remedResp.depRes = DepResult::NoDep;
+        break;
+      }
+    }
+  }
   return remedResp;
 }
 
@@ -43,6 +61,11 @@ Remediator::RemedResp SpiceRemediator::ctrldep(const Instruction *A,
   auto remedy = std::make_shared<SpiceRemedy>();
   remedy->cost = DEFAULT_SPICE_REMED_COST;
   remedResp.remedy = remedy;
+  //if(loopCarried)
+  //{
+    //errs() << "Instruction A: \n" << *A << "\n";
+    //errs() << "Instruction B: \n" << *B << "\n";
+  //}
   return remedResp;
 }
 
@@ -53,6 +76,11 @@ Remediator::RemedResp SpiceRemediator::memdep(const Instruction *A, const Instru
   auto remedy = std::make_shared<SpiceRemedy>();
   remedy->cost = DEFAULT_SPICE_REMED_COST;
   remedResp.remedy = remedy;
+  //if(loopCarried)
+  //{
+    //errs() << "Instruction A: \n" << *A << "\n";
+    //errs() << "Instruction B: \n" << *B << "\n";
+  //}
   return remedResp;
 }
 
