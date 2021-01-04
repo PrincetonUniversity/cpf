@@ -230,6 +230,8 @@ endif
 
 cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
 cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
+cpf: export SCAF_INSTALL_DEBUG=${scaf-install-dir-debug}
+cpf: export SCAF_INSTALL_RELEASE=${scaf-install-dir-release}
 cpf: export NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug}
 cpf: export NOELLE_INSTALL_RELEASE=${noelle-install-dir-release}
 cpf: export CPF_ROOT_PATH=${cpf-root-path}
