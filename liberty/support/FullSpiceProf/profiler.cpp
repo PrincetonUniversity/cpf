@@ -5,7 +5,7 @@
 #include <stack>
 #include <assert.h>
 
-#define RECORD_THRESHOLD 20
+#define RECORD_THRESHOLD 1
 extern "C"{
 namespace std{
   //map of loop to its invoke_count
@@ -44,6 +44,29 @@ namespace std{
   }
 
   void __spice_profile_load_double(double ptr, int staticNum)
+  {
+    assert(wf && "did you insert __spice_before_main?\n");
+
+    int currLoopNum = loopStack.top();
+    int invoke_count = loop_invoke_cnts[currLoopNum];
+    if(invoke_count % RECORD_THRESHOLD)
+      return;
+
+    invoke_count /= RECORD_THRESHOLD;
+    //print loop
+    fwrite((char*)&currLoopNum, sizeof(int), 1, wf);
+
+    //print invoke_count
+    fwrite((char*)&invoke_count, sizeof(int), 1, wf);
+
+    //print static var count
+    fwrite((char*)&staticNum, sizeof(int), 1, wf);
+
+    //print ptr
+    fwrite((char*)&ptr, sizeof(double), 1, wf);
+  }
+
+  void __spice_profile_load_float(float ptr, int staticNum)
   {
     assert(wf && "did you insert __spice_before_main?\n");
 

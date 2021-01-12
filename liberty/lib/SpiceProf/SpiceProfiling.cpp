@@ -20,13 +20,16 @@
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Passes.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 
 #include "liberty/Utilities/GlobalCtors.h"
 #include "liberty/Utilities/InstInsertPt.h"
 #include "liberty/Utilities/SplitEdge.h"
+#include "liberty/Utilities/ModuleLoops.h"
 
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Redux/Reduction.h"
 
 #include <iostream>
 #include <fstream>
@@ -40,6 +43,8 @@ using namespace liberty;
 
 namespace
 {
+  typedef std::set<Value*> VSet;
+
   class SpiceProf : public ModulePass
   {
     bool runOnModule(Module& M);
@@ -51,8 +56,9 @@ namespace
     public:
     virtual void getAnalysisUsage(AnalysisUsage &AU) const
     {
-      AU.addRequired<LoopInfoWrapperPass>();
-      AU.addRequired<Targets>();
+      AU.addRequired< LoopInfoWrapperPass >();
+      AU.addRequired< Targets >();
+      AU.addRequired< ModuleLoops >();
       //AU.addRequired<LoopProfLoad>();
       AU.setPreservesAll();
     }
@@ -83,15 +89,42 @@ void getFunctionExits(Function &F,set<BasicBlock*> &bbSet)
   }
 }
 
+bool isExcluded(Instruction* inst, Loop* lp, ScalarEvolution &scev){
+
+  // invariant should not happen because it's header-phi
+  if(lp->isLoopInvariant(inst))
+  {
+    errs() << "inst " << *inst << "is invariant and is excluded for profile\n";
+    return true;
+  }
+
+  std::set<PHINode*> ignore;
+  SpecPriv::Reduction::Type type;
+  BinaryOperator::BinaryOps opcode;
+  VSet phis, binops, cmps, brs, liveOuts;
+  Value *initVal = 0;
+
+  if( SpecPriv::Reduction::isRegisterReduction(
+         scev, lp, dyn_cast< PHINode > (inst),  nullptr, ignore, /*inputs*/
+         type, opcode, phis, binops, cmps, brs, liveOuts, initVal /*outputs*/
+    ) )
+          errs() << *inst << "\n";
+  return false;
+}
+
 bool SpiceProf::runOnLoop(Loop *Lp) {
   assert(Lp->isLoopSimplifyForm() && "did not run loop simplify\n");
 
   //get preheader, header, Module, exit blocks
   BasicBlock *preHeader = Lp->getLoopPreheader();
   BasicBlock *header = Lp->getHeader();
+  Function* f = header->getParent();
   Module *M = (header->getParent())->getParent();
   SmallVector<BasicBlock*, 16> exitBlocks;
   Lp->getExitBlocks(exitBlocks);
+
+  ModuleLoops& mloops = getAnalysis< ModuleLoops >();
+  ScalarEvolution& se = mloops.getAnalysis_ScalarEvolution(f);
 
   //debugs: print out preheader and exitblocks
   LLVM_DEBUG( errs() << "Loop with preheader " << preHeader->getName() << ": " << numLoops << "\n" );
@@ -104,7 +137,7 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
   //get all the PHINodes in header
   SmallVector<PHINode*, 16> headerPHIs;
   for (BasicBlock::iterator ii = header->begin(), ie = header->end(); ii != ie; ++ii) {
-    if (isa<PHINode>(ii)) {
+    if (isa<PHINode>(ii) && ! isExcluded(&*ii, Lp, se)) {
       headerPHIs.push_back((PHINode*) &*ii);
       LLVM_DEBUG( errs() << "inst: " << *ii << " is a phi\n");
     }
@@ -112,29 +145,37 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
   }
 
   //create function type for void spice_profile_load_ptr(void* ptr, int staticNum)
-  std::vector<Type*>FuncTy_load_ptr_args(2);
-  FuncTy_load_ptr_args[0]=Type::getInt8PtrTy(M->getContext()); /*1st arg: bitcast type*/
-  FuncTy_load_ptr_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
+  std::vector<Type*>FuncTy_load_args(2);
+  FuncTy_load_args[0]=Type::getInt8PtrTy(M->getContext()); /*1st arg: bitcast type*/
+  FuncTy_load_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
 
   FunctionType* FuncTy_profile_load_ptr_ty = FunctionType::get(
       /*Result=*/Type::getVoidTy(M->getContext()),
-      /*Params=*/FuncTy_load_ptr_args,
+      /*Params=*/FuncTy_load_args,
       /*isVarArg=*/false);
   FunctionCallee wrapper_ProfileLdPtrFn = M->getOrInsertFunction("__spice_profile_load_ptr", FuncTy_profile_load_ptr_ty);
   Constant *ProfileLdPtrFn = cast<Constant>(wrapper_ProfileLdPtrFn.getCallee());
 
 
   //create function type for void spice_profile_load_double(double ptr, int staticNum)
-  std::vector<Type*>FuncTy_load_double_args(2);
-  FuncTy_load_double_args[0]=Type::getDoubleTy(M->getContext());
-  FuncTy_load_double_args[1]=Type::getInt32Ty(M->getContext()); /*2nd arg: int*/
+  FuncTy_load_args[0]=Type::getDoubleTy(M->getContext());
 
   FunctionType* FuncTy_profile_load_double_ty = FunctionType::get(
       /*Result=*/Type::getVoidTy(M->getContext()),
-      /*Params=*/FuncTy_load_double_args,
+      /*Params=*/FuncTy_load_args,
       /*isVarArg=*/false);
   FunctionCallee wrapper_ProfileLdDbFn = M->getOrInsertFunction("__spice_profile_load_double", FuncTy_profile_load_double_ty);
   Constant *ProfileLdDbFn = cast<Constant>(wrapper_ProfileLdDbFn.getCallee());
+
+  //create function type for void spice_profile_load_double(double ptr, int staticNum)
+  FuncTy_load_args[0]=Type::getFloatTy(M->getContext());
+
+  FunctionType* FuncTy_profile_load_float_ty = FunctionType::get(
+      /*Result=*/Type::getVoidTy(M->getContext()),
+      /*Params=*/FuncTy_load_args,
+      /*isVarArg=*/false);
+  FunctionCallee wrapper_ProfileLdFtFn = M->getOrInsertFunction("__spice_profile_load_float", FuncTy_profile_load_float_ty);
+  Constant *ProfileLdFtFn = cast<Constant>(wrapper_ProfileLdFtFn.getCallee());
 
   // insert bit cast of headerphis in the successor of header and call profile_load
   BasicBlock* latch = Lp->getLoopLatch();
@@ -143,17 +184,21 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
 
       SmallVector<Instruction*, 16> phiPtrCasts;
       SmallVector<Instruction*, 16> phiDoubles;
+      SmallVector<Instruction*, 16> phiFloats;
       //insert bitcast
       for(auto &phi : headerPHIs){
         Type* phiType = phi->getType();
         const Twine bitcastName = "scast." + phi->getName();
-        if(!phiType->isDoubleTy()){
+        if(!phiType->isDoubleTy() && !phiType->isFloatTy()){
           Type* int8ptrT = Type::getInt8PtrTy(M->getContext());
           CastInst* phiCast = CastInst::CreateBitOrPointerCast(phi, int8ptrT, bitcastName, &*ii);
           phiPtrCasts.push_back(phiCast);
         }
-        else{
+        else if(phiType->isDoubleTy()){
           phiDoubles.push_back(phi);
+        }
+        else if(phiType->isFloatTy()){
+          phiFloats.push_back(phi);
         }
       }
 
@@ -170,6 +215,13 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
         Args[0] = phiDouble;
         Args[1] = ConstantInt::get(Type::getInt32Ty(M->getContext()), phiCnt);
         CallInst::Create(ProfileLdDbFn, Args, "", &*ii);
+        phiCnt++;
+      }
+
+      for(auto &phiFloat : phiFloats){
+        Args[0] = phiFloat;
+        Args[1] = ConstantInt::get(Type::getInt32Ty(M->getContext()), phiCnt);
+        CallInst::Create(ProfileLdFtFn, Args, "", &*ii);
         phiCnt++;
       }
       break;

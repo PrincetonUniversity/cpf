@@ -33,10 +33,15 @@ Remediator::RemedResp SpiceRemediator::regdep(const Instruction *A,
   remedy->cost = DEFAULT_SPICE_REMED_COST;
   remedResp.remedy = remedy;
   double bPred = spice_profile.predictability(const_cast<Instruction*>(B));
+  //if(loopCarried)
+    //errs() << "Loop Carried :\n";
+  //else
+    //errs() << "Inter Loop :\n";
+
+  //errs() << "Instruction A: \n" << *A << "\n";
+  //errs() << "Instruction B: \n" << *B << "\n";
   if(loopCarried && bPred > 0.80)
   {
-    errs() << "Instruction A: \n" << *A << "\n";
-    errs() << "Instruction B: \n" << *B << "\n";
     for(const Use &U : B->operands())
     {
       Value* uv = U.get();
@@ -63,8 +68,8 @@ Remediator::RemedResp SpiceRemediator::ctrldep(const Instruction *A,
   remedResp.remedy = remedy;
   //if(loopCarried)
   //{
-    //errs() << "Instruction A: \n" << *A << "\n";
-    //errs() << "Instruction B: \n" << *B << "\n";
+    errs() << "Instruction A: \n" << *A << "\n";
+    errs() << "Instruction B: \n" << *B << "\n";
   //}
   return remedResp;
 }
