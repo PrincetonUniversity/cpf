@@ -106,9 +106,11 @@ bool isExcluded(Instruction* inst, Loop* lp, ScalarEvolution &scev){
 
   if( SpecPriv::Reduction::isRegisterReduction(
          scev, lp, dyn_cast< PHINode > (inst),  nullptr, ignore, /*inputs*/
-         type, opcode, phis, binops, cmps, brs, liveOuts, initVal /*outputs*/
-    ) )
-          errs() << *inst << "\n";
+         type, opcode, phis, binops, cmps, brs, liveOuts, initVal /*outputs*/)){
+          errs() << *inst << " is a reduction operation and therefore excluded\n";
+          return true;
+  }
+
   return false;
 }
 
@@ -137,9 +139,12 @@ bool SpiceProf::runOnLoop(Loop *Lp) {
   //get all the PHINodes in header
   SmallVector<PHINode*, 16> headerPHIs;
   for (BasicBlock::iterator ii = header->begin(), ie = header->end(); ii != ie; ++ii) {
-    if (isa<PHINode>(ii) && ! isExcluded(&*ii, Lp, se)) {
-      headerPHIs.push_back((PHINode*) &*ii);
-      LLVM_DEBUG( errs() << "inst: " << *ii << " is a phi\n");
+    if (isa<PHINode>(ii)) {
+      if(! isExcluded(&*ii, Lp, se))
+      {
+        headerPHIs.push_back((PHINode*) &*ii);
+        errs() << "inst: " << *ii << " is a phi\n";
+      }
     }
     else break;
   }
