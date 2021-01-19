@@ -35,7 +35,7 @@ series = {ASPLOS ’20}
 CPF relies on [LLVM](https://github.com/llvm/llvm-project), [SCAF](https://github.com/PrincetonUniversity/SCAF) and [NOELLE](https://github.com/scampanoni/noelle). Follow `bootstrap/README.md` to install all dependences automatically or cutomize it.
 
 ### Users
-If you have any trouble using this framework feel free to reach out to us for help (contact sapostolakis@princeton.edu).
+If you have any trouble using this framework feel free to reach out to us for help (contact liberators@liberty-research.org).
 
 ### Contributions
 We welcome contributions from the community to improve this research-grade framework and evolve it to cater for more users.
