@@ -3,6 +3,7 @@
 # Don't use quotes
 # Make sure there are no trailing spaces
 # "Enjoy GNU Make"
+SHELL := /bin/bash
 
 ## Start of Configuration ##
 
