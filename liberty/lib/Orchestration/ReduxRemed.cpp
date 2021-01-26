@@ -291,10 +291,10 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     return remedResp;
   }
 
-  auto aSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(ncA);
-  auto bSCC = loopDepInfo->sccdagAttrs.getSCCDAG()->sccOfValue(ncB);
+  auto aSCC = loopDepInfo->getSCCManager()->getSCCDAG()->sccOfValue(ncA);
+  auto bSCC = loopDepInfo->getSCCManager()->getSCCDAG()->sccOfValue(ncB);
   if (aSCC == bSCC &&
-      loopDepInfo->sccdagAttrs.getSCCAttrs(aSCC)->canExecuteReducibly()) {
+      loopDepInfo->getSCCManager()->getSCCAttrs(aSCC)->canExecuteReducibly()) {
     ++numRegDepsRemovedNoelleRedux;
     LLVM_DEBUG(errs() << "Resolved by noelle Redux\n");
     LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
