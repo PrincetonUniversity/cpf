@@ -41,7 +41,8 @@ compile-noelle=1
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
-noelle-remote-url=https://github.com/sapostolakis/noelle.git
+#noelle-remote-url=https://github.com/sapostolakis/noelle.git
+noelle-remote-url=https://github.com/scampanoni/noelle.git
 noelle-branch=master
 
 #######
