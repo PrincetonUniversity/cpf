@@ -76,7 +76,7 @@ num-workers=16
 
 # Check if unbuffer binary exists in verbose mode
 ifeq (${verbose}, 1)
-	_:=$(if $(shell which unbuffer),$(info unbuffer found for verbose mode),$(error Need "unbuffer" in verbose mode; please install it or turn off verbose))
+	_:=$(if $(shell which unbuffer),$(info unbuffer found for verbose mode),$(error Need "unbuffer" in verbose mode; please install it \(package "expect" on ubuntu\) or turn off verbose))
 endif
 
 
