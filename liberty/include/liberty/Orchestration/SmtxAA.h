@@ -19,7 +19,7 @@ public:
 
   // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
-  unsigned long setCost(PerformanceEstimator *perf);
+  void setCost(PerformanceEstimator *perf);
   StringRef getRemedyName() const { return "smtx-lamp-remedy"; };
 
   bool isExpensive() { return true; }

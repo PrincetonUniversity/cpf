@@ -40,7 +40,7 @@ namespace SpecPriv
     return this->writeI < smtxRhs->writeI;
   }
 
-  unsigned long SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
+  void SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
     assert(this->memI && "no memI in SmtxLampRemedy remedy???");
     unsigned validation_weight = 0.0000738;
     if (isa<LoadInst>(this->memI))
