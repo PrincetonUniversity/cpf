@@ -1,5 +1,5 @@
 BASE_DIR:=$(shell pwd)
-NOELLE_REMOTE?=https://github.com/sapostolakis/noelle.git
+NOELLE_REMOTE?=https://github.com/scampanoni/noelle.git
 NOELLE_BRANCH?=master
 ORIGINAL_PATH:=${PATH}
 

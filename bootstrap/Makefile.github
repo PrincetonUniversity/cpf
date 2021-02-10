@@ -3,6 +3,7 @@
 # Don't use quotes
 # Make sure there are no trailing spaces
 # "Enjoy GNU Make"
+SHELL := /bin/bash
 
 ## Start of Configuration ##
 
@@ -27,7 +28,7 @@ scaf-install-dir-release=/scratch/install/scaf-install-release
 ## If compile-scaf=1, use this url to clone and build SCAF from scratch
 ## Don't use quotes
 scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
-scaf-branch=master
+scaf-branch=v9.0.0
 
 ##########
 # NOELLE #
@@ -40,8 +41,8 @@ noelle-install-dir-release=/scratch/install/noelle-install-release
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
-noelle-remote-url=https://github.com/sapostolakis/noelle.git
-noelle-branch=master
+noelle-remote-url=https://github.com/scampanoni/noelle.git
+noelle-branch=v9.0.0
 
 #######
 # CPF #
@@ -76,7 +77,7 @@ num-workers=16
 
 # Check if unbuffer binary exists in verbose mode
 ifeq (${verbose}, 1)
-	_:=$(if $(shell which unbuffer),$(info unbuffer found for verbose mode),$(error Need "unbuffer" in verbose mode; please install it or turn off verbose))
+	_:=$(if $(shell which unbuffer),$(info unbuffer found for verbose mode),$(error Need "unbuffer" in verbose mode; please install it \(package "expect" on ubuntu\) or turn off verbose))
 endif
 
 
@@ -143,7 +144,6 @@ endif
     @echo LLVM Debug: ${llvm-install-dir-debug}
     @echo LLVM Release: ${llvm-install-dir-release}
 endif
-
 
 scaf:
 ifeq (${compile-scaf}, 1)

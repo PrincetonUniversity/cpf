@@ -28,7 +28,7 @@ compile-scaf=1
 ## If compile-scaf=1, use this url to clone and build SCAF from scratch
 ## Don't use quotes
 scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
-scaf-branch=master
+scaf-branch=v9.0.0
 
 ##########
 # NOELLE #
@@ -41,9 +41,8 @@ compile-noelle=1
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
-#noelle-remote-url=https://github.com/sapostolakis/noelle.git
 noelle-remote-url=https://github.com/scampanoni/noelle.git
-noelle-branch=master
+noelle-branch=v9.0.0
 
 #######
 # CPF #
@@ -133,7 +132,7 @@ else
 endif
 else
 
-ifndef llvm-install-dir-debug 
+ifndef llvm-install-dir-debug
 	$(error Chose not to compile llvm but llvm-install-dir-debug is not set)
 endif
 
@@ -153,7 +152,7 @@ ifndef scaf-remote-url
 	$(error Chose to SCAF but scaf-remote-url is not set)
 endif
 
-ifndef scaf-branch 
+ifndef scaf-branch
 	$(error Chose to compile SCAF but scaf-branch is not set)
 endif
 	mkdir -p ${install-prefix}
@@ -175,7 +174,7 @@ endif
 
 else
 
-ifndef scaf-install-dir-debug 
+ifndef scaf-install-dir-debug
 	$(error Chose not to compile scaf but scaf-install-dir-debug is not set)
 endif
 ifndef scaf-install-dir-release
@@ -193,7 +192,7 @@ ifndef noelle-remote-url
 	$(error Chose to NOELLE but noelle-remote-url is not set)
 endif
 
-ifndef noelle-branch 
+ifndef noelle-branch
 	$(error Chose to compile NOELLE but noelle-branch is not set)
 endif
 	mkdir -p ${install-prefix}
@@ -215,7 +214,7 @@ endif
 
 else
 
-ifndef noelle-install-dir-debug 
+ifndef noelle-install-dir-debug
 	$(error Chose not to compile noelle but noelle-install-dir-debug is not set)
 endif
 ifndef noelle-install-dir-release
@@ -249,7 +248,7 @@ else
 	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
 endif
 else
-ifndef cpf-install-dir-debug 
+ifndef cpf-install-dir-debug
 	$(error Chose not to compile cpf but cpf-install-dir-debug is not set)
 endif
 
@@ -272,7 +271,7 @@ cpf-env-debug.rc:
 
 cpf-env-release.rc:
 	rm -f ${install-prefix}/$@
-	@echo Generating ${install-prefix}/$@ 
+	@echo Generating ${install-prefix}/$@
 	cp cpf-env.rc.template ${install-prefix}/$@
 	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-SCAF%${scaf-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
 	@echo  Release environment variables stored in ${install-prefix}/$@
