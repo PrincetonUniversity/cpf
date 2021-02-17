@@ -37,7 +37,7 @@ jobs:
 
     - name: Run regression
       run: |
-          source /u/ziyangx/ve_py3/bin/activate
+          source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
           python ${GITHUB_WORKSPACE}/tests/scripts/GetResults.py -p ${GITHUB_WORKSPACE}/tests/regression -b ${GITHUB_WORKSPACE}/tests/regression/bmark_list_reg.json -r 1 -n 7 -s ${{ github.event.inputs.suite }} -f
     - name: Archive partifacts
