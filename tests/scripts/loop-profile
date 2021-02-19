@@ -76,7 +76,7 @@ echo $CMD
 $CMD
 
 echo ''
-CMD="g++ -O3 $FLIBS $LAMPS $HOOKS -o $EXE"
+CMD="g++ -no-pie -O3 $FLIBS $LAMPS $HOOKS -o $EXE"
 echo $CMD 
 $CMD
 

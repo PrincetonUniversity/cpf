@@ -293,7 +293,7 @@ $(CANON).specpriv-profile.exe : $(CANON).bc $(SPECPRIVPROFLIBS)
 	rm -f $(CANON).specpriv-profile.time $(CANON).specpriv-profile.out $(CANON).specpriv-profile.exe
 	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-instrument.time specpriv-profile $(CANON).bc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-lower.time llc $(OPT) $(CANON).specpriv-profile.bc -o $(CANON).specpriv-profile.s
-	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-link.time $(CXX) benchmark.specpriv-profile.s $(QUEUES) $(SPPROF) $(LIBS) -lrt -lpthread -o $@
+	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-link.time $(CXX) -no-pie benchmark.specpriv-profile.s $(QUEUES) $(SPPROF) $(LIBS) -lrt -lpthread -o $@
 	date
 
 $(CANON).specpriv-pipeline.bc $(CANON).specpriv-pipeline-nopeep.bc : $(CANON).bc $(CANON).lamp.out $(CANON).edgeProf.out $(CANON).specpriv-profile.out $(CANON).loopProf.out $(LIBSPECPRIV) $(LIBERTY_SRC_DIR)/scripts/specpriv-pipeline
