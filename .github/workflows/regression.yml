@@ -44,5 +44,6 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: results
+        if: ${{ always() }}
         path: |
           tests/regression/results
