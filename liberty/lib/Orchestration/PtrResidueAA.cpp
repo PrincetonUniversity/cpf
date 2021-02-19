@@ -42,7 +42,7 @@ bool PtrResidueRemedy::compare(const Remedy_ptr rhs) const {
   */
 }
 
-unsigned long PtrResidueRemedy::setCost(PerformanceEstimator *perf,
+void PtrResidueRemedy::setCost(PerformanceEstimator *perf,
                                         const Value *ptr) {
   // 1 cmp, 1 bitwise, 1 branch
   unsigned validation_weight = 201;

@@ -47,7 +47,7 @@ public:
 
   // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
-  unsigned long setCost(PerformanceEstimator *perf, const Loop *loop);
+  void setCost(PerformanceEstimator *perf, const Loop *loop);
   StringRef getRemedyName() const { return "invariant-value-pred-remedy"; };
 };
 

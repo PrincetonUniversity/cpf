@@ -709,6 +709,7 @@ private:
       if( inst == &*i )
         return n;
     assert(false && "Not present");
+    return 0;
   }
 
   bool eliminateBetweenBlocks(CallsByBlock &writes, CallsByBlock &reads, BasicBlock *A, BasicBlock *B, Loop *loop)

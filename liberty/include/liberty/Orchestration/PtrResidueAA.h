@@ -31,7 +31,7 @@ public:
 
   // void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;
-  unsigned long setCost(PerformanceEstimator *perf, const Value *ptr);
+  void setCost(PerformanceEstimator *perf, const Value *ptr);
   StringRef getRemedyName() const { return "ptr-residue-remedy"; };
 };
 

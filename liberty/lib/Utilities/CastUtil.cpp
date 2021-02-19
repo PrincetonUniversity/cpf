@@ -52,6 +52,7 @@ Value *liberty::castToInt64Ty(Value *value, InstInsertPt &out, NewInstructions *
     return value;
 
   assert(false && "Unimplemented");
+  return NULL;
 }
 
 Value *liberty::castIntToInt32Ty(Value *value, InstInsertPt &where, NewInstructions *ni)
@@ -127,4 +128,5 @@ Value *liberty::castFromInt64Ty(Type *ty, Value *value, InstInsertPt &out, NewIn
   }
 
   assert(false && "Unimplemented");
+  return NULL;
 }

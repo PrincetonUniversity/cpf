@@ -86,6 +86,7 @@ unsigned Discriminator::determineShortestSuffix(const HeapGivenContext &heapGive
   }
 
   assert(false && "The assignments cannot be determined using a context suffix");
+  return 0;
 }
 
 void Discriminator::addAUs(HeapAssignment::Type heap, const HeapAssignment::AUSet &aus)

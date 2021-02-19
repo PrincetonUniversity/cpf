@@ -148,6 +148,7 @@ bool Ctx::isWithinSubloopOf(const Ctx *cc) const
 
   assert( this->matches(cc) && "*this doesn't match cc!");
   assert( false && "I don't know how this happened");
+  return false;
 }
 
 

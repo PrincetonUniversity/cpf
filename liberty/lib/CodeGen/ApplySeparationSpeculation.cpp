@@ -630,6 +630,7 @@ bool ApplySeparationSpec::initFiniFcns()
   Preprocess &preprocess = getAnalysis< Preprocess >();
   initFcn = preprocess.getInitFcn();
   finiFcn = preprocess.getFiniFcn();
+  return true;
 }
 
 bool ApplySeparationSpec::startInitializationFunction()
@@ -1045,6 +1046,7 @@ Value *ApplySeparationSpec::determineSize(Instruction *gravity, InstInsertPt &wh
 
   errs() << *inst;
   assert(false && "Wtf");
+  return NULL;
 }
 
 bool ApplySeparationSpec::reallocateInst(const HeapAssignment &asgn, const HeapAssignment::AUSet &aus, const HeapAssignment::Type heap)

@@ -30,7 +30,7 @@ bool LoadedValuePredRemedy::compare(const Remedy_ptr rhs) const {
   return this->ptr < valPredRhs->ptr;
 }
 
-unsigned long LoadedValuePredRemedy::setCost(PerformanceEstimator *perf,
+void LoadedValuePredRemedy::setCost(PerformanceEstimator *perf,
                                              const Loop *loop) {
   // 1 cmp, 1 branch
   unsigned validation_weight = 101;

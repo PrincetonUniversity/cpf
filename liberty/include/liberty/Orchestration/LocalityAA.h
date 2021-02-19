@@ -99,6 +99,7 @@ public:
       break;
     default:
       assert(false && "No locality-remedy type?");
+      return "NO REMEDY TYPE?";
     }
   };
 

@@ -250,6 +250,7 @@ Value *Remat::rematUnsafe(InstInsertPt &where, Value *ptr, const Loop *loop, con
   }
 
   assert(false && "How did we reach this point?!");
+  return NULL;
 }
 
 
@@ -411,6 +412,7 @@ uint64_t Remat::evaluateToIntegerUnsafe(const SCEV *s, const DataLayout &dl) con
 
   errs() << "Cant evaluate " << *s << '\n';
   assert(false);
+  return 0;
 }
 
 Value *Remat::remat(InstInsertPt &where, ScalarEvolution &SE, const SCEV *s,
@@ -555,6 +557,7 @@ Value *Remat::remat(InstInsertPt &where, ScalarEvolution &SE, const SCEV *s,
   errs() << "Cant rematerialize " << *s << '\n';
   assert(false);
 
+  return NULL;
 }
 
 Value *Remat::remat(InstInsertPt &where, ScalarEvolution &SE, const SCEV *s,
@@ -581,6 +584,7 @@ Value *Remat::remat(InstInsertPt &where, ScalarEvolution &SE, const SCEV *s,
   }
 
   assert(false && "can't cast to that");
+  return NULL;
 }
 
 }
