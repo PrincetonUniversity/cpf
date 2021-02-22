@@ -1249,9 +1249,15 @@ bool Classify::runOnLoop(Loop *loop)
   }
 
   // remove the expensive to remedy private aus from the cheap set
-  for (auto i : cheapPrivAUs) {
-    if (LoopAA::containsExpensiveRemeds(i.second))
-      cheapPrivAUs.erase(i.first);
+  auto it = cheapPrivAUs.begin();
+  while (it != cheapPrivAUs.end()) {
+    auto i = *it;
+    if (LoopAA::containsExpensiveRemeds(i.second)) {
+      it = cheapPrivAUs.erase(it);
+    }
+    else {
+      ++it;
+    }
   }
 
   // detect global local privates
