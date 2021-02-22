@@ -1,5 +1,5 @@
 
-# This is a basic workflow to help you get started with Actions
+# Run regression every night or on demand
 
 name: Regression 
 
@@ -12,8 +12,13 @@ on:
                 description: 'Benchmark suite (reg_fast/reg_all) to run'
                 required: true
                 default: 'reg_fast'
+    schedule:
+        - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
+
 #   pull_request:
 #     branches: [ master ]
+env:
+  REG_SUITE: ${{ github.event.inputs.suite || reg_all }}
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -39,7 +44,7 @@ jobs:
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          python ${GITHUB_WORKSPACE}/tests/scripts/GetResults.py -p ${GITHUB_WORKSPACE}/tests/regression -b ${GITHUB_WORKSPACE}/tests/regression/bmark_list_reg.json -r 1 -n 7 -s ${{ github.event.inputs.suite }} -f
+          python ${GITHUB_WORKSPACE}/tests/scripts/GetResults.py -p ${GITHUB_WORKSPACE}/tests/regression -b ${GITHUB_WORKSPACE}/tests/regression/bmark_list_reg.json -r 1 -n 7 -s ${{ env.REG_SUITE }} -f
     - name: Archive partifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
