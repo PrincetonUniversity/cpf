@@ -9,6 +9,7 @@
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/PrintDebugInfo.h"
+#include "Noelle.hpp"
 
 #include <vector>
 #include <map>
@@ -43,6 +44,7 @@ struct Targets : public ModulePass
 
   virtual void getAnalysisUsage(AnalysisUsage &au) const
   {
+    au.addRequired< Noelle >();
     //au.addRequired< ProfileInfo >(); // ProfileInfo is deprecated!
     au.addRequired< BlockFrequencyInfoWrapperPass >();
     au.addRequired< BranchProbabilityInfoWrapperPass >();

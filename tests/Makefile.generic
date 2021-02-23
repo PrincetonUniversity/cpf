@@ -73,9 +73,18 @@ NAMEDLIBS=
 
 INLINER_LIB=-load $(LIBERTY_LIBS_DIR)/libUtil.so \
 						-load $(SCAF_LIBS_DIR)/libSCAFUtilities.so \
+						-load $(SCAF_LIBS_DIR)/libMemoryAnalysisModules.so \
 						-load $(NOELLE_LIBS_DIR)/libCudd.so \
 						-load $(NOELLE_LIBS_DIR)/libSvf.so \
-						-load $(SCAF_LIBS_DIR)/libMemoryAnalysisModules.so \
+						-load $(NOELLE_LIBS_DIR)/Architecture.so \
+						-load $(NOELLE_LIBS_DIR)/HotProfiler.so \
+						-load $(NOELLE_LIBS_DIR)/Loops.so \
+						-load $(NOELLE_LIBS_DIR)/AllocAA.so \
+						-load $(NOELLE_LIBS_DIR)/BasicUtilities.so \
+						-load $(NOELLE_LIBS_DIR)/LoopStructure.so \
+						-load $(NOELLE_LIBS_DIR)/TalkDown.so \
+						-load $(NOELLE_LIBS_DIR)/PDGAnalysis.so \
+						-load $(NOELLE_LIBS_DIR)/Noelle.so \
 						-load $(LIBERTY_LIBS_DIR)/libLoopProf.so \
 						-load $(LIBERTY_LIBS_DIR)/libMetadata.so \
 						-load $(LIBERTY_LIBS_DIR)/libLAMPLoad.so \
@@ -83,15 +92,7 @@ INLINER_LIB=-load $(LIBERTY_LIBS_DIR)/libUtil.so \
 						-load $(LIBERTY_LIBS_DIR)/libRedux.so \
 						-load $(LIBERTY_LIBS_DIR)/libPointsToProfiler.so \
 						-load $(LIBERTY_LIBS_DIR)/libGraphAlgorithms.so \
-						-load $(NOELLE_LIBS_DIR)/AllocAA.so \
-						-load $(NOELLE_LIBS_DIR)/BasicUtilities.so \
-						-load $(NOELLE_LIBS_DIR)/LoopStructure.so \
-						-load $(NOELLE_LIBS_DIR)/TalkDown.so \
-						-load $(NOELLE_LIBS_DIR)/PDGAnalysis.so \
 						-load $(LIBERTY_LIBS_DIR)/libGraphAlgorithms.so \
-						-load $(NOELLE_LIBS_DIR)/Architecture.so \
-						-load $(NOELLE_LIBS_DIR)/HotProfiler.so \
-						-load $(NOELLE_LIBS_DIR)/Loops.so \
 						-load $(LIBERTY_LIBS_DIR)/libStrategy.so \
 						-load $(LIBERTY_LIBS_DIR)/libOrchestration.so \
 						-load $(LIBERTY_LIBS_DIR)/libSpeculation.so \
@@ -288,12 +289,14 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	cp result.specpriv.profile.txt $@
 	date
 
-$(CANON).specpriv-profile.exe : $(CANON).bc $(SPECPRIVPROFLIBS)
+$(CANON).specpriv-profile.exe : $(CANON).bc $(CANON).loopProf.out $(SPECPRIVPROFLIBS)
 	date
+	cp $(CANON).loopProf.out loopProf.out
 	rm -f $(CANON).specpriv-profile.time $(CANON).specpriv-profile.out $(CANON).specpriv-profile.exe
 	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-instrument.time specpriv-profile $(CANON).bc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-lower.time llc $(OPT) $(CANON).specpriv-profile.bc -o $(CANON).specpriv-profile.s
 	regressions-watchdog $(TRANSFORM_TIMEOUT) specpriv-link.time $(CXX) -no-pie benchmark.specpriv-profile.s $(QUEUES) $(SPPROF) $(LIBS) -lrt -lpthread -o $@
+	rm -f loopProf.out
 	date
 
 $(CANON).specpriv-pipeline.bc $(CANON).specpriv-pipeline-nopeep.bc : $(CANON).bc $(CANON).lamp.out $(CANON).edgeProf.out $(CANON).specpriv-profile.out $(CANON).loopProf.out $(LIBSPECPRIV) $(LIBERTY_SRC_DIR)/scripts/specpriv-pipeline

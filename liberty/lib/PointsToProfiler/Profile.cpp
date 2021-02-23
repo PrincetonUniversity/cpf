@@ -57,7 +57,10 @@
 #include "scaf/Utilities/GlobalCtors.h"
 #include "liberty/PointsToProfiler/Indeterminate.h"
 #include "liberty/PointsToProfiler/Remat.h"
+#include "liberty/LoopProf/Targets.h"
 #include "scaf/Utilities/ModuleLoops.h"
+
+#include "Noelle.hpp"
 
 #include <sstream>
 
@@ -67,6 +70,7 @@ namespace SpecPriv
 {
 
 using namespace llvm;
+using namespace llvm::noelle;
 
 static const char *recognized_external_function_list[] = {
 #include "RecognizedExternalFunctions.h"
@@ -141,9 +145,11 @@ struct MallocProfiler : public ModulePass
 
   void getAnalysisUsage(AnalysisUsage &au) const
   {
-    au.addRequired< KillFlow >();
+    au.addRequired< Noelle >();
+    au.addRequired< Targets >();
     //au.addRequired< LoopInfoWrapperPass >();
     //au.addRequired< ScalarEvolutionWrapperPass >();
+    au.addRequired< KillFlow >();
     au.addRequired< ModuleLoops >();
   }
 
@@ -174,6 +180,47 @@ struct MallocProfiler : public ModulePass
     Type *charptrptr = PointerType::getUnqual( charptr );
 
     ModuleLoops &mloops = getAnalysis<ModuleLoops>();
+
+
+    // get from Targets the hot loops and get function it contains
+    Targets &targets = getAnalysis< Targets >();
+
+    std::set<Function*> setFoI;
+    for(Targets::iterator i=targets.begin(mloops), e=targets.end(mloops); i!=e; ++i) {
+      Loop *loop = *i;
+      Function *f = loop->getHeader()->getParent();
+      setFoI.insert(f);
+    }
+
+    errs() << "Original FoI Functions: " << setFoI.size() << "\n";
+
+    auto& noelle = getAnalysis<Noelle>();
+  /*
+   *  Fetch the call graph.
+   */
+    auto fm = noelle.getFunctionsManager();
+    auto pcg = fm->getProgramCallGraph();
+
+    // get the set of functions that are potential caller of the FoIs 
+    // for each function 
+    std::queue<Function*> unexploredFoI;
+    for (auto &f : setFoI)
+      unexploredFoI.push(f);
+
+    while (!unexploredFoI.empty()) {
+      auto f = unexploredFoI.front();
+      unexploredFoI.pop();
+      auto node = pcg->getFunctionNode(f);
+      auto callerEdges = node->getIncomingEdges();
+
+      for (auto &edge : callerEdges) {
+        auto f = edge->getCaller()->getFunction();
+        if (setFoI.find(f) != setFoI.end()) {
+          setFoI.insert(f);
+          unexploredFoI.push(f);
+        }
+      }
+    }
 
     unmanaged_fopen_name = 0;
     unmanaged_library_constant_au_name = 0;
@@ -349,8 +396,16 @@ struct MallocProfiler : public ModulePass
     realloc16 = cast<Constant>(wrapper_realloc16.getCallee());
 
 
-    for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i)
-      runOnFunction(&*i, mloops);
+    for(Module::iterator i=mod.begin(), e=mod.end(); i!=e; ++i) {
+      Function* f = &*i;
+      bool isFoI = (setFoI.find(f) != setFoI.end());
+      //runOnFunction(&*i, mloops, isFoI);
+      runOnFunction(&*i, mloops, isFoI);
+    }
+
+    errs() << "Total Functions: " << mod.size() << "\n";
+    errs() << "FoI Functions: " << setFoI.size()  << "\n";
+
 
     LLVM_DEBUG(errs() << "Instrumented all functions\n");
 
@@ -808,7 +863,7 @@ private:
     }
   }
 
-  bool runOnBlock(BasicBlock *bb, BBSet &interesting, LoopInfo &li)
+  bool runOnBlock(BasicBlock *bb, BBSet &interesting, LoopInfo &li, bool isFoI)
   {
     bool modified = false;
 
@@ -1013,12 +1068,15 @@ private:
       where << CallInst::Create(prof_report_constant_string, ArrayRef<Value*>(&actuals[0], &actuals[2]) );
     }
 
-    const DataLayout &td = mod.getDataLayout();
-    for(IList::iterator i=allocas.begin(), e=allocas.end(); i!=e; ++i)
-    {
-      AllocaInst *inst = cast<AllocaInst>( *i );
+    // if not in the function of interest, do not profile stack objects
+    if (isFoI) {
+      const DataLayout &td = mod.getDataLayout();
+      for(IList::iterator i=allocas.begin(), e=allocas.end(); i!=e; ++i)
+      {
+        AllocaInst *inst = cast<AllocaInst>( *i );
 
-      modified |= runOnAlloca(inst, td, interesting);
+        modified |= runOnAlloca(inst, td, interesting);
+      }
     }
 
     if( modified )
@@ -1562,7 +1620,7 @@ private:
     return modified;
   }
 
-  bool runOnFunction(Function *fcn, ModuleLoops &mloops)
+  bool runOnFunction(Function *fcn, ModuleLoops &mloops, bool isFoI)
   {
     if( fcn->isDeclaration() )
       return false;
@@ -1674,7 +1732,7 @@ private:
 
     // instrument all calls to alloca/malloc/free
     for(Function::iterator i=fcn->begin(), e=fcn->end(); i!=e; ++i)
-      modified |= runOnBlock(&*i, interesting, li);
+      modified |= runOnBlock(&*i, interesting, li, isFoI);
 
     if( VerifyOften && modified )
       verifyFunction(*fcn);
