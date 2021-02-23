@@ -6,6 +6,9 @@
 
 void Profiler::begin()
 {
+#ifdef DEBUG_SPEED
+  begin_time = rdtsc();
+#endif
 }
 
 void Profiler::write_results() const
@@ -29,6 +32,40 @@ void Profiler::timing_stats(std::ostream &log) const
       << "#       pred.find_uo: " << total_time_find_underlying_object << " / " << num_find_underlying_object << '\n';
 #endif
 }
+
+#ifdef DEBUG_SPEED
+void Profiler::test_print(std::ostream &log) const
+{
+  const uint64_t total_time = rdtsc() - begin_time;
+  log << "# Event histogram:\n"
+      << "# ---- AU registration\n"
+      << "#  malloc " << evt_malloc << '\n'
+      << "# realloc " << evt_realloc << '\n'
+      << "#    free " << evt_free << '\n'
+      << "#   const " << evt_constant << '\n'
+      << "#  global " << evt_global << '\n'
+      << "#   stack " << evt_stack << '\n'
+      << "# ---- Context manipulation\n"
+      << "#    +fcn " << evt_begin_fcn << '\n'
+      << "#    -fcn " << evt_end_fcn << '\n'
+      << "#   +iter " << evt_begin_iter << '\n'
+      << "#   -iter " << evt_end_iter << '\n'
+      << "# aus_cnt " << total_aus_size << '\n'
+      << "# ---- Timing\n"
+      << "#total_time " << total_time << '\n'
+      << "#begin_fcn  " << total_time_begin_function << '\n'
+      << "#end_fcn    " << total_time_end_function << '\n'
+      << "# free st   " << total_time_freestack<< '\n'
+      << "#report st  " << total_time_report_stack<< '\n'
+      << "#free       " << total_time_free << '\n'
+      // << "# ---- Instrumentation\n"
+      // << "#     fuo " << evt_fuo << '\n'
+      // << "#   p int " << evt_pred_int << '\n'
+      // << "#   p ptr " << evt_pred_ptr << '\n'
+      // << "# residue " << evt_ptr_residue << '\n'
+      << "#\n";
+}
+#endif
 
 void Profiler::print(std::ostream &log) const
 {
@@ -147,6 +184,9 @@ static bool warnFreeHeapAsStackOnce = false,
 
 void Profiler::free(AUHolder &au, bool isAlloca)
 {
+#ifdef DEBUG_SPEED
+  const uint64_t start = rdtsc();
+#endif
   if( ! isAlloca ) // heap
   {
     if( au->type != AU_Heap )
@@ -183,6 +223,10 @@ void Profiler::free(AUHolder &au, bool isAlloca)
   liveObjects.remove( au );
 
   remove_from_context( au );
+
+#ifdef DEBUG_SPEED 
+  total_time_free += rdtsc() - start;
+#endif
 }
 
 void Profiler::report_constant(const char *name, void *base, uint64_t size)
@@ -199,26 +243,53 @@ void Profiler::report_global(const char *name, void *base, uint64_t size)
 
 void Profiler::report_stack(const char *name, void *base, uint64_t array_size, uint64_t elt_size)
 {
+#ifdef DEBUG_SPEED
+  const uint64_t start = rdtsc();
+#endif
   ++evt_stack;
   if( 0 == array_size )
     array_size = 1;
   const uint64_t size = array_size * elt_size;
 
   add_temporary_au(AU_Stack,name,base,size);
+#ifdef DEBUG_SPEED 
+  total_time_report_stack += rdtsc() - start;
+#endif
 }
 
 void Profiler::begin_function(const char *name)
 {
+#ifdef DEBUG_SPEED
+  const uint64_t start = rdtsc();
+#endif
+  
   ++evt_begin_fcn;
   enter_ctx(Function,name);
+
+#ifdef DEBUG_SPEED 
+  total_time_begin_function += rdtsc() - start;
+#endif
 }
 
 void Profiler::end_function(const char *name)
 {
+#ifdef DEBUG_SPEED
+  const uint64_t start = rdtsc();
+#endif
+
   ++evt_end_fcn;
   free_stacks();
+
+#ifdef DEBUG_SPEED 
+  total_time_freestack += rdtsc() - start;
+#endif
+
   if( !name ) name = currentContext->name;
   exit_ctx(Function,name);
+
+#ifdef DEBUG_SPEED 
+  total_time_end_function += rdtsc() - start;
+#endif
 }
 
 void Profiler::begin_iter(const char *name)
@@ -442,6 +513,9 @@ void Profiler::exit_ctx(CtxType type, const char *name)
 void Profiler::free_stacks()
 {
   Context::AUs &aus = currentContext->aus;
+#ifdef DEBUG_SPEED
+  total_aus_size += aus.size();
+#endif
   for(int i=aus.size()-1; i>=0; --i)
   {
     AUHolder au = (AllocationUnit*) *aus[i];

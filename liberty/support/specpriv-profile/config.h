@@ -1,6 +1,7 @@
 #ifndef SPECPRIV_CONFIG_H
 #define SPECPRIV_CONFIG_H
 
+//#define DEBUG_SPEED
 // The maximum distinct number of observations
 // for integer value prediction.
 #define MAX_INT_PREDICTION_OBSERVATIONS     (3U)

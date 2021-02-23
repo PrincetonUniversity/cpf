@@ -188,10 +188,26 @@ static void *thread_loop(void)
   unsigned nEvents = 0;
 #endif
 
+#ifdef DEBUG_SPEED
+  std::ofstream log_dump("wtf.dump");
+  log_dump << "WTF\n";
+  unsigned nEvents = 0;
+#endif
   while( !process_message() )
   {
     //printf("Processed a message.\n");
 
+
+
+#ifdef DEBUG_SPEED
+    nEvents++;
+    if (nEvents == 2000000) {
+      prof.test_print(log_dump);
+      log_dump << std::flush;
+
+      nEvents = 0;
+    }
+#endif
 
 #if TIMER
     ++nEvents;

@@ -21,6 +21,9 @@ struct Profiler
   void end();
 
   void write_results() const;
+#ifdef DEBUG_SPEED
+  void test_print(std::ostream &log) const;
+#endif
   void print(std::ostream &log) const;
   void malloc(const char *name, void *ptr, uint64_t size);
   void realloc(const char *name, void *old_ptr, void *new_ptr, uint64_t size);
@@ -76,6 +79,15 @@ private:
     evt_realloc = 0;
     evt_ptr_residue = 0;
 
+#ifdef DEBUG_SPEED
+    total_aus_size = 0;
+    total_time_begin_function = 0;
+    total_time_end_function = 0;
+    total_time_freestack = 0;
+    total_time_report_stack = 0;
+    total_time_free = 0;
+#endif
+
 #if TIMER
     total_time_lookup_pointer = 0;
     num_pointer_lookups = 0;
@@ -116,6 +128,16 @@ private:
            evt_stack, evt_begin_fcn, evt_end_fcn, evt_begin_iter,
            evt_end_iter, evt_fuo, evt_pred_int, evt_pred_ptr,
            evt_realloc, evt_ptr_residue;
+
+#ifdef DEBUG_SPEED
+  unsigned total_aus_size;
+  uint64_t total_time_begin_function;
+  uint64_t total_time_end_function;
+  uint64_t total_time_freestack;
+  uint64_t total_time_report_stack;
+  uint64_t total_time_free;
+  uint64_t begin_time;
+#endif
 
 #if TIMER
   // Time for various events.
