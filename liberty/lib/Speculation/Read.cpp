@@ -345,6 +345,17 @@ static bool isDeferrableIO(const Instruction *inst)
   */
 }
 
+// Ziyang, Feb 23, 2021
+// A way to workaround to get SpecPriv to recognize malloc/calloc/free
+static bool isMallocLikeOrFree(const Function* fn)
+{
+  StringRef fn_name = fn->getName();
+  if (fn_name == "malloc" || fn_name == "calloc" || fn_name == "free")
+    return true;
+  else
+    return false;
+}
+
 bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, AUs &writes, ReduxAUs &reductions) const
 {
   CallSiteSet already;
@@ -458,6 +469,14 @@ bool Read::getFootprint(const Instruction *op, const Ctx *exec_ctx, AUs &reads, 
 
   // externally defined function.
   // Look it up in the pure,semi-local database.
+ 
+
+  // Ziyang, Feb 23, 2021
+  // malloc, calloc, and free are removed from PureFun.h
+  //   https://github.com/PrincetonUniversity/SCAF/commit/c9795b00ac5bf302128a55ba0c9d064bda72722f
+  // However, we need to recognize them here that they do not introduce foodprint
+  else if (isMallocLikeOrFree(callee))
+    return true;
 
   else if( pure->isReadOnly(callee) )
     return true; // write-none
