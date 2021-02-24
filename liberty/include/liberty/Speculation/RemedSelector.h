@@ -24,6 +24,7 @@ namespace liberty
 {
 namespace SpecPriv
 {
+using namespace llvm::noelle;
 
 struct RemedSelector : public ModulePass, public Selector
 {

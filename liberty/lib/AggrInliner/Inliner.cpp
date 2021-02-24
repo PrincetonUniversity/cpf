@@ -30,6 +30,7 @@ namespace liberty
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numInlinedCallSites,     "Num of inlined call sites");
 

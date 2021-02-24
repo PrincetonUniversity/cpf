@@ -18,6 +18,7 @@
 namespace liberty {
 namespace SpecPriv {
 using namespace llvm;
+using namespace llvm::noelle;
 
 class PtrResidueRemedy : public Remedy {
 public:

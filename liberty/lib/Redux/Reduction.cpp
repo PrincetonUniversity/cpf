@@ -24,6 +24,7 @@ namespace liberty
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 static cl::opt<bool> AllowFloatingPointReduction(
   "float-reduction",
@@ -470,7 +471,7 @@ Value *Reduction::getIdentityValue(Type ty, LLVMContext &ctx)
 // -loop-rotate, i.e., the loop latch should end with a conditional branch.
 // If it does not have the rotated form, this just returns true to be
 // consistent with the old spec.
-static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const llvm::PDG *pdg)
+static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const llvm::noelle::PDG *pdg)
 {
   if (!pdg)
     return true;
@@ -479,7 +480,7 @@ static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const
   if (!backEdge)
     return true;
   // TODO: there should be a const version of fetchNode
-  llvm::PDG *non_const_pdg = const_cast<llvm::PDG*>(pdg);
+  llvm::noelle::PDG *non_const_pdg = const_cast<llvm::noelle::PDG*>(pdg);
   auto instNode = non_const_pdg->fetchNode((Value *) inst);
   for (auto edge : instNode->getOutgoingEdges()) {
     if (!non_const_pdg->isInternal(edge->getIncomingT()))
@@ -494,7 +495,7 @@ static bool affectsLoopBackEdge(const Instruction *inst, const Loop *loop, const
 }
 
 bool Reduction::isRegisterReduction(
-    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const llvm::PDG *pdg, const std::set<PHINode*> &ignore,
+    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const llvm::noelle::PDG *pdg, const std::set<PHINode*> &ignore,
     /* Outputs */ Reduction::Type &rt, BinaryOperator::BinaryOps &reductionOpcode,  VSet &u_phis, VSet &u_binops, VSet &u_cmps, VSet &u_brs, VSet &used_outside, Value* &initial_value)
 {
   if( ignore.count(phi0) )

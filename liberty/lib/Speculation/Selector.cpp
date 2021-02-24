@@ -41,6 +41,7 @@
 #include "DominatorSummary.hpp"
 
 using namespace llvm;
+using namespace llvm::noelle;
 
 namespace liberty
 {
@@ -202,8 +203,8 @@ unsigned Selector::computeWeights(
       adjLoopTime = scaledLoopTime - depthPenalty / 10;
 
     {
-      //std::unique_ptr<llvm::PDG> pdg = pdgBuilder.getLoopPDG(A);
-      llvm::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
+      //std::unique_ptr<llvm::noelle::PDG> pdg = pdgBuilder.getLoopPDG(A);
+      llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
 
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);

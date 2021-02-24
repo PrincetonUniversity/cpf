@@ -10,6 +10,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numNoMemDep,
           "Number of false mem deps removed with memory versioning");

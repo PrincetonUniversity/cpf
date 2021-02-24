@@ -29,6 +29,7 @@
 #include <unordered_map>
 
 using namespace llvm;
+using namespace llvm::noelle;
 using namespace liberty;
 
 namespace llvm {

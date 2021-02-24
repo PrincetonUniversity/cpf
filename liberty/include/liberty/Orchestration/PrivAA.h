@@ -8,6 +8,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 using namespace SpecPriv;
 
 class PrivRemedy : public Remedy {

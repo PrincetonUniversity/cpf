@@ -30,6 +30,7 @@ namespace liberty
 {
 
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numQueriesReceived,              "Num queries passed to KillFlow_CtrlSpecAware");
 

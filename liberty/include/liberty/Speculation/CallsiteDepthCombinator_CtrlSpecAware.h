@@ -27,6 +27,7 @@
 namespace liberty
 {
   using namespace llvm;
+  using namespace llvm::noelle;
 
   class KillFlow_CtrlSpecAware;
 
