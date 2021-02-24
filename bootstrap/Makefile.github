@@ -13,8 +13,8 @@ SHELL := /bin/bash
 compile-llvm=0
 
 ## If compile-llvm=0, provide paths to both the debug and the release versions
-#llvm-install-dir-debug=/scratch/install/llvm-install-debug
-#llvm-install-dir-release=/scratch/install/llvm-install-release
+llvm-install-dir-debug=/scratch/install/llvm-install-debug
+llvm-install-dir-release=/scratch/install/llvm-install-release
 
 ##########
 # NOELLE #
@@ -22,13 +22,13 @@ compile-llvm=0
 compile-noelle=0
 
 ## If compile-noelle=0, provide paths to both the debug and the release versions
-#noelle-install-dir-debug=/scratch/install/noelle-install-debug
-#noelle-install-dir-release=/scratch/install/noelle-install-release
+noelle-install-dir-debug=/scratch/install/noelle-install-debug
+noelle-install-dir-release=/scratch/install/noelle-install-release
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
-noelle-remote-url=https://github.com/scampanoni/noelle.git
-noelle-branch=v9.0.0
+#noelle-remote-url=https://github.com/scampanoni/noelle.git
+#noelle-branch=v9.0.0
 
 ##########
 # SCAF #
@@ -43,8 +43,8 @@ compile-scaf=0
 
 ## If compile-scaf=1, use this url to clone and build SCAF from scratch
 ## Don't use quotes
-scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
-scaf-branch=v9.0.0
+#scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
+#scaf-branch=v9.0.0
 
 #######
 # CPF #
