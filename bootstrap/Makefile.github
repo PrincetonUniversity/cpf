@@ -13,22 +13,8 @@ SHELL := /bin/bash
 compile-llvm=0
 
 ## If compile-llvm=0, provide paths to both the debug and the release versions
-llvm-install-dir-debug=/scratch/install/llvm-install-debug
-llvm-install-dir-release=/scratch/install/llvm-install-release
-
-##########
-# SCAF #
-##########
-compile-scaf=0
-
-## If compile-scaf=0, provide paths to both the debug and the release versions
-scaf-install-dir-debug=/scratch/install/scaf-install-debug
-scaf-install-dir-release=/scratch/install/scaf-install-release
-
-## If compile-scaf=1, use this url to clone and build SCAF from scratch
-## Don't use quotes
-scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
-scaf-branch=v9.0.0
+#llvm-install-dir-debug=/scratch/install/llvm-install-debug
+#llvm-install-dir-release=/scratch/install/llvm-install-release
 
 ##########
 # NOELLE #
@@ -36,13 +22,29 @@ scaf-branch=v9.0.0
 compile-noelle=0
 
 ## If compile-noelle=0, provide paths to both the debug and the release versions
-noelle-install-dir-debug=/scratch/install/noelle-install-debug
-noelle-install-dir-release=/scratch/install/noelle-install-release
+#noelle-install-dir-debug=/scratch/install/noelle-install-debug
+#noelle-install-dir-release=/scratch/install/noelle-install-release
 
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
 noelle-remote-url=https://github.com/scampanoni/noelle.git
 noelle-branch=v9.0.0
+
+##########
+# SCAF #
+##########
+# Use noelle scaf override compile-scaf to be 0
+use-noelle-scaf=1
+compile-scaf=0
+
+## If compile-scaf=0 and use-noelle-scaf=0  provide paths to both the debug and the release versions
+#scaf-install-dir-debug=/scratch/install/scaf-install-debug
+#scaf-install-dir-release=/scratch/install/scaf-install-release
+
+## If compile-scaf=1, use this url to clone and build SCAF from scratch
+## Don't use quotes
+scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
+scaf-branch=v9.0.0
 
 #######
 # CPF #
@@ -87,16 +89,19 @@ ifeq (${compile-llvm}, 1)
 	llvm-install-dir-release=${install-prefix}/llvm-install-release
 endif
 
-# if scaf is compiled from scratch, then is the default one
-ifeq (${compile-scaf}, 1)
-	scaf-install-dir-debug=${install-prefix}/scaf-install-debug
-	scaf-install-dir-release=${install-prefix}/scaf-install-release
-endif
-
 # if noelle is compiled from scratch, then is the default one
 ifeq (${compile-noelle}, 1)
 	noelle-install-dir-debug=${install-prefix}/noelle-install-debug
 	noelle-install-dir-release=${install-prefix}/noelle-install-release
+endif
+
+# if scaf is compiled from scratch, then is the default one
+ifeq (${use-noelle-scaf}, 1)
+	scaf-install-dir-debug=${noelle-install-dir-debug}
+	scaf-install-dir-release=${noelle-install-dir-release}
+else ifeq (${compile-scaf}, 1)
+	scaf-install-dir-debug=${install-prefix}/scaf-install-debug
+	scaf-install-dir-release=${install-prefix}/scaf-install-release
 endif
 
 # if cpf is compiled from scratch, then is the default one
@@ -146,6 +151,7 @@ endif
 endif
 
 scaf:
+ifeq (${use-noelle-scaf}, 0)
 ifeq (${compile-scaf}, 1)
 	@echo Compiling SCAF from Scratch
 ifndef scaf-remote-url
@@ -183,6 +189,7 @@ endif
 	@echo Using provided SCAF Debug and Release versions
 	@echo SCAF Debug: ${scaf-install-dir-debug}
 	@echo SCAF Release: ${scaf-install-dir-release}
+endif
 endif
 
 noelle:
@@ -225,8 +232,10 @@ endif
 	@echo NOELLE Release: ${noelle-install-dir-release}
 endif
 
+ifeq (${use-noelle-scaf}, 0)
 	- rm -rf ${noelle-install-dir-debug}/include/Assumptions.h ${noelle-install-dir-debug}/include/scaf ${noelle-install-dir-debug}/lib/libMemoryAnalysisModules* ${noelle-install-dir-debug}/lib/libSCAFUtilities* ${noelle-install-dir-debug}/lib/libSpeculationModules*
 	- rm -rf ${noelle-install-dir-release}/include/Assumptions.h ${noelle-install-dir-release}/include/scaf ${noelle-install-dir-release}/lib/libMemoryAnalysisModules* ${noelle-install-dir-release}/lib/libSCAFUtilities* ${noelle-install-dir-release}/lib/libSpeculationModules*
+endif
 
 cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
 cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
