@@ -49,8 +49,8 @@ bool llvm::PDGBuilder::runOnModule (Module &M){
   return false;
 }
 
-std::unique_ptr<llvm::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
-  auto pdg = std::make_unique<llvm::PDG>(loop);
+std::unique_ptr<llvm::noelle::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
+  auto pdg = std::make_unique<llvm::noelle::PDG>(loop);
 
   REPORT_DUMP(errs() << "constructEdgesFromMemory with CAF ...\n");
   getAnalysis<LLVMAAResults>().computeAAResults(loop->getHeader()->getParent());

@@ -45,7 +45,7 @@ class Orchestrator {
 public:
   bool findBestStrategy(
       // Inputs
-      Loop *loop, llvm::PDG &pdg, // LoopDependenceInfo &ldi,
+      Loop *loop, llvm::noelle::PDG &pdg, // LoopDependenceInfo &ldi,
       PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
       PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
       TargetLibraryInfo *tli, SmtxSpeculationManager &smtxLampMan,

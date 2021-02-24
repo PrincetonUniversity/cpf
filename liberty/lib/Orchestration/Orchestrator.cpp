@@ -227,7 +227,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 }
 
 bool Orchestrator::findBestStrategy(
-    Loop *loop, llvm::PDG &pdg,
+    Loop *loop, llvm::noelle::PDG &pdg,
     //LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
