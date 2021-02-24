@@ -45,8 +45,9 @@ LIBS="
 
 EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -llvm-aa-results"
 
-echo $PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
-$PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
+echo $PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
+$PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
+#$PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
 #$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler -debug-only=$DBG $IN -o $TMP -stats 2>&1
 opt $TMP -O3 -o $OUT
 
