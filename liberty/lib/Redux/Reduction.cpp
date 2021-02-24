@@ -24,6 +24,7 @@ namespace liberty
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 static cl::opt<bool> AllowFloatingPointReduction(
   "float-reduction",

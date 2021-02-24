@@ -7,6 +7,7 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 class LampOracle : public LoopAA // Not a pass!
 {

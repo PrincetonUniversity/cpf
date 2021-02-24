@@ -14,6 +14,7 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numTXIO, "Number of NoModRef from txio");
 

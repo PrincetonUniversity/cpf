@@ -21,6 +21,7 @@
 namespace liberty {
 namespace SpecPriv {
 using namespace llvm;
+using namespace llvm::noelle;
 
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,

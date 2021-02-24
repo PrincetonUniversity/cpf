@@ -23,6 +23,7 @@
 #include "Assumptions.h"
 
 using namespace llvm;
+using namespace llvm::noelle;
 using namespace liberty;
 
 void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {

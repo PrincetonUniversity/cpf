@@ -21,6 +21,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numPrivNoMemDep, "Number of false mem deps removed by privitization");
 

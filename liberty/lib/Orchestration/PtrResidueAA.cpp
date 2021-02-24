@@ -14,6 +14,7 @@ namespace liberty
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numQueries, "Num queries received");
 STATISTIC(numApplicable, "Num applicable queries");

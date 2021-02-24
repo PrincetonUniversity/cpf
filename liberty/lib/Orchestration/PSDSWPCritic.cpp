@@ -14,6 +14,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 
 static EdgeWeight estimate_weight(PerformanceEstimator &perf, SCC *scc) {
   double sum_weight = 0.0;

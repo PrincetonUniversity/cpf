@@ -41,6 +41,7 @@ namespace liberty
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numLiveOuts,      "Live-out values demoted to private memory");
 STATISTIC(numReduxLiveOuts, "Redux live-out values demoted to redux memory");

@@ -21,6 +21,7 @@
 
 namespace liberty
 {
+using namespace llvm::noelle;
 namespace SpecPriv
 {
 

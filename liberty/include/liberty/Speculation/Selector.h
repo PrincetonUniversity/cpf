@@ -29,6 +29,7 @@ namespace liberty
 {
 namespace SpecPriv
 {
+using namespace llvm::noelle;
 
 class HeapAssignment;
 

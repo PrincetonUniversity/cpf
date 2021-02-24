@@ -55,6 +55,7 @@ stable_hash_code stable_hash<SpecPriv::AU const&>(SpecPriv::AU const &au)
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numClassified, "Parallel regions selected #regression");
 

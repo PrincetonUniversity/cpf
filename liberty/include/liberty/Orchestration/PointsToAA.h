@@ -12,6 +12,7 @@
 namespace liberty {
 namespace SpecPriv {
 using namespace llvm;
+using namespace llvm::noelle;
 
 class PointsToRemedy : public Remedy {
 public:

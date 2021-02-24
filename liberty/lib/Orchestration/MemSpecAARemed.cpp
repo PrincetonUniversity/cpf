@@ -12,6 +12,7 @@
 namespace liberty {
 
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numQueries, "Num queries");
 STATISTIC(numNoFlow, "Num no-flow results");

@@ -33,6 +33,7 @@
 namespace liberty {
 namespace SpecPriv {
 using namespace llvm;
+using namespace llvm::noelle;
 
 struct PerformanceEstimator;
 

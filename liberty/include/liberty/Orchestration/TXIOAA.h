@@ -6,6 +6,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 
 class TXIORemedy : public Remedy {
 public:

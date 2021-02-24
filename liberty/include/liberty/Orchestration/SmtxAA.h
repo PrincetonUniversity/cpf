@@ -10,6 +10,7 @@ namespace liberty {
 namespace SpecPriv {
 
 using namespace llvm;
+using namespace llvm::noelle;
 
 class SmtxLampRemedy : public Remedy {
 public:
