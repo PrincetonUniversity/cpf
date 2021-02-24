@@ -34,21 +34,6 @@ AA=`aa`
 
 LIBS="
   -load $LIBERTY_LIBS_DIR/libUtil.so
-  -load $SCAF_LIBS_DIR/libSCAFUtilities.so
-  -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so
-  -load $NOELLE_LIBS_DIR/libSvf.so
-  -load $NOELLE_LIBS_DIR/libCudd.so
-  -load $NOELLE_LIBS_DIR/Architecture.so
-  -load $NOELLE_LIBS_DIR/HotProfiler.so
-  -load $NOELLE_LIBS_DIR/Loops.so
-  -load $NOELLE_LIBS_DIR/AllocAA.so
-  -load $NOELLE_LIBS_DIR/BasicUtilities.so
-  -load $NOELLE_LIBS_DIR/LoopStructure.so
-  -load $NOELLE_LIBS_DIR/TalkDown.so
-  -load $NOELLE_LIBS_DIR/DataFlow.so
-  -load $NOELLE_LIBS_DIR/CallGraph.so
-  -load $NOELLE_LIBS_DIR/PDGAnalysis.so
-  -load $NOELLE_LIBS_DIR/Noelle.so
   -load $LIBERTY_LIBS_DIR/libLoopProf.so
   -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
   -load $LIBERTY_LIBS_DIR/libRedux.so
@@ -60,8 +45,8 @@ LIBS="
 
 EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -llvm-aa-results"
 
-echo $PREFIX opt $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
-$PREFIX opt $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
+echo $PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
+$PREFIX $NOELLE_BINS_DIR/noelle-load $LIBS $AA $EXTRA -targets -specpriv-profiler $IN -o $TMP -stats 2>&1
 #$PREFIX opt $LIBS $AA $EXTRA -specpriv-profiler -debug-only=$DBG $IN -o $TMP -stats 2>&1
 opt $TMP -O3 -o $OUT
 
