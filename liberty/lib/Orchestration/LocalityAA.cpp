@@ -28,6 +28,7 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numEligible,        "Num eligible queries");
 STATISTIC(numPrivatizedPriv,  "Num privatized (Private)");

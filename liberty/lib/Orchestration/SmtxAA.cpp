@@ -17,6 +17,7 @@ namespace SpecPriv
 {
 
   using namespace llvm;
+  using namespace llvm::noelle;
 
   STATISTIC(numQueries,       "Num queries");
   STATISTIC(numEligible,      "Num eligible queries");

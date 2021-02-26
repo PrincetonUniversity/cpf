@@ -11,6 +11,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 
 class CountedIVRemedy : public Remedy {
 public:

@@ -15,6 +15,7 @@
 namespace liberty
 {
   using namespace llvm;
+  using namespace llvm::noelle;
 
   STATISTIC(numHits,     "Num cache hits");
   STATISTIC(numEligible, "Num eligible");

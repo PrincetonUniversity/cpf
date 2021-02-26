@@ -15,7 +15,8 @@
 
 namespace liberty
 {
-using namespace llvm;
+  using namespace llvm;
+  using namespace llvm::noelle;
 using namespace SpecPriv;
 
 STATISTIC(numQueries,          "Num mem queries in cntr spec remediator");

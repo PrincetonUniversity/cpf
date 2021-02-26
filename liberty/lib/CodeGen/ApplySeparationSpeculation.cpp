@@ -38,6 +38,7 @@ namespace liberty
 namespace SpecPriv
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numStaticReloc, "Static allocations relocated");
 STATISTIC(numDynReloc,    "Dynamic allocations relocated");

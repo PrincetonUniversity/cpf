@@ -14,6 +14,7 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace llvm::noelle;
 using namespace SpecPriv;
 
 STATISTIC(numRegQueries,                      "Num register deps queries");

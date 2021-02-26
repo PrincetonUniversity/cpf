@@ -92,7 +92,7 @@ struct Reduction
 
   // PDG can be NULL
   static bool isRegisterReduction(
-    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const llvm::PDG *pdg, const std::set<PHINode*> &ignore,
+    /* Inputs */  ScalarEvolution &scev, Loop *loop, PHINode *phi0, const llvm::noelle::PDG *pdg, const std::set<PHINode*> &ignore,
     /* Outputs */ Reduction::Type &rt, BinaryOperator::BinaryOps &reductionOpcode,  VSet &u_phis, VSet &u_binops, VSet &u_cmps, VSet &u_brs, VSet &used_outside, Value* &initial_value);
 
 private:

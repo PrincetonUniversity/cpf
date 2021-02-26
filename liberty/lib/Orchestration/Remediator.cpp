@@ -16,6 +16,7 @@
 namespace liberty
 {
   using namespace llvm;
+  using namespace llvm::noelle;
 
   STATISTIC(numPrivRead,    "Private reads instrumented");
   STATISTIC(numPrivWrite,   "Private writes instrumented");

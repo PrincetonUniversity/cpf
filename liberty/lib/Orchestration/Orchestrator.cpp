@@ -21,6 +21,7 @@
 namespace liberty {
 namespace SpecPriv {
 using namespace llvm;
+using namespace llvm::noelle;
 
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
@@ -226,7 +227,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 }
 
 bool Orchestrator::findBestStrategy(
-    Loop *loop, llvm::PDG &pdg,
+    Loop *loop, llvm::noelle::PDG &pdg,
     //LoopDependenceInfo &ldi,
     PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,

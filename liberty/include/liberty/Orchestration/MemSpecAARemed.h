@@ -29,6 +29,7 @@
 
 namespace liberty {
 using namespace llvm;
+using namespace llvm::noelle;
 
 class MemSpecAARemedy : public Remedy {
 public:

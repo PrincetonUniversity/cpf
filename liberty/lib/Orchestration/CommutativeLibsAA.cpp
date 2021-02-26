@@ -14,6 +14,7 @@
 namespace liberty
 {
 using namespace llvm;
+using namespace llvm::noelle;
 
 STATISTIC(numQueries, "Num mem queries passed to comm libs");
 STATISTIC(numMemDepRemoved, "Num mem deps from comm libs");
