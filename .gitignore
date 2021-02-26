@@ -25,6 +25,8 @@
 # vim swap files
 .*.sw?
 .sw?
+# Cmake compile commands
+**/compile_commands.json
 
 # Nested build directory
 /build
@@ -48,5 +50,4 @@ cscope.files
 cscope.out
 autoconf/aclocal.m4
 autoconf/autom4te.cache
-/compile_commands.json
 .clangd/
