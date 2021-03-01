@@ -32,6 +32,7 @@
 #include <string>
 #include <utility>
 #include <sys/stat.h>
+#include <climits>
 
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LAMP/LAMPFlags.h"
@@ -60,6 +61,11 @@ static cl::opt<bool> AssertIfLoadFails(
     cl::init(false),
     cl::Hidden,
     cl::desc("Assert if fail to load LAMP profile"));
+static cl::opt<bool> IgnoreLAMP(
+    "lamp-ignore",
+    cl::init(false),
+    cl::NotHidden,
+    cl::desc("Don't use the LAMP profile or to indicate that it doesn't exist"));
 
 unsigned globLoop;
 
@@ -262,6 +268,12 @@ bool LAMPLoadProfile::runOnModule(Module& M)
   std::map<BasicBlock*, InstPairSet > LoopToDepSetMap;
   //int id;
 
+  if ( IgnoreLAMP )
+  {
+    LLVM_DEBUG(errs() << "Ignoring LAMP profile\n");
+    return false;
+  }
+
   // build the <IDs, Instrucion> map
   for (Module::iterator FB = M.begin(), FE = M.end(); FB != FE; FB++){
     // for all blocks in the function
@@ -334,7 +346,6 @@ bool LAMPLoadProfile::runOnModule(Module& M)
   LLVM_DEBUG(errs() << "Opened " << ProfileFileName << "\n");
 
   std::string s;
-
 
   // Get rid of the 'worthless' things in the results file
   const unsigned MAX_LOOPS = 5000;
@@ -1058,6 +1069,8 @@ void recurseOperands(Instruction * myI, std::string fnName, std::string bbName, 
 
 unsigned int LAMPLoadProfile::numObsIntraIterDep(BasicBlock *BB, const Instruction *i1, const Instruction *i2)
 {
+  if ( IgnoreLAMP )
+    return UINT_MAX; // conservative result
   biikey_t key(BB, Namer::getInstrId(i1), Namer::getInstrId(i2), 0);
   if(DepToCountMap.count(key))
   {
@@ -1068,6 +1081,8 @@ unsigned int LAMPLoadProfile::numObsIntraIterDep(BasicBlock *BB, const Instructi
 
 unsigned int LAMPLoadProfile::numObsInterIterDep(BasicBlock *BB, const Instruction *i1, const Instruction *i2)
 {
+  if ( IgnoreLAMP )
+    return UINT_MAX; // conservative result
   biikey_t key(BB, Namer::getInstrId(i1), Namer::getInstrId(i2), 1);
   if(DepToCountMap.count(key))
   {
@@ -1079,6 +1094,9 @@ unsigned int LAMPLoadProfile::numObsInterIterDep(BasicBlock *BB, const Instructi
 unsigned int LAMPLoadProfile::numObsIterDep(BasicBlock *BB, Instruction *i1, Instruction *i2)
 {
   unsigned int ret = 0;
+
+  if ( IgnoreLAMP )
+    return UINT_MAX; // conservative result
 
   biikey_t key(BB, Namer::getInstrId(i1), Namer::getInstrId(i2), 1);
   if(DepToCountMap.count(key))
@@ -1101,6 +1119,9 @@ unsigned int LAMPLoadProfile::numObsIterDep(BasicBlock *BB, Instruction *i1, Ins
  */
 double LAMPLoadProfile::probDep(BasicBlock *BB, Instruction *i1, Instruction *i2, int cross)
 {
+  if ( IgnoreLAMP )
+    return 1.0; // conservative result
+
   biikey_t key(BB, Namer::getInstrId(i1), Namer::getInstrId(i2), cross);
   if(biimap.count(key))
   {

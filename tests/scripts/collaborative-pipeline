@@ -24,8 +24,11 @@ fi
 LPROF=
 if [ -a ./result.lamp.profile ]
 then
-  echo Lamp profile available
+  echo LAMP profile available
   LPROF=" -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "
+else
+	echo LAMP profile not available
+	LPROF=" -lamp-ignore "
 fi
 
 # Determine if the user specified a function

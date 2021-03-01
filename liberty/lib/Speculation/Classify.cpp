@@ -1262,14 +1262,21 @@ bool Classify::runOnLoop(Loop *loop)
   }
 
   // detect global local privates
-  for (auto i : cheapPrivAUs) {
+  it = cheapPrivAUs.begin();
+  while (it != cheapPrivAUs.end()) {
+    auto i = *it;
     AU *au = i.first;
-    if (!au->value)
+    if (!au->value) {
+      ++it;
       continue;
+    }
     if (HeapAssignment::isLocalPrivateGlobalAU(au->value, loop)) {
       killPrivAUs.insert(au);
       privateAUs.erase(au);
-      cheapPrivAUs.erase(au);
+      it = cheapPrivAUs.erase(it);
+    }
+    else {
+      ++it;
     }
   }
 
