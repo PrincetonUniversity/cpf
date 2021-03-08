@@ -262,8 +262,7 @@ static void strip_undefined_objects(HeapAssignment::AUSet &out)
     if( au->type == AU_Undefined )
     {
       REPORT_DUMP(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
-      out.erase(i);
-      i = out.begin();
+      i = out.erase(i);
     }
     else
       ++i;
@@ -278,8 +277,7 @@ static void strip_undefined_objects(HeapAssignment::ReduxAUSet &out)
     if( au->type == AU_Undefined )
     {
       REPORT_DUMP(errs() << "N.B. Removed an UNDEFINED object, at my discretion\n");
-      out.erase(i);
-      i = out.begin();
+      i = out.erase(i);
     }
     else
       ++i;
@@ -1239,14 +1237,21 @@ bool Classify::runOnLoop(Loop *loop)
   // Cannot be with regular locals (not freeing).
   //
   // detect stack locals
-  for (AU *au : privateAUs) {
+  auto aui = privateAUs.begin();
+  while (aui != privateAUs.end()) {
+    auto au = *aui;
     if (!au->value)
+    {
+      ++aui;
       continue;
+    }
     if (HeapAssignment::isLocalPrivateStackAU(au->value, loop)) {
       killPrivAUs.insert(au);
-      privateAUs.erase(au);
+      aui = privateAUs.erase(aui);
       cheapPrivAUs.erase(au);
     }
+    else
+      ++aui;
   }
 
   // remove the expensive to remedy private aus from the cheap set
