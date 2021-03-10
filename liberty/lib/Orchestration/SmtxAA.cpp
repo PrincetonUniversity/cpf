@@ -43,7 +43,9 @@ namespace SpecPriv
 
   void SmtxLampRemedy::setCost(PerformanceEstimator *perf) {
     assert(this->memI && "no memI in SmtxLampRemedy remedy???");
-    unsigned validation_weight = 0.0000738;
+
+    // FIXME: what is this hardcoded constant doing
+    double validation_weight = 0.0000738;
     if (isa<LoadInst>(this->memI))
       validation_weight = 0.0000276;
     // multiply validation cost time with number of estimated invocations

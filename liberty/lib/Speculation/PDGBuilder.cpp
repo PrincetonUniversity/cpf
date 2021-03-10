@@ -78,24 +78,24 @@ std::unique_ptr<llvm::noelle::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
 void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
   SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
-  smtxaa = new SmtxAA(&smtxMan, perf);
+  smtxaa = new SmtxAA(&smtxMan, perf); // LAMP
   smtxaa->InitializeLoopAA(this, *DL);
 
   ctrlspec = getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-  edgeaa = new EdgeCountOracle(ctrlspec);
+  edgeaa = new EdgeCountOracle(ctrlspec); // Control Spec
   edgeaa->InitializeLoopAA(this, *DL);
 
   predspec =
       getAnalysis<ProfileGuidedPredictionSpeculator>().getPredictionSpecPtr();
-  predaa = new PredictionAA(predspec, perf);
+  predaa = new PredictionAA(predspec, perf); //Value Prediction 
   predaa->InitializeLoopAA(this, *DL);
 
   PtrResidueSpeculationManager &ptrresMan =
       getAnalysis<PtrResidueSpeculationManager>();
-  ptrresaa = new PtrResidueAA(*DL, ptrresMan, perf);
+  ptrresaa = new PtrResidueAA(*DL, ptrresMan, perf); // Pointer Residue SpecPriv
   ptrresaa->InitializeLoopAA(this, *DL);
 
-  spresults = &getAnalysis<ReadPass>().getProfileInfo();
+  spresults = &getAnalysis<ReadPass>().getProfileInfo(); // SpecPriv Results
 
   // cannot validate points-to object info.
   // should only be used within localityAA validation only for points-to heap
@@ -106,10 +106,10 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   simpleaa = new SimpleAA();
   simpleaa->InitializeLoopAA(this, *DL);
 
-  classify = &getAnalysis<Classify>();
+  classify = &getAnalysis<Classify>(); // SpecPriv Classify
 
-  killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>();
-  callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+  killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>(); // KillFlow
+  callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>(); // CallsiteDepth
 
   //commlibsaa.InitializeLoopAA(this, *DL);
 }

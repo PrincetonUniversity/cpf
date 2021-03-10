@@ -284,7 +284,8 @@ bool Orchestrator::findBestStrategy(
   }
 
   // receive actual criticisms from critics given the enhanced pdg
-  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl);
+  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl); //get PSDSWP critics
+
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     REPORT_DUMP(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
     CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
