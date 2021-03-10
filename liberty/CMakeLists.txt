@@ -33,6 +33,7 @@ endif()
 # Link with LLVM
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #add_definitions(
 #-D__STDC_LIMIT_MACROS
 #-D__STDC_CONSTANT_MACROS
