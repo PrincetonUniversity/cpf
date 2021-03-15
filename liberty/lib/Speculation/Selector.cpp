@@ -39,7 +39,7 @@
 #include "LoopDependenceInfo.hpp"
 #include "DGGraphTraits.hpp"
 #include "DominatorSummary.hpp"
-#include "Noelle.hpp"
+//#include "Noelle.hpp"
 
 using namespace llvm;
 using namespace llvm::noelle;
@@ -80,7 +80,7 @@ HeapAssignment &Selector::getAssignment()
 
 void Selector::analysisUsage(AnalysisUsage &au)
 {
-  au.addRequired< Noelle >();
+  //au.addRequired< Noelle >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   au.addRequired< BlockFrequencyInfoWrapperPass >();
   au.addRequired< BranchProbabilityInfoWrapperPass >();
