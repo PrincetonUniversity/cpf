@@ -374,12 +374,14 @@ bool sameBBMinMaxRedux(
         &minMaxReductions,
     Loop *loop, bool isMinMaxV) {
 
-  // LLVM_DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
-  // << *dst << "\n");
-
-  const SelectInst *sel = dyn_cast<SelectInst>(dst);
-  if (!sel || sel->getCondition() != info->cmpInst)
-    return false;
+  //disabled this check to use this function for both select and branch
+  //LLVM_DEBUG(errs() << "findDependenceCycle called: src: " << *src << "\n\tdst: "
+  //<< *dst << "\n");
+  //const SelectInst *sel = dyn_cast<SelectInst>(dst);
+  //if (!sel || sel->getCondition() != info->cmpInst){
+  //  LLVM_DEBUG(errs() << "sameBBMinMaxRedux return false because of non selectInst\n";)
+  //  return false;
+  //}
 
   std::vector<const Instruction *> stack;
   stack.push_back(dst);
@@ -579,8 +581,7 @@ bool ReductionDetection::isMinMaxReduction(
     const Instruction **depUpdateInst) {
   LLVM_DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
                << *dst << "\n";);
-
-  if (minMaxReductions.count(dst) && loopCarried) {
+  if (loopCarried && (minMaxReductions.count(dst))) {
     type = minMaxReductions[dst]->type;
     *depInst = minMaxReductions[dst]->depInst;
     depType = minMaxReductions[dst]->depType;
@@ -631,8 +632,8 @@ void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
         // Should only check moves (PHIs and selects).
         // NOTE: Should selects be more restrictive (i.e. only allowed if
         // original min/max used a select with the same condition?)
-        //if (isa<PHINode>(itmp) || isa<SelectInst>(itmp)) {
-        if (isa<SelectInst>(itmp) && itmp != src && itmp != dst) {
+        if (isa<PHINode>(itmp) || isa<SelectInst>(itmp) && itmp != src && itmp != dst) {
+        //if (isa<SelectInst>(itmp) && itmp != src && itmp != dst) {
           infoUsed |=
               sameBBMinMaxRedux(itmp, info, minMaxReductions, loop, false);
         }

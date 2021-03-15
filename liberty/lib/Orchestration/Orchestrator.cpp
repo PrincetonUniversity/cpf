@@ -49,9 +49,9 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //TODO: re-enable these two remediators
 
   // reduction remediator
-  //auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, &ldi, loopAA, pdg);
-  //reduxRemed->setLoopOfInterest(A);
-  //remeds.push_back(std::move(reduxRemed));
+  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, loopAA, pdg);
+  reduxRemed->setLoopOfInterest(A);
+  remeds.push_back(std::move(reduxRemed));
 
   // counted induction variable remediator
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage

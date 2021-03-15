@@ -57,8 +57,9 @@ bool ReduxRemediator::isRegReductionPHI(Instruction *I, Loop *l) {
   Reduction::Type type;
   Value *initVal = 0;
   if ( Reduction::isRegisterReduction(
-      *se, l, phi, nullptr, ignore, type, opcode, phis, binops, cmps, brs,
-      liveOuts, initVal) )
+        *se, l, phi, nullptr, ignore, /*Inputs*/
+        type, opcode, phis, binops, cmps, brs, liveOuts, initVal) /*Outputs*/
+     )
   {
     Instruction *liveOutV = phi;
     regReductions.insert(liveOutV);
@@ -260,6 +261,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   //errs() << "  Redux remed examining edge(s) from " << *A << " to " << *B
   //       << '\n';
 
+  //Liberty's reduction
   if (reduxdet.isSumReduction(L, A, B, loopCarried, type)) {
     ++numRegDepsRemovedSumRedux;
     LLVM_DEBUG(errs() << "Resolved by liberty sumRedux\n");
@@ -292,7 +294,8 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     return remedResp;
   }
 
-  auto aSCC = loopDepInfo->getSCCManager()->getSCCDAG()->sccOfValue(ncA);
+  //noelle's reduction
+  /*auto aSCC = loopDepInfo->getSCCManager()->getSCCDAG()->sccOfValue(ncA);
   auto bSCC = loopDepInfo->getSCCManager()->getSCCDAG()->sccOfValue(ncB);
   if (aSCC == bSCC &&
       loopDepInfo->getSCCManager()->getSCCAttrs(aSCC)->canExecuteReducibly()) {
@@ -338,10 +341,10 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
 
     remedResp.remedy = remedy;
     return remedResp;
-  }
+  }*/
 
   // use Nick's Redux
-  if (isRegReductionPHI(ncB, ncL)) {
+  /*if (isRegReductionPHI(ncB, ncL)) {
     // B: x0 = phi(initial from outside loop, x1 from backedge)
     // A: x1 = x0 + ..
     // Loop-carried dep removed
@@ -354,7 +357,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     remedy->reduxSCC = nullptr;
     remedResp.remedy = remedy;
     return remedResp;
-  }
+  }*/
 
   // already know that instruction A is an operand of instruction B
   RecurrenceDescriptor recdes;

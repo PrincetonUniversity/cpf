@@ -70,10 +70,6 @@ else
 fi
 
 LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
-      -load $SCAF_LIBS_DIR/libSCAFUtilities.so
-      -load $NOELLE_LIBS_DIR/libSvf.so
-      -load $NOELLE_LIBS_DIR/libCudd.so
-      -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so
       -load $LIBERTY_LIBS_DIR/libLoopProf.so
       -load $LIBERTY_LIBS_DIR/libMetadata.so
       -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
@@ -81,22 +77,10 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $LIBERTY_LIBS_DIR/libRedux.so
       -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
-      -load $NOELLE_LIBS_DIR/AllocAA.so
-      -load $NOELLE_LIBS_DIR/BasicUtilities.so
-      -load $NOELLE_LIBS_DIR/DataFlow.so
-      -load $NOELLE_LIBS_DIR/LoopStructure.so
-      -load $NOELLE_LIBS_DIR/TalkDown.so
-      -load $NOELLE_LIBS_DIR/PDGAnalysis.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
-      -load $NOELLE_LIBS_DIR/Architecture.so
-      -load $NOELLE_LIBS_DIR/HotProfiler.so
-      -load $NOELLE_LIBS_DIR/Loops.so
       -load $LIBERTY_LIBS_DIR/libStrategy.so
       -load $LIBERTY_LIBS_DIR/libOrchestration.so
       -load $LIBERTY_LIBS_DIR/libSpeculation.so
-      -load $NOELLE_LIBS_DIR/Heuristics.so 
-      -load $NOELLE_LIBS_DIR/ParallelizationTechnique.so
-      -load $NOELLE_LIBS_DIR/DOALL.so
       -load $LIBERTY_LIBS_DIR/libCodeGen.so"
 
 
@@ -148,7 +132,7 @@ fi
 rm -f $NOPEEP
 OUT="-o $NOPEEP"
 
-CMD="$PREFIX opt $1 $LIBS $OPTS $FCN $LOOP $OUT"
+CMD="noelle-load $LIBS $OPTS -debug-only=redux-remed,reduxdet $FCN $LOOP $1 $OUT"
 
 echo Running: $CMD
 ulimit -S -v $[48*1024*1024]

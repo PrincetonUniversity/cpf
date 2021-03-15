@@ -44,9 +44,12 @@ public:
 
 class ReduxRemediator : public Remediator {
 public:
-  ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi, LoopAA *aa,
+ // ReduxRemediator(ModuleLoops *ml, LoopDependenceInfo *ldi, LoopAA *aa,
+                 // PDG *lpdg)
+      //: Remediator(), mloops(ml), loopDepInfo(ldi), loopAA(aa), pdg(lpdg) {}
+  ReduxRemediator(ModuleLoops *ml, LoopAA *aa,
                   PDG *lpdg)
-      : Remediator(), mloops(ml), loopDepInfo(ldi), loopAA(aa), pdg(lpdg) {}
+      : Remediator(), mloops(ml), loopAA(aa), pdg(lpdg) {}
 
   void setLoopOfInterest(Loop *l) {
     Function *f = l->getHeader()->getParent();
@@ -78,7 +81,7 @@ private:
   std::unordered_set<const StoreInst *> memReductions;
   ModuleLoops *mloops;
   ScalarEvolution *se;
-  LoopDependenceInfo *loopDepInfo;
+  //LoopDependenceInfo *loopDepInfo;
   LoopAA *loopAA;
   PDG *pdg;
   ReductionDetection reduxdet;
