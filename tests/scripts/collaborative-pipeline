@@ -132,7 +132,7 @@ fi
 rm -f $NOPEEP
 OUT="-o $NOPEEP"
 
-CMD="noelle-load $LIBS $OPTS -debug-only=redux-remed,reduxdet $FCN $LOOP $1 $OUT"
+CMD="noelle-load $LIBS $OPTS $FCN $LOOP $1 $OUT"
 
 echo Running: $CMD
 ulimit -S -v $[48*1024*1024]
