@@ -48,7 +48,7 @@ The version number is in the form of \[v _Major.Minor.Revision_ \]
 CPF relies on [LLVM](https://github.com/llvm/llvm-project), [SCAF](https://github.com/PrincetonUniversity/SCAF) and [NOELLE](https://github.com/scampanoni/noelle). Follow `bootstrap/README.md` to install all dependences automatically or cutomize it.
 
 ### Users
-If you have any trouble using this framework feel free to reach out to us for help (contact liberators@liberty-research.org).
+If you have any trouble using this framework feel free to create an issue! We will try our best to help.
 
 ### Contributions
 We welcome contributions from the community to improve this research-grade framework and evolve it to cater for more users.
