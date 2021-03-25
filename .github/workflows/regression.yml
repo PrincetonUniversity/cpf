@@ -12,8 +12,8 @@ on:
                 description: 'Benchmark suite (reg_fast/reg_all) to run'
                 required: true
                 default: 'reg_fast'
-#     schedule:
-#         - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
+    schedule:
+        - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
 
 #   pull_request:
 #     branches: [ master ]
