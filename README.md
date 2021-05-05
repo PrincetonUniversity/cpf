@@ -45,7 +45,13 @@ The version number is in the form of \[v _Major.Minor.Revision_ \]
 - **Revision**: At least once per month, at most twice per week (2/week ~ 1/month)
 
 ### Build
-CPF relies on [LLVM](https://github.com/llvm/llvm-project), [SCAF](https://github.com/PrincetonUniversity/SCAF) and [NOELLE](https://github.com/scampanoni/noelle). Follow `bootstrap/README.md` to install all dependences automatically or cutomize it.
+CPF relies on [LLVM](https://github.com/llvm/llvm-project), [SCAF](https://github.com/PrincetonUniversity/SCAF) and [NOELLE](https://github.com/scampanoni/noelle). Follow `bootstrap/README.md` to install all dependences automatically or customize it.
+
+We also provide a Dockerfile using Ubuntu 20.04 for building and testing CPF. Simply run
+`docker build . -t cpf:1.0` to build the image and `docker run -it cpf:1.0` to start
+a container. By default, the build command will compile LLVM, CPF, and NOELLE, with SCAF
+being built as a dependency by NOELLE. Again, refer to `bootstrap/README.md` to change
+this as needed.
 
 ### Users
 If you have any trouble using this framework feel free to create an issue! We will try our best to help.
