@@ -277,8 +277,9 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
   const Instruction *depInst;
   Reduction::Type depType;
   const Instruction *depUpdateInst;
+  const CmpInst *cmpInst; //added support for cmpInst, before, only selectInst was supported
   if (reduxdet.isMinMaxReduction(L, A, B, loopCarried, type, &depInst,
-                                 depType, &depUpdateInst)) {
+                                 depType, &depUpdateInst, &cmpInst)) {
     ++numRegDepsRemovedMinMaxRedux;
     LLVM_DEBUG(errs() << "Resolved by liberty MinMaxRedux\n");
     LLVM_DEBUG(errs() << "Removed reg dep between inst " << *A << "  and  " << *B
@@ -290,6 +291,7 @@ Remediator::RemedResp ReduxRemediator::regdep(const Instruction *A,
     remedy->depType = depType;
     remedy->depUpdateInst = depUpdateInst;
     remedy->reduxSCC = nullptr;
+    remedy->cmpInst = cmpInst;
     remedResp.remedy = remedy;
     return remedResp;
   }

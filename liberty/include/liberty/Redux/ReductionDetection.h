@@ -50,7 +50,8 @@ struct ReductionDetection {
                          const Instruction *dst, const bool loopCarried,
                          Reduction::Type &type, const Instruction **depInst,
                          SpecPriv::Reduction::Type &depType,
-                         const Instruction **depUpdateInst);
+                         const Instruction **depUpdateInst,
+                         const CmpInst **cmpInst);
 
   void findMinMaxRegReductions(Loop *loop, PDG *pdg);
 

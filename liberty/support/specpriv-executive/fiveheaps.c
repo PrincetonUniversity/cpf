@@ -53,6 +53,12 @@ static Len sizeof_private, sizeof_killprivate, sizeof_shareprivate, sizeof_redux
 static Len sizeof_ro;
 static Len sizeof_local;
 
+void __specpriv_reset_reduction()
+{
+  first_reduction_info = last_reduction_info = 0;
+  return;
+}
+
 void *__specpriv_alloc_meta(Len len)
 {
   return heap_alloc(mapped_meta,len);
@@ -65,6 +71,7 @@ void __specpriv_free_meta(void *ptr)
 
 void __specpriv_initialize_main_heaps(void)
 {
+  DEBUG(printf("INITIALIZE MAIN HEAP\n"));
   const Wid numWorkers = __specpriv_num_workers();
 
   // Allocate a metadata heap, which will hold
@@ -123,6 +130,7 @@ void __specpriv_initialize_main_heaps(void)
 
 void __specpriv_destroy_main_heaps(void)
 {
+  DEBUG(printf("DESTROY MAIN HEAP\n"));
   const Wid numWorkers = __specpriv_num_workers();
 
   // Clear the list.

@@ -523,12 +523,14 @@ Bool __specpriv_is_on_iter(void)
 
 Iteration __specpriv_current_iter(void)
 {
-  if (runOnEveryIter)
+  if (runOnEveryIter){
     return currentIter;
+  }
 
   // Return global iteration count instead of thread-specific one
-  if ( myWorkerId == MAIN_PROCESS)
+  if ( myWorkerId == MAIN_PROCESS){
     return (currentIter * numWorkers);
+  }
 
   Iteration globalCurIter = myWorkerId + (currentIter * numWorkers);
   return globalCurIter;
@@ -802,6 +804,7 @@ Exit __specpriv_join_children(void)
   // and redux heaps.
   __specpriv_distill_checkpoints_into_liveout( &pcb->checkpoints );
 
+  __specpriv_reset_reduction();
   TIME(distill_into_liveout_end);
 
   if( pcb->misspeculation_happened )
