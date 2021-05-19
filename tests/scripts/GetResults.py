@@ -64,9 +64,10 @@ def get_one_prof(root_path, bmark, profile_name, profile_recipe):
 
     os.chdir(os.path.join(root_path, bmark, "src"))
     start_time = time.time()
-    make_process = subprocess.Popen(["make", profile_recipe],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.STDOUT)
+    with open(profile_name.replace(' ', '-')+".log", "w") as fd:
+        make_process = subprocess.Popen(["make", profile_recipe],
+                                        stdout=fd,
+                                        stderr=fd)
 
     if make_process.wait() != 0:
         elapsed = time.time() - start_time
@@ -77,6 +78,57 @@ def get_one_prof(root_path, bmark, profile_name, profile_recipe):
         print(colored("%s succeeded for %s, took %.4fs" % (profile_name, bmark, elapsed), 'green'))
         return True
 
+
+def get_pdg(root_path, bmark, result_path):
+    print("Generating PDG results on %s " % (bmark))
+    os.chdir(os.path.join(root_path, bmark, "src"))
+
+    exp_name = "/u/ziyangx/SCAF/scripts/genPDG.sh"
+    start_time = time.time()
+    make_process = subprocess.Popen(["make", exp_name],
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.STDOUT)
+
+    enables = ""
+    if not os.path.isfile("benchmark.loopProf.out"):
+        print(colored("No LoopProf for %s, abort" % bmark, 'red'))
+        return False
+    else:
+        shutil.copy("benchmark.loopProf.out", "loopProf.out")
+
+    if not os.path.isfile("benchmark.lamp.out"):
+        print(colored("No LAMP for %s!" % bmark, 'red'))
+    else:
+        shutil.copy("benchmark.lamp.out", "result.lamp.profile")
+        enables += "-enable-lamp "
+
+    if not os.path.isfile("benchmark.edgeProf.out"):
+        print(colored("No EdgeProf for %s" % bmark, 'red'))
+    else:
+        shutil.copy("benchmark.edgeProf.out", "llvmprof.out")
+        enables += "-enable-edgeprof "
+
+    if not os.path.isfile("benchmark.specpriv-profile.out"):
+        print(colored("No SpecPriv for %s" % bmark, 'red'))
+    else:
+        shutil.copy("benchmark.specpriv-profile.out", "result.specpriv.profile.txt")
+        enables += "-enable-specpriv "
+
+    start_time = time.time()
+    with open("pdg.log", 'w') as fd:
+        make_process = subprocess.Popen([exp_name, enables],
+                                        stdout=fd,
+                                        stderr=fd)
+
+    if make_process.wait() != 0:
+        elapsed = time.time() - start_time
+        print(colored("PDG generation failed for %s, took %.4fs" % (bmark, elapsed), 'red'))
+        return False
+    else:
+        elapsed = time.time() - start_time
+        print(colored("PDG genration succeeded for %s, took %.4fs" % (bmark, elapsed), 'green'))
+        return True
+    
 
 # ZY - check whether all profilings are there;
 # if remake_profile == True, ignore remake them by the Makefile, else abort
@@ -286,6 +338,8 @@ def get_all_passes(root_path, bmark, passes, result_path):
         status["HeaderPhi"] = get_one_prof(root_path, bmark, 'HeaderPhi Profile', "benchmark.headerphi_prof.out")
     if "Experiment" in passes:
         status["Experiment"] = get_exp_result(root_path, bmark, result_path)
+    if "PDG" in passes:
+        status["PDG"] = get_pdg(root_path, bmark, result_path)
 
     # Generate a json on the fly
     os.chdir(result_path)
@@ -464,7 +518,7 @@ def preview_config(config):
 
 
 if __name__ == "__main__":
-    passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
+    passes = ["Edge", "Loop", "LAMP", "SpecPriv", "PDG"] # "Experiment"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment", "RealSpeedup"]
     # passes = ["Edge", "Loop", "LAMP", "SLAMP", "SpecPriv", "HeaderPhi", "Experiment"]
 
