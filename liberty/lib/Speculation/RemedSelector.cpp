@@ -16,6 +16,7 @@
 #include "liberty/Speculation/PtrResidueManager.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/ModuleLoops.h"
+#include "liberty/Utilities/ReportDump.h"
 
 #include "liberty/Speculation/RemedSelector.h"
 
@@ -29,15 +30,15 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
 {
   Selector::analysisUsage(au);
 
-  au.addRequired< SmtxSpeculationManager >();
-  au.addRequired< PtrResidueSpeculationManager >();
-  au.addRequired< ProfileGuidedControlSpeculator >();
-  au.addRequired< ProfileGuidedPredictionSpeculator >();
+  //au.addRequired< SmtxSpeculationManager >();
+  //au.addRequired< PtrResidueSpeculationManager >();
+  //au.addRequired< ProfileGuidedControlSpeculator >();
+  //au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired<LoopAA>();
-  au.addRequired<ReadPass>();
-  au.addRequired<Classify>();
-  au.addRequired<KillFlow_CtrlSpecAware>();
-  au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+  //au.addRequired<ReadPass>();
+  //au.addRequired<Classify>();
+  //au.addRequired<KillFlow_CtrlSpecAware>();
+  //au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   au.addRequired<CallGraphWrapperPass>();
 }
 
@@ -54,19 +55,25 @@ bool RemedSelector::runOnModule(Module &mod)
 
   doSelection(vertices, edges, weights, maxClique);
 
+ // SpecPriv is not alwqys available
   // Combine all of these assignments into one big assignment
-  Classify &classify = getAnalysis< Classify >();
-  for(VertexSet::iterator i=maxClique.begin(), e=maxClique.end(); i!=e; ++i)
-  {
-    const unsigned v = *i;
-    Loop *l = vertices[ v ];
-    const HeapAssignment &asgn = classify.getAssignmentFor(l);
-    assert( asgn.isValidFor(l) );
-
-    assignment = assignment & asgn;
+  auto *classify = getAnalysisIfAvailable< Classify >();
+  if (!classify) { 
+    errs() << "SpecPriv not available\n";
   }
+  else {
+    for(VertexSet::iterator i=maxClique.begin(), e=maxClique.end(); i!=e; ++i)
+    {
+      const unsigned v = *i;
+      Loop *l = vertices[ v ];
+      const HeapAssignment &asgn = classify->getAssignmentFor(l);
+      assert( asgn.isValidFor(l) );
 
-  DEBUG_WITH_TYPE("classify", errs() << assignment );
+      assignment = assignment & asgn;
+    }
+
+    DEBUG_WITH_TYPE("classify", errs() << assignment );
+  }
   return false;
 }
 
@@ -77,18 +84,20 @@ void RemedSelector::computeVertices(Vertices &vertices)
 {
   ModuleLoops &mloops = getAnalysis<ModuleLoops>();
   const Targets &targets = getAnalysis<Targets>();
-  const Classify &classify = getAnalysis<Classify>();
+  //const Classify &classify = getAnalysis<Classify>();
   for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
        i != e; ++i) {
     Loop *loop = *i;
 
-    const HeapAssignment &asgn = classify.getAssignmentFor(loop);
-    if (!asgn.isValidFor(loop)) {
-      LLVM_DEBUG(errs() << "HeapAssignment invalid for loop "
-                   << loop->getHeader()->getParent()->getName()
-                   << "::" << loop->getHeader()->getName() << '\n');
-      continue;
-    }
+    /*
+     *const HeapAssignment &asgn = classify.getAssignmentFor(loop);
+     *if (!asgn.isValidFor(loop)) {
+     *  LLVM_DEBUG(errs() << "HeapAssignment invalid for loop "
+     *               << loop->getHeader()->getParent()->getName()
+     *               << "::" << loop->getHeader()->getName() << '\n');
+     *  continue;
+     *}
+     */
 
     vertices.push_back(loop);
   }
@@ -169,15 +178,30 @@ void RemedSelector::contextRenamedViaClone(
 
 bool RemedSelector::compatibleParallelizations(const Loop *A, const Loop *B) const
 {
-  const Classify &classify = getAnalysis< Classify >();
+  auto *classify = getAnalysisIfAvailable< Classify >();
+  if (!classify) {
+    return Selector::compatibleParallelizations(A, B);
+  }
+  else {
 
-  const HeapAssignment &asgnA = classify.getAssignmentFor(A);
-  assert( asgnA.isValidFor(A) );
+    const HeapAssignment &asgnA = classify->getAssignmentFor(A);
+    if ( !asgnA.isValidFor(A) ) {
+     REPORT_DUMP(errs() << "HeapAssignment invalid for loop "
+                  << A->getHeader()->getParent()->getName()
+                  << "::" << A->getHeader()->getName() << '\n');
+      return true;
+    }
 
-  const HeapAssignment &asgnB = classify.getAssignmentFor(B);
-  assert( asgnB.isValidFor(B) );
+    const HeapAssignment &asgnB = classify->getAssignmentFor(B);
+    if ( !asgnB.isValidFor(B) ) {
+      REPORT_DUMP(errs() << "HeapAssignment invalid for loop "
+                  << B->getHeader()->getParent()->getName()
+                  << "::" << B->getHeader()->getName() << '\n');
+      return true;
+    }
 
-  return compatible(asgnA, asgnB);
+    return compatible(asgnA, asgnB);
+  }
 }
 
 char RemedSelector::ID = 0;

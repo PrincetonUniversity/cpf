@@ -19,7 +19,7 @@
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/Speculation/PDGBuilder.hpp"
+#include "scaf/SpeculationModules/PDGBuilder.hpp"
 #include "liberty/Speculation/ControlSpeculator.h"
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Selector.h"
@@ -82,13 +82,13 @@ void Selector::analysisUsage(AnalysisUsage &au)
 {
   //au.addRequired< Noelle >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
-  au.addRequired< BlockFrequencyInfoWrapperPass >();
-  au.addRequired< BranchProbabilityInfoWrapperPass >();
+  //au.addRequired< BlockFrequencyInfoWrapperPass >();
+  //au.addRequired< BranchProbabilityInfoWrapperPass >();
   au.addRequired< PDGBuilder >();
   au.addRequired< ModuleLoops >();
   au.addRequired< LoopProfLoad >();
-  au.addRequired< LAMPLoadProfile >();
-  au.addRequired< KillFlow >();
+  //au.addRequired< LAMPLoadProfile >();
+  //au.addRequired< KillFlow >();
   au.addRequired< Targets >();
   au.addRequired< ProfilePerformanceEstimator >();
   au.setPreservesAll();
@@ -150,25 +150,28 @@ unsigned Selector::computeWeights(
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
   TargetLibraryInfo *tli =
       &proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-  ControlSpeculation *ctrlspec =
-      proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-  PredictionSpeculation *loadedValuePred =
-      &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
-  SmtxSpeculationManager &smtxLampMan =
-      proxy.getAnalysis<SmtxSpeculationManager>();
-  PtrResidueSpeculationManager &ptrResMan =
-      proxy.getAnalysis<PtrResidueSpeculationManager>();
-  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
-  KillFlow &kill = proxy.getAnalysis< KillFlow >();
-  const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
-  Classify &classify = proxy.getAnalysis<Classify>();
-  LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
-
-  KillFlow_CtrlSpecAware *killflowA =
-      &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
-  CallsiteDepthCombinator_CtrlSpecAware *callsiteA =
-      &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
-  killflowA->setLoopOfInterest(nullptr, nullptr);
+  
+/*
+ *  ControlSpeculation *ctrlspec =
+ *      proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+ *  PredictionSpeculation *loadedValuePred =
+ *      &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
+ *  SmtxSpeculationManager &smtxLampMan =
+ *      proxy.getAnalysis<SmtxSpeculationManager>();
+ *  PtrResidueSpeculationManager &ptrResMan =
+ *      proxy.getAnalysis<PtrResidueSpeculationManager>();
+ *  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
+ *  KillFlow &kill = proxy.getAnalysis< KillFlow >();
+ *  const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
+ *  Classify &classify = proxy.getAnalysis<Classify>();
+ *  LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
+ *
+ *  KillFlow_CtrlSpecAware *killflowA =
+ *      &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
+ *  CallsiteDepthCombinator_CtrlSpecAware *callsiteA =
+ *      &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+ *  killflowA->setLoopOfInterest(nullptr, nullptr);
+ */
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -191,7 +194,7 @@ unsigned Selector::computeWeights(
         std::make_unique<DominatorSummary>(dt, pdt);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
 
-    const HeapAssignment &asgn = classify.getAssignmentFor(A);
+    //const HeapAssignment &asgn = classify.getAssignmentFor(A);
 
     const unsigned long loopTime = perf->estimate_loop_weight(A);
     const unsigned long scaledLoopTime = FixedPoint*loopTime;
@@ -227,11 +230,21 @@ unsigned Selector::computeWeights(
       std::unique_ptr<SelectedRemedies> sr;
       Critic_ptr sc;
 
-      bool applicable = orch->findBestStrategy(
-          A, *pdg, //ldi,
-          *perf, ctrlspec, loadedValuePred, mloops, tli,
-          smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
-          killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
+      /*
+       *bool applicable = orch->findBestStrategy(
+       *    A, *pdg, //ldi,
+       *    *perf, ctrlspec, loadedValuePred, mloops, tli,
+       *    smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
+       *    killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
+       *    pipelineOption_ignoreAntiOutput(),
+       *    pipelineOption_includeReplicableStages(),
+       *    pipelineOption_constrainSubLoops(),
+       *    pipelineOption_abortIfNoParallelStage());
+       */
+
+      bool applicable = orch->findBestStrategyGivenBestPDG(A,
+          *pdg, *perf,
+          lpl, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),

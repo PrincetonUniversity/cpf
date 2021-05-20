@@ -440,18 +440,21 @@ void PipelineStrategy::dump_pipeline(raw_ostream &fout, StringRef line_suffix) c
     const CrossStageDependence &dep = *i;
     commValues.insert(dep.src);
 
-    dep.edge->print(fout);
-    if( line_suffix.empty() )
-      fout << line_suffix;
-    fout << '\n';
-    fout << "  " << *dep.src;
-    if( line_suffix.empty() )
-      fout << line_suffix;
-    fout << '\n';
-    fout << "  " << *dep.dst;
-    if( line_suffix.empty() )
-      fout << line_suffix;
-    fout << '\n';
+    /*
+     * // dont print the edge out
+     *dep.edge->print(fout);
+     *if( line_suffix.empty() )
+     *  fout << line_suffix;
+     *fout << '\n';
+     *fout << "  " << *dep.src;
+     *if( line_suffix.empty() )
+     *  fout << line_suffix;
+     *fout << '\n';
+     *fout << "  " << *dep.dst;
+     *if( line_suffix.empty() )
+     *  fout << line_suffix;
+     *fout << '\n';
+     */
 
   }
 

@@ -106,12 +106,6 @@ void Orchestrator::printRemedies(Remedies &rs, bool selected) {
       remedyName = localityRemed->getLocalityRemedyName();
     }
     REPORT_DUMP(errs() << remedyName);
-    if (selected) {
-      if (remediatorSelectionCnt.count(remedyName.str()))
-        ++remediatorSelectionCnt[remedyName.str()];
-      else
-        remediatorSelectionCnt[remedyName.str()] = 1;
-    }
     if ((++itRs) != rs.end())
       REPORT_DUMP(errs() << ", ");
   }
@@ -219,11 +213,103 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
         selectedRemedies.insert(r);
       }
     }
-    printSelected(*sors, cheapestR, *cr);
+    // FIXME: not printing the details
+    //printSelected(*sors, cheapestR, *cr);
+
+    auto itRs = cheapestR->begin();
+    while(itRs != cheapestR->end()) {
+      StringRef remedyName = (*itRs)->getRemedyName();
+      if (remedyName.equals("locality-remedy")) {
+        LocalityRemedy *localityRemed = (LocalityRemedy *)&*(*itRs);
+        remedyName = localityRemed->getLocalityRemedyName();
+      }
+      if (remediatorSelectionCnt.count(remedyName.str()))
+        ++remediatorSelectionCnt[remedyName.str()];
+      else
+        remediatorSelectionCnt[remedyName.str()] = 1;
+      itRs++;
+    }
   }
   REPORT_DUMP(errs() << "-====================================================-\n\n");
   printRemediatorSelectionCnt();
   REPORT_DUMP(errs() << "\n-====================================================-\n\n");
+}
+
+// do not try to run remediators
+bool Orchestrator::findBestStrategyGivenBestPDG(
+    Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf,
+    LoopProfLoad &lpl, 
+    std::unique_ptr<PipelineStrategy> &strat,
+    std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
+    unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
+    bool constrainSubLoops, bool abortIfNoParallelStage) {
+
+  BasicBlock *header = loop->getHeader();
+  Function *fcn = header->getParent();
+
+  REPORT_DUMP(errs() << "Start of findBestStrategy for loop " << fcn->getName()
+               << "::" << header->getName();
+        Instruction *term = header->getTerminator();
+        if (term) liberty::printInstDebugInfo(term);
+        errs() << "\n";);
+
+  unsigned long maxSavings = 0;
+
+  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl); //get PSDSWP critics
+
+  for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
+    REPORT_DUMP(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
+    CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
+    Criticisms &criticisms = res.criticisms;
+    unsigned long expSpeedup = res.expSpeedup;
+
+    if (!expSpeedup) {
+      REPORT_DUMP(errs() << (*criticIt)->getCriticName()
+                   << " not applicable/profitable to " << fcn->getName()
+                   << "::" << header->getName()
+                   << ": not all criticisms are addressable\n");
+      continue;
+    }
+
+    std::unique_ptr<SelectedRemedies> selectedRemedies =
+        std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
+    unsigned long selectedRemediesCost = 0;
+    if (!criticisms.size()) {
+      REPORT_DUMP(errs() << "\nNo criticisms generated!\n\n");
+    } else {
+      REPORT_DUMP(errs() << "Addressible criticisms\n");
+      // orchestrator selects set of remedies to address the given criticisms,
+      // computes remedies' total cost
+      addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
+    }
+
+    unsigned long adjRemedCosts =
+        (long)Critic::FixedPoint * selectedRemediesCost;
+    unsigned long savings = expSpeedup - adjRemedCosts;
+
+    REPORT_DUMP(errs() << "Expected Savings from critic "
+                 << (*criticIt)->getCriticName()
+                 << " (no remedies): " << expSpeedup
+                 << "  and selected remedies cost: " << adjRemedCosts << "\n");
+
+    // for coverage purposes, given that the cost model is not complete and not
+    // consistent among speedups and remedies cost, assume that it is always
+    // profitable to parallelize if loop is DOALL-able.
+    //
+    //if (maxSavings  < savings) {
+    if (!maxSavings || maxSavings < savings) {
+      maxSavings = savings;
+      strat = std::move(res.ps);
+      sRemeds = std::move(selectedRemedies);
+      sCritic = *criticIt;
+    }
+  }
+
+  if (maxSavings)
+    return true;
+
+  // no profitable parallelization strategy was found for this loop
+  return false;
 }
 
 bool Orchestrator::findBestStrategy(

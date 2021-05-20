@@ -61,6 +61,15 @@ public:
       bool includeReplicableStages = true, bool constrainSubLoops = false,
       bool abortIfNoParallelStage = true);
 
+  bool findBestStrategyGivenBestPDG(
+      Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf,
+      LoopProfLoad &lpl, std::unique_ptr<PipelineStrategy> &strat,
+      std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
+      // Optional inputs
+      unsigned threadBudget = 25, bool ignoreAntiOutput = false,
+      bool includeReplicableStages = true, bool constrainSubLoops = false,
+      bool abortIfNoParallelStage = true);
+
 private:
   std::vector<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,

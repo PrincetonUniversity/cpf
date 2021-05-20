@@ -651,28 +651,30 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
         ++lcRegDepTotal;
 
       if (!edge->isRemovableDependence()) {
-        REPORT_DUMP(errs() << "Cannot remove loop-carried ";
-              if (edge->isControlDependence()) errs() << "(Control)"; else {
-                if (edge->isMemoryDependence())
-                  errs() << "(Mem, ";
-                else
-                  errs() << "(Reg, ";
-                if (edge->isWARDependence())
-                  errs() << "WAR)";
-                else if (edge->isWAWDependence())
-                  errs() << "WAW)";
-                else if (edge->isRAWDependence())
-                  errs() << "RAW)";
-              } errs() << " edge(s) from "
-                       << *edge->getOutgoingT();
-              if (Instruction *outgoingI =
-                      dyn_cast<Instruction>(edge->getOutgoingT()))
-                  liberty::printInstDebugInfo(outgoingI);
-              errs() << "\n    to " << *edge->getIncomingT();
-              if (Instruction *incomingI =
-                      dyn_cast<Instruction>(edge->getIncomingT()))
-                  liberty::printInstDebugInfo(incomingI);
-              errs() << '\n';);
+        /*
+         *REPORT_DUMP(errs() << "Cannot remove loop-carried ";
+         *      if (edge->isControlDependence()) errs() << "(Control)"; else {
+         *        if (edge->isMemoryDependence())
+         *          errs() << "(Mem, ";
+         *        else
+         *          errs() << "(Reg, ";
+         *        if (edge->isWARDependence())
+         *          errs() << "WAR)";
+         *        else if (edge->isWAWDependence())
+         *          errs() << "WAW)";
+         *        else if (edge->isRAWDependence())
+         *          errs() << "RAW)";
+         *      } errs() << " edge(s) from "
+         *               << *edge->getOutgoingT();
+         *      if (Instruction *outgoingI =
+         *              dyn_cast<Instruction>(edge->getOutgoingT()))
+         *          liberty::printInstDebugInfo(outgoingI);
+         *      errs() << "\n    to " << *edge->getIncomingT();
+         *      if (Instruction *incomingI =
+         *              dyn_cast<Instruction>(edge->getIncomingT()))
+         *          liberty::printInstDebugInfo(incomingI);
+         *      errs() << '\n';);
+         */
 
         ++lcDepNotCovered;
       }
