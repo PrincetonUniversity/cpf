@@ -280,8 +280,8 @@ void __specpriv_initialize_worker_heaps(void)
     heap_unmap(&mredux0);
   mapped_heap_init(&myRedux);
   heap_map_shared(&redux[myWorkerId], &myRedux);
-  //ParallelControlBlock *pcb = __specpriv_get_pcb();
-  //heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0 );
+  ParallelControlBlock *pcb = __specpriv_get_pcb();
+  heap_map_cow( &pcb->checkpoints.main_checkpoint->heap_redux, &mredux0 );
   if( sizeof_redux )
     heap_alloc(&myRedux, sizeof_redux);
     //heap_alloc(&mredux0, sizeof_redux);

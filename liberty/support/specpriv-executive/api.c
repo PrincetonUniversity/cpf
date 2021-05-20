@@ -804,7 +804,11 @@ Exit __specpriv_join_children(void)
   // and redux heaps.
   __specpriv_distill_checkpoints_into_liveout( &pcb->checkpoints );
 
-  __specpriv_reset_reduction();
+  // BGODALA:
+  // redux allocation is called only once so commenting
+  // this piece of code so that reduction variables are not
+  // reset when invoked more than once
+  //__specpriv_reset_reduction();
   TIME(distill_into_liveout_end);
 
   if( pcb->misspeculation_happened )
