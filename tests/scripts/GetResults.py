@@ -133,28 +133,9 @@ def get_pdg(root_path, bmark, result_path):
 # ZY - check whether all profilings are there;
 # if remake_profile == True, ignore remake them by the Makefile, else abort
 def get_exp_result(root_path, bmark, result_path, exp_name="benchmark.collaborative-pipeline.dump"):
-    print("Generating Experiment results on %s " % (bmark))
+    print("Generating " + exp_name +  " on %s " % (bmark))
 
     os.chdir(os.path.join(root_path, bmark, "src"))
-
-    # Check LAMP, SLAMP, HEADERPHI, and SPECPRIV
-    if not os.path.isfile("benchmark.lamp.out"):
-        print(colored("No LAMP for %s, abort!" % bmark, 'red'))
-        return None
-    # if not os.path.isfile("benchmark.result.slamp.profile"):
-    #     print(colored("No SLAMP for %s, abort!" % bmark, 'red'))
-    #     return None
-    if not os.path.isfile("benchmark.specpriv-profile.out"):
-        print(colored("No SpecPriv for %s, abort" % bmark, 'red'))
-        return None
-
-    # 22 APR don't need headerphi because not needed anymore
-    # if not os.path.isfile("benchmark.headerphi_prof.out"):
-    #    print(colored("No headerphi for benchmark"+bmark, 'red'))
-
-    # Force redo; 22 APR don't do that, have -x option
-    # if os.path.isfile(exp_name):
-    #    os.remove(exp_name)
 
     start_time = time.time()
     make_process = subprocess.Popen(["make", exp_name],
@@ -176,7 +157,7 @@ def get_exp_result(root_path, bmark, result_path, exp_name="benchmark.collaborat
         # Create a backup
         shutil.copy(exp_name, os.path.join(result_path, bmark + "." + exp_name))
 
-        print(colored("Experiment succeeded for %s, took %.4fs" % (bmark, elapsed), 'green'))
+        print(colored(exp_name + " succeeded for %s, took %.4fs" % (bmark, elapsed), 'green'))
         return parsed_result
 
 
