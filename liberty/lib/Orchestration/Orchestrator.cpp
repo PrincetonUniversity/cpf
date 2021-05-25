@@ -23,6 +23,23 @@ namespace SpecPriv {
 using namespace llvm;
 using namespace llvm::noelle;
 
+std::vector<Remediator_ptr> Orchestrator::getNonSpecRemediators(
+    Loop *A, PDG *pdg, ModuleLoops &mloops, LoopAA *loopAA) {
+  std::vector<Remediator_ptr> remeds;
+
+  // reduction remediator
+  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, loopAA, pdg);
+  reduxRemed->setLoopOfInterest(A);
+  remeds.push_back(std::move(reduxRemed));
+
+  // memory versioning remediator (used separately from the rest since it cannot
+  // collaborate with analysis modules. It cannot answer modref or alias
+  // queries. Only addresses dependence queries about false deps)
+  remeds.push_back(std::make_unique<MemVerRemediator>());
+
+  return remeds;
+}
+
 std::vector<Remediator_ptr> Orchestrator::getRemediators(
     Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
     PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
@@ -237,8 +254,8 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 
 // do not try to run remediators
 bool Orchestrator::findBestStrategyGivenBestPDG(
-    Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf,
-    LoopProfLoad &lpl, 
+    Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ModuleLoops &mloops,
+    LoopProfLoad &lpl, LoopAA *loopAA,
     std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
@@ -255,6 +272,33 @@ bool Orchestrator::findBestStrategyGivenBestPDG(
 
   unsigned long maxSavings = 0;
 
+  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
+  // address all possible criticisms
+  std::vector<Remediator_ptr> remeds =
+      getNonSpecRemediators(loop, &pdg, mloops, loopAA);
+
+  for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
+       ++remediatorIt) {
+    Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
+    for (Remedy_ptr r : remedies) {
+      for (Criticism *c : r->resolvedC) {
+        long tcost = 0;
+        Remedies_ptr remedSet = std::make_shared<Remedies>();
+        if (r->hasSubRemedies()) {
+          for (Remedy_ptr subr : *(r->getSubRemedies())) {
+            remedSet->insert(subr);
+            tcost += subr->cost;
+          }
+        } else {
+          remedSet->insert(r);
+          tcost = r->cost;
+        }
+        // remedies are added to the edges.
+        c->setRemovable(true);
+        c->addRemedies(remedSet);
+      }
+    }
+  }
   std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl); //get PSDSWP critics
 
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {

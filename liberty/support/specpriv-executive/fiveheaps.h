@@ -5,6 +5,7 @@
 #include "types.h"
 #include "redux.h"
 
+void __specpriv_reset_reduction();
 void __specpriv_initialize_main_heaps(void);
 void __specpriv_initialize_worker_heaps(void);
 

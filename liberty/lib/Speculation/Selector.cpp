@@ -164,7 +164,6 @@ unsigned Selector::computeWeights(
  *  KillFlow &kill = proxy.getAnalysis< KillFlow >();
  *  const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
  *  Classify &classify = proxy.getAnalysis<Classify>();
- *  LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
  *
  *  KillFlow_CtrlSpecAware *killflowA =
  *      &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
@@ -172,6 +171,8 @@ unsigned Selector::computeWeights(
  *      &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
  *  killflowA->setLoopOfInterest(nullptr, nullptr);
  */
+
+  LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -243,8 +244,8 @@ unsigned Selector::computeWeights(
        */
 
       bool applicable = orch->findBestStrategyGivenBestPDG(A,
-          *pdg, *perf,
-          lpl, ps, sr, sc, NumThreads,
+          *pdg, *perf, mloops,
+          lpl, loopAA, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),

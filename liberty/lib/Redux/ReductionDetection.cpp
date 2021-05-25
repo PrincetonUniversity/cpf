@@ -277,6 +277,7 @@ bool findDependenceCycle(
 
       LLVM_DEBUG(errs() << "Dependence cycle found for " << *src << " , " << *dst
                    << "\n");
+      errs() << "and the compare instruction is " << *cmpInst << "\n";
       return true;
     }
 
@@ -440,6 +441,7 @@ bool sameBBMinMaxRedux(
       MinMaxReductionInfo *newinfo = new MinMaxReductionInfo;
       newinfo->depInst = info->minMaxInst;
       newinfo->depType = info->type;
+      newinfo->cmpInst = info->cmpInst;
       newinfo->type = getDependentType(liveOutV, newinfo->depType);
       const Instruction *depUpdateInst = dyn_cast<Instruction>(info->minMaxValue);
       assert(depUpdateInst);
@@ -578,14 +580,22 @@ bool ReductionDetection::isMinMaxReduction(
     const Loop *loop, const Instruction *src, const Instruction *dst,
     const bool loopCarried, SpecPriv::Reduction::Type &type,
     const Instruction **depInst, SpecPriv::Reduction::Type &depType,
-    const Instruction **depUpdateInst) {
+    const Instruction **depUpdateInst, const CmpInst **cmpInst) {
   LLVM_DEBUG(errs() << "Testing PDG Edge for min/max reduction: " << *src << " -> "
                << *dst << "\n";);
   if (loopCarried && (minMaxReductions.count(dst))) {
+      LLVM_DEBUG(errs() << "dst is " << *dst << "\n");
+    if(const Instruction* depInst = minMaxReductions[dst]->depInst){
+      LLVM_DEBUG(errs() << "depInst is " << *depInst << "\n");
+    }
+    else{
+      LLVM_DEBUG(errs() << "depInst is null\n");
+    }
     type = minMaxReductions[dst]->type;
     *depInst = minMaxReductions[dst]->depInst;
     depType = minMaxReductions[dst]->depType;
     *depUpdateInst = minMaxReductions[dst]->depUpdateInst;
+    *cmpInst = minMaxReductions[dst]->cmpInst;
     return true;
   }
 
@@ -632,7 +642,8 @@ void ReductionDetection::findMinMaxRegReductions(Loop *loop, PDG *pdg) {
         // Should only check moves (PHIs and selects).
         // NOTE: Should selects be more restrictive (i.e. only allowed if
         // original min/max used a select with the same condition?)
-        if (isa<PHINode>(itmp) || isa<SelectInst>(itmp) && itmp != src && itmp != dst) {
+        // should exclude dst itself
+        if ((isa<PHINode>(itmp) || isa<SelectInst>(itmp)) && itmp != src && itmp != dst) {
         //if (isa<SelectInst>(itmp) && itmp != src && itmp != dst) {
           infoUsed |=
               sameBBMinMaxRedux(itmp, info, minMaxReductions, loop, false);

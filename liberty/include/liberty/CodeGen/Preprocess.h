@@ -117,6 +117,7 @@ private:
   std::unordered_set<const Instruction *> reduxV;
   std::unordered_map<const Instruction *, Reduction::ReduxInfo> redux2Info;
   std::unordered_map<const BasicBlock *, const Instruction *> reduxUpdateInst;
+  std::unordered_map<const BasicBlock *, const Instruction *> reduxCmpInst;
   const PHINode *indVarPhi;
 
   // collect all the AUs that appeared in various types of selected

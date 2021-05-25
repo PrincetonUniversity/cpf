@@ -133,6 +133,7 @@ rm -f $NOPEEP
 OUT="-o $NOPEEP"
 
 CMD="noelle-load $LIBS $OPTS $FCN $LOOP $1 $OUT"
+#CMD="noelle-load $LIBS $OPTS $FCN $LOOP -debug-only=reduxdet,specpriv-transform $1 $OUT"
 
 echo Running: $CMD
 ulimit -S -v $[48*1024*1024]
@@ -177,11 +178,12 @@ echo
 
 #### Link and Code Gen
 echo Produce executable
-$CPP $OPT_LEVEL -c -emit-llvm -o $OUTFILE_BC_OPT $OUTFILE
+$CPP $OPT_LEVEL -c -g -emit-llvm -o $OUTFILE_BC_OPT $OUTFILE
 opt -strip -o $OUTFILE_BC_OPT_STRIP $OUTFILE_BC_OPT
 
 echo $CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP -lm $SPEX -lrt -o $OUTFILE_EXE
 $CPP -std=c++14 -pthreads $OPT_LEVEL $OUTFILE_BC_OPT_STRIP -lm $SPEX -lrt -o $OUTFILE_EXE
+#$CPP -std=c++14 -pthreads $OPT_LEVEL $RUNTIME_CFLAGS -DDEBUG $OUTFILE_BC_OPT_STRIP -lm $SPEX -lrt -o $OUTFILE_EXE
 fi
 
 #### Cleanup

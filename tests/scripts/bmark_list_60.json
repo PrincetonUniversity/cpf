@@ -7,7 +7,7 @@
 "179.art": {"suites": ["SpecFP", "Spec"], "available": true},
 "183.equake": {"suites": ["SpecFP", "Spec"], "available": true},
 "188.ammp": {"suites": ["SpecFP", "Spec"], "available": false},
-"008.espresso": {"suites": ["SpecINT", "Spec"], "available": true},
+"008.espresso": {"suites": ["SpecINT", "Spec"], "available": false},
 "023.eqntott": {"suites": ["SpecINT", "Spec"], "available": false},
 "026.compress": {"suites": ["SpecINT", "Spec"], "available": true},
 "072.sc": {"suites": ["SpecINT", "Spec"], "available": false},

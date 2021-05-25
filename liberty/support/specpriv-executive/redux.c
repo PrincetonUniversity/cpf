@@ -356,12 +356,13 @@ static void __specpriv_reduce_u64_max(uint64_t *src_au, uint64_t *dst_au,
       if (depType == 2) {
         float *dstDep = (float *)dst_dep_au;
         float *srcDep = (float *)src_dep_au;
-        DEBUG(printf("Performing a u64-max reduction on address 0x%lx "
-                     "depending on address 0x%lx\n",
-                     (uint64_t)src_au, (uint64_t)src_dep_au));
+        //DEBUG(printf("Performing a u64-max reduction on address 0x%lx "
+        //             "depending on address 0x%lx\n",
+        //             (uint64_t)src_au, (uint64_t)src_dep_au));
         DEBUG(printf("dst_dep_au: %f, src_dep_au:%f\n", *dstDep, *srcDep));
         DEBUG(printf("dstLastUpIter: %u, srcLastUpIter:%u\n", *dstLastUpIter,
                      srcLastUpIter));
+        DEBUG(printf("dst_au: %lx, src_au:%lx\n", *dst_au, *src_au));
 
         if (*srcDep > *dstDep ||
             (*srcDep == *dstDep && srcLastUpIter < *dstLastUpIter)) {
@@ -459,7 +460,7 @@ static void __specpriv_reduce_f32_max(float *src_au, float *dst_au,
       *dstLastUpIter = srcLastUpIter;
     }
 
-    *src_au = -FLT_MAX;
+    //*src_au = -FLT_MAX;
     return;
   }
 
@@ -873,7 +874,7 @@ Bool __specpriv_distill_worker_redux_into_partial(MappedHeap * partial_redux,
                                srcUpdateIter, partialLastUpIter);
   }
   TADD(worker_redux_to_partial_time, start);
-
+  DEBUG(printf("__specpriv_distill_worker_redux_into_partial END\n"));
   return 0;
 }
 
