@@ -32,7 +32,7 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
 
   //au.addRequired< SmtxSpeculationManager >();
   //au.addRequired< PtrResidueSpeculationManager >();
-  //au.addRequired< ProfileGuidedControlSpeculator >();
+  au.addRequired< ProfileGuidedControlSpeculator >();
   //au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired<LoopAA>();
   //au.addRequired<ReadPass>();

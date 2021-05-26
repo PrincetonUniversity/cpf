@@ -23,6 +23,7 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PipelineStrategy.h"
+#include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/Utilities/PrintDebugInfo.h"
 
 #include <memory>
@@ -62,7 +63,7 @@ public:
       bool abortIfNoParallelStage = true);
 
   bool findBestStrategyGivenBestPDG(
-      Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ModuleLoops &mloops,
+      Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ControlSpeculation *ctrlspec, ModuleLoops &mloops,
       LoopProfLoad &lpl, LoopAA *loopAA, std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
       // Optional inputs
@@ -72,7 +73,7 @@ public:
 
 private:
   std::vector<Remediator_ptr> getNonSpecRemediators(
-      Loop *A, PDG *pdg, ModuleLoops &mloops, LoopAA *loopAA);
+      Loop *A, PDG *pdg, ControlSpeculation *ctrlspec, ModuleLoops &mloops, LoopAA *loopAA);
 
   std::vector<Remediator_ptr>
   getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,

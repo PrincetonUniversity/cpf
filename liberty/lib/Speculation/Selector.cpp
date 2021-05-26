@@ -151,9 +151,9 @@ unsigned Selector::computeWeights(
   TargetLibraryInfo *tli =
       &proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   
+  ControlSpeculation *ctrlspec =
+      proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
 /*
- *  ControlSpeculation *ctrlspec =
- *      proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
  *  PredictionSpeculation *loadedValuePred =
  *      &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
  *  SmtxSpeculationManager &smtxLampMan =
@@ -244,7 +244,7 @@ unsigned Selector::computeWeights(
        */
 
       bool applicable = orch->findBestStrategyGivenBestPDG(A,
-          *pdg, *perf, mloops,
+          *pdg, *perf, ctrlspec, mloops,
           lpl, loopAA, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),

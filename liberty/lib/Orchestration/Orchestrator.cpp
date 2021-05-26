@@ -1,3 +1,4 @@
+#include "scaf/Utilities/ControlSpeculation.h"
 #define DEBUG_TYPE "orchestrator"
 
 #include "llvm/IR/Constants.h"
@@ -24,8 +25,16 @@ using namespace llvm;
 using namespace llvm::noelle;
 
 std::vector<Remediator_ptr> Orchestrator::getNonSpecRemediators(
-    Loop *A, PDG *pdg, ModuleLoops &mloops, LoopAA *loopAA) {
+    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec, ModuleLoops &mloops, LoopAA *loopAA) {
   std::vector<Remediator_ptr> remeds;
+
+  /* produce remedies for control deps */
+
+  // control speculation remediator
+  ctrlspec->setLoopOfInterest(A->getHeader());
+  auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
+  ctrlSpecRemed->processLoopOfInterest(A);
+  remeds.push_back(std::move(ctrlSpecRemed));
 
   // reduction remediator
   auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, loopAA, pdg);
@@ -254,8 +263,8 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 
 // do not try to run remediators
 bool Orchestrator::findBestStrategyGivenBestPDG(
-    Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ModuleLoops &mloops,
-    LoopProfLoad &lpl, LoopAA *loopAA,
+    Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+    ModuleLoops &mloops, LoopProfLoad &lpl, LoopAA *loopAA,
     std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
@@ -275,7 +284,7 @@ bool Orchestrator::findBestStrategyGivenBestPDG(
   Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds =
-      getNonSpecRemediators(loop, &pdg, mloops, loopAA);
+      getNonSpecRemediators(loop, &pdg, ctrlspec, mloops, loopAA);
 
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
