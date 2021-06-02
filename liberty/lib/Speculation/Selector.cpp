@@ -260,11 +260,13 @@ unsigned Selector::computeWeights(
         const long wt = adjLoopTime - estimatePipelineWeight;
         unsigned long scaledwt = 0;
 
-        //errs() << "wt: " << wt << "\nadjLoopTime: " << adjLoopTime
-        //       << "\nestimatePipelineWeight: " << estimatePipelineWeight
-        //       << "\ndepthPenalty: " << depthPenalty << '\n';
+        /*
+         *errs() << "wt: " << wt << "\nadjLoopTime: " << adjLoopTime
+         *       << "\nestimatePipelineWeight: " << estimatePipelineWeight
+         *       << "\ndepthPenalty: " << depthPenalty << '\n';
+         */
 
-        //ps->dump_pipeline(errs());
+        ps->dump_pipeline(errs());
 
         if (perf->estimate_loop_weight(A))
           scaledwt = wt * (double)lpl.getLoopTime(hA) / (double)perf->estimate_loop_weight(A);

@@ -69,6 +69,6 @@ BENCHMARK="benchmark.bc"
 ENABLES=""
 #ENABLES="$ENABLE_EDGE $ENABLE_LAMP $ENABLE_SPECPRIV"
 
-CMD="opt $SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS $AA_PASSES $ENABLES $DEBUG_PASSES $BENCHMARK -pdgbuilder ${@:2} -remed-selector  -disable-output" 
+CMD="opt $SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS $AA_PASSES $ENABLES $DEBUG_PASSES $BENCHMARK -pdgbuilder ${@:2} -remed-selector  -disable-output -ignore-cost" 
 echo $CMD
 $CMD > $1 2>&1

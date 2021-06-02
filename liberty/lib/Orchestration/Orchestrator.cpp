@@ -20,6 +20,11 @@
 #include <iterator>
 
 namespace liberty {
+
+static cl::opt<bool> IgnoreCost(
+  "ignore-cost", cl::init(false), cl::Hidden,
+  cl::desc("Assume all remedy cost is zero"));
+
 namespace SpecPriv {
 using namespace llvm;
 using namespace llvm::noelle;
@@ -338,6 +343,10 @@ bool Orchestrator::findBestStrategyGivenBestPDG(
 
     unsigned long adjRemedCosts =
         (long)Critic::FixedPoint * selectedRemediesCost;
+
+    if (IgnoreCost)
+      adjRemedCosts = 0;
+
     unsigned long savings = expSpeedup - adjRemedCosts;
 
     REPORT_DUMP(errs() << "Expected Savings from critic "
