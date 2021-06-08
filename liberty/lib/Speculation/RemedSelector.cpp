@@ -16,6 +16,7 @@
 #include "liberty/Speculation/PtrResidueManager.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/SpeculationModules/GlobalConfig.h"
 #include "liberty/Utilities/ReportDump.h"
 
 #include "liberty/Speculation/RemedSelector.h"
@@ -30,15 +31,26 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
 {
   Selector::analysisUsage(au);
 
-  //au.addRequired< SmtxSpeculationManager >();
-  //au.addRequired< PtrResidueSpeculationManager >();
-  au.addRequired< ProfileGuidedControlSpeculator >();
-  //au.addRequired< ProfileGuidedPredictionSpeculator >();
   au.addRequired<LoopAA>();
-  //au.addRequired<ReadPass>();
-  //au.addRequired<Classify>();
-  //au.addRequired<KillFlow_CtrlSpecAware>();
-  //au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+
+  if (EnableLamp) {
+    au.addRequired< SmtxSpeculationManager >();
+    au.addRequired< LAMPLoadProfile >();
+  }
+
+  if (EnableEdgeProf) {
+    au.addRequired< ProfileGuidedControlSpeculator >();
+    au.addRequired<KillFlow_CtrlSpecAware>();
+    au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+  }
+
+
+  if (EnableSpecPriv) {
+    au.addRequired<ReadPass>();
+    au.addRequired<Classify>();
+    au.addRequired< ProfileGuidedPredictionSpeculator >();
+    au.addRequired< PtrResidueSpeculationManager >();
+  }
   au.addRequired<CallGraphWrapperPass>();
 }
 

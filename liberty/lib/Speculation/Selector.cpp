@@ -1,3 +1,4 @@
+#include "liberty/Orchestration/Orchestrator.h"
 #define DEBUG_TYPE "selector"
 
 #include "llvm/ADT/Statistic.h"
@@ -17,6 +18,7 @@
 
 #include "PDG.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
+#include "scaf/SpeculationModules/GlobalConfig.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/Targets.h"
 #include "scaf/SpeculationModules/PDGBuilder.hpp"
@@ -86,11 +88,12 @@ void Selector::analysisUsage(AnalysisUsage &au)
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
   au.addRequired< PDGBuilder >();
   au.addRequired< ModuleLoops >();
-  au.addRequired< LoopProfLoad >();
-  //au.addRequired< LAMPLoadProfile >();
-  //au.addRequired< KillFlow >();
+  au.addRequired< KillFlow >();
   au.addRequired< Targets >();
+
+  au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
+
   au.setPreservesAll();
 }
 
@@ -145,15 +148,32 @@ unsigned Selector::computeWeights(
   unsigned numApplicable = 0;
 
   Pass &proxy = getPass();
-  LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
-  PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
   ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
-  TargetLibraryInfo *tli =
-      &proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-  
-  ControlSpeculation *ctrlspec =
+
+
+  // LoopProf should always be alive
+  LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
+
+  PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
+
+  //TargetLibraryInfo *tli =
+      //&proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
+  // create Orchestrator
+  std::unique_ptr<Orchestrator> orch = std::unique_ptr<Orchestrator>(new Orchestrator(proxy));
+
+  if (EnableEdgeProf) {
+    ControlSpeculation *ctrlspec =
       proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-/*
+  }
+
+  if (EnableSpecPriv) {
+    const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
+    Classify &classify = proxy.getAnalysis<Classify>();
+  }
+
+
+/*  // Memory dependences speculation now moved to SCAF
  *  PredictionSpeculation *loadedValuePred =
  *      &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
  *  SmtxSpeculationManager &smtxLampMan =
@@ -161,18 +181,7 @@ unsigned Selector::computeWeights(
  *  PtrResidueSpeculationManager &ptrResMan =
  *      proxy.getAnalysis<PtrResidueSpeculationManager>();
  *  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
- *  KillFlow &kill = proxy.getAnalysis< KillFlow >();
- *  const Read &rd = proxy.getAnalysis<ReadPass>().getProfileInfo();
- *  Classify &classify = proxy.getAnalysis<Classify>();
- *
- *  KillFlow_CtrlSpecAware *killflowA =
- *      &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
- *  CallsiteDepthCombinator_CtrlSpecAware *callsiteA =
- *      &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
- *  killflowA->setLoopOfInterest(nullptr, nullptr);
- */
-
-  LoopAA *loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
+ *  KillFlow &kill = proxy.getAnalysis< KillFlow >(); */
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -195,7 +204,6 @@ unsigned Selector::computeWeights(
         std::make_unique<DominatorSummary>(dt, pdt);
     ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
 
-    //const HeapAssignment &asgn = classify.getAssignmentFor(A);
 
     const unsigned long loopTime = perf->estimate_loop_weight(A);
     const unsigned long scaledLoopTime = FixedPoint*loopTime;
@@ -207,8 +215,9 @@ unsigned Selector::computeWeights(
       adjLoopTime = scaledLoopTime - depthPenalty;
     else if (scaledLoopTime > depthPenalty / 10)
       adjLoopTime = scaledLoopTime - depthPenalty / 10;
-
     {
+
+      // Dump PDG
       //std::unique_ptr<llvm::noelle::PDG> pdg = pdgBuilder.getLoopPDG(A);
       llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
 
@@ -224,8 +233,6 @@ unsigned Selector::computeWeights(
           errs() << "Run Orchestrator:: find best parallelization strategy for "
                  << fA->getName() << " :: " << hA->getName() << "...\n");
 
-      std::unique_ptr<Orchestrator> orch =
-          std::unique_ptr<Orchestrator>(new Orchestrator());
 
       std::unique_ptr<PipelineStrategy> ps;
       std::unique_ptr<SelectedRemedies> sr;
@@ -242,14 +249,23 @@ unsigned Selector::computeWeights(
        *    pipelineOption_constrainSubLoops(),
        *    pipelineOption_abortIfNoParallelStage());
        */
-
-      bool applicable = orch->findBestStrategyGivenBestPDG(A,
-          *pdg, *perf, ctrlspec, mloops,
-          lpl, loopAA, ps, sr, sc, NumThreads,
+      bool applicable = orch->findBestStrategy(A, *pdg, ps, sr, sc, NumThreads,
           pipelineOption_ignoreAntiOutput(),
           pipelineOption_includeReplicableStages(),
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
+
+      /*
+       *bool applicable = orch->findBestStrategyGivenBestPDG(A,
+       *    *pdg, *perf, ctrlspec, mloops,
+       *    lpl, loopAA,
+       *    rd, asgn, proxy,
+       *    ps, sr, sc, NumThreads,
+       *    pipelineOption_ignoreAntiOutput(),
+       *    pipelineOption_includeReplicableStages(),
+       *    pipelineOption_constrainSubLoops(),
+       *    pipelineOption_abortIfNoParallelStage());
+       */
 
       if( applicable )
       {

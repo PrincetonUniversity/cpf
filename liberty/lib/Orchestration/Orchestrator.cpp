@@ -1,4 +1,4 @@
-#include "scaf/Utilities/ControlSpeculation.h"
+#include "liberty/Speculation/Classify.h"
 #define DEBUG_TYPE "orchestrator"
 
 #include "llvm/IR/Constants.h"
@@ -15,6 +15,9 @@
 #include "scaf/Utilities/InstInsertPt.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/Timer.h"
+#include "scaf/Utilities/ControlSpeculation.h"
+#include "scaf/SpeculationModules/GlobalConfig.h"
+
 #include "liberty/Utilities/ReportDump.h"
 
 #include <iterator>
@@ -29,58 +32,21 @@ namespace SpecPriv {
 using namespace llvm;
 using namespace llvm::noelle;
 
-std::vector<Remediator_ptr> Orchestrator::getNonSpecRemediators(
-    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec, ModuleLoops &mloops, LoopAA *loopAA) {
+std::vector<Remediator_ptr> Orchestrator::getAvailableRemediators(Loop *A, PDG *pdg) {
   std::vector<Remediator_ptr> remeds;
 
   /* produce remedies for control deps */
 
-  // control speculation remediator
-  ctrlspec->setLoopOfInterest(A->getHeader());
-  auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
-  ctrlSpecRemed->processLoopOfInterest(A);
-  remeds.push_back(std::move(ctrlSpecRemed));
-
-  // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, loopAA, pdg);
-  reduxRemed->setLoopOfInterest(A);
-  remeds.push_back(std::move(reduxRemed));
-
-  // memory versioning remediator (used separately from the rest since it cannot
-  // collaborate with analysis modules. It cannot answer modref or alias
-  // queries. Only addresses dependence queries about false deps)
-  remeds.push_back(std::make_unique<MemVerRemediator>());
-
-  return remeds;
-}
-
-std::vector<Remediator_ptr> Orchestrator::getRemediators(
-    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-    PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-    TargetLibraryInfo *tli,
-    //LoopDependenceInfo &ldi,
-    SmtxSpeculationManager &smtxLampMan,
-    PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-    CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
-    PerformanceEstimator *perf) {
-  std::vector<Remediator_ptr> remeds;
-
-  /* produce remedies for control deps */
-
-  // control speculation remediator
-  ctrlspec->setLoopOfInterest(A->getHeader());
-  auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
-  ctrlSpecRemed->processLoopOfInterest(A);
-  remeds.push_back(std::move(ctrlSpecRemed));
-
+  if (EnableEdgeProf) {
+    ctrlspec->setLoopOfInterest(A->getHeader());
+    auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
+    ctrlSpecRemed->processLoopOfInterest(A);
+    remeds.push_back(std::move(ctrlSpecRemed));
+  }
 
   /* produce remedies for register deps */
-  //TODO: re-enable these two remediators
-
   // reduction remediator
-  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, loopAA, pdg);
+  auto reduxRemed = std::make_unique<ReduxRemediator>(mloops, loopAA, pdg);
   reduxRemed->setLoopOfInterest(A);
   remeds.push_back(std::move(reduxRemed));
 
@@ -89,14 +55,17 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
   //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
 
-  /* produce remedies for memory deps */
-
-  // full speculative analysis stack combining lamp, ctrl spec, value prediction,
-  // points-to spec, separation logic spec, txio, commlibsaa, ptr-residue and
-  // static analysis.
-  remeds.push_back(std::make_unique<MemSpecAARemediator>(
-      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
-      &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
+  if (EnableSpecPriv && EnableLamp && EnableEdgeProf) {
+    // full speculative analysis stack combining lamp, ctrl spec, value prediction,
+    // points-to spec, separation logic spec, txio, commlibsaa, ptr-residue and
+    // static analysis.
+    const DataLayout &DL = A->getHeader()->getModule()->getDataLayout();
+    const Ctx *ctx = rd->getCtx(A);
+    const HeapAssignment &asgn = classify->getAssignmentFor(A);
+    remeds.push_back(std::make_unique<MemSpecAARemediator>(
+          proxy, ctrlspec, lamp, *rd, asgn, loadedValuePred, smtxLampMan,
+          ptrResMan, killflowA, callsiteA, *kill, *mloops, perf));
+  }
 
   // memory versioning remediator (used separately from the rest since it cannot
   // collaborate with analysis modules. It cannot answer modref or alias
@@ -105,6 +74,58 @@ std::vector<Remediator_ptr> Orchestrator::getRemediators(
 
   return remeds;
 }
+
+/*
+ *std::vector<Remediator_ptr> Orchestrator::getRemediators(
+ *    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+ *    PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
+ *    TargetLibraryInfo *tli,
+ *    //LoopDependenceInfo &ldi,
+ *    SmtxSpeculationManager &smtxLampMan,
+ *    PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+ *    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+ *    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+ *    CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+ *    PerformanceEstimator *perf) {
+ *  std::vector<Remediator_ptr> remeds;
+ *
+ *  // control speculation remediator
+ *  ctrlspec->setLoopOfInterest(A->getHeader());
+ *  auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
+ *  ctrlSpecRemed->processLoopOfInterest(A);
+ *  remeds.push_back(std::move(ctrlSpecRemed));
+ *
+ *
+ *  [> produce remedies for register deps <]
+ *  //TODO: re-enable these two remediators
+ *
+ *  // reduction remediator
+ *  auto reduxRemed = std::make_unique<ReduxRemediator>(&mloops, loopAA, pdg);
+ *  reduxRemed->setLoopOfInterest(A);
+ *  remeds.push_back(std::move(reduxRemed));
+ *
+ *  // counted induction variable remediator
+ *  // disable IV remediator for PS-DSWP for now, handle it via replicable stage
+ *  //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
+ *
+ *
+ *  [> produce remedies for memory deps <]
+ *
+ *  // full speculative analysis stack combining lamp, ctrl spec, value prediction,
+ *  // points-to spec, separation logic spec, txio, commlibsaa, ptr-residue and
+ *  // static analysis.
+ *  remeds.push_back(std::make_unique<MemSpecAARemediator>(
+ *      proxy, ctrlspec, &lamp, rd, asgn, loadedValuePred, &smtxLampMan,
+ *      &ptrResMan, killflowA, callsiteA, kill, mloops, perf));
+ *
+ *  // memory versioning remediator (used separately from the rest since it cannot
+ *  // collaborate with analysis modules. It cannot answer modref or alias
+ *  // queries. Only addresses dependence queries about false deps)
+ *  remeds.push_back(std::make_unique<MemVerRemediator>());
+ *
+ *  return remeds;
+ *}
+ */
 
 std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
                                                  unsigned threadBudget,
@@ -267,124 +288,129 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 }
 
 // do not try to run remediators
-bool Orchestrator::findBestStrategyGivenBestPDG(
-    Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-    ModuleLoops &mloops, LoopProfLoad &lpl, LoopAA *loopAA,
-    std::unique_ptr<PipelineStrategy> &strat,
-    std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
-    unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
-    bool constrainSubLoops, bool abortIfNoParallelStage) {
-
-  BasicBlock *header = loop->getHeader();
-  Function *fcn = header->getParent();
-
-  REPORT_DUMP(errs() << "Start of findBestStrategy for loop " << fcn->getName()
-               << "::" << header->getName();
-        Instruction *term = header->getTerminator();
-        if (term) liberty::printInstDebugInfo(term);
-        errs() << "\n";);
-
-  unsigned long maxSavings = 0;
-
-  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
-  // address all possible criticisms
-  std::vector<Remediator_ptr> remeds =
-      getNonSpecRemediators(loop, &pdg, ctrlspec, mloops, loopAA);
-
-  for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
-       ++remediatorIt) {
-    Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
-    for (Remedy_ptr r : remedies) {
-      for (Criticism *c : r->resolvedC) {
-        long tcost = 0;
-        Remedies_ptr remedSet = std::make_shared<Remedies>();
-        if (r->hasSubRemedies()) {
-          for (Remedy_ptr subr : *(r->getSubRemedies())) {
-            remedSet->insert(subr);
-            tcost += subr->cost;
-          }
-        } else {
-          remedSet->insert(r);
-          tcost = r->cost;
-        }
-        // remedies are added to the edges.
-        c->setRemovable(true);
-        c->addRemedies(remedSet);
-      }
-    }
-  }
-  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl); //get PSDSWP critics
-
-  for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
-    REPORT_DUMP(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
-    CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
-    Criticisms &criticisms = res.criticisms;
-    unsigned long expSpeedup = res.expSpeedup;
-
-    if (!expSpeedup) {
-      REPORT_DUMP(errs() << (*criticIt)->getCriticName()
-                   << " not applicable/profitable to " << fcn->getName()
-                   << "::" << header->getName()
-                   << ": not all criticisms are addressable\n");
-      continue;
-    }
-
-    std::unique_ptr<SelectedRemedies> selectedRemedies =
-        std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
-    unsigned long selectedRemediesCost = 0;
-    if (!criticisms.size()) {
-      REPORT_DUMP(errs() << "\nNo criticisms generated!\n\n");
-    } else {
-      REPORT_DUMP(errs() << "Addressible criticisms\n");
-      // orchestrator selects set of remedies to address the given criticisms,
-      // computes remedies' total cost
-      addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
-    }
-
-    unsigned long adjRemedCosts =
-        (long)Critic::FixedPoint * selectedRemediesCost;
-
-    if (IgnoreCost)
-      adjRemedCosts = 0;
-
-    unsigned long savings = expSpeedup - adjRemedCosts;
-
-    REPORT_DUMP(errs() << "Expected Savings from critic "
-                 << (*criticIt)->getCriticName()
-                 << " (no remedies): " << expSpeedup
-                 << "  and selected remedies cost: " << adjRemedCosts << "\n");
-
-    // for coverage purposes, given that the cost model is not complete and not
-    // consistent among speedups and remedies cost, assume that it is always
-    // profitable to parallelize if loop is DOALL-able.
-    //
-    //if (maxSavings  < savings) {
-    if (!maxSavings || maxSavings < savings) {
-      maxSavings = savings;
-      strat = std::move(res.ps);
-      sRemeds = std::move(selectedRemedies);
-      sCritic = *criticIt;
-    }
-  }
-
-  if (maxSavings)
-    return true;
-
-  // no profitable parallelization strategy was found for this loop
-  return false;
-}
+/*
+ *bool Orchestrator::findBestStrategyGivenBestPDG(
+ *    Loop *loop, llvm::noelle::PDG &pdg,PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+ *    ModuleLoops &mloops, LoopProfLoad &lpl, LoopAA *loopAA,
+ *    const Read &rd, const HeapAssignment &asgn, Pass &proxy,
+ *    std::unique_ptr<PipelineStrategy> &strat,
+ *    std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
+ *    unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
+ *    bool constrainSubLoops, bool abortIfNoParallelStage) {
+ *
+ *  BasicBlock *header = loop->getHeader();
+ *  Function *fcn = header->getParent();
+ *
+ *  REPORT_DUMP(errs() << "Start of findBestStrategy for loop " << fcn->getName()
+ *               << "::" << header->getName();
+ *        Instruction *term = header->getTerminator();
+ *        if (term) liberty::printInstDebugInfo(term);
+ *        errs() << "\n";);
+ *
+ *  unsigned long maxSavings = 0;
+ *
+ *  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
+ *  // address all possible criticisms
+ *  std::vector<Remediator_ptr> remeds =
+ *      getNonSpecRemediators(loop, &pdg, ctrlspec, mloops, loopAA,
+ *          rd, asgn, proxy, &perf);
+ *
+ *  for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
+ *       ++remediatorIt) {
+ *    Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
+ *    for (Remedy_ptr r : remedies) {
+ *      for (Criticism *c : r->resolvedC) {
+ *        long tcost = 0;
+ *        Remedies_ptr remedSet = std::make_shared<Remedies>();
+ *        if (r->hasSubRemedies()) {
+ *          for (Remedy_ptr subr : *(r->getSubRemedies())) {
+ *            remedSet->insert(subr);
+ *            tcost += subr->cost;
+ *          }
+ *        } else {
+ *          remedSet->insert(r);
+ *          tcost = r->cost;
+ *        }
+ *        // remedies are added to the edges.
+ *        c->setRemovable(true);
+ *        c->addRemedies(remedSet);
+ *      }
+ *    }
+ *  }
+ *  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl); //get PSDSWP critics
+ *
+ *  for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
+ *    REPORT_DUMP(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
+ *    CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
+ *    Criticisms &criticisms = res.criticisms;
+ *    unsigned long expSpeedup = res.expSpeedup;
+ *
+ *    if (!expSpeedup) {
+ *      REPORT_DUMP(errs() << (*criticIt)->getCriticName()
+ *                   << " not applicable/profitable to " << fcn->getName()
+ *                   << "::" << header->getName()
+ *                   << ": not all criticisms are addressable\n");
+ *      continue;
+ *    }
+ *
+ *    std::unique_ptr<SelectedRemedies> selectedRemedies =
+ *        std::unique_ptr<SelectedRemedies>(new SelectedRemedies());
+ *    unsigned long selectedRemediesCost = 0;
+ *    if (!criticisms.size()) {
+ *      REPORT_DUMP(errs() << "\nNo criticisms generated!\n\n");
+ *    } else {
+ *      REPORT_DUMP(errs() << "Addressible criticisms\n");
+ *      // orchestrator selects set of remedies to address the given criticisms,
+ *      // computes remedies' total cost
+ *      addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
+ *    }
+ *
+ *    unsigned long adjRemedCosts =
+ *        (long)Critic::FixedPoint * selectedRemediesCost;
+ *
+ *    if (IgnoreCost)
+ *      adjRemedCosts = 0;
+ *
+ *    unsigned long savings = expSpeedup - adjRemedCosts;
+ *
+ *    REPORT_DUMP(errs() << "Expected Savings from critic "
+ *                 << (*criticIt)->getCriticName()
+ *                 << " (no remedies): " << expSpeedup
+ *                 << "  and selected remedies cost: " << adjRemedCosts << "\n");
+ *
+ *    // for coverage purposes, given that the cost model is not complete and not
+ *    // consistent among speedups and remedies cost, assume that it is always
+ *    // profitable to parallelize if loop is DOALL-able.
+ *    //
+ *    //if (maxSavings  < savings) {
+ *    if (!maxSavings || maxSavings < savings) {
+ *      maxSavings = savings;
+ *      strat = std::move(res.ps);
+ *      sRemeds = std::move(selectedRemedies);
+ *      sCritic = *criticIt;
+ *    }
+ *  }
+ *
+ *  if (maxSavings)
+ *    return true;
+ *
+ *  // no profitable parallelization strategy was found for this loop
+ *  return false;
+ *}
+ */
 
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::noelle::PDG &pdg,
-    //LoopDependenceInfo &ldi,
-    PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-    PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-    TargetLibraryInfo *tli,
-    SmtxSpeculationManager &smtxLampMan,
-    PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-    const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-    CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
+    // //LoopDependenceInfo &ldi,
+    // PerformanceEstimator &perf,
+    // ControlSpeculation *ctrlspec,
+    // PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
+    // TargetLibraryInfo *tli,
+    // SmtxSpeculationManager &smtxLampMan,
+    // PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+    // const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+    // KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+    // CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
     std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
     unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
@@ -405,9 +431,14 @@ bool Orchestrator::findBestStrategy(
 
   // address all possible criticisms
   std::vector<Remediator_ptr> remeds =
-      getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
-                     smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
-                     loopAA, kill, killflowA, callsiteA, &perf);
+    getAvailableRemediators(loop, &pdg);
+
+      /*
+       *getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
+       *               smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
+       *               loopAA, kill, killflowA, callsiteA, &perf);
+       */
+
   for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
        ++remediatorIt) {
     Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
@@ -432,7 +463,7 @@ bool Orchestrator::findBestStrategy(
   }
 
   // receive actual criticisms from critics given the enhanced pdg
-  std::vector<Critic_ptr> critics = getCritics(&perf, threadBudget, &lpl); //get PSDSWP critics
+  std::vector<Critic_ptr> critics = getCritics(perf, threadBudget, lpl); //get PSDSWP critics
 
   for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
     REPORT_DUMP(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
