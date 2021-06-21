@@ -1,0 +1,293 @@
+# !!!Read before any change!!!
+# For all the variable definitions
+# Don't use quotes
+# Make sure there are no trailing spaces
+# "Enjoy GNU Make"
+SHELL := /bin/bash
+
+## Start of Configuration ##
+
+########
+# LLVM #
+########
+compile-llvm=0
+
+## If compile-llvm=0, provide paths to both the debug and the release versions
+llvm-install-dir-debug=/scratch/install/llvm-install-debug
+llvm-install-dir-release=/scratch/install/llvm-install-release
+
+##########
+# NOELLE #
+##########
+compile-noelle=0
+
+## If compile-noelle=0, provide paths to both the debug and the release versions
+noelle-install-dir-debug=/scratch/install/noelle-install-debug
+noelle-install-dir-release=/scratch/install/noelle-install-release
+
+## If compile-noelle=1, use this url to clone and build NOELLE from scratch
+## Don't use quotes
+noelle-remote-url=https://github.com/scampanoni/noelle.git
+noelle-branch=master
+
+##########
+# SCAF #
+##########
+# Use noelle scaf override compile-scaf to be 0
+use-noelle-scaf=0
+compile-scaf=0
+
+## If compile-scaf=0 and use-noelle-scaf=0  provide paths to both the debug and the release versions
+scaf-install-dir-debug=/u/ziyangx/SCAF/build/install
+scaf-install-dir-release=/u/ziyangx/SCAF/build-release/install
+
+## If compile-scaf=1, use this url to clone and build SCAF from scratch
+## Don't use quotes
+scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
+scaf-branch=v9.0.0
+
+#######
+# CPF #
+#######
+compile-cpf=1
+## If compile-cpf=0, provide paths to both the debug and the release versions
+#cpf-install-dir-debug=/scratch/install/cpf-install-debug
+#cpf-install-dir-release=/scratch/install/cpf-install-release
+
+##############
+# Installing #
+##############
+
+# Make sure you have write privilege to both directories here
+install-prefix=/u/ziyangx/cpf-9/test-install
+cpf-root-path=/u/ziyangx/cpf-9
+
+# verbose output
+# 1: print all internal cmake/make message to terminal
+# 0: save all output to file only
+verbose=1
+
+# Number of workers to build LLVM/CPF, NOELLE will use as many core as possible
+# by default and we don't have control over it
+num-workers=32
+
+## End of Configuration ##
+
+#######################################
+## DON'T CHANGE ANYTHING BELOW HERE! ##
+#######################################
+
+# Check if unbuffer binary exists in verbose mode
+ifeq (${verbose}, 1)
+	_:=$(if $(shell which unbuffer),$(info unbuffer found for verbose mode),$(error Need "unbuffer" in verbose mode; please install it \(package "expect" on ubuntu\) or turn off verbose))
+endif
+
+
+# if llvm is compiled from scratch, then is the default one
+ifeq (${compile-llvm}, 1)
+	llvm-install-dir-debug=${install-prefix}/llvm-install-debug
+	llvm-install-dir-release=${install-prefix}/llvm-install-release
+endif
+
+# if noelle is compiled from scratch, then is the default one
+ifeq (${compile-noelle}, 1)
+	noelle-install-dir-debug=${install-prefix}/noelle-install-debug
+	noelle-install-dir-release=${install-prefix}/noelle-install-release
+endif
+
+# if scaf is compiled from scratch, then is the default one
+ifeq (${use-noelle-scaf}, 1)
+	scaf-install-dir-debug=${noelle-install-dir-debug}
+	scaf-install-dir-release=${noelle-install-dir-release}
+else ifeq (${compile-scaf}, 1)
+	scaf-install-dir-debug=${install-prefix}/scaf-install-debug
+	scaf-install-dir-release=${install-prefix}/scaf-install-release
+endif
+
+# if cpf is compiled from scratch, then is the default one
+ifeq (${compile-cpf}, 1)
+	cpf-install-dir-debug=${install-prefix}/cpf-install-debug
+	cpf-install-dir-release=${install-prefix}/cpf-install-release
+endif
+
+.DEFAULT_GOAL:=default
+
+default:
+	@echo Run \`make all\` to compile and install all specified components.
+	@echo After the initial installation, run \`make cpf\` to only update cpf.
+	@echo Nothing has been done.
+
+all: copy-makefile llvm scaf noelle cpf-env-debug.rc cpf-env-release.rc cpf
+.PHONY: copy-makefile llvm scaf noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
+
+clean:
+	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
+
+llvm: export JOBS=${num-workers}
+llvm:
+ifeq (${compile-llvm}, 1)
+	@echo Compiling LLVM from Scratch
+	mkdir -p ${install-prefix}
+	- cp Makefile.llvm ${install-prefix}
+ifeq (${verbose}, 1)
+	set -o pipefail; \
+	unbuffer $(MAKE) -C ${install-prefix} -f Makefile.llvm all 2>&1 | tee ${install-prefix}/llvm.log
+else
+	$(MAKE) -C ${install-prefix} -f Makefile.llvm all > ${install-prefix}/llvm.log 2>&1
+endif
+else
+
+ifndef llvm-install-dir-debug
+	$(error Chose not to compile llvm but llvm-install-dir-debug is not set)
+endif
+
+ifndef llvm-install-dir-release
+	$(error Chose not to compile llvm but llvm-install-dir-release is not set)
+endif
+
+	@echo Using provided LLVM Debug and Release versions
+    @echo LLVM Debug: ${llvm-install-dir-debug}
+    @echo LLVM Release: ${llvm-install-dir-release}
+endif
+
+scaf:
+ifeq (${use-noelle-scaf}, 0)
+ifeq (${compile-scaf}, 1)
+	@echo Compiling SCAF from Scratch
+ifndef scaf-remote-url
+	$(error Chose to SCAF but scaf-remote-url is not set)
+endif
+
+ifndef scaf-branch
+	$(error Chose to compile SCAF but scaf-branch is not set)
+endif
+	mkdir -p ${install-prefix}
+	- cp Makefile.scaf ${install-prefix}
+ifeq (${verbose}, 1)
+	set -o pipefail; \
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	SCAF_REMOTE=${scaf-remote-url} \
+	SCAF_BRANCH=${scaf-branch} \
+	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.scaf all 2>&1 | tee ${install-prefix}/scaf.log
+else
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	SCAF_REMOTE=${scaf-remote-url} \
+	SCAF_BRANCH=${scaf-branch} \
+	${MAKE} -C ${install-prefix} -f Makefile.scaf all > ${install-prefix}/scaf.log 2>&1
+endif
+
+else
+
+ifndef scaf-install-dir-debug
+	$(error Chose not to compile scaf but scaf-install-dir-debug is not set)
+endif
+ifndef scaf-install-dir-release
+	$(error Chose not to compile scaf but scaf-install-dir-release is not set)
+endif
+	@echo Using provided SCAF Debug and Release versions
+	@echo SCAF Debug: ${scaf-install-dir-debug}
+	@echo SCAF Release: ${scaf-install-dir-release}
+endif
+endif
+
+noelle: export JOBS=${num-workers}
+noelle:
+ifeq (${compile-noelle}, 1)
+	@echo Compiling NOELLE from Scratch
+ifndef noelle-remote-url
+	$(error Chose to NOELLE but noelle-remote-url is not set)
+endif
+
+ifndef noelle-branch
+	$(error Chose to compile NOELLE but noelle-branch is not set)
+endif
+	mkdir -p ${install-prefix}
+	- cp Makefile.noelle ${install-prefix}
+ifeq (${verbose}, 1)
+	set -o pipefail; \
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	NOELLE_REMOTE=${noelle-remote-url} \
+	NOELLE_BRANCH=${noelle-branch} \
+	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.noelle all 2>&1 | tee ${install-prefix}/noelle.log
+else
+	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
+	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	NOELLE_REMOTE=${noelle-remote-url} \
+	NOELLE_BRANCH=${noelle-branch} \
+	${MAKE} -C ${install-prefix} -f Makefile.noelle all > ${install-prefix}/noelle.log 2>&1
+endif
+
+else
+
+ifndef noelle-install-dir-debug
+	$(error Chose not to compile noelle but noelle-install-dir-debug is not set)
+endif
+ifndef noelle-install-dir-release
+	$(error Chose not to compile noelle but noelle-install-dir-release is not set)
+endif
+	@echo Using provided NOELLE Debug and Release versions
+	@echo NOELLE Debug: ${noelle-install-dir-debug}
+	@echo NOELLE Release: ${noelle-install-dir-release}
+endif
+
+ifeq (${use-noelle-scaf}, 0)
+	- rm -rf ${noelle-install-dir-debug}/include/Assumptions.h ${noelle-install-dir-debug}/include/scaf ${noelle-install-dir-debug}/lib/libMemoryAnalysisModules* ${noelle-install-dir-debug}/lib/libSCAFUtilities* ${noelle-install-dir-debug}/lib/libSpeculationModules*
+	- rm -rf ${noelle-install-dir-release}/include/Assumptions.h ${noelle-install-dir-release}/include/scaf ${noelle-install-dir-release}/lib/libMemoryAnalysisModules* ${noelle-install-dir-release}/lib/libSCAFUtilities* ${noelle-install-dir-release}/lib/libSpeculationModules*
+endif
+
+cpf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
+cpf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
+cpf: export SCAF_INSTALL_DEBUG=${scaf-install-dir-debug}
+cpf: export SCAF_INSTALL_RELEASE=${scaf-install-dir-release}
+cpf: export NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug}
+cpf: export NOELLE_INSTALL_RELEASE=${noelle-install-dir-release}
+cpf: export CPF_ROOT_PATH=${cpf-root-path}
+cpf: export JOBS=${num-workers}
+cpf:
+ifeq (${compile-cpf}, 1)
+	@echo Compiling CPF from Scratch
+	mkdir -p ${install-prefix}
+	- cp Makefile.cpf ${install-prefix}
+ifeq (${verbose}, 1)
+	set -o pipefail; \
+    unbuffer ${MAKE} -C ${install-prefix} -f Makefile.cpf all 2>&1 | tee ${install-prefix}/cpf.log
+else
+	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
+endif
+else
+ifndef cpf-install-dir-debug
+	$(error Chose not to compile cpf but cpf-install-dir-debug is not set)
+endif
+
+ifndef cpf-install-dir-release
+	$(error Chose not to compile cpf but cpf-install-dir-release is not set)
+endif
+
+	@echo Using provided CPF Debug and Release versions
+	@echo CPF Debug: ${cpf-install-dir-debug}
+	@echo CPF Release: ${cpf-install-dir-release}
+endif
+
+cpf-env-debug.rc:
+	rm -f ${install-prefix}/$@
+	@echo Generating ${install-prefix}/$@
+	cp cpf-env.rc.template ${install-prefix}/$@
+	sed -i "s%PC-LLVM%${llvm-install-dir-debug}%g; s%PC-NOELLE%${noelle-install-dir-debug}%g; s%PC-SCAF%${scaf-install-dir-debug}%g; s%PC-CPF%${cpf-install-dir-debug}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
+	@echo Debug environment variables stored in ${install-prefix}/$@
+	@echo
+
+cpf-env-release.rc:
+	rm -f ${install-prefix}/$@
+	@echo Generating ${install-prefix}/$@
+	cp cpf-env.rc.template ${install-prefix}/$@
+	sed -i "s%PC-LLVM%${llvm-install-dir-release}%g; s%PC-NOELLE%${noelle-install-dir-release}%g; s%PC-SCAF%${scaf-install-dir-release}%g; s%PC-CPF%${cpf-install-dir-release}%g; s%PC-REG%${cpf-root-path}/tests/scripts%g" ${install-prefix}/$@
+	@echo  Release environment variables stored in ${install-prefix}/$@
+	@echo
+
+copy-makefile:
+	mkdir -p ${install-prefix}
+	- cp cpf-env.rc.template ${install-prefix}/cpf-env.rc.template
+	- cp Makefile ${install-prefix}/Makefile
