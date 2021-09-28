@@ -20,6 +20,7 @@
 #include "liberty/Orchestration/MemSpecAARemed.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 #include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Orchestration/DSWPCritic.h"
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/SmtxAA.h"

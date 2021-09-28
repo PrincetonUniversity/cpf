@@ -89,13 +89,13 @@ fi
 #$CMD
 
 
-echo ''
-CMD="llc -O3 $LAMPBC -o $LAMPS"
-echo $CMD 
-$CMD
+#echo ''
+#CMD="llc -O3 $LAMPBC -o $LAMPS"
+#echo $CMD 
+#$CMD
 
 echo ''
-CMD="g++ -no-pie -O3 $LAMPS $HOOKS -o $EXE"
+CMD="clang++ -no-pie -O3 $LAMPBC $HOOKS $LINKING_OPTS -o $EXE"
 echo $CMD 
 $CMD
 
