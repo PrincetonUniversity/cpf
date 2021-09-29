@@ -2,6 +2,7 @@
  * Want a balanced stages rather than maximizing the parallell stage like in
  * the PS-DSWP critic
  */
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #define DEBUG_TYPE "dswp-critic"
 
@@ -76,6 +77,7 @@ std::map<unsigned, unsigned> DSWPCritic::getIncomingCountMap(SCCDAG &sccdag) {
   return incomingCountMap;
 }
 
+// DEBUG ONLY
 void printIncomingCountMap(std::map<unsigned, unsigned> &incomingCountMap) {
    for (auto &[k, v] : incomingCountMap) {
      errs() << k << "->" << v << "\n";
@@ -90,7 +92,7 @@ SCC *DSWPCritic::getNextLargestFreeStandingSCC(
   auto largestIdx = -1;
   SCC *largestSCC = nullptr;
 
-  printIncomingCountMap(incomingCountMap);
+  LLVM_DEBUG(printIncomingCountMap(incomingCountMap));
 
   for (auto *scc : sccdag.getSCCs()) {
     auto idx = sccdag.getSCCIndex(scc);
@@ -118,14 +120,17 @@ void DSWPCritic::updateIncomingCountMap(SCCDAG &sccdag,
   auto idx = sccdag.getSCCIndex(removedScc);
   incomingCountMap[idx] = -1;
 
-  errs() << "SCC " << idx << " has " << sccdag.fetchNode(removedScc)->numOutgoingEdges() << " outgoing edges\n";
+  LLVM_DEBUG(errs() << "SCC " << idx << " has "
+                    << sccdag.fetchNode(removedScc)->numOutgoingEdges()
+                    << " outgoing edges\n";);
+
   // decrement incoming counts for the largest node
   for (auto *edge : sccdag.fetchNode(removedScc)->getOutgoingEdges()) {
     // find the index
     SCC *outgoingSCC = edge->getIncomingT(); // incoming is "TO"
 
     auto idx = sccdag.getSCCIndex(outgoingSCC);
-    errs() << "decrementing " << idx << "\n";
+    LLVM_DEBUG(errs() << "decrementing " << idx << "\n";);
     incomingCountMap[idx]--;
   }
 }
@@ -205,20 +210,15 @@ CriticRes DSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
   // the target per thread
   double targetWeightPerThread = totalWeight / numThread;
 
-  errs() << "Weights: \n" << "Total weight: " << totalWeight << "\nTarget weight: " << targetWeightPerThread << "\n";
+  LLVM_DEBUG(errs() << "Weights: \n"
+                    << "Total weight: " << totalWeight
+                    << "\nTarget weight: " << targetWeightPerThread << "\n");
 
   // get the partition plan
   std::vector<SCCDAG::SCCSet> partitionStages;
 
   std::map<unsigned, unsigned> incomingCountMap =
       getIncomingCountMap(*optimisticSCCDAG);
-
-  // pprint map
-  /*
-   *for (auto &[k, v] : incomingCountMap) {
-   *  errs() << k << "->" << v << "\n";
-   *}
-   */
 
   // FIXME: stupid strategy - fill one stage till full (over
   // targetWeightPerThread) This can be done more efficiently by creating a
@@ -262,7 +262,8 @@ CriticRes DSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
     if (!currSccSet.empty())
       partitionStages.push_back(currSccSet);
 
-    errs() << "Stage " << i << " has " << currSccSet.size() << " SCCs\n";
+    LLVM_DEBUG(errs() << "Stage " << i << " has " << currSccSet.size()
+                      << " SCCs\n");
   }
 
   // create PipelineStrategy from SCC partition
@@ -274,7 +275,6 @@ CriticRes DSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
                                        stage));
   }
 
-  // need to populate criticisms
   ps->setValidFor(loop->getHeader());
   ps->assertConsistentWithIR(loop);
 
@@ -282,6 +282,10 @@ CriticRes DSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
 
   res.ps = std::move(ps);
   res.expSpeedup = getExpPipelineSpeedup(*res.ps, optimisticPDG, loop);
+
+  // need to populate criticisms
+  res.criticisms.clear(); // no criticisms generated
+
   return res;
 }
 
