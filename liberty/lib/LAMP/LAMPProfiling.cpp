@@ -407,8 +407,10 @@ bool LAMPProfiler::runOnFunction(Function &F)
 {
   Module* M = F.getParent();
 
-  if(!GlobalCtorMap)
-    constructGlobalCtors(M, &F);
+  // Ziyang: 10/06/21 doesn't seems to be necessary
+  //if(!GlobalCtorMap)
+    //constructGlobalCtors(M, &F);
+
 /* This hack is no longer necessary; callBeforeMain was fixed in rev 58809.
   if(isGlobalCtor(&F))
     return true;
