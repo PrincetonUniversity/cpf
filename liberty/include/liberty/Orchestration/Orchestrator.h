@@ -57,7 +57,7 @@ public:
       lpl = &proxy.getAnalysis< LoopProfLoad >();
       perf = &proxy.getAnalysis< ProfilePerformanceEstimator >();
       mloops = &proxy.getAnalysis< ModuleLoops >();
-      kill = &proxy.getAnalysis< KillFlow >();
+      //kill = &proxy.getAnalysis< KillFlow >();
 
       // ctrl spec
       if (EnableEdgeProf) {
@@ -149,7 +149,7 @@ private:
   ModuleLoops *mloops;
   LoopProfLoad *lpl;
   PerformanceEstimator *perf;
-  KillFlow *kill;
+  //KillFlow *kill;
 
 
   //TargetLibraryInfo *tli;

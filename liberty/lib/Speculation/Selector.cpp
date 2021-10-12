@@ -88,7 +88,7 @@ void Selector::analysisUsage(AnalysisUsage &au)
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
   au.addRequired< PDGBuilder >();
   au.addRequired< ModuleLoops >();
-  au.addRequired< KillFlow >();
+  //au.addRequired< KillFlow >();
   au.addRequired< Targets >();
 
   au.addRequired< LoopProfLoad >();
