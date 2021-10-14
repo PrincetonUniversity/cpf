@@ -17,7 +17,6 @@
 #include "liberty/Orchestration/CountedIVRemed.h"
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Orchestration/LocalityAA.h"
-#include "liberty/Orchestration/MemSpecAARemed.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 #include "liberty/Orchestration/PSDSWPCritic.h"
 #include "liberty/Orchestration/DSWPCritic.h"
@@ -28,6 +27,8 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PipelineStrategy.h"
+
+#include "scaf/SpeculationModules/MemSpecAARemed.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/Utilities/ModuleLoops.h"

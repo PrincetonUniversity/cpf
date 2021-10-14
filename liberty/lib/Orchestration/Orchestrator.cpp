@@ -64,7 +64,7 @@ std::vector<Remediator_ptr> Orchestrator::getAvailableRemediators(Loop *A, PDG *
     const HeapAssignment &asgn = classify->getAssignmentFor(A);
     remeds.push_back(std::make_unique<MemSpecAARemediator>(
           proxy, ctrlspec, lamp, *rd, asgn, loadedValuePred, smtxLampMan,
-          ptrResMan, killflowA, callsiteA, *kill, *mloops, perf));
+          ptrResMan, killflowA, callsiteA, *mloops, perf));
   }
 
   // memory versioning remediator (used separately from the rest since it cannot
