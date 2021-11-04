@@ -47,7 +47,7 @@ struct Inliner: public ModulePass
     au.addRequired< Targets >();
   	//au.addRequired< PDGBuilder >();
   	au.addRequired< LoopAA >();
-  	au.addRequired<SmtxSpeculationManager>();
+      //au.addRequired<SmtxSpeculationManager>();
     au.addRequired<ProfilePerformanceEstimator>();
   }
 
@@ -175,10 +175,10 @@ private:
     curPathVisited.insert(loopFun);
 
     const DataLayout &DL = loopFun->getParent()->getDataLayout();
-    SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
+    //SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
     PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
-    SmtxAA smtxaa(&smtxMan, perf);
-    smtxaa.InitializeLoopAA(this, DL);
+    //SmtxAA smtxaa(&smtxMan, perf);
+    //smtxaa.InitializeLoopAA(this, DL);
 
     LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
 

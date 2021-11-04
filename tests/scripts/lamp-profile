@@ -47,30 +47,29 @@ fi
 
 
 
-LIBS=" \
-       -load $LIBERTY_LIBS_DIR/libUtil.so 
-       -load $SCAF_LIBS_DIR/libSCAFUtilities.so
-       -load $NOELLE_LIBS_DIR/libSvf.so
-       -load $NOELLE_LIBS_DIR/libCudd.so
-       -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so
-       -load $LIBERTY_LIBS_DIR/libLoopProf.so
-       -load $SCAF_LIBS_DIR/libLAMPLoad.so 
-       -load $LIBERTY_LIBS_DIR/libLoopProf.so
-       -load $LIBERTY_LIBS_DIR/libLAMP.so 
-"
+LIBS=" -load $LIBERTY_LIBS_DIR/libUtil.so \
+       -load $SCAF_LIBS_DIR/libSCAFUtilities.so \
+       -load $NOELLE_LIBS_DIR/libSvf.so \
+       -load $NOELLE_LIBS_DIR/libCudd.so  \
+       -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so \
+       -load $LIBERTY_LIBS_DIR/libLoopProf.so \
+       -load $SCAF_LIBS_DIR/libLAMPLoad.so  \
+       -load $LIBERTY_LIBS_DIR/libLoopProf.so \
+       -load $LIBERTY_LIBS_DIR/libLAMP.so"
 
 
 #normal lamp doesn't need AA
 #AA=`aa` 
 DEBUG= #"-debug-only=LAMP"
-OPT="opt 
-    $LIBS $DEBUG 
-    -lamp-insts 
-    -insert-lamp-profiling 
-    -lamp-view-switch enable 
-    -insert-lamp-loop-profiling 
-    $FCN 
-    -insert-lamp-init 
+OPT="opt \
+    $LIBS $DEBUG \
+    -lamp-external \
+    -lamp-insts \
+    -insert-lamp-profiling \
+    -lamp-view-switch enable \
+    -insert-lamp-loop-profiling \
+    $FCN  \
+    -insert-lamp-init \
     $1 -o $LAMPBC"
 
 CMD="$PREFIX $OPT"

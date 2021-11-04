@@ -320,15 +320,20 @@ def get_all_passes(root_path, bmark, passes, result_path):
     if "Exp-3" in passes:
         status["Experiment-no-spec"] = get_exp_result(root_path, bmark, result_path, "no-spec.dump")
 
-        if 'Edge' in status and status['Edge'] and 'SpecPriv' in status and status['SpecPriv']:
-            status["Experiment-cheap-spec"] = get_exp_result(root_path, bmark, result_path, "cheap-spec.dump")
-        else:
-            status["Experiment-cheap-spec"] = None
+        # if 'Edge' in status and status['Edge'] and 'SpecPriv' in status and status['SpecPriv']:
+            # status["Experiment-cheap-spec"] = get_exp_result(root_path, bmark, result_path, "cheap-spec.dump")
+        # else:
+            # status["Experiment-cheap-spec"] = None
 
-        if "LAMP" in status and status['LAMP']:
-            status["Experiment-all-spec"] = get_exp_result(root_path, bmark, result_path, "all-spec.dump")
+        if 'Edge' in status and status['Edge'] and "LAMP" in status and status['LAMP']:
+            status["Experiment-no-specpriv"] = get_exp_result(root_path, bmark, result_path, "no-specpriv.dump")
         else:
-            status["Experiment-all-spec"] = None
+            status["Experiment-no-specpriv"] = None
+
+        # if 'Edge' in status and status['Edge'] and 'SpecPriv' in status and status['SpecPriv'] and "LAMP" in status and status['LAMP']:
+            # status["Experiment-all-spec"] = get_exp_result(root_path, bmark, result_path, "all-spec.dump")
+        # else:
+            # status["Experiment-all-spec"] = None
 
     if "PDG" in passes:
         status["PDG"] = get_pdg(root_path, bmark, result_path)
@@ -512,7 +517,8 @@ def preview_config(config):
 if __name__ == "__main__":
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "PDG"] # "Experiment"]
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
-    passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
+    # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
+    passes = ["Edge", "Loop", "LAMP", "Exp-3"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment", "RealSpeedup"]
     # passes = ["Edge", "Loop", "LAMP", "SLAMP", "SpecPriv", "HeaderPhi", "Experiment"]
 

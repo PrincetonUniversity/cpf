@@ -1,6 +1,7 @@
-#include "liberty/Orchestration/Orchestrator.h"
+#include <iomanip>
 #define DEBUG_TYPE "selector"
 
+#include "liberty/Orchestration/Orchestrator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
@@ -41,6 +42,7 @@
 #include "LoopDependenceInfo.hpp"
 #include "DGGraphTraits.hpp"
 #include "DominatorSummary.hpp"
+#include <algorithm>
 //#include "Noelle.hpp"
 
 using namespace llvm;
@@ -138,6 +140,54 @@ const unsigned Selector::NumThreads(22);
 const unsigned Selector::FixedPoint(1000);
 const unsigned Selector::PenalizeLoopNest( Selector::FixedPoint*10 );
 
+static double getWeight(SCC *scc, PerformanceEstimator *perf) {
+  double sumWeight = 0.0;
+
+  for (auto instPair : scc->internalNodePairs()) {
+    Instruction *inst = dyn_cast<Instruction>(instPair.first);
+    assert(inst);
+
+    sumWeight += perf->estimate_weight(inst);
+  }
+
+  return sumWeight;
+}
+
+static double getOptimisticCoverage(PDG &pdg, PerformanceEstimator *perf) {
+  std::vector<Value *> loopInternals;
+  for (auto internalNode : pdg.internalNodePairs()) {
+    loopInternals.push_back(internalNode.first);
+  }
+
+  std::unordered_set<DGEdge<Value> *> edgesToIgnore;
+
+  // go through the PDG and add all removable edges to this set
+  for (auto edge : pdg.getEdges()) {
+    if (edge->isRemovableDependence()) {
+      edgesToIgnore.insert(edge);
+    }
+  }
+
+  auto optimisticPDG =
+      pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
+
+  auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
+
+  double totalWeight = 0;
+  double largestWeight = 0;
+  // get total weight
+  for (auto *scc : optimisticSCCDAG->getSCCs()) {
+    auto curWeight = getWeight(scc, perf);
+    largestWeight = std::max(largestWeight, curWeight);
+    totalWeight += curWeight;
+  }
+
+  if (totalWeight == 0)
+    return 1;
+  else
+    return 1 - largestWeight / totalWeight;
+}
+
 unsigned Selector::computeWeights(
   const Vertices &vertices,
   Edges &edges,
@@ -215,6 +265,7 @@ unsigned Selector::computeWeights(
       adjLoopTime = scaledLoopTime - depthPenalty;
     else if (scaledLoopTime > depthPenalty / 10)
       adjLoopTime = scaledLoopTime - depthPenalty / 10;
+
     {
 
       // Dump PDG
@@ -223,6 +274,13 @@ unsigned Selector::computeWeights(
 
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
+
+      double optimisticCoverage = getOptimisticCoverage(*pdg, perf);
+      
+      REPORT_DUMP(
+          errs() << "Coverage is: " << optimisticCoverage);
+      // FIXME: just bypass
+      continue;
 
       //std::unique_ptr<LoopDependenceInfo> ldi =
       //    std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
@@ -321,6 +379,7 @@ unsigned Selector::computeWeights(
           edges.erase(Edge(v, i));
         }
       }
+      delete pdg;
     }
   }
 

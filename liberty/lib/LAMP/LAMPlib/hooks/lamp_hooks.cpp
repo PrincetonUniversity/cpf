@@ -8,7 +8,7 @@
 #define ALLOCATE LAMP_external_allocate
 #define DEALLOCATE LAMP_external_deallocate
 
-// #include "../utils/profile_function_wrappers.h"
+#include "../utils/profile_function_wrappers.h"
 
 #undef ALLOCATE
 #undef DEALLOCATE

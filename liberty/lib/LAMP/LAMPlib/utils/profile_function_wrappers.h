@@ -598,6 +598,10 @@ void * memprof_calloc(size_t nelem, size_t elsize) {
 }
 
 void   memprof_free(void * ptr) {
+  // if null ptr, no action
+  if (ptr == 0)
+    return;
+
     mem_alloc_t mem_alloc = get_memory_allocation_user(ptr);
 
 #ifdef DEBUG_MEMORY
@@ -645,20 +649,20 @@ void * memprof_realloc(void *ptr, size_t size) {
 
     new_alloc = get_memory_allocation_true(result);
     new_begin_offset = new_alloc.data + orig_size;
-    *(new_alloc.size) = 0xDEADBEEF;
+    *(new_alloc.start) = 0xDEADBEEF;
     *(new_alloc.size) = size;
 
     if (orig_alloc.start != new_alloc.start) {
-	if (diff <= 0) {
-	    abort();
-	}
+      if (diff <= 0) {
+        abort();
+      }
 
-	memprof_allocate_region(new_alloc.data, *(new_alloc.size));
+      memprof_allocate_region(new_alloc.data, *(new_alloc.size));
 
-	memprof_copy_region(new_alloc.data, orig_alloc.data, orig_size);
-	memprof_write_region(new_begin_offset, diff);
+      memprof_copy_region(new_alloc.data, orig_alloc.data, orig_size);
+      memprof_write_region(new_begin_offset, diff);
 
-	memprof_deallocate_region(orig_alloc.data, orig_size);
+      memprof_deallocate_region(orig_alloc.data, orig_size);
     }
 
 #ifndef IGNORE_MALLOC
@@ -1831,17 +1835,19 @@ const unsigned short int **memprof___ctype_b_loc(void) {
     return __ctype_b_loc();
 }
 
-int memprof__IO_getc(_IO_FILE * __fp) {
-    memprof_load_token(&fd_tokens[fileno(__fp)]);
-    memprof_write_token(&fd_tokens[fileno(__fp)]);
-    return _IO_getc(__fp);
-}
-
-int memprof__IO_putc(int __c, _IO_FILE *__fp) {
-    memprof_load_token(&fd_tokens[fileno(__fp)]);
-    memprof_write_token(&fd_tokens[fileno(__fp)]);
-    return _IO_putc(__c, __fp);
-}
+/*
+ *int memprof__IO_getc(_IO_FILE * __fp) {
+ *    memprof_load_token(&fd_tokens[fileno(__fp)]);
+ *    memprof_write_token(&fd_tokens[fileno(__fp)]);
+ *    return _IO_getc(__fp);
+ *}
+ *
+ *int memprof__IO_putc(int __c, _IO_FILE *__fp) {
+ *    memprof_load_token(&fd_tokens[fileno(__fp)]);
+ *    memprof_write_token(&fd_tokens[fileno(__fp)]);
+ *    return _IO_putc(__c, __fp);
+ *}
+ */
 
 /* MJB: Handle this */
 int * memprof___errno_location (void) {
