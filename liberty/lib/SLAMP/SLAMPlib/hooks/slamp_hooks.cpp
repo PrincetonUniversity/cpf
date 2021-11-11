@@ -2299,15 +2299,17 @@ const unsigned short int **SLAMP___ctype_b_loc(void)
   return __ctype_b_loc();
 }
 
-int SLAMP__IO_getc(_IO_FILE* __fp)
-{
-  return _IO_getc(__fp);
-}
-
-int SLAMP__IO_putc(int __c, _IO_FILE* __fp)
-{
-  return _IO_putc(__c, __fp);
-}
+/*
+ *int SLAMP__IO_getc(_IO_FILE* __fp)
+ *{
+ *  return _IO_getc(__fp);
+ *}
+ *
+ *int SLAMP__IO_putc(int __c, _IO_FILE* __fp)
+ *{
+ *  return _IO_putc(__c, __fp);
+ *}
+ */
 
 /*
  * Compiler inserts the implementation of this function,

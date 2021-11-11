@@ -1,5 +1,6 @@
 file(GLOB SRCS
-    "*.cpp"
+    "SLAMP.cpp"
+    "SLAMPLoad.cpp"
 )
 
 # Compilation flags
