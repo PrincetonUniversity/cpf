@@ -782,7 +782,8 @@ void* SLAMP_realloc(void* ptr, size_t size)
   // copy data from old to new
   size_t orig_size = slamp::get_object_size(ptr);
   size_t copy_size = (orig_size < size) ? orig_size : size;
-  memcpy(result, ptr, copy_size);
+  SLAMP_memcpy(result, ptr, copy_size);
+  //memcpy(result, ptr, copy_size);
   smmap->copy(result, ptr, copy_size);
 
   // free original allocation

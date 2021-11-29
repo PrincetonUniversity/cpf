@@ -216,6 +216,7 @@ void fini_logger(const char* filename)
 void log(TS ts, const uint32_t dst_inst, TS* pts, const uint32_t bare_inst, uint64_t addr, uint64_t value, uint8_t size)
 {
   // ZY: check invocation counter, if not the same, just return
+  // FIXME: is this correct?
   if (ts){
     uint64_t src_invoc = GET_INVOC(ts);
     if (src_invoc != __slamp_invocation)
@@ -223,74 +224,76 @@ void log(TS ts, const uint32_t dst_inst, TS* pts, const uint32_t bare_inst, uint
   }
 
 
-  // check if constant
-
-  KEY constkey(0, dst_inst, bare_inst, 0);
-
-  Constant* cp = NULL;
-
-  if ( constmap->count(constkey) )
-  {
-    cp = (*constmap)[constkey];
-    assert(cp->size == size);
-
-    if (cp->valueinit && cp->addr != addr) cp->valid = false;
-    if (cp->valueinit && cp->value != value) cp->valid = false;
-
-#if 0
-    if ( dst_inst == 389256 && bare_inst == 238506 )
-    {
-      std::cout << "    [238506vprof] valid " << cp->valid
-                << " oldaddr " << cp->addr << " newaddr " << addr
-                << " oldvalue " << cp->value << " newvalue " << value
-                << " cp->valueinit " << (unsigned)cp->valueinit
-                << "\n";
-    }
-#endif
-
-    if (ts) {
-      cp->valueinit = true;
-      cp->value = value;
-      cp->addr = addr;
-    }
-  }
-  else
-  {
-    bool valueinit = ts ? true : false;
-#if 0
-    bool is_alloc_in_the_loop = true;
-    std::map<void*, size_t>::iterator pos = alloc_in_the_loop->upper_bound((void*)addr);
-    if ( pos != alloc_in_the_loop->begin() )
-    {
-      pos--;
-      uint64_t bound = (uint64_t)pos->first + pos->second;
-      is_alloc_in_the_loop = (addr < bound);
-    }
-
-    cp = new Constant((size != 0) && !is_alloc_in_the_loop, valueinit, size, addr, value);
-#endif
-    cp = new Constant((size != 0), valueinit, size, addr, value);
-    constmap->insert( std::make_pair(constkey, cp) );
-  }
-
-  assert(cp);
-
-  // check if linear predictable. constkey can be reused here.
-
-  LinearPredictor* lp = NULL;
-
-  if ( lpmap->count(constkey) )
-  {
-    lp = (*lpmap)[constkey];
-    lp->add_sample(__slamp_iteration, value, addr);
-  }
-  else
-  {
-    lp = new LinearPredictor(__slamp_iteration, value, addr);
-    lpmap->insert( std::make_pair(constkey, lp) );
-  }
-
-  assert(lp);
+/* Ziyang: disable CP and LP
+ *  // check if constant
+ *
+ *  KEY constkey(0, dst_inst, bare_inst, 0);
+ *
+ *  Constant* cp = NULL;
+ *
+ *  if ( constmap->count(constkey) )
+ *  {
+ *    cp = (*constmap)[constkey];
+ *    assert(cp->size == size);
+ *
+ *    if (cp->valueinit && cp->addr != addr) cp->valid = false;
+ *    if (cp->valueinit && cp->value != value) cp->valid = false;
+ *
+ *#if 0
+ *    if ( dst_inst == 389256 && bare_inst == 238506 )
+ *    {
+ *      std::cout << "    [238506vprof] valid " << cp->valid
+ *                << " oldaddr " << cp->addr << " newaddr " << addr
+ *                << " oldvalue " << cp->value << " newvalue " << value
+ *                << " cp->valueinit " << (unsigned)cp->valueinit
+ *                << "\n";
+ *    }
+ *#endif
+ *
+ *    if (ts) {
+ *      cp->valueinit = true;
+ *      cp->value = value;
+ *      cp->addr = addr;
+ *    }
+ *  }
+ *  else
+ *  {
+ *    bool valueinit = ts ? true : false;
+ *#if 0
+ *    bool is_alloc_in_the_loop = true;
+ *    std::map<void*, size_t>::iterator pos = alloc_in_the_loop->upper_bound((void*)addr);
+ *    if ( pos != alloc_in_the_loop->begin() )
+ *    {
+ *      pos--;
+ *      uint64_t bound = (uint64_t)pos->first + pos->second;
+ *      is_alloc_in_the_loop = (addr < bound);
+ *    }
+ *
+ *    cp = new Constant((size != 0) && !is_alloc_in_the_loop, valueinit, size, addr, value);
+ *#endif
+ *    cp = new Constant((size != 0), valueinit, size, addr, value);
+ *    constmap->insert( std::make_pair(constkey, cp) );
+ *  }
+ *
+ *  assert(cp);
+ *
+ *  // check if linear predictable. constkey can be reused here.
+ *
+ *  LinearPredictor* lp = NULL;
+ *
+ *  if ( lpmap->count(constkey) )
+ *  {
+ *    lp = (*lpmap)[constkey];
+ *    lp->add_sample(__slamp_iteration, value, addr);
+ *  }
+ *  else
+ *  {
+ *    lp = new LinearPredictor(__slamp_iteration, value, addr);
+ *    lpmap->insert( std::make_pair(constkey, lp) );
+ *  }
+ *
+ *  assert(lp);
+ */
 
   // update log
 
@@ -321,7 +324,9 @@ void log(TS ts, const uint32_t dst_inst, TS* pts, const uint32_t bare_inst, uint
     else
     {
       // size == 0 means that value profiling is not possible
-      Value v(cp, lp);
+      // Value v(cp, lp); // Ziyang: disable cp and lp
+      Value v;
+      v.count = 1;
       deplog->insert( std::make_pair(key, v) );
     }
 
@@ -345,18 +350,23 @@ void print_log(const char* filename)
     KEY    key = mi->first;
     Value& v = mi->second;
 
-    Constant*        cp = v.c;
-    LinearPredictor* lp = v.lp;
-
-    bool lp_int_valid = (lp->stable && lp->valid_as_int);
-    bool lp_double_valid = (lp->stable && lp->valid_as_double);
+/* Ziyang: disable cp and lp
+ *    Constant*        cp = v.c;
+ *    LinearPredictor* lp = v.lp;
+ *
+ *    bool lp_int_valid = (lp->stable && lp->valid_as_int);
+ *    bool lp_double_valid = (lp->stable && lp->valid_as_double);
+ */
 
     of << target_loop_id << " "
        << key.src << " " << key.dst << " " << key.dst_bare << " " << key.cross << " "
-       << v.count << " "
-       << cp->valid << " " << (unsigned)(cp->size) << " " << (cp->value) << " "
-       << lp_int_valid << " " << (lp_int_valid ? lp->ia : 0) << " " << (lp_int_valid ? lp->ib : 0) << " "
-       << lp_double_valid << " " << (lp_double_valid ? lp->da : 0) << " " << (lp_double_valid ? lp->db : 0) << "\n";
+       << v.count << "\n";
+    /* Ziyang: disable cp and lp
+     *<< " "
+     *   << cp->valid << " " << (unsigned)(cp->size) << " " << (cp->value) << " "
+     *   << lp_int_valid << " " << (lp_int_valid ? lp->ia : 0) << " " << (lp_int_valid ? lp->ib : 0) << " "
+     *   << lp_double_valid << " " << (lp_double_valid ? lp->da : 0) << " " << (lp_double_valid ? lp->db : 0) << "\n";
+     */
   }
 
   of.close();

@@ -1,3 +1,4 @@
+#include "liberty/Utilities/PrintDebugInfo.h"
 #define DEBUG_TYPE "slamp-load"
 
 #include "liberty/SLAMP/SLAMPLoad.h"
@@ -138,7 +139,8 @@ bool SLAMPLoadProfile::runOnModule(Module& m)
     vector<string> tokens;
     split(line, tokens, ' ');
 
-    assert( tokens.size() == 15 );
+    assert( tokens.size() == 6 );
+    // assert( tokens.size() == 15 );
 
     uint32_t loopid = string_to<uint32_t>(tokens[0]);
     uint32_t src = string_to<uint32_t>(tokens[1]);
@@ -146,15 +148,15 @@ bool SLAMPLoadProfile::runOnModule(Module& m)
     uint32_t baredst = string_to<uint32_t>(tokens[3]);
     uint32_t iscross = string_to<uint32_t>(tokens[4]);
     uint64_t count = string_to<uint64_t>(tokens[5]);
-    uint32_t isconstant = string_to<uint32_t>(tokens[6]);
-    uint32_t size = string_to<uint32_t>(tokens[7]);
-    uint64_t value = string_to<uint64_t>(tokens[8]);
-    uint32_t isvalidlp = string_to<uint32_t>(tokens[9]);
-    uint64_t a = string_to<uint64_t>(tokens[10]);
-    uint64_t b = string_to<uint64_t>(tokens[11]);
-    uint32_t isvalidlp_d = string_to<uint32_t>(tokens[12]);
-    double   da = string_to<double>(tokens[13]);
-    double   db = string_to<double>(tokens[14]);
+    //uint32_t isconstant = string_to<uint32_t>(tokens[6]);
+    //uint32_t size = string_to<uint32_t>(tokens[7]);
+    //uint64_t value = string_to<uint64_t>(tokens[8]);
+    //uint32_t isvalidlp = string_to<uint32_t>(tokens[9]);
+    //uint64_t a = string_to<uint64_t>(tokens[10]);
+    //uint64_t b = string_to<uint64_t>(tokens[11]);
+    //uint32_t isvalidlp_d = string_to<uint32_t>(tokens[12]);
+    //double   da = string_to<double>(tokens[13]);
+    //double   db = string_to<double>(tokens[14]);
 
     assert( src && dst );
 
@@ -195,38 +197,41 @@ bool SLAMPLoadProfile::runOnModule(Module& m)
       PredMap& predmap = edge2predmap[edge];
       assert( !predmap.count(li) );
 
-      if (isconstant && isLoopInvariantPredictionApplicable(li, loop))
-      {
-        predmap.insert(make_pair(li, Prediction(LI_PRED)));
-      }
-      else if (isvalidlp && isLinearPredictionApplicable(li))
-      {
-        predmap.insert(make_pair(li, Prediction(LINEAR_PRED, a, b)));
-      }
-      else if (isvalidlp_d && isLinearPredictionDoubleApplicable(li))
-      {
-        I64OrDoubleValue va, vb;
-        va.dval = da;
-        vb.dval = db;
-        predmap.insert(make_pair(li, Prediction(LINEAR_PRED_DOUBLE, va.ival, vb.ival)));
-      }
-      else
-      {
-        predmap.insert(make_pair(li, Prediction(INVALID_PRED)));
-      }
+      /*
+       *if (isconstant && isLoopInvariantPredictionApplicable(li, loop))
+       *{
+       *  predmap.insert(make_pair(li, Prediction(LI_PRED)));
+       *}
+       *else if (isvalidlp && isLinearPredictionApplicable(li))
+       *{
+       *  predmap.insert(make_pair(li, Prediction(LINEAR_PRED, a, b)));
+       *}
+       *else if (isvalidlp_d && isLinearPredictionDoubleApplicable(li))
+       *{
+       *  I64OrDoubleValue va, vb;
+       *  va.dval = da;
+       *  vb.dval = db;
+       *  predmap.insert(make_pair(li, Prediction(LINEAR_PRED_DOUBLE, va.ival, vb.ival)));
+       *}
+       *else
+       *{
+       *  predmap.insert(make_pair(li, Prediction(INVALID_PRED)));
+       *}
+       */
     }
 
     // debug
 
-    if ( DebugFlag && isCurrentDebugType(DEBUG_TYPE) )
-    {
-      Instruction* srcinst = sid->getInstructionWithID(src);
-      Instruction* dstinst = sid->getInstructionWithID(dst);
+    if (DebugFlag && isCurrentDebugType(DEBUG_TYPE)) {
+      Instruction *srcinst = sid->getInstructionWithID(src);
+      Instruction *dstinst = sid->getInstructionWithID(dst);
 
       errs() << (iscross ? ">> Inter\n" : ">> Intra\n");
-      errs() << src << " "; srcinst->dump();
+      errs() << src << " " << *srcinst;
+      liberty::printInstDebugInfo(srcinst);
       errs() << "  -->\n";
-      errs() << dst << " "; dstinst->dump();
+      errs() << dst << " " << *dstinst;
+      liberty::printInstDebugInfo(srcinst);
       errs() << "  : " << count << "\n\n";
     }
   }
@@ -249,6 +254,7 @@ uint64_t SLAMPLoadProfile::numObsInterIterDep(BasicBlock* header, const Instruct
   // ZY: count == 0 stands for there is one dep
   if ((this->edges)[loopid].count(edge))
     return (this->edges)[loopid][edge] + 1;
+  return 0;
 }
 
 uint64_t SLAMPLoadProfile::numObsIntraIterDep(BasicBlock* header, const Instruction* dst, const Instruction* src)
