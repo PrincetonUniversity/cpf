@@ -1,3 +1,4 @@
+#include "DGBase.hpp"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
 #include "liberty/LoopProf/Targets.h"
@@ -51,6 +52,7 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
 }
 typedef map<unsigned, DGNode<Value> *> InstIdMap_t;
 typedef map<DGNode<Value> *, unsigned> InstIdReverseMap_t;
+typedef map<unsigned, DGEdge<Value> *> DepIdMap_t;
 
 static unique_ptr<InstIdMap_t> createInstIdMap(PDG *pdg) {
   auto instIdMap = std::make_unique<InstIdMap_t>();
@@ -99,6 +101,7 @@ bool OptRepl::runOnModule(Module &M) {
 
   unique_ptr<InstIdMap_t> instIdMap;
   unique_ptr<InstIdReverseMap_t> instIdLookupMap;
+  unique_ptr<DepIdMap_t> depIdMap;
 
   // prepare hot loops
   {
@@ -188,15 +191,19 @@ bool OptRepl::runOnModule(Module &M) {
       continue;
     }
 
-    auto dumpEdge = [&instIdLookupMap](DGEdge<Value> *edge) {
+    auto dumpEdge = [&instIdLookupMap](unsigned depId, DGEdge<Value> *edge) {
       auto idA = instIdLookupMap->at(edge->getOutgoingNode());
       auto idB = instIdLookupMap->at(edge->getIncomingNode());
-      outs() << idA << "->" << idB << ":\t" << edge->toString() << "\n";
+      outs() << depId << "\t" << idA << "->" << idB << ":\t" << edge->toString() << (edge->isLoopCarriedDependence() ? "(LC)" : "(LL)")
+             << "\n";
     };
 
     if (query == "deps") {
+      depIdMap = std::make_unique<DepIdMap_t>();
+      unsigned id = 0;
       for (auto &edge : selectedPDG->getEdges()) {
-        dumpEdge(edge);
+        dumpEdge(id, edge);
+        depIdMap->insert(make_pair(id++, edge));
       }
       continue;
     }
@@ -214,8 +221,11 @@ bool OptRepl::runOnModule(Module &M) {
       }
 
       auto node = instIdMap->at(instId);
+      depIdMap = std::make_unique<DepIdMap_t>();
+      unsigned id = 0;
       for (auto &edge : node->getOutgoingEdges()) {
-        dumpEdge(edge);
+        dumpEdge(id, edge);
+        depIdMap->insert(make_pair(id++, edge));
       }
       continue;
     }
@@ -233,13 +243,31 @@ bool OptRepl::runOnModule(Module &M) {
       }
 
       auto node = instIdMap->at(instId);
+      depIdMap = std::make_unique<DepIdMap_t>();
+      unsigned id = 0;
       for (auto &edge : node->getIncomingEdges()) {
-        dumpEdge(edge);
+        dumpEdge(id, edge);
+        depIdMap->insert(make_pair(id++, edge));
       }
       continue;
     }
 
     if (query.find("remove") == 0) {
+      unsigned depId = getNumberFromQuery(query);
+      if (depId == -1) {
+        outs() << "No number specified\n";
+        continue;
+      }
+
+      if (depIdMap->find(depId) == depIdMap->end()) {
+        outs() << "DepId" << depId << " not found\n";
+        continue;
+      }
+
+      auto dep = depIdMap->at(depId);
+      selectedPDG->removeEdge(dep);
+      // update SCCDAG
+      selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
 
       continue;
     }
