@@ -32,6 +32,10 @@ namespace SpecPriv
 using namespace llvm;
 using namespace llvm::noelle;
 
+
+cl::opt<unsigned> MaxDepth(
+    "inlining-max-depth", cl::init(3), cl::NotHidden,
+    cl::desc("Max aggresive inlining depth (default: 3)"));
 STATISTIC(numInlinedCallSites,     "Num of inlined call sites");
 
 struct Inliner: public ModulePass
@@ -126,7 +130,7 @@ private:
   }
 
   void processBB(BasicBlock &BB, std::unordered_set<Function *> &curPathVisited,
-                 LoopAA *aa, Loop *loop) {
+                 LoopAA *aa, Loop *loop, unsigned depth) {
     if (isSpeculativelyDeadBB(BB))
       return;
 
@@ -138,7 +142,7 @@ private:
 						continue;
           if (validCallInsts.count(call))
             continue;
-          if (processFunction(calledFun, curPathVisited, aa, loop)) {
+          if (processFunction(calledFun, curPathVisited, aa, loop, depth)) {
             inlineCallInsts.push(call);
             validCallInsts.insert(call);
           }
@@ -149,7 +153,9 @@ private:
 
   bool processFunction(Function *F,
                        std::unordered_set<Function *> &curPathVisited,
-                       LoopAA *aa, Loop *loop) {
+                       LoopAA *aa, Loop *loop, unsigned depth) {
+    if (depth > MaxDepth)
+      return false;
     // check if there is a cycle in call graph
     // or if the function is recursive (quick check)
     if (curPathVisited.count(F) || isRecursiveFnFast(F))
@@ -163,7 +169,7 @@ private:
     processedFunctions.insert(F);
 
     for (BasicBlock &BB : *F)
-      processBB(BB, curPathVisited, aa, loop);
+      processBB(BB, curPathVisited, aa, loop, depth + 1);
 
     curPathVisited.erase(F);
     return true;
@@ -183,7 +189,7 @@ private:
     LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
 
     for (BasicBlock *BB : loop->getBlocks())
-      processBB(*BB, curPathVisited, aa, loop);
+      processBB(*BB, curPathVisited, aa, loop, 0);
   }
 
   void inlineCall(CallInst *call) {
@@ -237,13 +243,18 @@ private:
       runOnGlobal(*global);
     }
 
+    errs() << "Inline call count: " << inlineCallInsts.size() << "\n";
+
     // performing function inlining on collected call insts
+    auto curCount = 0;
     while (!inlineCallInsts.empty()) {
       auto callInst = inlineCallInsts.front();
       inlineCallInsts.pop();
       InlineFunctionInfo IFI;
       modified |= InlineFunction(CallSite(callInst), IFI);
       ++numInlinedCallSites;
+      if (++curCount % 100 == 0)
+        errs() << "Cur inlined count: " << curCount << "\n";
     }
 
     return modified;

@@ -69,19 +69,51 @@ else
   SPEX="$LIBERTY_LIBS_DIR/libspecprivexecutive_timer.so"
 fi
 
-LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
-      -load $LIBERTY_LIBS_DIR/libLoopProf.so
-      -load $LIBERTY_LIBS_DIR/libMetadata.so
-      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
-      -load $LIBERTY_LIBS_DIR/libLAMP.so
-      -load $LIBERTY_LIBS_DIR/libRedux.so
-      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
-      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
-      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
-      -load $LIBERTY_LIBS_DIR/libStrategy.so
-      -load $LIBERTY_LIBS_DIR/libOrchestration.so
-      -load $LIBERTY_LIBS_DIR/libSpeculation.so
-      -load $LIBERTY_LIBS_DIR/libCodeGen.so"
+SCAF_BASE_LIBS="-load $SCAF_LIBS_DIR/libSCAFUtilities.so -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so"
+SCAF_SPEC_LIBS="-load $SCAF_LIBS_DIR/libLoopProf.so \
+    -load $SCAF_LIBS_DIR/libLAMPLoad.so \
+    -load $SCAF_LIBS_DIR/libPointsToProfiler.so \
+    -load $LIBERTY_LIBS_DIR/libStrategy.so \
+    -load $SCAF_LIBS_DIR/libSpeculationModules.so"
+
+NOELLE_LIBS="-load $NOELLE_LIBS_DIR/CallGraph.so\
+    -load $NOELLE_LIBS_DIR/libSvf.so \
+    -load $NOELLE_LIBS_DIR/libCudd.so -stat=false \
+    -load $NOELLE_LIBS_DIR/AllocAA.so \
+    -load $NOELLE_LIBS_DIR/TalkDown.so \
+    -load $NOELLE_LIBS_DIR/CallGraph.so \
+    -load $NOELLE_LIBS_DIR/PDGAnalysis.so \
+    -load $NOELLE_LIBS_DIR/Architecture.so \
+    -load $NOELLE_LIBS_DIR/BasicUtilities.so \
+    -load $NOELLE_LIBS_DIR/Task.so \
+    -load $NOELLE_LIBS_DIR/DataFlow.so \
+    -load $NOELLE_LIBS_DIR/HotProfiler.so \
+    -load $NOELLE_LIBS_DIR/LoopStructure.so \
+    -load $NOELLE_LIBS_DIR/Loops.so \
+    -load $NOELLE_LIBS_DIR/Scheduler.so \
+    -load $NOELLE_LIBS_DIR/OutlinerPass.so \
+    -load $NOELLE_LIBS_DIR/Noelle.so"
+
+CPF_LIBS="-load $LIBERTY_LIBS_DIR/libSpeculation.so\
+    -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so\
+    -load $LIBERTY_LIBS_DIR/libRedux.so\
+    -load $LIBERTY_LIBS_DIR/libOrchestration.so"
+
+LIBS="$SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS"
+
+#LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+      #-load $LIBERTY_LIBS_DIR/libLoopProf.so
+      #-load $LIBERTY_LIBS_DIR/libMetadata.so
+      #-load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+      #-load $LIBERTY_LIBS_DIR/libLAMP.so
+      #-load $LIBERTY_LIBS_DIR/libRedux.so
+      #-load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+      #-load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+      #-load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
+      #-load $LIBERTY_LIBS_DIR/libStrategy.so
+      #-load $LIBERTY_LIBS_DIR/libOrchestration.so
+      #-load $LIBERTY_LIBS_DIR/libSpeculation.so
+      #-load $LIBERTY_LIBS_DIR/libCodeGen.so"
 
 
 AA=`aa`
@@ -132,7 +164,7 @@ fi
 rm -f $NOPEEP
 OUT="-o $NOPEEP"
 
-CMD="noelle-load $LIBS $OPTS $FCN $LOOP $1 $OUT"
+CMD="opt $LIBS $OPTS $FCN $LOOP $1 $OUT"
 #CMD="noelle-load $LIBS $OPTS $FCN $LOOP -debug-only=reduxdet,specpriv-transform $1 $OUT"
 
 echo Running: $CMD

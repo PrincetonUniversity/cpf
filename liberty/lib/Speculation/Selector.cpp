@@ -153,48 +153,88 @@ static double getWeight(SCC *scc, PerformanceEstimator *perf) {
   return sumWeight;
 }
 
-static double getOptimisticCoverage(PDG &pdg, PerformanceEstimator *perf) {
-  std::vector<Value *> loopInternals;
-  for (auto internalNode : pdg.internalNodePairs()) {
-    loopInternals.push_back(internalNode.first);
-  }
+static bool isParallel(const SCC &scc) {
+  for (auto edge : make_range(scc.begin_edges(), scc.end_edges())) {
+    if (!scc.isInternal(edge->getIncomingT()) ||
+        !scc.isInternal(edge->getOutgoingT()))
+      continue;
 
-  std::unordered_set<DGEdge<Value> *> edgesToIgnore;
-
-  // go through the PDG and add all removable edges to this set
-  for (auto edge : pdg.getEdges()) {
-    if (edge->isRemovableDependence()) {
-      edgesToIgnore.insert(edge);
+    if (edge->isLoopCarriedDependence()) {
+      return false;
     }
   }
-
-  auto optimisticPDG =
-      pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
-
-  auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
-
-  double totalWeight = 0;
-  double largestWeight = 0;
-  // get total weight
-  for (auto *scc : optimisticSCCDAG->getSCCs()) {
-    auto curWeight = getWeight(scc, perf);
-    largestWeight = std::max(largestWeight, curWeight);
-    totalWeight += curWeight;
-  }
-
-  if (totalWeight == 0)
-    return 1;
-  else
-    return 1 - largestWeight / totalWeight;
+  return true;
 }
 
-unsigned Selector::computeWeights(
-  const Vertices &vertices,
-  Edges &edges,
-  VertexWeights &weights,
-  VertexWeights &scaledweights,
-  LateInliningOpportunities &opportunities)
-{
+struct CoverageStats {
+public:
+  double TotalWeight;
+  double LargestSeqWeight;
+  double ParallelWeight;
+  double SequentialWeight;
+
+  std::string dumpPercentage() {
+    if (TotalWeight == 0) {
+      return "Coverage incomplete: loop weight is 0\n";
+    }
+
+    double ParallelPercentage = 100 * ParallelWeight / TotalWeight;
+    double SequentialPercentage = 100 * SequentialWeight / TotalWeight;
+    double CriticalPathPercentage = 100 * LargestSeqWeight / TotalWeight;
+    double ParallelismCoverage = 100 - CriticalPathPercentage;
+
+    std::stringstream ss;
+    ss << "Largest Seq SCC (%): " << std::fixed << std::setw(2)
+       << CriticalPathPercentage << "\n"
+       << "Parallel SCC (%): " << ParallelPercentage << "\n"
+       << "Sequential SCC (%): " << SequentialPercentage << "\n"
+       << "Paralleism (%): " << ParallelismCoverage << "\n";
+
+    return ss.str();
+  }
+
+  CoverageStats(PDG &pdg, PerformanceEstimator *perf) {
+    std::vector<Value *> loopInternals;
+    for (auto internalNode : pdg.internalNodePairs()) {
+      loopInternals.push_back(internalNode.first);
+    }
+
+    std::unordered_set<DGEdge<Value> *> edgesToIgnore;
+
+    // go through the PDG and add all removable edges to this set
+    for (auto edge : pdg.getEdges()) {
+      if (edge->isRemovableDependence()) {
+        edgesToIgnore.insert(edge);
+      }
+    }
+
+    auto optimisticPDG =
+        pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
+
+    auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
+
+    TotalWeight = 0;
+    LargestSeqWeight = 0;
+    ParallelWeight = 0;
+    SequentialWeight = 0;
+
+    // get total weight
+    for (auto *scc : optimisticSCCDAG->getSCCs()) {
+      auto curWeight = getWeight(scc, perf);
+      TotalWeight += curWeight;
+      if (isParallel(*scc)) {
+        ParallelWeight += curWeight;
+      } else {
+        SequentialWeight += curWeight;
+        LargestSeqWeight = std::max(LargestSeqWeight, curWeight);
+      }
+    }
+  }
+};
+
+unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
+                         VertexWeights &weights, VertexWeights &scaledweights,
+                         LateInliningOpportunities &opportunities) {
   unsigned numApplicable = 0;
 
   Pass &proxy = getPass();
@@ -275,12 +315,12 @@ unsigned Selector::computeWeights(
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
 
-      double optimisticCoverage = getOptimisticCoverage(*pdg, perf);
+      CoverageStats stats(*pdg, perf);
       
       REPORT_DUMP(
-          errs() << "Coverage is: " << optimisticCoverage);
+          errs() << stats.dumpPercentage());
       // FIXME: just bypass
-      continue;
+      // continue;
 
       //std::unique_ptr<LoopDependenceInfo> ldi =
       //    std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
