@@ -3,7 +3,9 @@
 #include "SCCDAG.hpp"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/ReportDump.h"
+#include "liberty/Orchestration/PSDSWPCritic.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -38,6 +40,8 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired<ModuleLoops>();
   au.addRequired<Targets>();
   au.addRequired<PDGBuilder>();
+  au.addRequired< LoopProfLoad >();
+  au.addRequired< ProfilePerformanceEstimator >();
   au.setPreservesAll();
   // au.addRequired< SmtxSpeculationManager >();
   // au.addRequired< PtrResidueSpeculationManager >();
@@ -129,7 +133,7 @@ bool OptRepl::runOnModule(Module &M) {
       continue;
     }
 
-    if (query.find("select") == 0) {
+    if (query.find("select") == 0 || query.find("s ") == 0) {
       unsigned loopId = getNumberFromQuery(query);
       if (loopId == -1) {
         outs() << "No number specified\n";
@@ -252,6 +256,7 @@ bool OptRepl::runOnModule(Module &M) {
       continue;
     }
 
+    // remove a dependence
     if (query.find("remove") == 0) {
       unsigned depId = getNumberFromQuery(query);
       if (depId == -1) {
@@ -270,6 +275,39 @@ bool OptRepl::runOnModule(Module &M) {
       selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
 
       continue;
+    }
+
+    // try to parallelize
+    if (query.find("para") == 0) {
+      // initialize performance estimator
+      unsigned threadBudget = getNumberFromQuery(query);
+      if (threadBudget == -1) { 
+        threadBudget = 28;
+      }
+
+      LoopProfLoad *lpl = &getAnalysis< LoopProfLoad >();
+      auto perf = &getAnalysis< ProfilePerformanceEstimator >();
+      auto psdswp = std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl);
+      CriticRes res = psdswp->getCriticisms(*selectedPDG.get(), selectedLoop);
+
+      Criticisms &criticisms = res.criticisms;
+      unsigned long expSaving = res.expSpeedup;
+
+      if (!expSaving) {
+        outs() << "Not applicable/profitable\n";
+      }
+      else {
+        outs() << "Applicable, estimated speedup: " << expSaving << "\n";
+      }
+
+      continue;
+    }
+
+    // modref
+    if (query.find("modref") == 0) {
+
+      LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
+
     }
   }
 
