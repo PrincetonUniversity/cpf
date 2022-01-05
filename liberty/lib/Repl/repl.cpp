@@ -2,6 +2,7 @@
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
 #include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/ReportDump.h"
@@ -281,24 +282,30 @@ bool OptRepl::runOnModule(Module &M) {
     if (query.find("para") == 0) {
       // initialize performance estimator
       unsigned threadBudget = getNumberFromQuery(query);
-      if (threadBudget == -1) { 
+      if (threadBudget == -1) {
         threadBudget = 28;
       }
 
-      LoopProfLoad *lpl = &getAnalysis< LoopProfLoad >();
-      auto perf = &getAnalysis< ProfilePerformanceEstimator >();
+      LoopProfLoad *lpl = &getAnalysis<LoopProfLoad>();
+      auto perf = &getAnalysis<ProfilePerformanceEstimator>();
+
       auto psdswp = std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl);
-      CriticRes res = psdswp->getCriticisms(*selectedPDG.get(), selectedLoop);
+      auto doall = std::make_shared<DOALLCritic>(perf, threadBudget, lpl);
 
-      Criticisms &criticisms = res.criticisms;
-      unsigned long expSaving = res.expSpeedup;
+      auto check = [](Critic_ptr critic, string name, PDG &pdg, Loop* loop) {
+        CriticRes res = critic->getCriticisms(pdg, loop);
+        Criticisms &criticisms = res.criticisms;
+        unsigned long expSaving = res.expSpeedup;
 
-      if (!expSaving) {
-        outs() << "Not applicable/profitable\n";
-      }
-      else {
-        outs() << "Applicable, estimated speedup: " << expSaving << "\n";
-      }
+        if (!expSaving) {
+          outs() << name << " not applicable/profitable\n";
+        } else {
+          outs() << name << " applicable, estimated savings: " << expSaving << "\n";
+        }
+      };
+
+      check(doall, "DOALL", *selectedPDG.get(), selectedLoop);
+      check(psdswp, "PSDSWPCritic", *selectedPDG.get(), selectedLoop);
 
       continue;
     }
