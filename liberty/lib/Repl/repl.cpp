@@ -18,6 +18,8 @@
 #include <memory>
 #include <string>
 
+#include "ReplParse.hpp"
+
 using namespace llvm;
 using namespace std;
 using namespace liberty;
@@ -79,18 +81,6 @@ static unique_ptr<InstIdReverseMap_t> createInstIdLookupMap(InstIdMap_t m) {
   return lookupMap;
 }
 
-static unsigned getNumberFromQuery(string &query) {
-  // keep only numbers
-  query.erase(remove_if(query.begin(), query.end(),
-                        [](unsigned char a) { return !std::isdigit(a); }),
-              query.end());
-  if (query.size() == 0) {
-    return -1;
-  }
-
-  return stoi(query);
-}
-
 bool OptRepl::runOnModule(Module &M) {
   bool modified = false;
   Loop *selectedLoop;
@@ -124,26 +114,34 @@ bool OptRepl::runOnModule(Module &M) {
     string query;
     getline(cin, query);
 
-    if (query == "loops") {
+    ReplParser parser(query);
+    if (parser.getAction() == ReplAction::Quit)
+      break;
+
+    if (parser.getAction() == ReplAction::Unknown) {
+      outs() << "Unknown command!\n";
+      continue;
+    }
+
+    auto loopsFn = [&loopIdMap]() {
       outs() << "List of hot loops:\n";
 
       for (auto &[loopId, loop] : loopIdMap) {
         outs() << loopId << ": " << loop->getHeader()->getParent()->getName()
                << "::" << loop->getHeader()->getName() << '\n';
       }
-      continue;
-    }
+    };
 
-    if (query.find("select") == 0 || query.find("s ") == 0) {
-      unsigned loopId = getNumberFromQuery(query);
+    auto selectFn = [&loopIdMap, &parser, &selectedLoop, &selectedPDG, &selectedSCCDAG, &pdgbuilder, &instIdMap, &instIdLookupMap]() {
+      int loopId = parser.getActionId();
       if (loopId == -1) {
         outs() << "No number specified\n";
-        continue;
+        return;
       }
 
       if (loopIdMap.find(loopId) == loopIdMap.end()) {
         outs() << "Loop " << loopId << " does not exist\n";
-        continue;
+        return;
       }
 
       Loop *loop = loopIdMap[loopId];
@@ -157,19 +155,42 @@ bool OptRepl::runOnModule(Module &M) {
 
       instIdMap = createInstIdMap(selectedPDG.get());
       instIdLookupMap = createInstIdLookupMap(*instIdMap);
+    };
 
+    auto helpFn = [&parser]() {
+      string action = parser.getStringAfterAction();
+      if (ReplActions.find(action) != ReplActions.end()) {
+        outs() << HelpText.at(ReplActions.at(action)) << "\n";
+      }
+      else {
+        for (auto &[action, explaination] : HelpText) {
+          outs() << explaination << "\n";
+        }
+      }
+    };
+
+    if (parser.getAction() == ReplAction::Loops) {
+      loopsFn();
       continue;
     }
 
-    if (query == "quit") {
-      break;
+    if (parser.getAction() == ReplAction::Select) {
+      selectFn();
+      continue;
     }
 
+    if (parser.getAction() == ReplAction::Help){
+      helpFn();
+      continue;
+    }
+
+    // after this assume the loop has been selected
     if (!selectedLoop) {
       outs() << "No loops selected\n";
       continue;
     }
-    if (query.find("dump") == 0) {
+
+    auto dumpFn = [&parser, &selectedLoop, &selectedPDG, &selectedSCCDAG]() {
       outs() << *selectedLoop;
       outs() << "Number of instructions: "
              << selectedPDG->getNumberOfInstructionsIncluded() << "\n";
@@ -180,21 +201,19 @@ bool OptRepl::runOnModule(Module &M) {
 
       outs() << "\n";
 
-      if (query.find("-v") != string::npos) {
+      if (parser.isVerbose()) {
         for (auto block : selectedLoop->getBlocks()) {
           outs() << *block;
         }
       }
       outs() << "\n";
-      continue;
-    }
+    };
 
-    if (query.find("insts") == 0) {
+    auto InstsFn = [&instIdMap]() {
       for (auto &[instId, node] : *instIdMap) {
         outs() << instId << "\t" << *node->getT() << "\n";
       }
-      continue;
-    }
+    };
 
     auto dumpEdge = [&instIdLookupMap](unsigned depId, DGEdge<Value> *edge) {
       auto idA = instIdLookupMap->at(edge->getOutgoingNode());
@@ -203,85 +222,77 @@ bool OptRepl::runOnModule(Module &M) {
              << "\n";
     };
 
-    if (query == "deps") {
+    auto depsFn = [&instIdLookupMap, &parser, &depIdMap, &selectedPDG, &dumpEdge, &instIdMap]() {
+      int fromId = parser.getFromId();
+      int toId = parser.getFromId();
+      if (fromId != -1) {
+        if (instIdMap->find(fromId) == instIdMap->end()) {
+          outs() << "From InstId " << fromId<< " not found\n";
+          return;
+        }
+      }
+
+      if (toId != -1) {
+        if (instIdMap->find(toId) == instIdMap->end()) {
+          outs() << "To InstId " << toId<< " not found\n";
+          return;
+        }
+      }
+
       depIdMap = std::make_unique<DepIdMap_t>();
       unsigned id = 0;
-      for (auto &edge : selectedPDG->getEdges()) {
-        dumpEdge(id, edge);
-        depIdMap->insert(make_pair(id++, edge));
-      }
-      continue;
-    }
-
-    if (query.find("deps from") == 0) {
-      unsigned instId = getNumberFromQuery(query);
-      if (instId == -1) {
-        outs() << "No number specified\n";
-        continue;
-      }
-
-      if (instIdMap->find(instId) == instIdMap->end()) {
-        outs() << "InstId " << instId << " not found\n";
-        continue;
-      }
-
-      auto node = instIdMap->at(instId);
-      depIdMap = std::make_unique<DepIdMap_t>();
-      unsigned id = 0;
-      for (auto &edge : node->getOutgoingEdges()) {
-        dumpEdge(id, edge);
-        depIdMap->insert(make_pair(id++, edge));
-      }
-      continue;
-    }
-
-    if (query.find("deps to") == 0) {
-      unsigned instId = getNumberFromQuery(query);
-      if (instId == -1) {
-        outs() << "No number specified\n";
-        continue;
+      if (fromId == -1 && toId == -1) { // both not specified
+        for (auto &edge : selectedPDG->getEdges()) {
+          dumpEdge(id, edge);
+          depIdMap->insert(make_pair(id++, edge));
+        }
+      } else if (fromId != -1 && toId != -1) { // both specified
+        auto fromNode = instIdMap->at(fromId);
+        auto toNode = instIdMap->at(toId);
+        for (auto &edge : fromNode->getOutgoingEdges()) {
+          if (edge->getIncomingNode() == toNode) {
+            dumpEdge(id, edge);
+            depIdMap->insert(make_pair(id++, edge));
+          }
+        }
+      } else if (fromId != -1) { // from is specified
+        auto node = instIdMap->at(fromId);
+        for (auto &edge : node->getOutgoingEdges()) {
+          dumpEdge(id, edge);
+          depIdMap->insert(make_pair(id++, edge));
+        }
+      } else if (toId != -1) { // to is specified
+        auto node = instIdMap->at(toId);
+        for (auto &edge : node->getIncomingEdges()) {
+          dumpEdge(id, edge);
+          depIdMap->insert(make_pair(id++, edge));
+        }
       }
 
-      if (instIdMap->find(instId) == instIdMap->end()) {
-        outs() << "InstId " << instId << " not found\n";
-        continue;
-      }
-
-      auto node = instIdMap->at(instId);
-      depIdMap = std::make_unique<DepIdMap_t>();
-      unsigned id = 0;
-      for (auto &edge : node->getIncomingEdges()) {
-        dumpEdge(id, edge);
-        depIdMap->insert(make_pair(id++, edge));
-      }
-      continue;
-    }
+    };
 
     // remove a dependence
-    if (query.find("remove") == 0) {
-      unsigned depId = getNumberFromQuery(query);
+    auto removeFn = [&parser, &depIdMap, &selectedPDG, &selectedSCCDAG]() {
+      int depId = parser.getActionId();
       if (depId == -1) {
         outs() << "No number specified\n";
-        continue;
+        return;
       }
 
       if (depIdMap->find(depId) == depIdMap->end()) {
         outs() << "DepId" << depId << " not found\n";
-        continue;
+        return;
       }
 
       auto dep = depIdMap->at(depId);
       selectedPDG->removeEdge(dep);
       // update SCCDAG
       selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
-
-      continue;
-    }
+    };
 
     // try to parallelize
-    if (query.find("para") == 0) {
-      // initialize performance estimator
-      unsigned threadBudget = getNumberFromQuery(query);
+    auto parallelizeFn = [&parser, this, &selectedPDG, &selectedLoop]() {
+      int threadBudget = parser.getActionId();
       if (threadBudget == -1) {
         threadBudget = 28;
       }
@@ -289,10 +300,11 @@ bool OptRepl::runOnModule(Module &M) {
       LoopProfLoad *lpl = &getAnalysis<LoopProfLoad>();
       auto perf = &getAnalysis<ProfilePerformanceEstimator>();
 
+      // initialize performance estimator
       auto psdswp = std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl);
       auto doall = std::make_shared<DOALLCritic>(perf, threadBudget, lpl);
 
-      auto check = [](Critic_ptr critic, string name, PDG &pdg, Loop* loop) {
+      auto check = [](Critic_ptr critic, string name, PDG &pdg, Loop *loop) {
         CriticRes res = critic->getCriticisms(pdg, loop);
         Criticisms &criticisms = res.criticisms;
         unsigned long expSaving = res.expSpeedup;
@@ -300,21 +312,37 @@ bool OptRepl::runOnModule(Module &M) {
         if (!expSaving) {
           outs() << name << " not applicable/profitable\n";
         } else {
-          outs() << name << " applicable, estimated savings: " << expSaving << "\n";
+          outs() << name << " applicable, estimated savings: " << expSaving
+                 << "\n";
         }
       };
 
       check(doall, "DOALL", *selectedPDG.get(), selectedLoop);
       check(psdswp, "PSDSWPCritic", *selectedPDG.get(), selectedLoop);
-
-      continue;
-    }
+    };
 
     // modref
-    if (query.find("modref") == 0) {
+    auto modrefFn = [this]() { LoopAA *aa = getAnalysis<LoopAA>().getTopAA(); };
 
-      LoopAA *aa = getAnalysis< LoopAA >().getTopAA();
-
+    switch (parser.getAction()) {
+    case ReplAction::Deps:
+      depsFn();
+      break;
+    case ReplAction::Dump:
+      dumpFn();
+      break;
+    case ReplAction::Insts:
+      InstsFn();
+      break;
+    case ReplAction::Remove:
+      removeFn();
+      break;
+    case ReplAction::Parallelize:
+      parallelizeFn();
+      break;
+    default:
+      outs() << "SHOULD NOT HAPPEN\n";
+      break;
     }
   }
 
