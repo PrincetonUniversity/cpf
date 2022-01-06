@@ -1,3 +1,4 @@
+#include "scaf/Utilities/PrintDebugInfo.h"
 #include <iomanip>
 #define DEBUG_TYPE "selector"
 
@@ -93,6 +94,8 @@ void Selector::analysisUsage(AnalysisUsage &au)
   //au.addRequired< KillFlow >();
   au.addRequired< Targets >();
 
+  au.addRequired< LAMPLoadProfile >();
+
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
 
@@ -166,6 +169,9 @@ static bool isParallel(const SCC &scc) {
   return true;
 }
 
+/*
+ * The structure that stores the coverage information
+ */
 struct CoverageStats {
 public:
   double TotalWeight;
@@ -193,7 +199,7 @@ public:
     return ss.str();
   }
 
-  CoverageStats(PDG &pdg, PerformanceEstimator *perf) {
+  CoverageStats(Loop *loop, PDG &pdg, PerformanceEstimator *perf, LAMPLoadProfile *lamp) {
     std::vector<Value *> loopInternals;
     for (auto internalNode : pdg.internalNodePairs()) {
       loopInternals.push_back(internalNode.first);
@@ -210,6 +216,28 @@ public:
 
     auto optimisticPDG =
         pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
+
+    errs() << "Dumping probability\n";
+    for (auto edge : optimisticPDG->getEdges()) {
+      if (edge->isLoopCarriedDependence() && !edge->isRemovableDependence()) {
+        if (edge->isMemoryDependence()) {
+          // FIXME: double check the source and destination
+          auto src = dyn_cast<Instruction>(edge->getOutgoingT());
+          auto dst = dyn_cast<Instruction>(edge->getIncomingT());
+          if (!src || !dst) {
+            continue;
+          }
+
+          //double prob = lamp->probDep(loop->getHeader(), src, dst, 1);
+          double prob = lamp->probDep(0, src, dst, 1);
+
+          REPORT_DUMP(errs() << "(" << prob * 100 << " %) ";
+                      liberty::printInstDebugInfo(src); errs() << " to ";
+                      liberty::printInstDebugInfo(dst); errs() << "\n");
+        }
+      }
+    }
+
 
     auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
@@ -272,6 +300,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
  *      proxy.getAnalysis<PtrResidueSpeculationManager>();
  *  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
  *  KillFlow &kill = proxy.getAnalysis< KillFlow >(); */
+  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -315,7 +344,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
 
-      CoverageStats stats(*pdg, perf);
+      CoverageStats stats(A, *pdg, perf, &lamp);
       
       REPORT_DUMP(
           errs() << stats.dumpPercentage());
