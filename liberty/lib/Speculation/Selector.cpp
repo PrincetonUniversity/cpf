@@ -227,12 +227,18 @@ public:
           if (!src || !dst) {
             continue;
           }
+          // if either one is function call
+          // LAMP does not handle function call
+          if (isa<CallBase>(src) || isa<CallBase>(dst)) {
+            continue;
+          }
 
-          //double prob = lamp->probDep(loop->getHeader(), src, dst, 1);
-          double prob = lamp->probDep(0, src, dst, 1);
+          // the source and dst are reversed
+          double prob = lamp->probDep(loop->getHeader(), dst, src, 1);
+          //double prob = lamp->probDep(0, src, dst, 1);
 
-          REPORT_DUMP(errs() << "(" << prob * 100 << " %) ";
-                      liberty::printInstDebugInfo(src); errs() << " to ";
+          REPORT_DUMP(errs() << "(" << prob * 100 << " %) " << *src;
+                      liberty::printInstDebugInfo(src); errs() << " to " << *dst;
                       liberty::printInstDebugInfo(dst); errs() << "\n");
         }
       }
@@ -344,10 +350,6 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
 
-      CoverageStats stats(A, *pdg, perf, &lamp);
-      
-      REPORT_DUMP(
-          errs() << stats.dumpPercentage());
       // FIXME: just bypass
       // continue;
 
@@ -382,6 +384,11 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
 
+      // the pdg is updated over here
+      CoverageStats stats(A, *pdg, perf, &lamp);
+
+      REPORT_DUMP(
+          errs() << stats.dumpPercentage());
       /*
        *bool applicable = orch->findBestStrategyGivenBestPDG(A,
        *    *pdg, *perf, ctrlspec, mloops,
