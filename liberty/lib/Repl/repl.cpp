@@ -45,6 +45,7 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired<PDGBuilder>();
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
+  au.addRequired<LoopAA>();
   au.setPreservesAll();
   // au.addRequired< SmtxSpeculationManager >();
   // au.addRequired< PtrResidueSpeculationManager >();
@@ -224,7 +225,7 @@ bool OptRepl::runOnModule(Module &M) {
 
     auto depsFn = [&instIdLookupMap, &parser, &depIdMap, &selectedPDG, &dumpEdge, &instIdMap]() {
       int fromId = parser.getFromId();
-      int toId = parser.getFromId();
+      int toId = parser.getToId();
       if (fromId != -1) {
         if (instIdMap->find(fromId) == instIdMap->end()) {
           outs() << "From InstId " << fromId<< " not found\n";
@@ -321,8 +322,45 @@ bool OptRepl::runOnModule(Module &M) {
       check(psdswp, "PSDSWPCritic", *selectedPDG.get(), selectedLoop);
     };
 
-    // modref
-    auto modrefFn = [this]() { LoopAA *aa = getAnalysis<LoopAA>().getTopAA(); };
+    // modref: create a modref query and (optionally explore the loopaa stack)
+    auto modrefFn = [this, &parser, &instIdMap, &selectedLoop]() { 
+      int fromId = parser.getFromId();
+      int toId = parser.getToId();
+
+      if (fromId == -1) {
+          outs() << "From InstId not set\n";
+          return;
+      }
+      else {
+        if (instIdMap->find(fromId) == instIdMap->end()) {
+          outs() << "From InstId " << fromId<< " not found\n";
+          return;
+        }
+      }
+
+      if (toId == -1) {
+          outs() << "To InstId not set\n";
+          return;
+      }
+      else {
+        if (instIdMap->find(toId) == instIdMap->end()) {
+          outs() << "To InstId " << toId<< " not found\n";
+          return;
+        }
+      }
+      auto fromInst = dyn_cast<Instruction>(instIdMap->at(fromId)->getT());
+      auto toInst = dyn_cast<Instruction>(instIdMap->at(toId)->getT());
+
+      if (!fromInst || !toInst) {
+        outs() << "Instructions not found\n";
+        return;
+      }
+
+      LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
+      Remedies remeds;
+      auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
+      outs() << *fromInst << "->" << *toInst << ": " << ret << "\n";
+    };
 
     switch (parser.getAction()) {
     case ReplAction::Deps:
@@ -339,6 +377,9 @@ bool OptRepl::runOnModule(Module &M) {
       break;
     case ReplAction::Parallelize:
       parallelizeFn();
+      break;
+    case ReplAction::Modref:
+      modrefFn();
       break;
     default:
       outs() << "SHOULD NOT HAPPEN\n";

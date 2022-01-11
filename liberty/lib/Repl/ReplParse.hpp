@@ -75,7 +75,7 @@ class ReplParser {
       if (pos >= originString.size()) 
         return -1;
       // get the number
-      string number = originString.substr(pos, originString.find(" ") - pos);
+      string number = originString.substr(pos, originString.find(" ", pos) - pos);
       if (!isNumber(number)) {
         return -1;
       }
