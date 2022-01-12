@@ -1,6 +1,7 @@
 #include "DGBase.hpp"
 #include "PDG.hpp"
 #include "SCCDAG.hpp"
+#include "PDGPrinter.hpp"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
@@ -61,6 +62,7 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
 typedef map<unsigned, DGNode<Value> *> InstIdMap_t;
 typedef map<DGNode<Value> *, unsigned> InstIdReverseMap_t;
 typedef map<unsigned, DGEdge<Value> *> DepIdMap_t;
+typedef map<DGEdge<Value> *, unsigned> DepIdReverseMap_t;
 
 static unique_ptr<InstIdMap_t> createInstIdMap(PDG *pdg) {
   auto instIdMap = std::make_unique<InstIdMap_t>();
@@ -75,6 +77,15 @@ static unique_ptr<InstIdMap_t> createInstIdMap(PDG *pdg) {
 
 static unique_ptr<InstIdReverseMap_t> createInstIdLookupMap(InstIdMap_t m) {
   auto lookupMap = std::make_unique<InstIdReverseMap_t>();
+  for (auto &[instId, node] : m) {
+    lookupMap->insert(make_pair(node, instId));
+  }
+
+  return lookupMap;
+}
+
+static shared_ptr<DepIdReverseMap_t> createDepIdLookupMap(DepIdMap_t m) {
+  auto lookupMap = std::make_shared<DepIdReverseMap_t>();
   for (auto &[instId, node] : m) {
     lookupMap->insert(make_pair(node, instId));
   }
@@ -98,6 +109,7 @@ bool OptRepl::runOnModule(Module &M) {
   unique_ptr<InstIdMap_t> instIdMap;
   unique_ptr<InstIdReverseMap_t> instIdLookupMap;
   unique_ptr<DepIdMap_t> depIdMap;
+  shared_ptr<DepIdReverseMap_t> depIdLookupMap;
 
   // prepare hot loops
   {
@@ -223,7 +235,7 @@ bool OptRepl::runOnModule(Module &M) {
              << "\n";
     };
 
-    auto depsFn = [&instIdLookupMap, &parser, &depIdMap, &selectedPDG, &dumpEdge, &instIdMap]() {
+    auto depsFn = [&instIdLookupMap, &parser, &depIdMap, &depIdLookupMap, &selectedPDG, &dumpEdge, &instIdMap]() {
       int fromId = parser.getFromId();
       int toId = parser.getToId();
       if (fromId != -1) {
@@ -270,6 +282,9 @@ bool OptRepl::runOnModule(Module &M) {
         }
       }
 
+      depIdLookupMap = createDepIdLookupMap(*depIdMap);
+      selectedPDG->setDepLookupMap(depIdLookupMap);
+      llvm::noelle::DGPrinter::writeClusteredGraph<PDG, Value>("currentPDG.dot", selectedPDG.get());
     };
 
     // remove a dependence
@@ -358,8 +373,18 @@ bool OptRepl::runOnModule(Module &M) {
 
       LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
       Remedies remeds;
-      auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
-      outs() << *fromInst << "->" << *toInst << ": " << ret << "\n";
+
+      if (parser.isVerbose()) {
+        // try all 
+      }
+      else {
+        auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
+        outs() << *fromInst << "->" << *toInst << ": (Same)" << ret << "\n";
+        ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
+        outs() << *fromInst << "->" << *toInst << ": (Before)" << ret << "\n";
+        ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
+        outs() << *fromInst << "->" << *toInst << ": (After)" << ret << "\n";
+      }
     };
 
     switch (parser.getAction()) {
