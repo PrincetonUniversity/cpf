@@ -18,6 +18,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <readline/readline.h>
+#include <readline/history.h>
+
 
 #include "ReplParse.hpp"
 
@@ -93,10 +96,52 @@ static shared_ptr<DepIdReverseMap_t> createDepIdLookupMap(DepIdMap_t m) {
   return lookupMap;
 }
 
+char* completion_generator(const char* text, int state) {
+  // This function is called with state=0 the first time; subsequent calls are
+  // with a nonzero state. state=0 can be used to perform one-time
+  // initialization for this completion session.
+  static std::vector<std::string> matches;
+  static size_t match_index = 0;
+
+  if (state == 0) {
+    // During initialization, compute the actual matches for 'text' and keep
+    // them in a static vector.
+    matches.clear();
+    match_index = 0;
+
+    // Collect a vector of matches: vocabulary words that begin with text.
+    std::string textstr = std::string(text);
+    for (auto word : ReplActionNames) {
+      if (word.size() >= textstr.size() &&
+          word.compare(0, textstr.size(), textstr) == 0) {
+        matches.push_back(word);
+      }
+    }
+  }
+
+  if (match_index >= matches.size()) {
+    // We return nullptr to notify the caller no more matches are available.
+    return nullptr;
+  } else {
+    // Return a malloc'd char* for the match. The caller frees it.
+    return strdup(matches[match_index++].c_str());
+  }
+}
+
+char** completer(const char* text, int start, int end) {
+  // Don't do filename completion even if our generator finds no matches.
+  rl_attempted_completion_over = 1;
+
+  // Note: returning nullptr here will make readline use the default filename
+  // completer.
+  return rl_completion_matches(text, completion_generator);
+}
+
+
 bool OptRepl::runOnModule(Module &M) {
   bool modified = false;
   Loop *selectedLoop;
-  Function *selectedFunction;
+  llvm::Function *selectedFunction;
 
   // store the loopID
   map<unsigned, Loop *> loopIdMap;
@@ -122,10 +167,15 @@ bool OptRepl::runOnModule(Module &M) {
     }
   }
 
+  rl_attempted_completion_function = completer;
   while (true) {
-    outs() << "(opt-repl) ";
     string query;
-    getline(cin, query);
+    char *buf = readline("(opt-repl) "); 
+    query = (const char *)(buf);
+    if (query.size() > 0) {
+      add_history(buf);
+      free(buf); // free the buf readline created
+    }
 
     ReplParser parser(query);
     if (parser.getAction() == ReplAction::Quit)
@@ -375,7 +425,7 @@ bool OptRepl::runOnModule(Module &M) {
       Remedies remeds;
 
       if (parser.isVerbose()) {
-        // try all 
+        // TODO: try all combination of analysis and find a setting that the result is different
       }
       else {
         auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);

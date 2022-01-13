@@ -1,8 +1,9 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include <vector>
 #include <algorithm>
-using std::string, std::map;
+using std::string, std::map, std::vector;
 
 enum ReplAction {
   Help = 0,
@@ -39,6 +40,17 @@ const map<string, ReplAction> ReplActions = {
   {"p", ReplAction::Parallelize},
   {"modref", ReplAction::Modref},
 };
+
+// get all names
+const vector<string> ReplActionNames = [](map<string, ReplAction> map) {
+  vector<string> v;
+  for (auto &[s, a] : map) {
+    v.push_back(s);
+  }
+  v.push_back("from");
+  v.push_back("to");
+  return v;
+}(ReplActions);
 
 const map<ReplAction, string> HelpText = {
   {Help, "help/h (command): \tprint help message (for certain command)"},
