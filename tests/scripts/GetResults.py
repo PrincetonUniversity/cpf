@@ -318,7 +318,7 @@ def get_all_passes(root_path, bmark, passes, result_path):
     if "Experiment" in passes:
         status["Experiment"] = get_exp_result(root_path, bmark, result_path)
     if "Exp-3" in passes:
-        status["Experiment-no-spec"] = get_exp_result(root_path, bmark, result_path, "no-spec.dump")
+        # status["Experiment-no-spec"] = get_exp_result(root_path, bmark, result_path, "no-spec.dump")
 
         # if 'Edge' in status and status['Edge'] and 'SpecPriv' in status and status['SpecPriv']:
             # status["Experiment-cheap-spec"] = get_exp_result(root_path, bmark, result_path, "cheap-spec.dump")

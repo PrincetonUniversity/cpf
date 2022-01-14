@@ -218,6 +218,8 @@ public:
         pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
 
     errs() << "Dumping probability\n";
+
+    auto distributionVec = vector<double>();
     for (auto edge : optimisticPDG->getEdges()) {
       if (edge->isLoopCarriedDependence() && !edge->isRemovableDependence()) {
         if (edge->isMemoryDependence()) {
@@ -237,12 +239,21 @@ public:
           double prob = lamp->probDep(loop->getHeader(), dst, src, 1);
           //double prob = lamp->probDep(0, src, dst, 1);
 
+          distributionVec.push_back(prob);
           REPORT_DUMP(errs() << "(" << prob * 100 << " %) " << *src;
                       liberty::printInstDebugInfo(src); errs() << " to " << *dst;
                       liberty::printInstDebugInfo(dst); errs() << "\n");
         }
       }
     }
+    
+    REPORT_DUMP(
+        errs() << "prob_dist: [";
+        for (auto prob : distributionVec) {
+          errs() << std::to_string(prob) <<  ",";
+        }
+        errs() << "]\n";
+    );
 
 
     auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
