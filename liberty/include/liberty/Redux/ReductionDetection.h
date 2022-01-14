@@ -13,7 +13,7 @@
 namespace liberty
 {
 using namespace llvm;
-using namespace noelle;
+using namespace llvm::noelle;
 using namespace SpecPriv;
 
 struct MinMaxReductionInfo {
