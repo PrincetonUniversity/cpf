@@ -1,27 +1,25 @@
-#include "DGBase.hpp"
-#include "PDG.hpp"
-#include "SCCDAG.hpp"
-#include "PDGPrinter.hpp"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/Orchestrator.h"
+#include "liberty/Orchestration/PSDSWPCritic.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Utilities/ReportDump.h"
-#include "liberty/Orchestration/PSDSWPCritic.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
 #include <cctype>
-#include <iomanip>
 #include <iostream>
-#include <memory>
-#include <string>
-#include <readline/readline.h>
+// GNU Readline
 #include <readline/history.h>
+#include <readline/readline.h>
+#include <string>
 
-
+#include "noelle/core/DGBase.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/PDGPrinter.hpp"
+#include "noelle/core/SCCDAG.hpp"
 #include "ReplParse.hpp"
 
 using namespace llvm;
@@ -29,16 +27,14 @@ using namespace std;
 using namespace liberty;
 using namespace llvm::noelle;
 
-namespace {
 class OptRepl : public ModulePass {
-public:
-  static char ID;
-  void getAnalysisUsage(AnalysisUsage &au) const;
-  StringRef getPassName() const { return "remed-selector"; }
-  bool runOnModule(Module &M);
-  OptRepl() : ModulePass(ID) {}
+  public:
+    static char ID;
+    void getAnalysisUsage(AnalysisUsage &au) const;
+    StringRef getPassName() const { return "remed-selector"; }
+    bool runOnModule(Module &M);
+    OptRepl() : ModulePass(ID) {}
 };
-} // namespace
 
 char OptRepl::ID = 0;
 static RegisterPass<OptRepl> rp("opt-repl", "Opt Repl");
@@ -51,22 +47,14 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired< ProfilePerformanceEstimator >();
   au.addRequired<LoopAA>();
   au.setPreservesAll();
-  // au.addRequired< SmtxSpeculationManager >();
-  // au.addRequired< PtrResidueSpeculationManager >();
-  // au.addRequired< ProfileGuidedControlSpeculator >();
-  // au.addRequired< ProfileGuidedPredictionSpeculator >();
-  // au.addRequired<LoopAA>();
-  // au.addRequired<ReadPass>();
-  // au.addRequired<Classify>();
-  // au.addRequired<KillFlow_CtrlSpecAware>();
-  // au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
-  // au.addRequired<CallGraphWrapperPass>();
 }
+
 typedef map<unsigned, DGNode<Value> *> InstIdMap_t;
 typedef map<DGNode<Value> *, unsigned> InstIdReverseMap_t;
 typedef map<unsigned, DGEdge<Value> *> DepIdMap_t;
 typedef map<DGEdge<Value> *, unsigned> DepIdReverseMap_t;
 
+// helper function to generate
 static unique_ptr<InstIdMap_t> createInstIdMap(PDG *pdg) {
   auto instIdMap = std::make_unique<InstIdMap_t>();
   unsigned instId = 0;
@@ -96,6 +84,7 @@ static shared_ptr<DepIdReverseMap_t> createDepIdLookupMap(DepIdMap_t m) {
   return lookupMap;
 }
 
+// a simple autocompletion generator
 char* completion_generator(const char* text, int state) {
   // This function is called with state=0 the first time; subsequent calls are
   // with a nonzero state. state=0 can be used to perform one-time
@@ -111,7 +100,7 @@ char* completion_generator(const char* text, int state) {
 
     // Collect a vector of matches: vocabulary words that begin with text.
     std::string textstr = std::string(text);
-    for (auto word : ReplActionNames) {
+    for (auto word : ReplVocab) {
       if (word.size() >= textstr.size() &&
           word.compare(0, textstr.size(), textstr) == 0) {
         matches.push_back(word);
@@ -140,14 +129,17 @@ char** completer(const char* text, int start, int end) {
 
 bool OptRepl::runOnModule(Module &M) {
   bool modified = false;
-  Loop *selectedLoop;
-  llvm::Function *selectedFunction;
 
-  // store the loopID
-  map<unsigned, Loop *> loopIdMap;
   ModuleLoops &mloops = getAnalysis<ModuleLoops>();
   const Targets &targets = getAnalysis<Targets>();
   PDGBuilder &pdgbuilder = getAnalysis<PDGBuilder>();
+
+  // store the loopID
+  map<unsigned, Loop *> loopIdMap;
+
+  // the selected information
+  llvm::Function *selectedFunction; // TODO: not used yet
+  Loop *selectedLoop;
   unique_ptr<PDG> selectedPDG;
   unique_ptr<SCCDAG> selectedSCCDAG;
 
@@ -156,7 +148,7 @@ bool OptRepl::runOnModule(Module &M) {
   unique_ptr<DepIdMap_t> depIdMap;
   shared_ptr<DepIdReverseMap_t> depIdLookupMap;
 
-  // prepare hot loops
+  // prepare hot loops from the targets
   {
     unsigned loopId = 0;
     for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
@@ -168,15 +160,17 @@ bool OptRepl::runOnModule(Module &M) {
   }
 
   rl_attempted_completion_function = completer;
+  // the main repl while loop
   while (true) {
     string query;
-    char *buf = readline("(opt-repl) "); 
+    char *buf = readline("(opt-repl) ");
     query = (const char *)(buf);
     if (query.size() > 0) {
       add_history(buf);
       free(buf); // free the buf readline created
     }
 
+    // check if it's quit or unknown
     ReplParser parser(query);
     if (parser.getAction() == ReplAction::Quit)
       break;
@@ -186,6 +180,7 @@ bool OptRepl::runOnModule(Module &M) {
       continue;
     }
 
+    // print all loops
     auto loopsFn = [&loopIdMap]() {
       outs() << "List of hot loops:\n";
 
@@ -195,6 +190,7 @@ bool OptRepl::runOnModule(Module &M) {
       }
     };
 
+    // select one loop
     auto selectFn = [&loopIdMap, &parser, &selectedLoop, &selectedPDG, &selectedSCCDAG, &pdgbuilder, &instIdMap, &instIdLookupMap]() {
       int loopId = parser.getActionId();
       if (loopId == -1) {
@@ -220,6 +216,7 @@ bool OptRepl::runOnModule(Module &M) {
       instIdLookupMap = createInstIdLookupMap(*instIdMap);
     };
 
+    // show help
     auto helpFn = [&parser]() {
       string action = parser.getStringAfterAction();
       if (ReplActions.find(action) != ReplActions.end()) {
@@ -232,6 +229,7 @@ bool OptRepl::runOnModule(Module &M) {
       }
     };
 
+    // early checks for several actions that do not need the loop set
     if (parser.getAction() == ReplAction::Loops) {
       loopsFn();
       continue;
@@ -253,6 +251,7 @@ bool OptRepl::runOnModule(Module &M) {
       continue;
     }
 
+    // dump information about the loop
     auto dumpFn = [&parser, &selectedLoop, &selectedPDG, &selectedSCCDAG]() {
       outs() << *selectedLoop;
       outs() << "Number of instructions: "
@@ -272,12 +271,14 @@ bool OptRepl::runOnModule(Module &M) {
       outs() << "\n";
     };
 
+    // show instructions with id
     auto InstsFn = [&instIdMap]() {
       for (auto &[instId, node] : *instIdMap) {
         outs() << instId << "\t" << *node->getT() << "\n";
       }
     };
 
+    // helper function for dumping edge
     auto dumpEdge = [&instIdLookupMap](unsigned depId, DGEdge<Value> *edge) {
       auto idA = instIdLookupMap->at(edge->getOutgoingNode());
       auto idB = instIdLookupMap->at(edge->getIncomingNode());
@@ -285,6 +286,7 @@ bool OptRepl::runOnModule(Module &M) {
              << "\n";
     };
 
+    // show all deps with id; also generate a currentPDG.dot file, the edge number is annotated on the PDG
     auto depsFn = [&instIdLookupMap, &parser, &depIdMap, &depIdLookupMap, &selectedPDG, &dumpEdge, &instIdMap]() {
       int fromId = parser.getFromId();
       int toId = parser.getToId();
@@ -388,7 +390,7 @@ bool OptRepl::runOnModule(Module &M) {
     };
 
     // modref: create a modref query and (optionally explore the loopaa stack)
-    auto modrefFn = [this, &parser, &instIdMap, &selectedLoop]() { 
+    auto modrefFn = [this, &parser, &instIdMap, &selectedLoop]() {
       int fromId = parser.getFromId();
       int toId = parser.getToId();
 
@@ -416,6 +418,7 @@ bool OptRepl::runOnModule(Module &M) {
       auto fromInst = dyn_cast<Instruction>(instIdMap->at(fromId)->getT());
       auto toInst = dyn_cast<Instruction>(instIdMap->at(toId)->getT());
 
+      // TODO: one of the instruction can be a value
       if (!fromInst || !toInst) {
         outs() << "Instructions not found\n";
         return;

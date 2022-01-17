@@ -32,15 +32,15 @@ void llvm::PDGBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired< LoopAA >();
   AU.addRequired<PostDominatorTreeWrapperPass>();
   AU.addRequired<LLVMAAResults>();
-  //AU.addRequired<ProfileGuidedControlSpeculator>();
-  //AU.addRequired<ProfileGuidedPredictionSpeculator>();
-  //AU.addRequired<SmtxSpeculationManager>();
-  //AU.addRequired<PtrResidueSpeculationManager>();
-  //AU.addRequired<ReadPass>();
-  //AU.addRequired<Classify>();
-  //AU.addRequired<KillFlow_CtrlSpecAware>();
-  //AU.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
-  //AU.addRequired< ProfilePerformanceEstimator >();
+  AU.addRequired<ProfileGuidedControlSpeculator>();
+  AU.addRequired<ProfileGuidedPredictionSpeculator>();
+  AU.addRequired<SmtxSpeculationManager>();
+  AU.addRequired<PtrResidueSpeculationManager>();
+  AU.addRequired<ReadPass>();
+  AU.addRequired<Classify>();
+  AU.addRequired<KillFlow_CtrlSpecAware>();
+  AU.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+  AU.addRequired< ProfilePerformanceEstimator >();
   AU.setPreservesAll();
 }
 
@@ -58,8 +58,8 @@ std::unique_ptr<llvm::noelle::PDG> llvm::PDGBuilder::getLoopPDG(Loop *loop) {
   aa->dump();
   constructEdgesFromMemory(*pdg, loop, aa);
 
-  //REPORT_DUMP(errs() << "annotateMemDepsWithRemedies with SCAF ...\n");
-  //annotateMemDepsWithRemedies(*pdg,loop,aa);
+  REPORT_DUMP(errs() << "annotateMemDepsWithRemedies with SCAF ...\n");
+  annotateMemDepsWithRemedies(*pdg,loop,aa);
 
   REPORT_DUMP(errs() << "constructEdgesFromControl ...\n");
 
@@ -95,7 +95,7 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   ptrresaa = new PtrResidueAA(*DL, ptrresMan, perf); // Pointer Residue SpecPriv
   ptrresaa->InitializeLoopAA(this, *DL);
 
-  //spresults = &getAnalysis<ReadPass>().getProfileInfo(); // SpecPriv Results
+  spresults = &getAnalysis<ReadPass>().getProfileInfo(); // SpecPriv Results
 
   // cannot validate points-to object info.
   // should only be used within localityAA validation only for points-to heap
@@ -106,10 +106,10 @@ void llvm::PDGBuilder::addSpecModulesToLoopAA() {
   simpleaa = new SimpleAA();
   simpleaa->InitializeLoopAA(this, *DL);
 
-  //classify = &getAnalysis<Classify>(); // SpecPriv Classify
+  classify = &getAnalysis<Classify>(); // SpecPriv Classify
 
-  //killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>(); // KillFlow
-  //callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>(); // CallsiteDepth
+  killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>(); // KillFlow
+  callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>(); // CallsiteDepth
 
   //commlibsaa.InitializeLoopAA(this, *DL);
 }

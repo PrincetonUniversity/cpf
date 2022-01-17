@@ -23,7 +23,7 @@
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
 
-#include "PDG.hpp"
+#include "noelle/core/PDG.hpp"
 
 #include <unordered_set>
 #include <unordered_map>

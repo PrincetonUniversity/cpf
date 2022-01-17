@@ -19,9 +19,9 @@
 #include "scaf/Utilities/InstInsertPt.h"
 
 #include "Assumptions.h"
-#include "PDG.hpp"
-#include "LoopDependenceInfo.hpp"
-#include "Task.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/Task.hpp"
 
 #include <set>
 #include <unordered_set>

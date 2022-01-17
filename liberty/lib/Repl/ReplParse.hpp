@@ -5,6 +5,7 @@
 #include <algorithm>
 using std::string, std::map, std::vector;
 
+// All possible actions
 enum ReplAction {
   Help = 0,
   Loops,
@@ -19,6 +20,7 @@ enum ReplAction {
   Unknown = -1
 };
 
+// the string command to the action Enum
 const map<string, ReplAction> ReplActions = {
   {"help", ReplAction::Help},
   {"h", ReplAction::Help},
@@ -41,8 +43,8 @@ const map<string, ReplAction> ReplActions = {
   {"modref", ReplAction::Modref},
 };
 
-// get all names
-const vector<string> ReplActionNames = [](map<string, ReplAction> map) {
+// a helper to get the vocabulary of Repl, to help the auto completion
+const vector<string> ReplVocab = [](map<string, ReplAction> map) {
   vector<string> v;
   for (auto &[s, a] : map) {
     v.push_back(s);
@@ -52,6 +54,7 @@ const vector<string> ReplActionNames = [](map<string, ReplAction> map) {
   return v;
 }(ReplActions);
 
+// the action to help text
 const map<ReplAction, string> HelpText = {
   {Help, "help/h (command): \tprint help message (for certain command)"},
   {Loops, "loops/ls: \tprint all loops with loop id"},
@@ -66,9 +69,10 @@ const map<ReplAction, string> HelpText = {
 };
 
 class ReplParser {
-
   private:
     string originString;
+
+    // check whether a string is only digits
     static bool isNumber(const string& s)
     {
       for (char const &c : s) {
@@ -78,13 +82,14 @@ class ReplParser {
       return true;
     }
 
-    int getQueryKeyword(string query) {
+    // get the next number after a keyword
+    int getQueryNumber(string query) {
       auto pos= originString.find(query);
       if (pos == string::npos)
         return -1;
 
       pos += query.size() + 1; // move to the start of the number (+1 is the space between)
-      if (pos >= originString.size()) 
+      if (pos >= originString.size())
         return -1;
       // get the number
       string number = originString.substr(pos, originString.find(" ", pos) - pos);
@@ -96,9 +101,8 @@ class ReplParser {
       }
     }
 
-  public: 
+  public:
     ReplParser(string str): originString(str) {
-
     }
 
     // get the action for the command
@@ -114,12 +118,13 @@ class ReplParser {
       }
     }
 
+    // get the next string after action
     string getStringAfterAction() {
       auto secondWordStartPos = originString.find(" ");
       if (secondWordStartPos == string::npos) {
         return "";
       }
-      
+
       secondWordStartPos += 1;
 
       auto secondWordLen = originString.find(" ", secondWordStartPos) - secondWordStartPos;
@@ -127,24 +132,24 @@ class ReplParser {
       return secondStr;
     }
 
-    // the number of action
+    // the number after action
     int getActionId() {
       string firstWord;
       firstWord = originString.substr(0, originString.find(" ")); //first space or end
 
-      return getQueryKeyword(firstWord);
+      return getQueryNumber(firstWord);
     }
 
     // the number after from
     int getFromId() {
       string query = "from";
-      return getQueryKeyword(query);
+      return getQueryNumber(query);
     }
 
     // the number after to
     int getToId() {
       string query = "to";
-      return getQueryKeyword(query);
+      return getQueryNumber(query);
     }
 
     bool isVerbose() {
