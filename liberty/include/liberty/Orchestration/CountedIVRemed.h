@@ -3,8 +3,8 @@
 
 #include "llvm/IR/Instructions.h"
 
-#include "Noelle.hpp"
-#include "PDG.hpp"
+#include "noelle/core/Noelle.hpp"
+#include "noelle/core/PDG.hpp"
 #include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "scaf/Utilities/ModuleLoops.h"

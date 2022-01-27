@@ -14,7 +14,7 @@
 #include "liberty/Redux/Reduction.h"
 #include "scaf/Utilities/ModuleLoops.h"
 
-#include "LoopDependenceInfo.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
 
 #include <unordered_set>
 

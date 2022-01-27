@@ -18,7 +18,7 @@
 #include "liberty/CodeGen/RoI.h"
 #include "liberty/Redux/Reduction.h"
 
-#include "PDG.hpp"
+#include "noelle/core/PDG.hpp"
 
 #include <set>
 #include <unordered_set>

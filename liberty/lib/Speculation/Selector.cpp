@@ -18,7 +18,6 @@
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/DOTGraphTraits.h"
 
-#include "PDG.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
@@ -40,10 +39,10 @@
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Orchestration/LocalityAA.h"
 
-#include "LoopDependenceInfo.hpp"
-#include "DGGraphTraits.hpp"
-#include "DominatorSummary.hpp"
-#include <algorithm>
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/DGGraphTraits.hpp"
+#include "noelle/core/DominatorSummary.hpp"
 //#include "Noelle.hpp"
 
 using namespace llvm;
@@ -217,44 +216,54 @@ public:
     auto optimisticPDG =
         pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
 
-    errs() << "Dumping probability\n";
-
-    auto distributionVec = vector<double>();
-    for (auto edge : optimisticPDG->getEdges()) {
-      if (edge->isLoopCarriedDependence() && !edge->isRemovableDependence()) {
-        if (edge->isMemoryDependence()) {
-          // FIXME: double check the source and destination
-          auto src = dyn_cast<Instruction>(edge->getOutgoingT());
-          auto dst = dyn_cast<Instruction>(edge->getIncomingT());
-          if (!src || !dst) {
-            continue;
-          }
-          // if either one is function call
-          // LAMP does not handle function call
-          if (isa<CallBase>(src) || isa<CallBase>(dst)) {
-            continue;
-          }
-
-          // the source and dst are reversed
-          double prob = lamp->probDep(loop->getHeader(), dst, src, 1);
-          //double prob = lamp->probDep(0, src, dst, 1);
-
-          distributionVec.push_back(prob);
-          REPORT_DUMP(errs() << "(" << prob * 100 << " %) " << *src;
-                      liberty::printInstDebugInfo(src); errs() << " to " << *dst;
-                      liberty::printInstDebugInfo(dst); errs() << "\n");
-        }
-      }
-    }
-    
-    REPORT_DUMP(
-        errs() << "prob_dist: [";
-        for (auto prob : distributionVec) {
-          errs() << std::to_string(prob) <<  ",";
-        }
-        errs() << "]\n";
-    );
-
+/*
+ *    errs() << "Dumping probability\n";
+ *
+ *    auto distributionVec = vector<double>();
+ *    for (auto edge : optimisticPDG->getEdges()) {
+ *      if (edge->isLoopCarriedDependence() && !edge->isRemovableDependence()) {
+ *        if (edge->isMemoryDependence()) {
+ *          // FIXME: double check the source and destination
+ *          auto src = dyn_cast<Instruction>(edge->getOutgoingT());
+ *          auto dst = dyn_cast<Instruction>(edge->getIncomingT());
+ *          if (!src || !dst) {
+ *            continue;
+ *          }
+ *          // if either one is function call
+ *          // LAMP does not handle function call
+ *          if (isa<CallBase>(src) || isa<CallBase>(dst)) {
+ *            continue;
+ *          }
+ *
+ *          // the source and dst are reversed
+ *          double prob = lamp->probDep(loop->getHeader(), dst, src, 1);
+ *          //double prob = lamp->probDep(0, src, dst, 1);
+ *
+ *          double probSrc = perf->estimate_parallelization_weight(src, loop);
+ *          double probDst = perf->estimate_parallelization_weight(dst, loop);
+ *
+ *          std::ostringstream streamOut;
+ *          streamOut << std::fixed << std::setprecision(2) << "("
+ *            << prob << ", " << probSrc << ", " << probDst << ")";
+ *
+ *          distributionVec.push_back(prob);
+ *          // REPORT_DUMP(errs() << "(" << prob * 100 << " %) " << *src;
+ *          REPORT_DUMP(errs() << streamOut.str() << *src;
+ *                      liberty::printInstDebugInfo(src); errs() << " to " << *dst;
+ *                      liberty::printInstDebugInfo(dst); errs() << "\n");
+ *        }
+ *      }
+ *    }
+ *    
+ *    REPORT_DUMP(
+ *        errs() << "prob_dist: [";
+ *        for (auto prob : distributionVec) {
+ *          errs() << std::to_string(prob) <<  ",";
+ *        }
+ *        errs() << "]\n";
+ *    );
+ *
+ */
 
     auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
