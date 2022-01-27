@@ -43,6 +43,7 @@
 #include "noelle/core/LoopDependenceInfo.hpp"
 #include "noelle/core/DGGraphTraits.hpp"
 #include "noelle/core/DominatorSummary.hpp"
+#include <algorithm>
 //#include "Noelle.hpp"
 
 using namespace llvm;
