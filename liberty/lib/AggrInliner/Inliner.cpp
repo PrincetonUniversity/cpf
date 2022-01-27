@@ -131,13 +131,14 @@ private:
       return;
 
     for (Instruction &I : BB) {
+      //FIXME: CallBase instead of CallInst
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
         if (calledFun && !calledFun->isDeclaration()) {
-          if (noFlowDep(call, aa, loop))
-						continue;
           if (validCallInsts.count(call))
             continue;
+          if (noFlowDep(call, aa, loop))
+						continue;
           if (processFunction(calledFun, curPathVisited, aa, loop)) {
             inlineCallInsts.push(call);
             validCallInsts.insert(call);
@@ -242,8 +243,10 @@ private:
       auto callInst = inlineCallInsts.front();
       inlineCallInsts.pop();
       InlineFunctionInfo IFI;
-      modified |= InlineFunction(CallSite(callInst), IFI);
-      ++numInlinedCallSites;
+      auto inlined  = InlineFunction(CallSite(callInst), IFI);
+      modified |= inlined; 
+      //FIXME: should depend on return value
+      if(inlined) ++numInlinedCallSites;
     }
 
     return modified;
