@@ -9,6 +9,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
+#include <bits/stdint-uintn.h>
 #include <cctype>
 #include <iostream>
 // GNU Readline
@@ -52,7 +53,7 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
 typedef map<unsigned, DGNode<Value> *> InstIdMap_t;
 typedef map<DGNode<Value> *, unsigned> InstIdReverseMap_t;
 typedef map<unsigned, DGEdge<Value> *> DepIdMap_t;
-typedef map<DGEdge<Value> *, unsigned> DepIdReverseMap_t;
+typedef map<DGEdge<Value> *, uint32_t> DepIdReverseMap_t;
 
 // helper function to generate
 static unique_ptr<InstIdMap_t> createInstIdMap(PDG *pdg) {
