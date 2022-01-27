@@ -1,9 +1,9 @@
 #ifndef LLVM_LIBERTY_ORCHESTRATOR_H
 #define LLVM_LIBERTY_ORCHESTRATOR_H
 
-#include "LoopDependenceInfo.hpp"
-#include "PDG.hpp"
-#include "SCCDAG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/SCCDAG.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"

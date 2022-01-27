@@ -14,7 +14,7 @@
 #include "scaf/Utilities/InstInsertPt.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/SplitEdge.h"
-#include "PDG.hpp"
+#include "noelle/core/PDG.hpp"
 
 
 #include <list>

@@ -3,7 +3,7 @@
 
 #include "llvm/IR/Instructions.h"
 
-#include "PDG.hpp"
+#include "noelle/core/PDG.hpp"
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/Orchestration/Remediator.h"

@@ -15,7 +15,6 @@
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/DOTGraphTraits.h"
 
-#include "PDG.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/Targets.h"
@@ -36,9 +35,10 @@
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Orchestration/LocalityAA.h"
 
-#include "LoopDependenceInfo.hpp"
-#include "DGGraphTraits.hpp"
-#include "DominatorSummary.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/DGGraphTraits.hpp"
+#include "noelle/core/DominatorSummary.hpp"
 //#include "Noelle.hpp"
 
 using namespace llvm;

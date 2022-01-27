@@ -2,9 +2,9 @@
 #ifndef LLVM_LIBERTY_SPEC_PRIV_TRANSFORM_PIPELINE_STRATEGY_H
 #define LLVM_LIBERTY_SPEC_PRIV_TRANSFORM_PIPELINE_STRATEGY_H
 
-#include "PDG.hpp"
-#include "SCCDAG.hpp"
-#include "SCC.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/SCCDAG.hpp"
+#include "noelle/core/SCC.hpp"
 
 #include "llvm/Support/Casting.h"
 
