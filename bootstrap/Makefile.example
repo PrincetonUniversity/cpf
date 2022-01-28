@@ -182,12 +182,16 @@ ifeq (${verbose}, 1)
 	set -o pipefail; \
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug} \
+	NOELLE_INSTALL_RELEASE=${noelle-install-dir-release} \
 	SCAF_REMOTE=${scaf-remote-url} \
 	SCAF_BRANCH=${scaf-branch} \
 	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.scaf ${scaf-target} 2>&1 | tee ${install-prefix}/scaf.log
 else
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug} \
+	NOELLE_INSTALL_RELEASE=${noelle-install-dir-release} \
 	SCAF_REMOTE=${scaf-remote-url} \
 	SCAF_BRANCH=${scaf-branch} \
 	${MAKE} -C ${install-prefix} -f Makefile.scaf ${scaf-target} > ${install-prefix}/scaf.log 2>&1
