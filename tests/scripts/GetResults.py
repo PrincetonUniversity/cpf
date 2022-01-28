@@ -327,6 +327,7 @@ def get_all_passes(root_path, bmark, passes, result_path):
 
         if 'Edge' in status and status['Edge'] and "LAMP" in status and status['LAMP']:
             status["Experiment-no-specpriv"] = get_exp_result(root_path, bmark, result_path, "no-specpriv.dump")
+            status["Experiment-no-specpriv-ignorefn"] = get_exp_result(root_path, bmark, result_path, "no-specpriv-ignorefn.dump")
         else:
             status["Experiment-no-specpriv"] = None
 
