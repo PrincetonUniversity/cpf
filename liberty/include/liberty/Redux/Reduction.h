@@ -4,7 +4,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "PDG.hpp"
+#include "noelle/core/PDG.hpp"
 #include <set>
 
 namespace liberty

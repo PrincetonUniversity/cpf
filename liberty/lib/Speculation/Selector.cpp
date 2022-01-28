@@ -1,6 +1,8 @@
-#include "liberty/Orchestration/Orchestrator.h"
+#include "scaf/Utilities/PrintDebugInfo.h"
+#include <iomanip>
 #define DEBUG_TYPE "selector"
 
+#include "liberty/Orchestration/Orchestrator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
@@ -16,7 +18,6 @@
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/DOTGraphTraits.h"
 
-#include "PDG.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
@@ -38,9 +39,11 @@
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Orchestration/LocalityAA.h"
 
-#include "LoopDependenceInfo.hpp"
-#include "DGGraphTraits.hpp"
-#include "DominatorSummary.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/DGGraphTraits.hpp"
+#include "noelle/core/DominatorSummary.hpp"
+#include <algorithm>
 //#include "Noelle.hpp"
 
 using namespace llvm;
@@ -91,6 +94,8 @@ void Selector::analysisUsage(AnalysisUsage &au)
   //au.addRequired< KillFlow >();
   au.addRequired< Targets >();
 
+  au.addRequired< LAMPLoadProfile >();
+
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
 
@@ -138,13 +143,153 @@ const unsigned Selector::NumThreads(22);
 const unsigned Selector::FixedPoint(1000);
 const unsigned Selector::PenalizeLoopNest( Selector::FixedPoint*10 );
 
-unsigned Selector::computeWeights(
-  const Vertices &vertices,
-  Edges &edges,
-  VertexWeights &weights,
-  VertexWeights &scaledweights,
-  LateInliningOpportunities &opportunities)
-{
+static double getWeight(SCC *scc, PerformanceEstimator *perf) {
+  double sumWeight = 0.0;
+
+  for (auto instPair : scc->internalNodePairs()) {
+    Instruction *inst = dyn_cast<Instruction>(instPair.first);
+    assert(inst);
+
+    sumWeight += perf->estimate_weight(inst);
+  }
+
+  return sumWeight;
+}
+
+static bool isParallel(const SCC &scc) {
+  for (auto edge : make_range(scc.begin_edges(), scc.end_edges())) {
+    if (!scc.isInternal(edge->getIncomingT()) ||
+        !scc.isInternal(edge->getOutgoingT()))
+      continue;
+
+    if (edge->isLoopCarriedDependence()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/*
+ * The structure that stores the coverage information
+ */
+struct CoverageStats {
+public:
+  double TotalWeight;
+  double LargestSeqWeight;
+  double ParallelWeight;
+  double SequentialWeight;
+
+  std::string dumpPercentage() {
+    if (TotalWeight == 0) {
+      return "Coverage incomplete: loop weight is 0\n";
+    }
+
+    double ParallelPercentage = 100 * ParallelWeight / TotalWeight;
+    double SequentialPercentage = 100 * SequentialWeight / TotalWeight;
+    double CriticalPathPercentage = 100 * LargestSeqWeight / TotalWeight;
+    double ParallelismCoverage = 100 - CriticalPathPercentage;
+
+    std::stringstream ss;
+    ss << "Largest Seq SCC (%): " << std::fixed << std::setw(2)
+       << CriticalPathPercentage << "\n"
+       << "Parallel SCC (%): " << ParallelPercentage << "\n"
+       << "Sequential SCC (%): " << SequentialPercentage << "\n"
+       << "Paralleism (%): " << ParallelismCoverage << "\n";
+
+    return ss.str();
+  }
+
+  CoverageStats(Loop *loop, PDG &pdg, PerformanceEstimator *perf, LAMPLoadProfile *lamp) {
+    std::vector<Value *> loopInternals;
+    for (auto internalNode : pdg.internalNodePairs()) {
+      loopInternals.push_back(internalNode.first);
+    }
+
+    std::unordered_set<DGEdge<Value> *> edgesToIgnore;
+
+    // go through the PDG and add all removable edges to this set
+    for (auto edge : pdg.getEdges()) {
+      if (edge->isRemovableDependence()) {
+        edgesToIgnore.insert(edge);
+      }
+    }
+
+    auto optimisticPDG =
+        pdg.createSubgraphFromValues(loopInternals, false, edgesToIgnore);
+
+/*
+ *    errs() << "Dumping probability\n";
+ *
+ *    auto distributionVec = vector<double>();
+ *    for (auto edge : optimisticPDG->getEdges()) {
+ *      if (edge->isLoopCarriedDependence() && !edge->isRemovableDependence()) {
+ *        if (edge->isMemoryDependence()) {
+ *          // FIXME: double check the source and destination
+ *          auto src = dyn_cast<Instruction>(edge->getOutgoingT());
+ *          auto dst = dyn_cast<Instruction>(edge->getIncomingT());
+ *          if (!src || !dst) {
+ *            continue;
+ *          }
+ *          // if either one is function call
+ *          // LAMP does not handle function call
+ *          if (isa<CallBase>(src) || isa<CallBase>(dst)) {
+ *            continue;
+ *          }
+ *
+ *          // the source and dst are reversed
+ *          double prob = lamp->probDep(loop->getHeader(), dst, src, 1);
+ *          //double prob = lamp->probDep(0, src, dst, 1);
+ *
+ *          double probSrc = perf->estimate_parallelization_weight(src, loop);
+ *          double probDst = perf->estimate_parallelization_weight(dst, loop);
+ *
+ *          std::ostringstream streamOut;
+ *          streamOut << std::fixed << std::setprecision(2) << "("
+ *            << prob << ", " << probSrc << ", " << probDst << ")";
+ *
+ *          distributionVec.push_back(prob);
+ *          // REPORT_DUMP(errs() << "(" << prob * 100 << " %) " << *src;
+ *          REPORT_DUMP(errs() << streamOut.str() << *src;
+ *                      liberty::printInstDebugInfo(src); errs() << " to " << *dst;
+ *                      liberty::printInstDebugInfo(dst); errs() << "\n");
+ *        }
+ *      }
+ *    }
+ *    
+ *    REPORT_DUMP(
+ *        errs() << "prob_dist: [";
+ *        for (auto prob : distributionVec) {
+ *          errs() << std::to_string(prob) <<  ",";
+ *        }
+ *        errs() << "]\n";
+ *    );
+ *
+ */
+
+    auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
+
+    TotalWeight = 0;
+    LargestSeqWeight = 0;
+    ParallelWeight = 0;
+    SequentialWeight = 0;
+
+    // get total weight
+    for (auto *scc : optimisticSCCDAG->getSCCs()) {
+      auto curWeight = getWeight(scc, perf);
+      TotalWeight += curWeight;
+      if (isParallel(*scc)) {
+        ParallelWeight += curWeight;
+      } else {
+        SequentialWeight += curWeight;
+        LargestSeqWeight = std::max(LargestSeqWeight, curWeight);
+      }
+    }
+  }
+};
+
+unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
+                         VertexWeights &weights, VertexWeights &scaledweights,
+                         LateInliningOpportunities &opportunities) {
   unsigned numApplicable = 0;
 
   Pass &proxy = getPass();
@@ -182,6 +327,7 @@ unsigned Selector::computeWeights(
  *      proxy.getAnalysis<PtrResidueSpeculationManager>();
  *  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
  *  KillFlow &kill = proxy.getAnalysis< KillFlow >(); */
+  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -215,6 +361,7 @@ unsigned Selector::computeWeights(
       adjLoopTime = scaledLoopTime - depthPenalty;
     else if (scaledLoopTime > depthPenalty / 10)
       adjLoopTime = scaledLoopTime - depthPenalty / 10;
+
     {
 
       // Dump PDG
@@ -223,6 +370,9 @@ unsigned Selector::computeWeights(
 
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
+
+      // FIXME: just bypass
+      // continue;
 
       //std::unique_ptr<LoopDependenceInfo> ldi =
       //    std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
@@ -255,6 +405,11 @@ unsigned Selector::computeWeights(
           pipelineOption_constrainSubLoops(),
           pipelineOption_abortIfNoParallelStage());
 
+      // the pdg is updated over here
+      CoverageStats stats(A, *pdg, perf, &lamp);
+
+      REPORT_DUMP(
+          errs() << stats.dumpPercentage());
       /*
        *bool applicable = orch->findBestStrategyGivenBestPDG(A,
        *    *pdg, *perf, ctrlspec, mloops,
@@ -321,6 +476,7 @@ unsigned Selector::computeWeights(
           edges.erase(Edge(v, i));
         }
       }
+      delete pdg;
     }
   }
 

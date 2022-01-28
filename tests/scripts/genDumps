@@ -55,10 +55,10 @@ AA_PASSES="-basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa \
     -std-in-out-err-aa -array-of-structures-aa \
     -unique-access-paths-aa -llvm-aa-results \
     -basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa \
+    -kill-flow-aa \
+    -callsite-depth-combinator-aa \
     -objc-arc-aa -scoped-noalias -veto -nander"
     #-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa \
-    # -kill-flow-aa \
-    # -callsite-depth-combinator-aa \
 
 DEBUG_PASSES=""
 #DEBUG_PASSES="-debug-pass=Arguments"
@@ -72,6 +72,6 @@ BENCHMARK="benchmark.bc"
 ENABLES=""
 #ENABLES="$ENABLE_EDGE $ENABLE_LAMP $ENABLE_SPECPRIV"
 
-CMD="opt $SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS $AA_PASSES $ENABLES $DEBUG_PASSES $BENCHMARK -pdgbuilder ${@:2} -remed-selector  -disable-output -ignore-cost" 
+CMD="opt $SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
 echo $CMD
 $CMD > $1 2>&1

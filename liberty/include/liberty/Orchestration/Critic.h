@@ -1,15 +1,15 @@
 #ifndef LLVM_LIBERTY_CRITIC_H
 #define LLVM_LIBERTY_CRITIC_H
 
-#include "PDG.hpp"
-#include "SCC.hpp"
-#include "SCCDAG.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/SCC.hpp"
+#include "noelle/core/SCCDAG.hpp"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
 #include "scaf/Utilities/PrintDebugInfo.h"
 
 #include "Assumptions.h"
-#include "LoopDependenceInfo.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
 
 #include <memory>
 #include <set>

@@ -11,6 +11,14 @@ ifndef LLVM_INSTALL_RELEASE
 $(error LLVM_INSTALL_RELEASE is not set)
 endif
 
+ifndef NOELLE_INSTALL_DEBUG
+$(error NOELLE_INSTALL_DEBUG is not set)
+endif
+
+ifndef NOELLE_INSTALL_RELEASE
+$(error NOELLE_INSTALL_RELEASE is not set)
+endif
+
 all: scaf-objects-debug scaf-objects-release
 .PHONY: scaf-objects-debug scaf-objects-release clean
 
@@ -25,17 +33,19 @@ clean:
 
 scaf-objects-debug: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 scaf-objects-debug: export SCAF_INSTALL_DEBUG=${BASE_DIR}/scaf-install-debug
+scaf-objects-debug: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_DEBUG}
 scaf-objects-debug: export LLVM_CMAKE_DIR=${LLVM_INSTALL_DEBUG}/lib/cmake/llvm
 scaf-objects-debug: scaf
-	make -C scaf uninstall
-	make -C scaf clean
+	#make -C scaf uninstall
+	#make -C scaf clean
 	make -C scaf scaf-debug
 
 scaf-objects-release: export PATH=${LLVM_INSTALL_RELEASE}/bin/:${ORIGINAL_PATH}
 scaf-objects-release: export SCAF_INSTALL_RELEASE=${BASE_DIR}/scaf-install-release
+scaf-objects-release: export NOELLE_INSTALL_DIR=${NOELLE_INSTALL_RELEASE}
 scaf-objects-release: export LLVM_CMAKE_DIR=${LLVM_INSTALL_RELEASE}/lib/cmake/llvm
 scaf-objects-release: scaf
-	make -C scaf uninstall
-	make -C scaf clean
+	#make -C scaf uninstall
+	#make -C scaf clean
 	make -C scaf scaf-release
 

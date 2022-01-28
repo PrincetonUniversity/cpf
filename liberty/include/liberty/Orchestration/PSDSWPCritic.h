@@ -15,11 +15,11 @@
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
 
-#include "DGGraphTraits.hpp"
-#include "LoopDependenceInfo.hpp"
-#include "PDG.hpp"
-#include "SCC.hpp"
-#include "SCCDAG.hpp"
+#include "noelle/core/DGGraphTraits.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/SCC.hpp"
+#include "noelle/core/SCCDAG.hpp"
 
 #include <memory>
 #include <queue>

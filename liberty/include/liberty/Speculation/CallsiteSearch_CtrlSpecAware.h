@@ -23,6 +23,7 @@
 #define LLVM_LIBERTY_CALLSITE_SEARCH_CTRL_SPEC_H
 
 #include "llvm/IR/Dominators.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/DataLayout.h"
 

@@ -1,9 +1,9 @@
 #ifndef LLVM_LIBERTY_ORCHESTRATOR_H
 #define LLVM_LIBERTY_ORCHESTRATOR_H
 
-#include "LoopDependenceInfo.hpp"
-#include "PDG.hpp"
-#include "SCCDAG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/SCCDAG.hpp"
 #include "liberty/Orchestration/PredictionSpeculation.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/PtrResidueManager.h"
@@ -63,9 +63,9 @@ public:
       // ctrl spec
       if (EnableEdgeProf) {
         ctrlspec = proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
-        callsiteA = &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
-        killflowA = &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
-        killflowA->setLoopOfInterest(nullptr, nullptr);
+        //callsiteA = &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+        //killflowA = &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
+        //killflowA->setLoopOfInterest(nullptr, nullptr);
       }
       else {
         ctrlspec = nullptr;

@@ -208,15 +208,19 @@ class ReportVisualizer:
                 else:
                     genVisForOneExp(results['Experiment-no-spec'])
 
-                if results['Experiment-cheap-spec'] is None:
+                if results['Experiment-no-specpriv'] is None:
                     result_vis.extend(["-"] * 4)
                 else:
-                    genVisForOneExp(results['Experiment-cheap-spec'])
+                    genVisForOneExp(results['Experiment-no-specpriv'])
+                # if results['Experiment-cheap-spec'] is None:
+                    # result_vis.extend(["-"] * 4)
+                # else:
+                    # genVisForOneExp(results['Experiment-cheap-spec'])
 
-                if results['Experiment-all-spec'] is None:
-                    result_vis.extend(["-"] * 4)
-                else:
-                    genVisForOneExp(results['Experiment-all-spec'])
+                # if results['Experiment-all-spec'] is None:
+                    # result_vis.extend(["-"] * 4)
+                # else:
+                    # genVisForOneExp(results['Experiment-all-spec'])
 
             if self.has_real_speedup:
                 if results['RealSpeedup'] is None:

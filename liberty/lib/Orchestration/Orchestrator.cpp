@@ -494,6 +494,9 @@ bool Orchestrator::findBestStrategy(
 
     unsigned long adjRemedCosts =
         (long)Critic::FixedPoint * selectedRemediesCost;
+    if (IgnoreCost)
+      adjRemedCosts = 0;
+
     unsigned long savings = expSpeedup - adjRemedCosts;
 
     REPORT_DUMP(errs() << "Expected Savings from critic "

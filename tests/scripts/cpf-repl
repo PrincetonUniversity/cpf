@@ -1,0 +1,53 @@
+#!/bin/bash
+
+ECPROF=
+if [ -a ./llvmprof.out ]
+then
+  ECPROF="-pgo-instr-use -pgo-test-profile-file=./llvmprof.out"
+  echo Edge profile information available...
+fi
+
+SPPROF=
+if [ -a ./result.specpriv.profile.txt ]
+then
+  SPPROF="-read-specpriv-profile"
+  echo SpecPriv profile information available...
+fi
+
+LPROF=
+if [ -a ./result.lamp.profile ]
+then
+  echo LAMP profile available
+  LPROF=" -lamp-inst-cnt -lamp-map-loop -lamp-load-profile "
+else
+	echo LAMP profile not available
+	LPROF=" -lamp-ignore "
+fi
+
+LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
+      -load $LIBERTY_LIBS_DIR/libLoopProf.so
+      -load $LIBERTY_LIBS_DIR/libMetadata.so
+      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+      -load $LIBERTY_LIBS_DIR/libLAMP.so
+      -load $LIBERTY_LIBS_DIR/libRedux.so
+      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
+      -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
+      -load $LIBERTY_LIBS_DIR/libStrategy.so
+      -load $LIBERTY_LIBS_DIR/libOrchestration.so
+      -load $LIBERTY_LIBS_DIR/libSpeculation.so
+      -load $LIBERTY_LIBS_DIR/libCodeGen.so
+      -load $LIBERTY_LIBS_DIR/libRepl.so"
+
+AA=`aa`
+#EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias"
+EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
+
+OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF
+  -opt-repl $DBG"
+
+OUT="-disable-output"
+CMD="noelle-load $LIBS $OPTS $1 $OUT"
+
+echo $CMD
+$CMD

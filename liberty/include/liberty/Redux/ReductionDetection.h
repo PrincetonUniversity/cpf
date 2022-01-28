@@ -6,14 +6,14 @@
 
 #include "liberty/Redux/Reduction.h"
 
-#include "PDG.hpp"
+#include "noelle/core/PDG.hpp"
 
 #include<unordered_set>
 
 namespace liberty
 {
 using namespace llvm;
-using namespace noelle;
+using namespace llvm::noelle;
 using namespace SpecPriv;
 
 struct MinMaxReductionInfo {

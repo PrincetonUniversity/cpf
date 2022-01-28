@@ -113,7 +113,8 @@ def parseExp(lines, bmark):
         r'Total expected speedup: ([0-9\.]+)x using ([0-9]+) workers')
     speedup_re_parsed = speedup_re.findall(lines[anchor_loop_selection])
     if not speedup_re_parsed:
-                    print("Warning: %s Unexpected dump; cannot parse total speedup" % bmark)
+        print("Warning: %s Unexpected dump; cannot parse total speedup" % bmark)
+        return None
     speedup, worker_cnt = speedup_re_parsed[0]
     speedup = float(speedup)
     worker_cnt = int(worker_cnt)

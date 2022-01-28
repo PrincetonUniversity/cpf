@@ -7,10 +7,13 @@ SHELL := /bin/bash
 
 ## Start of Configuration ##
 
+## If set to 1, all compiled version (LLVM, NOELLE, CPF) will only work with the release version
+only-compile-release-versions?=0
+
 ########
 # LLVM #
 ########
-compile-llvm=1
+compile-llvm?=1
 
 ## If compile-llvm=0, provide paths to both the debug and the release versions
 #llvm-install-dir-debug=/scratch/install/llvm-install-debug
@@ -19,7 +22,7 @@ compile-llvm=1
 ##########
 # NOELLE #
 ##########
-compile-noelle=1
+compile-noelle?=1
 
 ## If compile-noelle=0, provide paths to both the debug and the release versions
 #noelle-install-dir-debug=/scratch/install/noelle-install-debug
@@ -28,14 +31,14 @@ compile-noelle=1
 ## If compile-noelle=1, use this url to clone and build NOELLE from scratch
 ## Don't use quotes
 noelle-remote-url=https://github.com/scampanoni/noelle.git
-noelle-branch=v9.0.0
+noelle-branch?=v9.0.0
 
 ##########
 # SCAF #
 ##########
 # Use noelle scaf override compile-scaf to be 0
-use-noelle-scaf=1
-compile-scaf=0
+use-noelle-scaf?=1
+compile-scaf?=0
 
 ## If compile-scaf=0 and use-noelle-scaf=0  provide paths to both the debug and the release versions
 #scaf-install-dir-debug=/scratch/install/scaf-install-debug
@@ -44,7 +47,7 @@ compile-scaf=0
 ## If compile-scaf=1, use this url to clone and build SCAF from scratch
 ## Don't use quotes
 scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
-scaf-branch=v9.0.0
+scaf-branch?=v9.1.5
 
 #######
 # CPF #
@@ -59,8 +62,8 @@ compile-cpf=1
 ##############
 
 # Make sure you have write privilege to both directories here
-install-prefix=~/cpf-workspace
-cpf-root-path=/your/local/cpf/root
+install-prefix?=~/cpf-workspace
+cpf-root-path?=/your/local/cpf/root
 
 # verbose output
 # 1: print all internal cmake/make message to terminal
@@ -110,6 +113,18 @@ ifeq (${compile-cpf}, 1)
 	cpf-install-dir-release=${install-prefix}/cpf-install-release
 endif
 
+ifeq (${only-compile-release-versions}, 1)
+	llvm-target=llvm-objects-release
+	noelle-target=noelle-objects-release
+	scaf-target=scaf-objects-release
+	cpf-target=cpf-objects-release
+else
+	llvm-target=all
+	noelle-target=all
+	scaf-target=all
+	cpf-target=all
+endif
+
 .DEFAULT_GOAL:=default
 
 default:
@@ -131,9 +146,9 @@ ifeq (${compile-llvm}, 1)
 	- cp Makefile.llvm ${install-prefix}
 ifeq (${verbose}, 1)
 	set -o pipefail; \
-	unbuffer $(MAKE) -C ${install-prefix} -f Makefile.llvm all 2>&1 | tee ${install-prefix}/llvm.log
+	unbuffer $(MAKE) -C ${install-prefix} -f Makefile.llvm ${llvm-target} 2>&1 | tee ${install-prefix}/llvm.log
 else
-	$(MAKE) -C ${install-prefix} -f Makefile.llvm all > ${install-prefix}/llvm.log 2>&1
+	$(MAKE) -C ${install-prefix} -f Makefile.llvm ${llvm-target} > ${install-prefix}/llvm.log 2>&1
 endif
 else
 
@@ -167,15 +182,19 @@ ifeq (${verbose}, 1)
 	set -o pipefail; \
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug} \
+	NOELLE_INSTALL_RELEASE=${noelle-install-dir-release} \
 	SCAF_REMOTE=${scaf-remote-url} \
 	SCAF_BRANCH=${scaf-branch} \
-	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.scaf all 2>&1 | tee ${install-prefix}/scaf.log
+	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.scaf ${scaf-target} 2>&1 | tee ${install-prefix}/scaf.log
 else
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
+	NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug} \
+	NOELLE_INSTALL_RELEASE=${noelle-install-dir-release} \
 	SCAF_REMOTE=${scaf-remote-url} \
 	SCAF_BRANCH=${scaf-branch} \
-	${MAKE} -C ${install-prefix} -f Makefile.scaf all > ${install-prefix}/scaf.log 2>&1
+	${MAKE} -C ${install-prefix} -f Makefile.scaf ${scaf-target} > ${install-prefix}/scaf.log 2>&1
 endif
 
 else
@@ -210,13 +229,13 @@ ifeq (${verbose}, 1)
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
 	NOELLE_REMOTE=${noelle-remote-url} \
 	NOELLE_BRANCH=${noelle-branch} \
-	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.noelle all 2>&1 | tee ${install-prefix}/noelle.log
+	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.noelle ${noelle-target} 2>&1 | tee ${install-prefix}/noelle.log
 else
 	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
 	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
 	NOELLE_REMOTE=${noelle-remote-url} \
 	NOELLE_BRANCH=${noelle-branch} \
-	${MAKE} -C ${install-prefix} -f Makefile.noelle all > ${install-prefix}/noelle.log 2>&1
+	${MAKE} -C ${install-prefix} -f Makefile.noelle ${noelle-target} > ${install-prefix}/noelle.log 2>&1
 endif
 
 else
@@ -252,9 +271,9 @@ ifeq (${compile-cpf}, 1)
 	- cp Makefile.cpf ${install-prefix}
 ifeq (${verbose}, 1)
 	set -o pipefail; \
-    unbuffer ${MAKE} -C ${install-prefix} -f Makefile.cpf all 2>&1 | tee ${install-prefix}/cpf.log
+    unbuffer ${MAKE} -C ${install-prefix} -f Makefile.cpf ${cpf-target} 2>&1 | tee ${install-prefix}/cpf.log
 else
-	${MAKE} -C ${install-prefix} -f Makefile.cpf all > ${install-prefix}/cpf.log 2>&1
+	${MAKE} -C ${install-prefix} -f Makefile.cpf ${cpf-target} > ${install-prefix}/cpf.log 2>&1
 endif
 else
 ifndef cpf-install-dir-debug
