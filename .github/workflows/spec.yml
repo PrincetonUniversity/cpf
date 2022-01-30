@@ -11,8 +11,8 @@ on:
                 description: 'Benchmark suite option to run'
                 required: true
                 default: 'All'
-    schedule:
-        - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
+                # schedule:
+                # - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
 
 #   pull_request:
 #     branches: [ master ]
@@ -29,6 +29,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    # TODO: Check out no-scaf
     - uses: actions/checkout@v2
 
     # Runs a single command using the runners shell
@@ -36,18 +37,19 @@ jobs:
       run: echo "Start building!"
 
     # Runs a set of commands using the runners shell
+    # TODO: Allow pass branch of cpf to compile
     #- name: Build CPF
-    #  run: make -C bootstrap -f Makefile.github all
+      #  run: make -C bootstrap -f Makefile.github all
 
     - name: Run tests
       run: |
           source /scratch/yc0769/venvPy3/bin/activate
           source /u/NAS_SCRATCH/yc0769/cpf/install/cpf-env-release.rc
           python3 /u/NAS_SCRATCH/yc0769/cpf/tests/scripts/GetResults.py -p /u/NAS_SCRATCH/yc0769/spec/spec2017 -b /u/NAS_SCRATCH/yc0769/cpf/tests/scripts/test_spec2017.json -r 1 -n 7 -s ${{ env.REG_SUITE }} -f
-    - name: Archive partifacts
+    - name: Archive artifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
       with:
         name: results
         path: |
-          tests/spec2017/results
+          /u/NAS_SCRATCH/yc0769/spec/spec2017/results
