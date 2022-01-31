@@ -310,16 +310,12 @@ void SLAMP::replaceExternalFunctionCalls(Module& m)
 
     if ( externs.find(name) == externs.end() )
     {
+      errs() << name << " wrapper not implemented \n";
+      assert(false && "Wrapper for external function not implemented.\n");
       LLVM_DEBUG( errs() << "WARNING: Wrapper for external function " << name << " not implemented.\n" );
     }
     else
     {
-      // register wrapper function
-      if ( name == "_Znwm" || name == "_Znam" )
-        name = "malloc";
-      else if ( name == "_ZdlPv" || name == "_ZdaPv" )
-        name = "free";
-
       string    wrapper_name = "SLAMP_" + name;
       /* Function* wrapper = cast<Function>( m.getOrInsertFunction(wrapper_name, func->getFunctionType() ) ); */
       FunctionCallee wrapper = m.getOrInsertFunction(wrapper_name, func->getFunctionType() );
@@ -330,6 +326,7 @@ void SLAMP::replaceExternalFunctionCalls(Module& m)
   }
 }
 
+/// Create a function `__SLAMP_ctor` that calls `SLAMP_init` and `SLAMP_init_global_vars`
 Function* SLAMP::instrumentConstructor(Module& m)
 {
   //StaticID& sid = getAnalysis<StaticID>();
@@ -374,6 +371,7 @@ void SLAMP::instrumentDestructor(Module& m)
   CallInst::Create(fini, args, "", entry->getTerminator());
 }
 
+/// Go through all global variables and call `SLAMP_init_global_vars`
 void SLAMP::instrumentGlobalVars(Module& m, Function* ctor)
 {
   //DataLayout& td = getAnalysis<DataLayout>();
@@ -513,6 +511,7 @@ void SLAMP::instrumentMainFunction(Module& m)
     // read rsp and push it into main_args
 
     FunctionType* fty = FunctionType::get(I64, false);
+    // get the static pointer %rsp
     InlineAsm*    get_rsp = InlineAsm::get(fty, "mov %rsp, $0;", "=r,~{dirflag},~{fpsr},~{flags}", false);
 
     CallInst* rsp = CallInst::Create(get_rsp, "");

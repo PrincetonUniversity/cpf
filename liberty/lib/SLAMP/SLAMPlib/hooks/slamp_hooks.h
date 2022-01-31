@@ -75,10 +75,15 @@ void SLAMP_storen_ext(const uint64_t addr, const uint64_t bare_inst, size_t n);
 void* SLAMP_malloc(size_t size);
 void* SLAMP_calloc(size_t nelem, size_t elsize);
 void* SLAMP_realloc(void* ptr, size_t size);
+void* SLAMP__Znam(size_t size);
+void* SLAMP__Znwm(size_t size);
+
 char* SLAMP_strdup(const char *s1);
 char* SLAMP___strdup(const char *s1);
 void  SLAMP_free(void* ptr);
 void  SLAMP_cfree(void* ptr);
+void  SLAMP__ZdlPv(void* ptr);
+void  SLAMP__ZdaPv(void* ptr);
 int   SLAMP_brk(void *end_data_segment);
 void* SLAMP_sbrk(intptr_t increment);
 

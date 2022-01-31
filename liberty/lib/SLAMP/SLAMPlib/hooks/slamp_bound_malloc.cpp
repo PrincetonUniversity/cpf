@@ -31,6 +31,7 @@ static size_t pagemask;
 
 /* make bound_malloc to return the address from the next page */
 
+// preallocate a huge heap
 void init_bound_malloc(void* heap_bound)
 {
   unit_mask = ~(unit_sz-1);

@@ -1,7 +1,7 @@
 // NOTE: We don't care about dependence distance
 
-#include <assert.h>
-#include <errno.h>
+#include <cassert>
+#include <cerrno>
 #include <tr1/unordered_map>
 
 #include "slamp_timestamp.h"
@@ -21,7 +21,8 @@
 
 #define HEAP_BOUND_LOWER 0x010000000000L
 #define HEAP_BOUND_HIGHER (0xFFFFFFFFFFFFL-BOUND_LOWER+1)
-#define STACK_SIZE 0x100000
+// 8MB max stack size for a typical host machine `ulimit -s`
+#define SIZE_8M  0x800000
 
 // debugging tools
 
@@ -49,7 +50,7 @@ uint64_t __slamp_invocation = 0;
 std::map<void*, size_t>* alloc_in_the_loop;
 
 static uint32_t          context = 0;
-static slamp::MemoryMap* smmap = NULL;
+static slamp::MemoryMap* smmap = nullptr;
 static const char* percent_c = "%c";
 static const char* percent_s = "%s";
 
@@ -142,7 +143,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   replacement.sa_flags = SA_SIGINFO;
   sigemptyset(&replacement.sa_mask );
   replacement.sa_sigaction = &__slamp_sigsegv_handler;
-  if ( sigaction(SIGSEGV, &replacement, 0) < 0 ) {
+  if ( sigaction(SIGSEGV, &replacement, nullptr) < 0 ) {
     assert(false && "SIGSEGV handler install failed");
   }
 }
@@ -163,6 +164,7 @@ void SLAMP_allocated(uint64_t addr)
   std::cout << std::hex << " allocated? " << smmap->is_allocated((void*)addr) << std::dec << std::endl;
 }
 
+/// Allocate the shadow memory on the "heap" for global variables
 void SLAMP_init_global_vars(uint64_t addr, size_t size)
 {
   smmap->allocate((void*)addr, size);
@@ -176,7 +178,8 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env, uint64_t begin)
   std::cout << "[main_entry] begin: " << std::hex << begin << std::dec << std::endl;
 #endif
 
-  smmap->init_stack(begin, STACK_SIZE);
+  // preallocate the stack
+  smmap->init_stack(SIZE_8M);
 
   if (argc != 0)
   {
@@ -195,7 +198,7 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env, uint64_t begin)
     char** p = env;
 
     unsigned env_len = 0;
-    while (*p != NULL)
+    while (*p != nullptr)
     {
       char* entry = *p;
       size_t len = strlen(entry);
@@ -792,6 +795,15 @@ void* SLAMP_realloc(void* ptr, size_t size)
   return result;
 }
 
+// TODO: describe the difference (the constructor and the exception handling)
+void* SLAMP__Znam(size_t size) {
+  return SLAMP_malloc(size);
+}
+
+void* SLAMP__Znwm(size_t size) {
+  return SLAMP_malloc(size);
+}
+
 char* SLAMP_strdup(const char *s1)
 {
   size_t slen = strlen(s1) + 1;
@@ -815,6 +827,15 @@ void  SLAMP_cfree(void* ptr)
 void  SLAMP_free(void* ptr)
 {
   slamp::bound_free(ptr);
+}
+
+// TODO: describe the difference (the constructor and the exception handling)
+void SLAMP__ZdlPv(void *ptr) {
+  SLAMP_free(ptr);
+}
+
+void SLAMP__ZdaPv(void *ptr) {
+  SLAMP_free(ptr);
 }
 
 int   SLAMP_brk(void *end_data_segment)

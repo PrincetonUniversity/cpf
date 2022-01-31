@@ -157,7 +157,8 @@ struct Value
   LinearPredictor* lp;
   char             pad[64-sizeof(uint64_t)-sizeof(void*)-sizeof(void*)];
 
-  Value() : count(0), c(NULL), lp(NULL) { assert(false); }
+  //Value() : count(0), c(NULL), lp(NULL) { assert(false); }
+  Value() : count(0), c(NULL), lp(NULL) { }
   Value(Constant* c, LinearPredictor* lp) : count(0), c(c), lp(lp) {}
 };
 
