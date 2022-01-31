@@ -50,4 +50,4 @@ jobs:
       with:
         name: results
         path: |
-          tests/spec2017/results
+          /u/NAS_SCRATCH/yc0769/spec/spec2017/results
