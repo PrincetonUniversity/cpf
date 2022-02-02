@@ -51,23 +51,13 @@ static size_t split(const string s, vector<string> &tokens, char delim) {
   return tokens.size();
 }
 
-// moved to header file
-/*
-SLAMPLoadProfile::SLAMPLoadProfile() : ModulePass(ID)
-{
-}
-
-SLAMPLoadProfile::~SLAMPLoadProfile()
-{
-}
-*/
-
 void SLAMPLoadProfile::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired<StaticID>();
   au.addRequired<ModuleLoops>();
   au.setPreservesAll();
 }
 
+/// check if is handled by load1-8 rather than loadn
 static bool isPrimitiveSize(Type *ty, const DataLayout &td) {
   const unsigned sz = td.getTypeStoreSize(ty);
   if (sz == 1 || sz == 2 || sz == 4 || sz == 8)
@@ -75,9 +65,7 @@ static bool isPrimitiveSize(Type *ty, const DataLayout &td) {
   return false;
 }
 
-bool SLAMPLoadProfile::isLoopInvariantPredictionApplicable(LoadInst *li,
-                                                           Loop *loop) {
-  // DataLayout &td = getAnalysis< DataLayout >();
+bool SLAMPLoadProfile::isLoopInvariantPredictionApplicable(LoadInst *li) {
   const DataLayout &td = li->getModule()->getDataLayout();
 
   if (!isPrimitiveSize(li->getType(), td))
@@ -138,7 +126,9 @@ bool SLAMPLoadProfile::runOnModule(Module &m) {
     auto dst = string_to<uint32_t>(tokens[2]);
     auto baredst = string_to<uint32_t>(tokens[3]);
     auto iscross = string_to<uint32_t>(tokens[4]);
+    // TODO: can use count to calculate frequency
     auto count = string_to<uint64_t>(tokens[5]);
+
     // uint32_t isconstant = string_to<uint32_t>(tokens[6]);
     // uint32_t size = string_to<uint32_t>(tokens[7]);
     // uint64_t value = string_to<uint64_t>(tokens[8]);
@@ -151,6 +141,7 @@ bool SLAMPLoadProfile::runOnModule(Module &m) {
 
     assert(src && dst);
 
+    // get loop header
     BasicBlock *header = sid->getBBWithID(loopid);
     assert(header);
 
@@ -166,52 +157,50 @@ bool SLAMPLoadProfile::runOnModule(Module &m) {
     DepEdge edge(src, dst, iscross);
 
     // count
-
     if (edges[loopid].count(edge))
       edges[loopid][edge] += count;
     else
       edges[loopid][edge] = count;
 
-    if (baredst) {
-      DepEdge2PredMap &edge2predmap = predictions[loopid];
-
-      auto *li = dyn_cast<LoadInst>(sid->getInstructionWithID(baredst));
-      assert(li);
-
-      if (!edge2predmap.count(edge)) {
-        PredMap predmap;
-        edge2predmap[edge] = predmap;
-      }
-
-      PredMap &predmap = edge2predmap[edge];
-      assert(!predmap.count(li));
-
-      /*
-       *if (isconstant && isLoopInvariantPredictionApplicable(li, loop))
-       *{
-       *  predmap.insert(make_pair(li, Prediction(LI_PRED)));
-       *}
-       *else if (isvalidlp && isLinearPredictionApplicable(li))
-       *{
-       *  predmap.insert(make_pair(li, Prediction(LINEAR_PRED, a, b)));
-       *}
-       *else if (isvalidlp_d && isLinearPredictionDoubleApplicable(li))
-       *{
-       *  I64OrDoubleValue va, vb;
-       *  va.dval = da;
-       *  vb.dval = db;
-       *  predmap.insert(make_pair(li, Prediction(LINEAR_PRED_DOUBLE, va.ival,
-       *vb.ival)));
-       *}
-       *else
-       *{
-       *  predmap.insert(make_pair(li, Prediction(INVALID_PRED)));
-       *}
-       */
-    }
+    /*
+     *     if (baredst) {
+     *       DepEdge2PredMap &edge2predmap = predictions[loopid];
+     *
+     *       auto *li = dyn_cast<LoadInst>(sid->getInstructionWithID(baredst));
+     *       assert(li);
+     *
+     *       if (!edge2predmap.count(edge)) {
+     *         PredMap predmap;
+     *         edge2predmap[edge] = predmap;
+     *       }
+     *
+     *       PredMap &predmap = edge2predmap[edge];
+     *       assert(!predmap.count(li));
+     *
+     *       if (isconstant && isLoopInvariantPredictionApplicable(li))
+     *       {
+     *        predmap.insert(make_pair(li, Prediction(LI_PRED)));
+     *       }
+     *       else if (isvalidlp && isLinearPredictionApplicable(li))
+     *       {
+     *        predmap.insert(make_pair(li, Prediction(LINEAR_PRED, a, b)));
+     *       }
+     *       else if (isvalidlp_d && isLinearPredictionDoubleApplicable(li))
+     *       {
+     *        I64OrDoubleValue va, vb;
+     *        va.dval = da;
+     *        vb.dval = db;
+     *        predmap.insert(make_pair(li, Prediction(LINEAR_PRED_DOUBLE,
+     * va.ival, vb.ival)));
+     *       }
+     *       else
+     *       {
+     *        predmap.insert(make_pair(li, Prediction(INVALID_PRED)));
+     *       }
+     *     }
+     */
 
     // debug
-
     if (DebugFlag && isCurrentDebugType(DEBUG_TYPE)) {
       Instruction *srcinst = sid->getInstructionWithID(src);
       Instruction *dstinst = sid->getInstructionWithID(dst);
@@ -226,45 +215,42 @@ bool SLAMPLoadProfile::runOnModule(Module &m) {
     }
   }
 
-  return true;
+  return false;
 }
 
 bool SLAMPLoadProfile::isTargetLoop(const Loop *loop) {
   return ((this->edges).count(sid->getID(loop->getHeader())));
 }
 
-uint64_t SLAMPLoadProfile::numObsInterIterDep(BasicBlock *header,
-                                              const Instruction *dst,
-                                              const Instruction *src) {
+uint64_t SLAMPLoadProfile::numObsDep(BasicBlock *header, const Instruction *dst,
+                                     const Instruction *src, bool crossIter) {
   uint32_t loopid = sid->getID(header);
   uint32_t srcid = sid->getID(src);
   uint32_t dstid = sid->getID(dst);
 
-  DepEdge edge(srcid, dstid, 1);
-  // ZY: count == 0 stands for there is one dep
+  DepEdge edge(srcid, dstid, crossIter);
   if ((this->edges)[loopid].count(edge))
-    return (this->edges)[loopid][edge] + 1;
+    return (this->edges)[loopid][edge];
   return 0;
+}
+
+uint64_t SLAMPLoadProfile::numObsInterIterDep(BasicBlock *header,
+                                              const Instruction *dst,
+                                              const Instruction *src) {
+  return numObsDep(header, dst, src, true);
 }
 
 uint64_t SLAMPLoadProfile::numObsIntraIterDep(BasicBlock *header,
                                               const Instruction *dst,
                                               const Instruction *src) {
-  uint32_t loopid = sid->getID(header);
-  uint32_t srcid = sid->getID(src);
-  uint32_t dstid = sid->getID(dst);
-
-  DepEdge edge(srcid, dstid, 0);
-
-  // ZY: count == 0 stands for there is one dep
-  if ((this->edges)[loopid].count(edge))
-    return (this->edges)[loopid][edge] + 1;
-  return 0;
+  return numObsDep(header, dst, src, false);
 }
 
+/// FIXME: current disabled
 bool SLAMPLoadProfile::isPredictableInterIterDep(BasicBlock *header,
                                                  const Instruction *dst,
                                                  const Instruction *src) {
+  assert(false && "Currently disabled\n");
   uint32_t loopid = sid->getID(header);
   uint32_t srcid = sid->getID(src);
   uint32_t dstid = sid->getID(dst);
@@ -284,9 +270,11 @@ bool SLAMPLoadProfile::isPredictableInterIterDep(BasicBlock *header,
   return true;
 }
 
+/// FIXME: current disabled
 bool SLAMPLoadProfile::isPredictableIntraIterDep(BasicBlock *header,
                                                  const Instruction *dst,
                                                  const Instruction *src) {
+  assert(false && "Currently disabled\n");
   uint32_t loopid = sid->getID(header);
   uint32_t srcid = sid->getID(src);
   uint32_t dstid = sid->getID(dst);
@@ -312,6 +300,7 @@ bool SLAMPLoadProfile::isPredictableIntraIterDep(BasicBlock *header,
 PredMap SLAMPLoadProfile::getPredictions(BasicBlock *header,
                                          const Instruction *dst,
                                          const Instruction *src, bool isLC) {
+  assert(false && "Currently disabled\n");
   uint32_t loopid = sid->getID(header);
   uint32_t srcid = sid->getID(src);
   uint32_t dstid = sid->getID(dst);
