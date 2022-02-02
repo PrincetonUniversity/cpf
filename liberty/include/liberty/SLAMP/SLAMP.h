@@ -15,9 +15,7 @@
 
 #include <set>
 
-namespace liberty
-{
-namespace slamp
+namespace liberty::slamp
 {
 
 using namespace std;
@@ -75,7 +73,6 @@ private:
   Loop*     target_loop;
 };
 
-} // namespace slamp
-} // namespace liberty
+} // namespace liberty::slamp
 
 #endif

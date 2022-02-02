@@ -37,7 +37,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id);
 void SLAMP_fini(const char* filename);
 void SLAMP_allocated(uint64_t addr);
 void SLAMP_init_global_vars(uint64_t addr, size_t size);
-void SLAMP_main_entry(uint32_t argc, char** argv, char** env, uint64_t begin);
+void SLAMP_main_entry(uint32_t argc, char** argv, char** env);
 
 void SLAMP_loop_invocation();
 void SLAMP_loop_iteration();

@@ -170,7 +170,7 @@ void SLAMP_init_global_vars(uint64_t addr, size_t size)
   smmap->allocate((void*)addr, size);
 }
 
-void SLAMP_main_entry(uint32_t argc, char** argv, char** env, uint64_t begin)
+void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
 {
 #if DEBUG
   __slamp_begin_trace = 1;
