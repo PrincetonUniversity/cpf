@@ -1,9 +1,9 @@
 #ifndef SLAMPLIB_HOOKS_SLAMP_SHADOW_MEM_H
 #define SLAMPLIB_HOOKS_SLAMP_SHADOW_MEM_H
 
-#include <cstdint>
-
 #include <cassert>
+#include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -11,14 +11,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <csignal>
-
 #include <iostream>
 #include <set>
-#include <tr1/unordered_map>
+#include <unordered_map>
 
 // higher half of canonical region cannot be used
 
+/// left shift by `shift`, mask 47 LSB, toggle #45 bit?
 #define MASK1 0x00007fffffffffffL
 #define MASK2 0x0000200000000000L
 #define GET_SHADOW(addr, shift)                                                \
@@ -32,19 +31,20 @@ public:
     // ratio expected to be a power of 2
     assert((r & (r - 1)) == 0);
 
+    // log(r)
     unsigned n = r;
     while ((n & 1) == 0) {
       this->ratio_shift += 1;
       n = n >> 1;
     }
 
+    // get the page size of the host system
     pagesize = getpagesize();
     pagemask = ~(pagesize - 1);
   }
 
   ~MemoryMap() {
     // freeing all remaining shadow addresses
-
     for (auto page : pages) {
       uint64_t s = GET_SHADOW(page, ratio_shift);
       munmap(reinterpret_cast<void *>(s), pagesize * ratio);
@@ -67,7 +67,7 @@ public:
       return false;
   }
 
-  // void* allocate(void* addr, size_t size)
+  /// allocate shadow page if not exist
   void *allocate(void *addr, size_t size) {
     auto a = reinterpret_cast<uint64_t>(addr);
     uint64_t pagebegin = a & pagemask;
@@ -83,18 +83,20 @@ public:
         continue;
 
       uint64_t s = GET_SHADOW(page, ratio_shift);
-      // create a page for the shadow memory
+      // create a shadow page for the page
       void *p = mmap(reinterpret_cast<void *>(s), pagesize * ratio,
                      PROT_WRITE | PROT_READ,
                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
       if (p == MAP_FAILED) {
         int err = errno;
-        raise(SIGINT);
         printf("mmap failed: %lx errno: %d\n", s, err);
+        raise(SIGINT);
+
         success = false;
         break;
-      } else
+      } else {
         shadow_pages.insert(p);
+      }
     }
 
     if (success) {
@@ -106,12 +108,14 @@ public:
       auto *shadow_addr = (uint64_t *)GET_SHADOW(a, ratio_shift);
       return (void *)(shadow_addr);
     } else {
+      // cleanup
       for (auto shadow_page : shadow_pages)
         munmap(shadow_page, pagesize * ratio);
       return nullptr;
     }
   }
 
+  /// for realloc; the dependence carries over
   void copy(void *dst, void *src, size_t size) {
     size_t shadow_size = size * ratio;
     void *shadow_dst = (void *)GET_SHADOW(dst, ratio_shift);
@@ -160,10 +164,10 @@ public:
   }
 
 private:
-  std::set<uint64_t> pages;
-  std::tr1::unordered_map<void *, size_t> size_map;
+  std::set<uint64_t> pages; // page table
+  std::unordered_map<void *, size_t> size_map;
 
-  unsigned ratio; // (size of metadata in byte) per byte
+  unsigned ratio; // (size of metadata) / (size of real data)
   unsigned ratio_shift;
   uint64_t pagesize;
   uint64_t pagemask;

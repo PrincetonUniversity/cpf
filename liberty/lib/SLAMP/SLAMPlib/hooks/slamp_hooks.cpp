@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <cerrno>
-#include <tr1/unordered_map>
+#include <unordered_set>
 
 #include "slamp_timestamp.h"
 #include "slamp_logger.h"
@@ -54,7 +54,7 @@ static slamp::MemoryMap* smmap = nullptr;
 static const char* percent_c = "%c";
 static const char* percent_s = "%s";
 
-static uint32_t invokedepth = 0;
+static uint32_t invokedepth = 0; // recursive function
 
 
 static void dumpstack()  {
@@ -211,18 +211,20 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
   }
 }
 
-void SLAMP_loop_invocation()
-{
-  //fprintf(stderr, "SLAMP_loop_invocation, depth: %u\n", invokedepth);
+/// update the invocation count
+void SLAMP_loop_invocation() {
+  // fprintf(stderr, "SLAMP_loop_invocation, depth: %u\n", invokedepth);
   invokedepth++;
 
-  if (invokedepth > 1) return;
+  if (invokedepth > 1)
+    return;
 
   ++__slamp_invocation;
   ++__slamp_iteration;
 
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "[invoke] " << (__slamp_invocation) << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "[invoke] " << (__slamp_invocation) << "\n" << std::flush;
 #endif
 }
 
@@ -238,33 +240,40 @@ void SLAMP_loop_iteration()
 #endif
 }
 
-void SLAMP_loop_exit()
-{
-  //fprintf(stderr, "SLAMP_loop_exit, depth: %u\n", invokedepth);
-  if (invokedepth == 0) return;
+void SLAMP_loop_exit() {
+  // fprintf(stderr, "SLAMP_loop_exit, depth: %u\n", invokedepth);
+  if (invokedepth == 0)
+    return;
 
   invokedepth--;
 }
 
-void SLAMP_push(const uint32_t instr)
-{
-  //fprintf(stderr, "SLAMP_push, depth: %u\n", invokedepth);
-  if (invokedepth > 1) return;
+/// set the context of the call inside a loop
+void SLAMP_push(const uint32_t instr) {
+  if (invokedepth > 1)
+    return;
 
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "  %%push%% " << instr << " iteration " << __slamp_iteration << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "  %%push%% " << instr << " iteration " << __slamp_iteration
+              << "\n"
+              << std::flush;
 #endif
 
-  assert( context == 0 );
+  assert(context == 0);
   context = instr;
 }
 
-void SLAMP_pop()
-{
-  if (invokedepth > 1) return;
+/// unset the context of the call inside a loop
+void SLAMP_pop() {
+  if (invokedepth > 1)
+    return;
 
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "  %%pop%% " << context << " iteration " << __slamp_iteration << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "  %%pop%% " << context << " iteration " << __slamp_iteration
+              << "\n"
+              << std::flush;
 #endif
 
   context = 0;
@@ -398,98 +407,123 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (ts7_cond) slamp::log(ts7, instr, s+7, bare_instr, addr+7, value, 8);
 }
 
-void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n)
-{
+void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
+                 size_t n) {
   if (invokedepth > 1)
     instr = context;
 
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    loadn " << instr << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
-  if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
+  if (__slamp_begin_trace)
+    std::cout << "    loadn " << instr << "," << bare_instr << " iteration "
+              << __slamp_iteration << " addr " << std::hex << addr << std::dec
+              << "\n"
+              << std::flush;
+  if (!smmap->is_allocated(reinterpret_cast<void *>(addr))) {
     std::cout << "Error: shadow memory not allocated" << std::flush;
     assert(false);
   }
 #endif
 
-  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
 
-  std::tr1::unordered_map<TS, bool> m;
+  std::unordered_set<TS> m;
 
-  for (unsigned i = 0 ; i < n ; i++)
-  {
+  for (unsigned i = 0; i < n; i++) {
     TS ts = s[i];
 
-    if (ts && !m[ts]) slamp::log(ts, instr, s+i, 0, addr+i, 0, 0);
-
-    m[ts] = true;
+    if (m.count(ts) == 0) {
+      slamp::log(ts, instr, s + i, 0, addr + i, 0, 0);
+      m.insert(ts);
+    }
   }
 }
 
-void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)
-{
+void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr,
+                     uint64_t value) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    load1_ext " << context << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    load1_ext " << context << "," << bare_instr
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_load1(context, addr, bare_instr, value);
+  if (context)
+    SLAMP_load1(context, addr, bare_instr, value);
 }
 
-void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)
-{
+void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr,
+                     uint64_t value) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    load2_ext " << context << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    load2_ext " << context << "," << bare_instr
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_load2(context, addr, bare_instr, value);
+  if (context)
+    SLAMP_load2(context, addr, bare_instr, value);
 }
 
-void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)
-{
+void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr,
+                     uint64_t value) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    load4_ext " << context << "," << bare_instr << " iteration " << __slamp_iteration << " value " << value << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    load4_ext " << context << "," << bare_instr
+              << " iteration " << __slamp_iteration << " value " << value
+              << " addr " << std::hex << addr << std::dec << "\n"
+              << std::flush;
 #endif
-  if (context) SLAMP_load4(context, addr, bare_instr, value);
+  if (context)
+    SLAMP_load4(context, addr, bare_instr, value);
 }
 
-void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)
-{
+void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr,
+                     uint64_t value) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    load8_ext " << context << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    load8_ext " << context << "," << bare_instr
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
-/*
-  if (bare_instr == 238035 && context == 386707)
-    std::cout << "    load8_ext " << context << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec
-              << " value " << value
-              << "\n" << std::flush;
-*/
-  if (context) SLAMP_load8(context, addr, bare_instr, value);
+  if (context)
+    SLAMP_load8(context, addr, bare_instr, value);
 }
 
-void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n)
-{
+void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    loadn_ext " << context << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    loadn_ext " << context << "," << bare_instr
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_loadn(context, addr, bare_instr, n);
+  if (context)
+    SLAMP_loadn(context, addr, bare_instr, n);
 }
 
-void SLAMP_store1(uint32_t instr, const uint64_t addr)
-{
+void SLAMP_store1(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
 #if DEBUG
-  uint8_t* ptr = (uint8_t*)addr;
-  if (__slamp_begin_trace) std::cout << "    store1 " << instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << *ptr << std::dec << "\n" << std::flush;
-  if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
+  uint8_t *ptr = (uint8_t *)addr;
+  if (__slamp_begin_trace)
+    std::cout << "    store1 " << instr << " iteration " << __slamp_iteration
+              << " addr " << std::hex << addr << " value " << *ptr << std::dec
+              << "\n"
+              << std::flush;
+  if (!smmap->is_allocated(reinterpret_cast<void *>(addr))) {
     std::cout << "Error: shadow memory not allocated" << std::flush;
     assert(false);
   }
 #endif
 
-  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
@@ -498,22 +532,25 @@ void SLAMP_store1(uint32_t instr, const uint64_t addr)
   slamp::capturestorecallstack(s);
 }
 
-void SLAMP_store2(uint32_t instr, const uint64_t addr)
-{
+void SLAMP_store2(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
 #if DEBUG
-  uint16_t* ptr = (uint16_t*)addr;
-  if (__slamp_begin_trace) std::cout << "    store2 " << instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << *ptr << std::dec << "\n" << std::flush;
-  if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
+  uint16_t *ptr = (uint16_t *)addr;
+  if (__slamp_begin_trace)
+    std::cout << "    store2 " << instr << " iteration " << __slamp_iteration
+              << " addr " << std::hex << addr << " value " << *ptr << std::dec
+              << "\n"
+              << std::flush;
+  if (!smmap->is_allocated(reinterpret_cast<void *>(addr))) {
     std::cout << "Error: shadow memory not allocated" << std::flush;
     assert(false);
   }
 #endif
 
-  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
@@ -522,22 +559,25 @@ void SLAMP_store2(uint32_t instr, const uint64_t addr)
   slamp::capturestorecallstack(s);
 }
 
-void SLAMP_store4(uint32_t instr, const uint64_t addr)
-{
+void SLAMP_store4(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
 #if DEBUG
-  uint32_t* ptr = (uint32_t*)addr;
-  if (__slamp_begin_trace) std::cout << "    store4 " << instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << *ptr << std::dec << "\n" << std::flush;
-  if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
+  uint32_t *ptr = (uint32_t *)addr;
+  if (__slamp_begin_trace)
+    std::cout << "    store4 " << instr << " iteration " << __slamp_iteration
+              << " addr " << std::hex << addr << " value " << *ptr << std::dec
+              << "\n"
+              << std::flush;
+  if (!smmap->is_allocated(reinterpret_cast<void *>(addr))) {
     std::cout << "Error: shadow memory not allocated" << std::flush;
     assert(false);
   }
 #endif
 
-  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
@@ -546,100 +586,127 @@ void SLAMP_store4(uint32_t instr, const uint64_t addr)
   slamp::capturestorecallstack(s);
 }
 
-void SLAMP_store8(uint32_t instr, const uint64_t addr)
-{
+void SLAMP_store8(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
 #if DEBUG
-  uint64_t* ptr = (uint64_t*)addr;
-  if (__slamp_begin_trace) std::cout << "    store8 " << instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << *ptr << std::dec << "\n" << std::flush;
-  if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
+  uint64_t *ptr = (uint64_t *)addr;
+  if (__slamp_begin_trace)
+    std::cout << "    store8 " << instr << " iteration " << __slamp_iteration
+              << " addr " << std::hex << addr << " value " << *ptr << std::dec
+              << "\n"
+              << std::flush;
+  if (!smmap->is_allocated(reinterpret_cast<void *>(addr))) {
     std::cout << "Error: shadow memory not allocated" << std::flush;
     assert(false);
   }
 #endif
 
-  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
-  // TODO: handle output dependence. ignore it as of now.
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
+  // TODO: handle output dependence. ignore it as of now.
   s[0] = s[1] = s[2] = s[3] = s[4] = s[5] = s[6] = s[7] = ts;
 
   slamp::capturestorecallstack(s);
 }
 
-void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n)
-{
+void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   if (invokedepth > 1)
     instr = context;
 
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    storen " << instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
-  if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
+  if (__slamp_begin_trace)
+    std::cout << "    storen " << instr << " iteration " << __slamp_iteration
+              << " addr " << std::hex << addr << std::dec << "\n"
+              << std::flush;
+  if (!smmap->is_allocated(reinterpret_cast<void *>(addr))) {
     std::cout << "Error: shadow memory not allocated" << std::flush;
     assert(false);
   }
 #endif
 
-  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  TS  ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
-  for (unsigned i = 0 ; i < n ; i++)
+  for (unsigned i = 0; i < n; i++)
     s[i] = ts;
 
   slamp::capturestorecallstack(s);
 }
 
-void SLAMP_store1_ext(const uint64_t addr, const uint64_t bare_inst)
-{
+void SLAMP_store1_ext(const uint64_t addr, const uint64_t bare_inst) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    store1_ext " << context << "," << bare_inst << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    store1_ext " << context << "," << bare_inst
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_store1(context, addr);
+  if (context)
+    SLAMP_store1(context, addr);
 }
 
-void SLAMP_store2_ext(const uint64_t addr, const uint64_t bare_inst)
-{
+void SLAMP_store2_ext(const uint64_t addr, const uint64_t bare_inst) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    store2_ext " << context << "," << bare_inst << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    store2_ext " << context << "," << bare_inst
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_store2(context, addr);
+  if (context)
+    SLAMP_store2(context, addr);
 }
 
-void SLAMP_store4_ext(const uint64_t addr, const uint64_t bare_inst)
-{
+void SLAMP_store4_ext(const uint64_t addr, const uint64_t bare_inst) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    store4_ext " << context << "," << bare_inst << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    store4_ext " << context << "," << bare_inst
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_store4(context, addr);
+  if (context)
+    SLAMP_store4(context, addr);
 }
 
-void SLAMP_store8_ext(const uint64_t addr, const uint64_t bare_inst)
-{
+void SLAMP_store8_ext(const uint64_t addr, const uint64_t bare_inst) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    store8_ext " << context << "," << bare_inst << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    store8_ext " << context << "," << bare_inst
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_store8(context, addr);
+  if (context)
+    SLAMP_store8(context, addr);
 }
 
-void SLAMP_storen_ext(const uint64_t addr, const uint64_t bare_inst, size_t n)
-{
+void SLAMP_storen_ext(const uint64_t addr, const uint64_t bare_inst, size_t n) {
 #if DEBUG
-  if (__slamp_begin_trace) std::cout << "    storen_ext " << context << "," << bare_inst << " iteration " << __slamp_iteration << " addr " << std::hex << addr << std::dec << "\n" << std::flush;
+  if (__slamp_begin_trace)
+    std::cout << "    storen_ext " << context << "," << bare_inst
+              << " iteration " << __slamp_iteration << " addr " << std::hex
+              << addr << std::dec << "\n"
+              << std::flush;
 #endif
 
-  if (context) SLAMP_storen(context, addr, n);
+  if (context)
+    SLAMP_storen(context, addr, n);
 }
 
 /*
  * LLVM mem intrinsics
+ *
+ * Intrinsics are not removed, these functions are call along the side in addition
  */
 
 void SLAMP_llvm_memcpy_p0i8_p0i8_i32(const uint8_t* dst_addr, const uint8_t* src_addr, const uint32_t len)
@@ -679,19 +746,23 @@ void SLAMP_llvm_memset_p0i8_i64(const uint8_t* dst_addr, const uint64_t len)
 
 void SLAMP_llvm_lifetime_start_p0i8(uint64_t size, uint8_t* ptr)
 {
-  void* shadow = smmap->allocate((void*)ptr, size);
-  if (shadow)
-  {
-    if (context)
-    {
-      (*alloc_in_the_loop)[(void*)ptr] = size;
-    }
-  }
-  else
-  {
-    fprintf(stderr, "SLAMP_llvm_lifetime_start_p0i8, error in shadow malloc\n");
-    assert(false);
-  }
+  // do nothing for now
+
+  /*
+   * void* shadow = smmap->allocate((void*)ptr, size);
+   * if (shadow)
+   * {
+   *   if (context)
+   *   {
+   *     (*alloc_in_the_loop)[(void*)ptr] = size;
+   *   }
+   * }
+   * else
+   * {
+   *   fprintf(stderr, "SLAMP_llvm_lifetime_start_p0i8, error in shadow malloc\n");
+   *   assert(false);
+   * }
+   */
 }
 
 
@@ -713,7 +784,7 @@ void* SLAMP_malloc(size_t size)
   while( true )
   {
     if ( !result )
-      return NULL;
+      return nullptr;
 
     void* shadow = smmap->allocate(result, size);
     if (shadow)

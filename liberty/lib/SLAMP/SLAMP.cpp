@@ -621,6 +621,7 @@ int SLAMP::getIndex(PointerType *ty, size_t &size, const DataLayout &DL) {
 }
 
 /// handle LLVM Memory intrinsics (memmove, memcpy, memset)
+/// This does not replace the function, just add an additional call
 // FIXME: is this a complete list?
 void SLAMP::instrumentMemIntrinsics(Module &m, MemIntrinsic *mi) {
   CallSite cs(mi);
