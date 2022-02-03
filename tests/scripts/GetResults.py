@@ -303,6 +303,8 @@ def get_real_speedup(root_path, bmark, reg_option, times=3, default_num_worker=2
 
 def get_all_passes(root_path, bmark, passes, result_path):
     status = {}
+    if "Inline" in passes:
+      status["Inline"] = get_one_prof(root_path, bmark, 'Inline', "benchmark.inlined.o3.out")
     if "Edge" in passes:
         status["Edge"] = get_one_prof(root_path, bmark, 'Edge Profile', "benchmark.edgeProf.out")
     if "Loop" in passes:
@@ -518,8 +520,10 @@ def preview_config(config):
 if __name__ == "__main__":
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "PDG"] # "Experiment"]
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
+    #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
+    #passes = ["Edge", "Loop"]
+    passes = ["Inline"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
-    passes = ["Edge", "Loop", "LAMP", "Exp-3"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment", "RealSpeedup"]
     # passes = ["Edge", "Loop", "LAMP", "SLAMP", "SpecPriv", "HeaderPhi", "Experiment"]
 

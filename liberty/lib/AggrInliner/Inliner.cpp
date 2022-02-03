@@ -32,7 +32,7 @@ namespace SpecPriv
 using namespace llvm;
 using namespace llvm::noelle;
 
-
+// TODO: Test on one bmark w multiple depths - in Makefile.generic
 cl::opt<unsigned> MaxDepth(
     "inlining-max-depth", cl::init(3), cl::NotHidden,
     cl::desc("Max aggresive inlining depth (default: 3)"));
@@ -135,13 +135,15 @@ private:
       return;
 
     for (Instruction &I : BB) {
+      //FIXME: CallBase instead of CallInst
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
         if (calledFun && !calledFun->isDeclaration()) {
-          if (noFlowDep(call, aa, loop))
-						continue;
           if (validCallInsts.count(call))
             continue;
+          // FIXME: might be taking too much time
+          if (noFlowDep(call, aa, loop))
+						continue;
           if (processFunction(calledFun, curPathVisited, aa, loop, depth)) {
             inlineCallInsts.push(call);
             validCallInsts.insert(call);
@@ -251,10 +253,12 @@ private:
       auto callInst = inlineCallInsts.front();
       inlineCallInsts.pop();
       InlineFunctionInfo IFI;
-      modified |= InlineFunction(CallSite(callInst), IFI);
-      ++numInlinedCallSites;
+      auto inlined  = InlineFunction(CallSite(callInst), IFI);
+      modified |= inlined; 
+      //FIXME: should depend on return value
+      if(inlined) ++numInlinedCallSites;
       if (++curCount % 100 == 0)
-        errs() << "Cur inlined count: " << curCount << "\n";
+        LLVM_DEBUG(errs() << "Cur inlined count: " << curCount << "\n");
     }
 
     return modified;
