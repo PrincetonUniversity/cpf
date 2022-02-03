@@ -279,6 +279,10 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
      string name = func->getName();
 
     if (externs.find(name) == externs.end()) {
+      // check if the function argument is `readnone`, then it's pure
+      if (func->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
+        continue;
+      }
       errs() << "WARNING: Wrapper for external function " << name
                         << " not implemented.\n";
       hasUnrecognizedFunction = true;
@@ -295,6 +299,7 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
   }
 
   if (hasUnrecognizedFunction) {
+    // assert only turned on for debug
     assert(false && "Wrapper for external function not implemented.\n");
   }
 }

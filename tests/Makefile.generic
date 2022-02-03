@@ -80,6 +80,7 @@ INLINER_LIB=-load $(LIBERTY_LIBS_DIR)/libUtil.so \
 						-load $(LIBERTY_LIBS_DIR)/libMetadata.so \
 						-load $(LIBERTY_LIBS_DIR)/libLAMPLoad.so \
 						-load $(LIBERTY_LIBS_DIR)/libLAMP.so \
+						-load $(LIBERTY_LIBS_DIR)/libSLAMP.so \
 						-load $(LIBERTY_LIBS_DIR)/libRedux.so \
 						-load $(LIBERTY_LIBS_DIR)/libPointsToProfiler.so \
 						-load $(LIBERTY_LIBS_DIR)/libGraphAlgorithms.so \
@@ -269,6 +270,21 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	rm -f lamp_OG.time $(CANON).lamp_OG.out $(CANON).lamp_OG.exe
 	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-lamp.time lamp-profile $<
 	mv benchmark.pgo.lamp.exe $@
+	date
+
+#
+# SLAMP profile
+#
+
+%.result.slamp.profile: %.loopProf.out
+	date
+	$(SETUP)
+	$(PROFILESETUP)
+	cp $*.loopProf.out loopProf.out
+	DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
+	mv result.slamp.profile $@
+	rm -f loopProf.out
+	$(CLEANUP)
 	date
 
 #
