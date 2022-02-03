@@ -1,8 +1,8 @@
-#include "liberty/Utilities/PrintDebugInfo.h"
 #define DEBUG_TYPE "slamp-load"
 
+#include "scaf/Utilities/PrintDebugInfo.h"
+#include "scaf/Utilities/ModuleLoops.h"
 #include "liberty/SLAMP/SLAMPLoad.h"
-#include "liberty/Utilities/ModuleLoops.h"
 
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Support/CommandLine.h"

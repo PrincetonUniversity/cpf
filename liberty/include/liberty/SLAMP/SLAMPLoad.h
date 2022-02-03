@@ -4,7 +4,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Pass.h"
 
-#include "liberty/Utilities/StaticID.h"
+#include "scaf/Utilities/StaticID.h"
 
 #include <map>
 #include <set>

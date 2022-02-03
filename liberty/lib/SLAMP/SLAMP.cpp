@@ -16,10 +16,10 @@
 #include "llvm/IR/InstIterator.h"
 
 #include "liberty/Utilities/CastUtil.h"
-#include "liberty/Utilities/GlobalCtors.h"
-#include "liberty/Utilities/InsertPrintf.h"
-#include "liberty/Utilities/InstInsertPt.h"
-#include "liberty/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/GlobalCtors.h"
+#include "scaf/Utilities/InsertPrintf.h"
+#include "scaf/Utilities/InstInsertPt.h"
+#include "scaf/Utilities/ModuleLoops.h"
 
 #include <sstream>
 #include <vector>

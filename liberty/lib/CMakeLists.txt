@@ -1,4 +1,5 @@
 add_subdirectory(LAMP)
+add_subdirectory(SLAMP)
 add_subdirectory(Strategy)
 add_subdirectory(Speculation)
 add_subdirectory(Orchestration)
