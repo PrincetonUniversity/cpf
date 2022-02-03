@@ -65,7 +65,8 @@ bool RemedSelector::runOnModule(Module &mod)
   VertexWeights weights;
   VertexSet maxClique;
 
-  doSelection(vertices, edges, weights, maxClique);
+  if (!doSelection(vertices, edges, weights, maxClique))
+    return false;
 
  // SpecPriv is not alwqys available
   // Combine all of these assignments into one big assignment
