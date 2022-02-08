@@ -298,10 +298,12 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
     }
   }
 
-  if (hasUnrecognizedFunction) {
-    // assert only turned on for debug
-    assert(false && "Wrapper for external function not implemented.\n");
-  }
+  /*
+   * if (hasUnrecognizedFunction) {
+   *   // assert only turned on for debug
+   *   assert(false && "Wrapper for external function not implemented.\n");
+   * }
+   */
 }
 
 /// Create a function `___SLAMP_ctor` that calls `SLAMP_init` and
@@ -824,8 +826,29 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
 
     InstInsertPt pt = InstInsertPt::Before(ci);
     pt << CallInst::Create(push, args);
-    pt = InstInsertPt::After(ci);
-    pt << CallInst::Create(pop);
+
+    if (isa<CallInst>(inst)) {
+      pt = InstInsertPt::After(ci);
+      pt << CallInst::Create(pop);
+    } else if (auto *invokeI = dyn_cast<InvokeInst>(inst)) {
+      // for invoke, need to find the two paths and add pop
+      auto insertPop = [&pop](BasicBlock* entry){
+        InstInsertPt pt;
+        if (isa<LandingPadInst>(entry->getFirstNonPHI()))
+          pt = InstInsertPt::After(entry->getFirstNonPHI());
+        else
+          pt = InstInsertPt::Before(entry->getFirstNonPHI());
+        pt << CallInst::Create(pop);
+      };
+
+      insertPop(invokeI->getNormalDest());
+      // FIXME: will generate mulitiple `slamp_pop` after the landing pad
+      //        Fine for now because `slamp_pop` only set the context to 0
+      insertPop(invokeI->getUnwindDest());
+
+    } else {
+      assert(false && "Call but not CallInst nor InvokeInst");
+    }
   }
 }
 
