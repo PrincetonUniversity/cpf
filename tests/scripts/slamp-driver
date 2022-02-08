@@ -1,0 +1,131 @@
+#!/bin/bash
+
+function drive {
+  # $1: .bc file
+  # $2: target fcn
+  # $3: target loop
+
+    #-load $LIBERTY_LIBS_DIR/libExclusions.so 
+    #-load /u/sa8/CAT/lib/libSvf.so
+    #-load /u/sa8/CAT/lib/libCudd.so
+    #-load $LIBERTY_LIBS_DIR/libAnalysis.so 
+    #-load $LIBERTY_LIBS_DIR/libExclusions.so 
+    #-load $LIBERTY_LIBS_DIR/libUtil.so 
+    #-load $LIBERTY_LIBS_DIR/libAnalysis.so
+    #-load $LIBERTY_LIBS_DIR/libLoopProf.so
+    #-load $LIBERTY_LIBS_DIR/libLAMPLoad.so 
+    #-load $LIBERTY_LIBS_DIR/libLoopProf.so
+    #-load $LIBERTY_LIBS_DIR/libLAMP.so 
+  local SLAMP_LIBS="
+    -load $SCAF_LIBS_DIR/libSCAFUtilities.so 
+    -load $LIBERTY_LIBS_DIR/libUtil.so 
+    -load $LIBERTY_LIBS_DIR/libSLAMP.so"
+
+#commented out libs
+# -load $LIBERTY_LIBS_DIR/libClangAnnotationExtractor.so 
+# -load $LIBERTY_LIBS_DIR/libPDG.so 
+# -load $LIBERTY_LIBS_DIR/libNego.so 
+# -load $LIBERTY_LIBS_DIR/libSMTAA.so 
+# -load $LIBERTY_LIBS_DIR/libDependenceRemover.so 
+# -load $LIBERTY_LIBS_DIR/libMTCG.so 
+# -load $LIBERTY_LIBS_DIR/libPartition.so 
+# -load $LIBERTY_LIBS_DIR/libSimpleProfReader.so
+# -load $LIBERTY_LIBS_DIR/libTarget.so 
+
+  local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks.a"
+  local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
+
+  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 -slamp-outfile=$SLAMP_OUTFILE"
+  #local OPTS="-slamp-insts --print-load-static-id=true -slamp-target-fn=$2 -slamp-target-loop=$3 -slamp-outfile=$SLAMP_OUTFILE"
+  local PRELINK_BC="`basename $1 .bc`.slamp.prelink.bc"
+  local PRELINK_OBJ="`basename $1 .bc`.slamp.prelink.o"
+  local EXE="`basename $1 .bc`.slamp.exe"
+
+  if [[ x$DEBUG != x ]]; then
+    OPTS+=" -debug-only=$DEBUG"
+  fi
+  
+  local CMD1="opt $SLAMP_LIBS $OPTS -o $PRELINK_BC $1"
+  #local CMD2="clang -Og -g -c -o $PRELINK_OBJ $PRELINK_BC"
+  local CMD2="clang -c -o $PRELINK_OBJ $PRELINK_BC"
+  #local CMD3="clang++ -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  local CMD3="g++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  #local CMD3="g++ -Og $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  local CMD4="./$EXE $PROFILEARGS"
+
+  red='\e[0;31m'
+  nc='\e[0m'
+  echo -e "${red}>>> slamp-driver Processing $2::$3${nc}"
+  echo -e "${red}    --- Generate Simulator...${nc}"
+  echo $CMD1
+  $CMD1
+  echo $CMD2
+  $CMD2
+  echo $CMD3
+  $CMD3
+  echo $CMD3
+  echo -e "${red}    --- Run Simulator...${nc}"
+  echo $CMD4
+  #time $CMD4 > /dev/null 2>&1
+  eval time $CMD4
+  if [[ $? -ne 0 ]]; then
+    echo -e "${red}    --- SIMULATION FAILED${nc}"
+    rm -f result.slamp.profile
+    exit 1
+  fi
+
+  cat $SLAMP_OUTFILE >> result.slamp.profile
+  rm -f $SLAMP_OUTFILE $PRELINK_BC $PRELINK_OBJ $EXE
+}
+
+# Determine if the user specified a function
+FCN=
+if [[ x$2 != x ]]
+then
+  FCN="-target-fcn=$2"
+fi
+
+# Determine if the user specified a loop
+LOOP=
+if [[ x$3 != x ]]
+then
+  LOOP="-target-loop=$3"
+fi
+
+# In lib/LoopProf/Targets.cpp, target-list argument has a precedence over 
+# target-fcn and target-loop thing. However, in here we want to reverse 
+# the precedence - If target-fcn and target-loop is given, ignore target-list
+
+LIST=
+if [[ x$FCN == x && x$LOOP == x && -f .targetlist ]]
+then
+  LIST="-target-list="`cat .targetlist`
+fi
+
+LIBS="-load $SCAF_LIBS_DIR/libSCAFUtilities.so 
+      -load $LIBERTY_LIBS_DIR/libUtil.so
+      -load $LIBERTY_LIBS_DIR/libLoopProf.so"
+OPTS="-targets "
+
+CMD="$PREFIX opt $LIBS $OPTS $FCN $LOOP $LIST $1"
+
+echo Running: $CMD
+#ulimit -S -v $[100*1024*1024]
+$CMD > /dev/null 2> __targets.txt
+
+declare -a lines
+let i=0
+while IFS=$'\n' read -r line_data; do
+  lines[i]="${line_data}"
+  ((++i))
+done < __targets.txt
+
+let i=0
+while (( ${#lines[@]} > i )); do
+  IFS=' ' read -a array <<< ${lines[i++]}
+  if [ ${array[0]} == "-" ]; then
+    drive $1 ${array[1]} ${array[3]} 
+  fi
+done
+
+#rm -f __targets.txt
