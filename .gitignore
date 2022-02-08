@@ -1,6 +1,7 @@
 ### Doc ###
 # To prevent the doc directory is added back
 /doc
+/.cache
 
 ### macOS ###
 # General
