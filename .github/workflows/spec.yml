@@ -47,6 +47,7 @@ jobs:
         platform: github # optional, default is github
         # Git branch or tag to checkout.
         ref: master # optional
+        path: Driver
 
 #     # Runs a set of commands using the runners shell
 #     - name: Build CPF
@@ -56,7 +57,7 @@ jobs:
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          python ${GITHUB_WORKSPACE}/AutoParExperimentDriver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r 0 -n 15 -s ${{ env.REG_SUITE }} -f
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r 0 -n 15 -s ${{ env.REG_SUITE }} -f
 
     - name: Upload artifacts
       run: |
