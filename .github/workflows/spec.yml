@@ -47,8 +47,6 @@ jobs:
         platform: github # optional, default is github
         # Git branch or tag to checkout.
         ref: master # optional
-        # Relative path from current directory, where to clone.
-        path: ${GITHUB_WORKSPACE} # optional
 
 #     # Runs a set of commands using the runners shell
 #     - name: Build CPF
