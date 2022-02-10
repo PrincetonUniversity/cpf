@@ -2389,7 +2389,11 @@ void SLAMP___assert_fail(const char * assertion, const char * file, unsigned int
 
 const unsigned short int **SLAMP___ctype_b_loc(void)
 {
-  return __ctype_b_loc();
+  auto ret = __ctype_b_loc();
+  // *ret it's an array of 384 short, each represent the trait of a char
+  // https://stackoverflow.com/questions/37702434/ctype-b-loc-what-is-its-purpose
+  smmap->allocate((void*)*ret, 384 * sizeof(**ret));
+  return ret;
 }
 
 /*

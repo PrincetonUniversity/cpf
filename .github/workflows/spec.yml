@@ -17,7 +17,7 @@ on:
 #   pull_request:
 #     branches: [ master ]
 env:
-  REG_SUITE: ${{ github.event.inputs.suite || 'reg_all' }} # default is to run all
+  REG_SUITE: ${{ github.event.inputs.suite || 'All' }} # default is to run all
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -25,6 +25,7 @@ jobs:
   reg:
     # The type of runner that the job will run on
     runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 1440
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -36,20 +37,40 @@ jobs:
     - name: Confirm
       run: echo "Start building!"
 
-    # Runs a set of commands using the runners shell
-    # TODO: Allow pass branch of cpf to compile
-    #- name: Build CPF
-      #  run: make -C bootstrap -f Makefile.github all
+    - name: Git Clone Action
+      # You may pin to the exact commit or the version.
+      # uses: sudosubin/git-clone-action@8a93ce24d47782e30077508cccacf8a05a891bae
+      uses: sudosubin/git-clone-action@v1.0.1
+      with:
+        # Repository owner and name. Ex: sudosubin/git-clone-action
+        repository: vgene/AutoParExperimentDriver # optional, default is ${{ github.repository }}
+        # Git host platform. Ex: github, gitlab, bitbucket, gitee, or else (git.suckless.org, ...)
+        platform: github # optional, default is github
+        # Git branch or tag to checkout.
+        ref: master # optional
+        path: Driver
+
+#     # Runs a set of commands using the runners shell
+#     - name: Build CPF
+#       run: make -C bootstrap -f Makefile.github all
 
     - name: Run tests
+
       run: |
-          source /scratch/yc0769/venvPy3/bin/activate
-          source /u/NAS_SCRATCH/yc0769/cpf/install/cpf-env-release.rc
-          python3 /u/NAS_SCRATCH/yc0769/cpf/tests/scripts/GetResults.py -p /u/NAS_SCRATCH/yc0769/spec/spec2017 -b /u/NAS_SCRATCH/yc0769/cpf/tests/scripts/test_spec2017.json -r 1 -n 7 -s ${{ env.REG_SUITE }} -f
+          source /scratch/ziyangx/ve_py3/bin/activate
+          source /tmp/github-cpf-test/cpf-env-release.rc
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r 0 -n 15 -s ${{ env.REG_SUITE }} -f
+
+    - name: Upload artifacts
+      run: |
+          pushd /scratch/spec2017-workspace/spec2017
+          ~/update_and_sync.sh results
+          popd
+
     - name: Archive artifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
       with:
         name: results
         path: |
-          /u/NAS_SCRATCH/yc0769/spec/spec2017/results
+          /scratch/spec2017-workspace/spec2017/results
