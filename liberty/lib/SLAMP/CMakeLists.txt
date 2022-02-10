@@ -1,7 +1,6 @@
 file(GLOB SRCS
     "SLAMP.cpp"
     "SLAMPLoad.cpp"
-    "SlampOracleAA.cpp"
 )
 
 # Compilation flags
