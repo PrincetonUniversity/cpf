@@ -38,9 +38,13 @@ NOELLE_LIBS="-load $NOELLE_LIBS_DIR/CallGraph.so\
     -load $NOELLE_LIBS_DIR/DataFlow.so \
     -load $NOELLE_LIBS_DIR/HotProfiler.so \
     -load $NOELLE_LIBS_DIR/LoopStructure.so \
+    -load $NOELLE_LIBS_DIR/Invariants.so \
+    -load $NOELLE_LIBS_DIR/InductionVariables.so \
     -load $NOELLE_LIBS_DIR/Loops.so \
     -load $NOELLE_LIBS_DIR/Scheduler.so \
     -load $NOELLE_LIBS_DIR/OutlinerPass.so \
+    -load $NOELLE_LIBS_DIR/MetadataManager.so \
+    -load $NOELLE_LIBS_DIR/LoopTransformer.so \
     -load $NOELLE_LIBS_DIR/Noelle.so"
 
 CPF_LIBS="-load $LIBERTY_LIBS_DIR/libSpeculation.so\

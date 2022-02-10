@@ -94,7 +94,7 @@ void Selector::analysisUsage(AnalysisUsage &au)
   //au.addRequired< KillFlow >();
   au.addRequired< Targets >();
 
-  au.addRequired< LAMPLoadProfile >();
+  // au.addRequired< LAMPLoadProfile >();
 
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
@@ -327,7 +327,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
  *      proxy.getAnalysis<PtrResidueSpeculationManager>();
  *  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
  *  KillFlow &kill = proxy.getAnalysis< KillFlow >(); */
-  LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
+  // LAMPLoadProfile &lamp = proxy.getAnalysis<LAMPLoadProfile>();
 
   const unsigned N = vertices.size();
   weights.resize(N);
@@ -406,7 +406,8 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
           pipelineOption_abortIfNoParallelStage());
 
       // the pdg is updated over here
-      CoverageStats stats(A, *pdg, perf, &lamp);
+      // CoverageStats stats(A, *pdg, perf, &lamp);
+      CoverageStats stats(A, *pdg, perf, nullptr);
 
       REPORT_DUMP(
           errs() << stats.dumpPercentage());
