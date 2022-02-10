@@ -115,7 +115,7 @@ LoopAA::ModRefResult SlampOracle::modref(
         result = Mod;
     }
 
-    else if( isa<CallBase>(A) )
+    else if( isa<CallInst>(A) )
     {
       result = ModRef;
     }
@@ -136,7 +136,7 @@ LoopAA::ModRefResult SlampOracle::modref(
     {
       // okay
     }
-    else if ( isa<CallBase>(B) )
+    else if ( isa<CallInst>(B) )
     {
       // okay
     }
@@ -196,7 +196,7 @@ LoopAA::ModRefResult SlampOracle::modref(
     else if( isMemIntrinsic(A) && intrinsicMayRead(A) )
       result = ModRef;
 
-    else if( isa<CallBase>(A) )
+    else if( isa<CallInst>(A) )
       result = ModRef;
 
     else
@@ -217,7 +217,7 @@ LoopAA::ModRefResult SlampOracle::modref(
     {
       // good
     }
-    else if ( isa<CallBase>(B) )
+    else if ( isa<CallInst>(B) )
     {
       // good
     }
