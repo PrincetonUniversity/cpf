@@ -25,6 +25,7 @@ jobs:
   reg:
     # The type of runner that the job will run on
     runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 1440
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -54,6 +55,7 @@ jobs:
 #       run: make -C bootstrap -f Makefile.github all
 
     - name: Run tests
+
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
