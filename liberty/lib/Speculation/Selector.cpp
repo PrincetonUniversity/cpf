@@ -952,6 +952,15 @@ bool Selector::doSelection(
     // Identify compatibilities among the loops as edges
     computeEdges(vertices, edges);
 
+    auto printCompatibleMap = [](Edges edges) {
+      errs() << "Compatible Map:\n";
+      for (auto &[p1, p2] : edges) {
+        errs() << p1 << " " << p2 << "\n";
+      }
+      errs() << "End of Compatible Map\n";
+    };
+    printCompatibleMap(edges);
+
     // Identify edge weights.  Bigger weight is better.
     LateInliningOpportunities opportunities;
     numApplicable = computeWeights(vertices, edges, weights, scaledweights, opportunities);
