@@ -9,12 +9,9 @@ on:
       inputs:
           noelle:
               description: 'Compile noelle or not'
-              type: number
               required: true
-              default:  1
-              options:
-                  - 0 
-                  - 1 
+              default: 0
+              type: number
   push:
       branches: [ master ]
 #   pull_request:
@@ -27,16 +24,16 @@ jobs:
         # The type of runner that the job will run on
         runs-on: [self-hosted, Linux, X64]
 
-        # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-        # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-        - uses: actions/checkout@v2
+            # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+            - uses: actions/checkout@v2
 
-          # Runs a single command using the runners shell
-        - name: Confirm
-          run: echo "Start building!"
+              # Runs a single command using the runners shell
+            - name: Confirm
+              run: echo "Start building!"
 
-          # Runs a set of commands using the runners shell
-        - name: Build CPF
-          run: make -C bootstrap -f Makefile.github all compile-noelle=${{ github.event.inputs.noelle }}
+              # Runs a set of commands using the runners shell
+            - name: Build CPF
+              run: make -C bootstrap -f Makefile.github all compile-noelle=${{ github.event.inputs.noelle }}
 
