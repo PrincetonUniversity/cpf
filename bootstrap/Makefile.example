@@ -132,8 +132,8 @@ default:
 	@echo After the initial installation, run \`make cpf\` to only update cpf.
 	@echo Nothing has been done.
 
-all: copy-makefile llvm scaf noelle cpf-env-debug.rc cpf-env-release.rc cpf
-.PHONY: copy-makefile llvm scaf noelle cpf cpf-env-debug.rc cpf-env-release.rc clean
+all: copy-makefile llvm noelle scaf cpf cpf-env-debug.rc cpf-env-release.rc
+.PHONY: copy-makefile llvm noelle scaf cpf cpf-env-debug.rc cpf-env-release.rc clean
 
 clean:
 	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
@@ -165,6 +165,13 @@ endif
     @echo LLVM Release: ${llvm-install-dir-release}
 endif
 
+scaf: export LLVM_INSTALL_DEBUG=${llvm-install-dir-debug}
+scaf: export LLVM_INSTALL_RELEASE=${llvm-install-dir-release}
+scaf: export NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug}
+scaf: export NOELLE_INSTALL_RELEASE=${noelle-install-dir-release}
+scaf: export SCAF_REMOTE=${scaf-remote-url}
+scaf: export SCAF_BRANCH=${scaf-branch}
+scaf: export JOBS=${num-workers}
 scaf:
 ifeq (${use-noelle-scaf}, 0)
 ifeq (${compile-scaf}, 1)
@@ -180,20 +187,8 @@ endif
 	- cp Makefile.scaf ${install-prefix}
 ifeq (${verbose}, 1)
 	set -o pipefail; \
-	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
-	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
-	NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug} \
-	NOELLE_INSTALL_RELEASE=${noelle-install-dir-release} \
-	SCAF_REMOTE=${scaf-remote-url} \
-	SCAF_BRANCH=${scaf-branch} \
 	unbuffer ${MAKE} -C ${install-prefix} -f Makefile.scaf ${scaf-target} 2>&1 | tee ${install-prefix}/scaf.log
 else
-	LLVM_INSTALL_DEBUG=${llvm-install-dir-debug} \
-	LLVM_INSTALL_RELEASE=${llvm-install-dir-release} \
-	NOELLE_INSTALL_DEBUG=${noelle-install-dir-debug} \
-	NOELLE_INSTALL_RELEASE=${noelle-install-dir-release} \
-	SCAF_REMOTE=${scaf-remote-url} \
-	SCAF_BRANCH=${scaf-branch} \
 	${MAKE} -C ${install-prefix} -f Makefile.scaf ${scaf-target} > ${install-prefix}/scaf.log 2>&1
 endif
 
