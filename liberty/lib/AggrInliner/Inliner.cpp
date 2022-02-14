@@ -32,6 +32,10 @@ namespace SpecPriv
 using namespace llvm;
 using namespace llvm::noelle;
 
+// TODO: Test on one bmark w multiple depths - in Makefile.generic
+cl::opt<unsigned> MaxDepth(
+    "inlining-max-depth", cl::init(3), cl::NotHidden,
+    cl::desc("Max aggresive inlining depth (default: 3)"));
 STATISTIC(numInlinedCallSites,     "Num of inlined call sites");
 
 struct Inliner: public ModulePass
@@ -47,7 +51,7 @@ struct Inliner: public ModulePass
     au.addRequired< Targets >();
   	//au.addRequired< PDGBuilder >();
   	au.addRequired< LoopAA >();
-  	au.addRequired<SmtxSpeculationManager>();
+      //au.addRequired<SmtxSpeculationManager>();
     au.addRequired<ProfilePerformanceEstimator>();
   }
 
@@ -126,19 +130,21 @@ private:
   }
 
   void processBB(BasicBlock &BB, std::unordered_set<Function *> &curPathVisited,
-                 LoopAA *aa, Loop *loop) {
+                 LoopAA *aa, Loop *loop, unsigned depth) {
     if (isSpeculativelyDeadBB(BB))
       return;
 
     for (Instruction &I : BB) {
+      //FIXME: CallBase instead of CallInst
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
         Function *calledFun = call->getCalledFunction();
         if (calledFun && !calledFun->isDeclaration()) {
-          if (noFlowDep(call, aa, loop))
-						continue;
           if (validCallInsts.count(call))
             continue;
-          if (processFunction(calledFun, curPathVisited, aa, loop)) {
+          // FIXME: might be taking too much time
+          if (noFlowDep(call, aa, loop))
+						continue;
+          if (processFunction(calledFun, curPathVisited, aa, loop, depth)) {
             inlineCallInsts.push(call);
             validCallInsts.insert(call);
           }
@@ -149,7 +155,9 @@ private:
 
   bool processFunction(Function *F,
                        std::unordered_set<Function *> &curPathVisited,
-                       LoopAA *aa, Loop *loop) {
+                       LoopAA *aa, Loop *loop, unsigned depth) {
+    if (depth > MaxDepth)
+      return false;
     // check if there is a cycle in call graph
     // or if the function is recursive (quick check)
     if (curPathVisited.count(F) || isRecursiveFnFast(F))
@@ -163,7 +171,7 @@ private:
     processedFunctions.insert(F);
 
     for (BasicBlock &BB : *F)
-      processBB(BB, curPathVisited, aa, loop);
+      processBB(BB, curPathVisited, aa, loop, depth + 1);
 
     curPathVisited.erase(F);
     return true;
@@ -175,15 +183,15 @@ private:
     curPathVisited.insert(loopFun);
 
     const DataLayout &DL = loopFun->getParent()->getDataLayout();
-    SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
+    //SmtxSpeculationManager &smtxMan = getAnalysis<SmtxSpeculationManager>();
     PerformanceEstimator *perf = &getAnalysis<ProfilePerformanceEstimator>();
-    SmtxAA smtxaa(&smtxMan, perf);
-    smtxaa.InitializeLoopAA(this, DL);
+    //SmtxAA smtxaa(&smtxMan, perf);
+    //smtxaa.InitializeLoopAA(this, DL);
 
     LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
 
     for (BasicBlock *BB : loop->getBlocks())
-      processBB(*BB, curPathVisited, aa, loop);
+      processBB(*BB, curPathVisited, aa, loop, 0);
   }
 
   void inlineCall(CallInst *call) {
@@ -237,13 +245,20 @@ private:
       runOnGlobal(*global);
     }
 
+    errs() << "Inline call count: " << inlineCallInsts.size() << "\n";
+
     // performing function inlining on collected call insts
+    auto curCount = 0;
     while (!inlineCallInsts.empty()) {
       auto callInst = inlineCallInsts.front();
       inlineCallInsts.pop();
       InlineFunctionInfo IFI;
-      modified |= InlineFunction(CallSite(callInst), IFI);
-      ++numInlinedCallSites;
+      auto inlined  = InlineFunction(CallSite(callInst), IFI);
+      modified |= inlined; 
+      //FIXME: should depend on return value
+      if(inlined) ++numInlinedCallSites;
+      if (++curCount % 100 == 0)
+        LLVM_DEBUG(errs() << "Cur inlined count: " << curCount << "\n");
     }
 
     return modified;

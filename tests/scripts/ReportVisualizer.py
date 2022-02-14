@@ -19,8 +19,14 @@ class ReportVisualizer:
         if "Experiment" in passes:
             passes.remove("Experiment")
             self.has_exp = True
+            self.has_exp_3 = False
+        elif "Exp-3" in passes:
+            passes.remove("Exp-3")
+            self.has_exp_3 = True
+            self.has_exp = False
         else:
             self.has_exp = False
+            self.has_exp_3 = False
 
         if "RealSpeedup" in passes:
             passes.remove("RealSpeedup")
@@ -124,6 +130,8 @@ class ReportVisualizer:
         title_line = ['Benchmarks'] + self.profile_passes
         if self.has_exp:
             title_line += ['Estimated Speedup', 'Worker Count', 'Exec Time Coverage', 'Loop Info']
+        if self.has_exp_3:
+            title_line += ['Estimated Speedup', 'Worker Count', 'Exec Time Coverage', 'Loop Info'] * 3
         if self.has_real_speedup:
             title_line += ['Average Sequential Time', 'Average Parallel Time', 'Real Speedup']
 
@@ -139,60 +147,80 @@ class ReportVisualizer:
                 else:
                     result_vis.append("n")
 
+            def genVisForOneExp(result_exp):
+                speedup = result_exp['speedup']
+                worker_cnt = result_exp['worker_cnt']
+                total_coverage = result_exp['total_coverage']
+                loops = result_exp['loops']
+
+                result_vis.append("%.2f" % speedup)
+                result_vis.append("%d" % worker_cnt)
+                result_vis.append("%.2f%%" % total_coverage)
+
+                # {loop_name: {"exec_coverage":float,
+                #              "exec_time": int, "total_time": int,
+                #              "total_lcDeps":int,
+                #              "covered_lcDeps", "lcDeps_coverage": float,
+                #              "stage": str,
+                #              "loop_speedup": float, "debug_info": str
+                #              "selected": bool
+                #             }}
+                loops_vis = ""
+                for loop_name, loop_info in loops.items():
+                    loop_vis = ""
+                    if "selected" in loop_info and loop_info["selected"]:
+                        sel_ch = '-'
+                    else:
+                        sel_ch = 'X'
+                    loop_vis += " %s %s(%s):" % (sel_ch, loop_name, loop_info["debug_info"])
+
+                    if "loop_speedup" in loop_info:
+                        loop_vis += "speedup = %.2fx;" % loop_info["loop_speedup"]
+
+                    if "stage" in loop_info:
+                        loop_vis += "stage = %s;" % loop_info["stage"]
+
+                    if "total_lcDeps" in loop_info:
+                        loop_vis += "covered (%d/%d) = %.2f LC Deps;" % (
+                            loop_info["covered_lcDeps"], loop_info["total_lcDeps"],
+                            loop_info["lcDeps_coverage"]
+                        )
+
+                    if "total_time" in loop_info:
+                        loop_vis += "counts for (%d/%d) = %.2f%%" % (
+                            loop_info["exec_time"], loop_info["total_time"],
+                            loop_info["exec_coverage"]
+                        )
+                    loop_vis += "\n"
+                    loops_vis += loop_vis
+                result_vis.append(loops_vis)
+
             #  visualize experiment
             if self.has_exp:
                 if results['Experiment'] is None:
                     result_vis.extend(["-"] * 4)
-
                 else:
-                    result_exp = results['Experiment']
+                    genVisForOneExp(results['Experiment'])
 
-                    speedup = result_exp['speedup']
-                    worker_cnt = result_exp['worker_cnt']
-                    total_coverage = result_exp['total_coverage']
-                    loops = result_exp['loops']
+            if self.has_exp_3:
+                if results['Experiment-no-spec'] is None:
+                    result_vis.extend(["-"] * 4)
+                else:
+                    genVisForOneExp(results['Experiment-no-spec'])
 
-                    result_vis.append("%.2f" % speedup)
-                    result_vis.append("%d" % worker_cnt)
-                    result_vis.append("%.2f%%" % total_coverage)
+                if results['Experiment-no-specpriv'] is None:
+                    result_vis.extend(["-"] * 4)
+                else:
+                    genVisForOneExp(results['Experiment-no-specpriv'])
+                # if results['Experiment-cheap-spec'] is None:
+                    # result_vis.extend(["-"] * 4)
+                # else:
+                    # genVisForOneExp(results['Experiment-cheap-spec'])
 
-                    # {loop_name: {"exec_coverage":float,
-                    #              "exec_time": int, "total_time": int,
-                    #              "total_lcDeps":int,
-                    #              "covered_lcDeps", "lcDeps_coverage": float,
-                    #              "stage": str,
-                    #              "loop_speedup": float, "debug_info": str
-                    #              "selected": bool
-                    #             }}
-                    loops_vis = ""
-                    for loop_name, loop_info in loops.items():
-                        loop_vis = ""
-                        if "selected" in loop_info and loop_info["selected"]:
-                            sel_ch = '-'
-                        else:
-                            sel_ch = 'X'
-                        loop_vis += " %s %s(%s):" % (sel_ch, loop_name, loop_info["debug_info"])
-
-                        if "loop_speedup" in loop_info:
-                            loop_vis += "speedup = %.2fx;" % loop_info["loop_speedup"]
-
-                        if "stage" in loop_info:
-                            loop_vis += "stage = %s;" % loop_info["stage"]
-
-                        if "total_lcDeps" in loop_info:
-                            loop_vis += "covered (%d/%d) = %.2f LC Deps;" % (
-                                loop_info["covered_lcDeps"], loop_info["total_lcDeps"],
-                                loop_info["lcDeps_coverage"]
-                            )
-
-                        if "total_time" in loop_info:
-                            loop_vis += "counts for (%d/%d) = %.2f%%" % (
-                                loop_info["exec_time"], loop_info["total_time"],
-                                loop_info["exec_coverage"]
-                            )
-                        loop_vis += "\n"
-                        loops_vis += loop_vis
-                    result_vis.append(loops_vis)
+                # if results['Experiment-all-spec'] is None:
+                    # result_vis.extend(["-"] * 4)
+                # else:
+                    # genVisForOneExp(results['Experiment-all-spec'])
 
             if self.has_real_speedup:
                 if results['RealSpeedup'] is None:

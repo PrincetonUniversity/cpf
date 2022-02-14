@@ -12,11 +12,11 @@ $(error LLVM_INSTALL_RELEASE is not set)
 endif
 
 all: noelle-objects-debug noelle-objects-release
-.PHONY: noelle-objects-debug noelle-objects-release clean
+.PHONY: noelle noelle-objects-debug noelle-objects-release clean
 
 noelle:
-	git clone -n ${NOELLE_REMOTE} noelle
-	cd noelle && git checkout ${NOELLE_BRANCH}
+	- git clone -n ${NOELLE_REMOTE} noelle
+	cd noelle && git fetch && git checkout ${NOELLE_BRANCH}
 
 clean:
 	rm -rf noelle

@@ -1,0 +1,17 @@
+{
+"500.perlbench": {"suites": ["Spec2017", "Spec"], "available": true},
+"505.mcf": {"suites": ["Spec2017", "Spec"], "available": true},
+"508.namd": {"suites": ["Spec2017", "Spec"], "available": true},
+"510.parest": {"suites": ["Spec2017", "Spec"], "available": true},
+"511.povray": {"suites": ["Spec2017", "Spec"], "available": true},
+"519.lbm": {"suites": ["Spec2017", "Spec"], "available": true},
+"520.omnetpp": {"suites": ["Spec2017", "Spec"], "available": true},
+"523.xalancbmk": {"suites": ["Spec2017", "Spec"], "available": true},
+"525.x264": {"suites": ["Spec2017", "Spec"], "available": true},
+"526.blender": {"suites": ["Spec2017", "Spec"], "available": true},
+"531.deepsjeng_r": {"suites": ["Spec2017", "Spec"], "available": true},
+"538.imagick": {"suites": ["Spec2017", "Spec"], "available": true},
+"541.leela": {"suites": ["Spec2017", "Spec"], "available": true},
+"544.nab": {"suites": ["Spec2017", "Spec"], "available": true},
+"557.xz": {"suites": ["Spec2017", "Spec"], "available": true}
+}

@@ -31,6 +31,7 @@
 //
 //
 //===----------------------------------------------------------------------===//
+#include "llvm/ADT/StringRef.h"
 #define DEBUG_TYPE "LAMP"
 
 #define defTLAMP 0
@@ -40,6 +41,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/CallSite.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "LAMP/LAMPInstrumentation.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -77,6 +79,10 @@ using namespace llvm;
 using namespace std;
 
 using namespace liberty;
+
+cl::opt<bool> ProfileKnownExternalFunction(
+    "lamp-external", cl::init(false), cl::NotHidden,
+    cl::desc("Profile known external functions"));
 
 cl::opt<bool> PLAMP(
     "plamp", cl::init(false), cl::NotHidden,
@@ -197,7 +203,7 @@ namespace {
     bool isGlobalCtor(Function *f);
     void constructGlobalCtors(Module *m, Function *f);
     void constructCtors(Function *f);
-
+    void profileKnownExternalCall(Module *M, BasicBlock::iterator &ii);
 
 
     map<Function *, bool> *GlobalCtorMap;
@@ -403,12 +409,81 @@ int LAMPProfiler::getIndex(Type* ty)
   }
 }
 
+void LAMPProfiler::profileKnownExternalCall(Module *M, BasicBlock::iterator &ii) {
+  auto I = &*ii;
+  CallInst *call = dyn_cast<CallInst>(I);
+  Function *callee = dyn_cast<Function>(call->getCalledValue()->stripPointerCasts());
+
+  assert(callee && "Should be checked and exist at this point");
+
+  StringRef oldFnName = callee->getName();
+  FunctionType *oldFnType = call->getFunctionType();
+
+  string fnName = "";
+
+  const set<string> NormalFunctionSet = {
+    /* malloc */
+    "realloc", "free", "calloc", "malloc",
+    /* memory */
+    "memmove", "memset", "memcmp", "memcpy",
+    /* IO */  
+    "read", "open", "close", "write", "lseek", "fopen", "fflush", "fclose",
+    "ferror", "feof", "ftell", "fread", "fwrite", "fseek", "rewind", "fgetc",
+    "fputc", "fgets", "fputs", "ungetc", "putchar", "getchar", "fileno",
+    "gets", "puts", "select", "remove", "setbuf", "tmpnam", "tmpfile",
+    "ttyname", "fdopen", "clearerr",
+    /* String */
+    "strlen", "strchr", "strrchr", "strcmp", "strncmp", "strcpy", "strncpy",
+    "strcat", "strncat", "strstr", "strspn", "strcspn", "strtok", "strtod",
+    "strtol", "strdup", "strpbrk",
+    /* printf */
+    //"printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf",
+    //"vsprintf", "vsnprintf", "fscanf", "scanf", "sscanf", "vfscanf", "vscanf",
+    //"vsscanf"
+  };
+
+  const map<string, string> SpecialNameMap = {
+    {"llvm.memcpy.p0i8.p0i8.i64", "memprof_memcpy"}};
+  // a map from original name to new name
+  // void * memprof_realloc(void * ptr, size_t n);
+
+  // add memprof_ prefix
+  if (NormalFunctionSet.count(oldFnName)) {
+    fnName = "memprof_"+ oldFnName.str();
+  } else {
+    if (SpecialNameMap.find(oldFnName) != SpecialNameMap.end())
+      fnName = SpecialNameMap.at(oldFnName);
+  }
+
+  // no replacement
+  if (fnName == "") {
+    if (call->mayReadFromMemory() && callee->isDeclaration()) {
+      dbgs() <<  "Not recognized standard library function: " << oldFnName << " \n";
+    }
+    return;
+  }
+
+  FunctionCallee wrapper = M->getOrInsertFunction(fnName, oldFnType);
+  auto *newFn= cast<Constant>(wrapper.getCallee());
+
+  SmallVector<Value *, 8> newArgs(call->arg_begin(), call->arg_end());
+  auto *newCall = CallInst::Create(newFn, newArgs);
+
+  if (!call->use_empty())
+    call->replaceAllUsesWith(newCall);
+
+  // replace in place and update the ii
+  ReplaceInstWithInst(call->getParent()->getInstList(), ii, newCall);
+}
+
 bool LAMPProfiler::runOnFunction(Function &F)
 {
   Module* M = F.getParent();
 
-  if(!GlobalCtorMap)
-    constructGlobalCtors(M, &F);
+  // Ziyang: 10/06/21 doesn't seems to be necessary
+  //if(!GlobalCtorMap)
+    //constructGlobalCtors(M, &F);
+
 /* This hack is no longer necessary; callBeforeMain was fixed in rev 58809.
   if(isGlobalCtor(&F))
     return true;
@@ -451,8 +526,11 @@ bool LAMPProfiler::runOnFunction(Function &F)
 
     BasicBlock& BB = *IF;
 
-    for (BasicBlock::iterator I = BB.begin(), E = BB.end(); I != E; ++I, ++iid)
-    {
+    BasicBlock::iterator ii = BB.begin();
+    for (;ii != BB.end();ii++, iid++) {
+      auto I = &*ii;
+      //for (BasicBlock::iterator I = BB.begin(), E = BB.end(); I != E; ++I, ++iid)
+      //{
 
       // Instrument Loads
       if (isa<LoadInst>(I))
@@ -605,63 +683,32 @@ bool LAMPProfiler::runOnFunction(Function &F)
 
       else if ( EX_CALL(I))
       {
-				// TODO
-				// NPJ: there are several LLVM intrinsics which do not need
-				// to be instrumented as external calls:
-				//	llvm.lifetime.start, llvm.lifetime.end, llvm.uadd.with.overflow.i32
+        // TODO
+        // NPJ: there are several LLVM intrinsics which do not need
+        // to be instrumented as external calls:
+        //	llvm.lifetime.start, llvm.lifetime.end, llvm.uadd.with.overflow.i32
 
-      // sot: remove Heejin's changes for malloc/free
-      // allocation / deallocation handling
-      // FIXME currently doesn't handle C++ new/delete
-      //  CallInst *call = dyn_cast<CallInst>(I);
+        // sot: remove Heejin's changes for malloc/free
+        // allocation / deallocation handling
+        // FIXME currently doesn't handle C++ new/delete
+        CallInst *call = dyn_cast<CallInst>(I);
 
-        /*
         Value *callee = dyn_cast<Function>(call->getCalledValue()->stripPointerCasts());
         string calleeName = callee ? callee->getName() : "";
+
         if (callee && calleeName.find("LAMP_") != 0) {
-          //dbgs() << instruction_id+1 << ": ex_call: " << *I << "\n";
-        */
+          LLVM_DEBUG(dbgs() << instruction_id+1 << ": ex_call: " << *I << "\n");
+        } else {
+          continue;
+        }
 
         std::vector<Value*> Args(1);
-
         Args[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), ++instruction_id);
-
+        // register the call
         CallInst::Create(CallFn, Args, "", &*I);
 
-          /*
-          if (callee->getName() == "malloc")
-          {
-            std::vector<Value*> Args(3);
-            Args[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), 0);
-            Args[1] = call;
-
-            Value* size = call->getArgOperand(0);
-            Value *tempval;
-            if (size->getType()->getScalarSizeInBits() <
-                Type::getInt64Ty(M->getContext())->getScalarSizeInBits())
-              tempval = new SExtInst(size, Type::getInt64Ty(M->getContext()), "temp_var", &*I); // should be 32
-            else
-              tempval = size;
-
-            Args[2] = new TruncInst(tempval, Type::getInt32Ty(M->getContext()), "size_var", &*I);
-
-            //sot
-            //CallInst::Create(AllocFn, Args, "", std::next(&*I));
-            Instruction* cI = CallInst::Create(AllocFn, Args, "");
-            cI->insertAfter(&*I);
-          }
-          */
-
-          /*
-          else if (callee->getName() == "free")
-          {
-            std::vector<Value*> Args(2);
-            Args[0] = ConstantInt::get(Type::getInt32Ty(M->getContext()), 0);
-            Args[1] = call->getArgOperand(0);
-            CallInst::Create(DeallocFn, Args, "", &*I);
-          }
-        }
-        */
+        if (ProfileKnownExternalFunction)
+          profileKnownExternalCall(M, ii);
       }
 
       /*      else if (isa<AllocationInst>(I))
@@ -722,6 +769,7 @@ bool LAMPProfiler::runOnFunction(Function &F)
 
       // possibly insert LAMP_deallocate call here -- u32 lampID, void * memory, size_t size
       }*/
+      //}
     }
   }
 

@@ -51,25 +51,35 @@ unsigned long Critic::getExpPipelineSpeedup(const ParallelizationPlan &ps,
   const long unsigned loopTime = perf->estimate_loop_weight(loop);
   const long unsigned scaledLoopTime = FixedPoint * loopTime;
   const unsigned depthPenalty =
-      PenalizeLoopNest * loop->getLoopDepth(); // break ties with nested loops
+      PenalizeLoopNest * (loop->getLoopDepth() - 1); // break ties with nested loops
   long unsigned adjLoopTime = scaledLoopTime;
   if (scaledLoopTime > depthPenalty)
     adjLoopTime = scaledLoopTime - depthPenalty;
 
   long unsigned estimatePipelineWeight =
       (long)FixedPoint * perf->estimate_pipeline_weight(ps, loop);
+
   const unsigned long wt = adjLoopTime - estimatePipelineWeight;
+  //errs() << "wt: " << wt << "\nadjLoopTime: " << adjLoopTime
+    //<< "\nestimatePipelineWeight: " << estimatePipelineWeight
+    //<< "\ndepthPenalty: " << depthPenalty << '\n';
 
-  /*
-  long scaledwt = 0;
+  if (adjLoopTime > estimatePipelineWeight) {
 
-  if (perf->estimate_loop_weight(loop))
-    scaledwt = wt * (double)lpl->getLoopTime(loop->getHeader()) /
-               (double)perf->estimate_loop_weight(loop);
+    /*
+       long scaledwt = 0;
 
-  return scaledwt;
-  */
-  return wt;
+       if (perf->estimate_loop_weight(loop))
+       scaledwt = wt * (double)lpl->getLoopTime(loop->getHeader()) /
+       (double)perf->estimate_loop_weight(loop);
+
+       return scaledwt;
+       */
+    return wt;
+  }
+  else {
+    return 0;
+  }
 }
 
 PDG *getExpectedPdg(PDG &pdg, Criticisms &criticisms) {

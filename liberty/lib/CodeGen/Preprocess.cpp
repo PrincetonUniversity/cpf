@@ -632,6 +632,9 @@ void Preprocess::init(ModuleLoops &mloops)
             reduxUpdateInst[header] = reduxRemed->depUpdateInst;
           }
         }
+        if (reduxRemed->cmpInst){
+          reduxCmpInst[header] = reduxRemed->cmpInst;
+        }
       } else if (remed->getRemedyName().equals("counted-iv-remedy")) {
         CountedIVRemedy *indVarRemed = (CountedIVRemedy *)&*remed;
         indVarPhi = indVarRemed->ivPHI;
@@ -898,6 +901,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
                  << " to function " << fcn->getName() << '\n');
   }
 
+
   // Identify the edges at the end of an iteration
   // == loop backedges, loop exits.
   typedef std::vector< RecoveryFunction::CtrlEdge > CtrlEdges;
@@ -1046,16 +1050,31 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
     Instruction *updateInst =
         const_cast<Instruction *>(reduxUpdateInst[header]);
     SelectInst *updateInstS = dyn_cast<SelectInst>(updateInst);
-    assert(updateInstS && "Redux update inst with dependent redux is not a "
-                          "select. Cond + branch not supported yet");
+    PHINode *updateInstB = dyn_cast<PHINode>(updateInst);
+    assert((updateInstS||updateInstB) && "Redux update inst with dependent redux is not a "
+                          "select or branch.");
     // check if there was an update of min/max or not
-    SelectInst *setBool = SelectInst::Create(
-        updateInstS->getCondition(), ConstantInt::get(u32, 1),
+    if(updateInstS){
+        SelectInst *setBool = SelectInst::Create(
+          updateInstS->getCondition(), ConstantInt::get(u32, 1),
+          ConstantInt::get(u32, 0), "min.max.changed");
+        CallInst *callSetLastUpI = CallInst::Create(setLastReduxUpIter, setBool);
+        InstInsertPt::End(updateInst->getParent()) << setBool << callSetLastUpI;
+        addToLPS(setBool, updateInst);
+        addToLPS(callSetLastUpI, updateInst);
+    }
+    else if(updateInstB){
+      Value *cmpInstVal = (Value*) reduxCmpInst[header];
+      assert(cmpInstVal && "No cmp instruction found?\n" );
+      SelectInst *setBool = SelectInst::Create(
+        cmpInstVal, ConstantInt::get(u32, 1),
         ConstantInt::get(u32, 0), "min.max.changed");
-    CallInst *callSetLastUpI = CallInst::Create(setLastReduxUpIter, setBool);
-    InstInsertPt::End(updateInst->getParent()) << setBool << callSetLastUpI;
-    addToLPS(setBool, updateInst);
-    addToLPS(callSetLastUpI, updateInst);
+      CallInst *callSetLastUpI = CallInst::Create(setLastReduxUpIter, setBool);
+      InstInsertPt::End(updateInst->getParent()) << setBool << callSetLastUpI;
+      addToLPS(setBool, updateInst);
+      addToLPS(callSetLastUpI, updateInst);
+      errs() << "Redux about to be implemented\n";
+    }
   }
 
   // TODO: replace loads from/stores to this structure with
@@ -1169,6 +1188,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
         reduxregs.insert(p->au);
 
         const Instruction *depInst = redux2Info[reduxLiveouts[i]].depInst;
+        errs() << "reduxLiveouts[i] is " << *(reduxLiveouts[i]) << "\n";
         if (depInst) {
           HeapAssignment::ReduxDepInfo reduxDepAUInfo;
           unsigned k;
@@ -1191,6 +1211,7 @@ bool Preprocess::demoteLiveOutsAndPhis(Loop *loop, LiveoutStructure &liveoutStru
       }
     }
   }
+
 
   numLiveOuts += N;
   numReduxLiveOuts += K;

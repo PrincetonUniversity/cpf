@@ -132,31 +132,10 @@ def get_pdg(root_path, bmark, result_path):
 
 # ZY - check whether all profilings are there;
 # if remake_profile == True, ignore remake them by the Makefile, else abort
-def get_exp_result(root_path, bmark, result_path):
-    print("Generating Experiment results on %s " % (bmark))
+def get_exp_result(root_path, bmark, result_path, exp_name="benchmark.collaborative-pipeline.dump"):
+    print("Generating " + exp_name +  " on %s " % (bmark))
 
     os.chdir(os.path.join(root_path, bmark, "src"))
-
-    exp_name = "benchmark.collaborative-pipeline.dump"
-
-    # Check LAMP, SLAMP, HEADERPHI, and SPECPRIV
-    if not os.path.isfile("benchmark.lamp.out"):
-        print(colored("No LAMP for %s, abort!" % bmark, 'red'))
-        return None
-    # if not os.path.isfile("benchmark.result.slamp.profile"):
-    #     print(colored("No SLAMP for %s, abort!" % bmark, 'red'))
-    #     return None
-    if not os.path.isfile("benchmark.specpriv-profile.out"):
-        print(colored("No SpecPriv for %s, abort" % bmark, 'red'))
-        return None
-
-    # 22 APR don't need headerphi because not needed anymore
-    # if not os.path.isfile("benchmark.headerphi_prof.out"):
-    #    print(colored("No headerphi for benchmark"+bmark, 'red'))
-
-    # Force redo; 22 APR don't do that, have -x option
-    # if os.path.isfile(exp_name):
-    #    os.remove(exp_name)
 
     start_time = time.time()
     make_process = subprocess.Popen(["make", exp_name],
@@ -178,7 +157,7 @@ def get_exp_result(root_path, bmark, result_path):
         # Create a backup
         shutil.copy(exp_name, os.path.join(result_path, bmark + "." + exp_name))
 
-        print(colored("Experiment succeeded for %s, took %.4fs" % (bmark, elapsed), 'green'))
+        print(colored(exp_name + " succeeded for %s, took %.4fs" % (bmark, elapsed), 'green'))
         return parsed_result
 
 
@@ -324,6 +303,8 @@ def get_real_speedup(root_path, bmark, reg_option, times=3, default_num_worker=2
 
 def get_all_passes(root_path, bmark, passes, result_path):
     status = {}
+    if "Inline" in passes:
+      status["Inline"] = get_one_prof(root_path, bmark, 'Inline', "benchmark.inlined.o3.out")
     if "Edge" in passes:
         status["Edge"] = get_one_prof(root_path, bmark, 'Edge Profile', "benchmark.edgeProf.out")
     if "Loop" in passes:
@@ -338,6 +319,25 @@ def get_all_passes(root_path, bmark, passes, result_path):
         status["HeaderPhi"] = get_one_prof(root_path, bmark, 'HeaderPhi Profile', "benchmark.headerphi_prof.out")
     if "Experiment" in passes:
         status["Experiment"] = get_exp_result(root_path, bmark, result_path)
+    if "Exp-3" in passes:
+        # status["Experiment-no-spec"] = get_exp_result(root_path, bmark, result_path, "no-spec.dump")
+
+        # if 'Edge' in status and status['Edge'] and 'SpecPriv' in status and status['SpecPriv']:
+            # status["Experiment-cheap-spec"] = get_exp_result(root_path, bmark, result_path, "cheap-spec.dump")
+        # else:
+            # status["Experiment-cheap-spec"] = None
+
+        if 'Edge' in status and status['Edge'] and "LAMP" in status and status['LAMP']:
+            status["Experiment-no-specpriv"] = get_exp_result(root_path, bmark, result_path, "no-specpriv.dump")
+            status["Experiment-no-specpriv-ignorefn"] = get_exp_result(root_path, bmark, result_path, "no-specpriv-ignorefn.dump")
+        else:
+            status["Experiment-no-specpriv"] = None
+
+        # if 'Edge' in status and status['Edge'] and 'SpecPriv' in status and status['SpecPriv'] and "LAMP" in status and status['LAMP']:
+            # status["Experiment-all-spec"] = get_exp_result(root_path, bmark, result_path, "all-spec.dump")
+        # else:
+            # status["Experiment-all-spec"] = None
+
     if "PDG" in passes:
         status["PDG"] = get_pdg(root_path, bmark, result_path)
 
@@ -519,7 +519,11 @@ def preview_config(config):
 
 if __name__ == "__main__":
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "PDG"] # "Experiment"]
-    passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
+    #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
+    #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
+    #passes = ["Edge", "Loop"]
+    passes = ["Inline"]
+    # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment", "RealSpeedup"]
     # passes = ["Edge", "Loop", "LAMP", "SLAMP", "SpecPriv", "HeaderPhi", "Experiment"]
 

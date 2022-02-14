@@ -4,6 +4,10 @@
 #include "noelle/core/LoopDependenceInfo.hpp"
 #include "noelle/core/PDG.hpp"
 #include "noelle/core/SCCDAG.hpp"
+#include "liberty/Orchestration/PredictionSpeculation.h"
+#include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/PtrResidueManager.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
@@ -13,9 +17,9 @@
 #include "liberty/Orchestration/CountedIVRemed.h"
 #include "liberty/Orchestration/Critic.h"
 #include "liberty/Orchestration/LocalityAA.h"
-#include "liberty/Orchestration/MemSpecAARemed.h"
 #include "liberty/Orchestration/MemVerRemed.h"
 #include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Orchestration/DSWPCritic.h"
 #include "liberty/Orchestration/ReduxRemed.h"
 #include "liberty/Orchestration/Remediator.h"
 #include "liberty/Orchestration/SmtxAA.h"
@@ -23,7 +27,13 @@
 #include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Strategy/PipelineStrategy.h"
+
+#include "scaf/SpeculationModules/MemSpecAARemed.h"
+#include "scaf/SpeculationModules/GlobalConfig.h"
+#include "scaf/Utilities/ControlSpeculation.h"
+#include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/PrintDebugInfo.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include <memory>
 #include <unordered_map>
@@ -43,16 +53,52 @@ typedef std::shared_ptr<Critic> Critic_ptr;
 
 class Orchestrator {
 public:
-  bool findBestStrategy(
-      // Inputs
-      Loop *loop, llvm::noelle::PDG &pdg, // LoopDependenceInfo &ldi,
-      PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
-      PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-      TargetLibraryInfo *tli, SmtxSpeculationManager &smtxLampMan,
-      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-      CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
+  Orchestrator(Pass &proxy_): proxy(proxy_) {
+      loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
+      lpl = &proxy.getAnalysis< LoopProfLoad >();
+      perf = &proxy.getAnalysis< ProfilePerformanceEstimator >();
+      mloops = &proxy.getAnalysis< ModuleLoops >();
+      //kill = &proxy.getAnalysis< KillFlow >();
+
+      // ctrl spec
+      if (EnableEdgeProf) {
+        ctrlspec = proxy.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+        //callsiteA = &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+        //killflowA = &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
+        //killflowA->setLoopOfInterest(nullptr, nullptr);
+      }
+      else {
+        ctrlspec = nullptr;
+        callsiteA = nullptr;
+        killflowA = nullptr;
+      }
+
+      // SpecPriv
+      if (EnableSpecPriv) {
+        rd = &proxy.getAnalysis<ReadPass>().getProfileInfo();
+        classify = &proxy.getAnalysis<Classify>();
+        ptrResMan = &proxy.getAnalysis<PtrResidueSpeculationManager>();
+        loadedValuePred = &proxy.getAnalysis<ProfileGuidedPredictionSpeculator>();
+      }
+      else {
+        rd = nullptr;
+        Classify *classify = nullptr;
+        ptrResMan = nullptr;
+        loadedValuePred = nullptr;
+      }
+
+      // LAMP
+      if (EnableLamp) {
+        smtxLampMan = &proxy.getAnalysis<SmtxSpeculationManager>();
+        lamp = &proxy.getAnalysis<LAMPLoadProfile>();
+      }
+      else {
+        smtxLampMan = nullptr;
+        lamp = nullptr;
+      }
+  }
+
+  bool findBestStrategy(Loop *loop, llvm::noelle::PDG &pdg,
       // Output
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -61,18 +107,84 @@ public:
       bool includeReplicableStages = true, bool constrainSubLoops = false,
       bool abortIfNoParallelStage = true);
 
+/*
+ *  bool findBestStrategy(
+ *      // Inputs
+ *      Loop *loop, llvm::noelle::PDG &pdg, // LoopDependenceInfo &ldi,
+ *      PerformanceEstimator &perf, ControlSpeculation *ctrlspec,
+ *      PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
+ *      TargetLibraryInfo *tli, SmtxSpeculationManager &smtxLampMan,
+ *      PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+ *      const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
+ *      KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
+ *      CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
+ *      // Output
+ *      std::unique_ptr<PipelineStrategy> &strat,
+ *      std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
+ *      // Optional inputs
+ *      unsigned threadBudget = 25, bool ignoreAntiOutput = false,
+ *      bool includeReplicableStages = true, bool constrainSubLoops = false,
+ *      bool abortIfNoParallelStage = true);
+ *
+ *  bool findBestStrategyGivenBestPDG(
+ *      Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ControlSpeculation *ctrlspec, ModuleLoops &mloops,
+ *      LoopProfLoad &lpl, LoopAA *loopAA, 
+ *      const Read &rd, const HeapAssignment &asgn, Pass &proxy,
+ *      std::unique_ptr<PipelineStrategy> &strat,
+ *      std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
+ *      // Optional inputs
+ *      unsigned threadBudget = 25, bool ignoreAntiOutput = false,
+ *      bool includeReplicableStages = true, bool constrainSubLoops = false,
+ *      bool abortIfNoParallelStage = true);
+ */
+
 private:
-  std::vector<Remediator_ptr>
-  getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
-                 PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-                 TargetLibraryInfo *tli, // LoopDependenceInfo &ldi,
-                 SmtxSpeculationManager &smtxLampMan,
-                 PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-                 const Read &rd, const HeapAssignment &asgn, Pass &proxy,
-                 LoopAA *loopAA, KillFlow &kill,
-                 KillFlow_CtrlSpecAware *killflowA,
-                 CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
-                 PerformanceEstimator *perf);
+  /*
+   *std::vector<Remediator_ptr> getNonSpecRemediators(
+   *    Loop *A, PDG *pdg, ControlSpeculation *ctrlspec, ModuleLoops &mloops, LoopAA *loopAA,
+   *  const Read &rd, const HeapAssignment &asgn, Pass &proxy, PerformanceEstimator *perf);
+   */
+
+  Pass &proxy;
+  LoopAA *loopAA;
+  ModuleLoops *mloops;
+  LoopProfLoad *lpl;
+  PerformanceEstimator *perf;
+  //KillFlow *kill;
+
+
+  //TargetLibraryInfo *tli;
+
+  // control speculation
+  ControlSpeculation *ctrlspec;
+  KillFlow_CtrlSpecAware *killflowA;
+  CallsiteDepthCombinator_CtrlSpecAware *callsiteA;
+  
+  // SpecPriv
+  Read *rd;
+  Classify *classify;
+  PtrResidueSpeculationManager *ptrResMan;
+  PredictionSpeculation *loadedValuePred;
+  
+  // LAMP
+  LAMPLoadProfile *lamp;
+  SmtxSpeculationManager *smtxLampMan;
+
+  /*
+   *std::vector<Remediator_ptr>
+   *getRemediators(Loop *A, PDG *pdg, ControlSpeculation *ctrlspec,
+   *               PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
+   *               TargetLibraryInfo *tli, // LoopDependenceInfo &ldi,
+   *               SmtxSpeculationManager &smtxLampMan,
+   *               PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
+   *               const Read &rd, const HeapAssignment &asgn, Pass &proxy,
+   *               LoopAA *loopAA, KillFlow &kill,
+   *               KillFlow_CtrlSpecAware *killflowA,
+   *               CallsiteDepthCombinator_CtrlSpecAware *callsiteA,
+   *               PerformanceEstimator *perf);
+   */
+
+  std::vector<Remediator_ptr> getAvailableRemediators(Loop *A, PDG *pdg);
 
   std::vector<Critic_ptr> getCritics(PerformanceEstimator *perf,
                                      unsigned threadBudget, LoopProfLoad *lpl);

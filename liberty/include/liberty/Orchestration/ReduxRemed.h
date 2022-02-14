@@ -36,6 +36,8 @@ public:
   const Instruction *depInst;
   Reduction::Type depType;
   const Instruction *depUpdateInst;
+  // could also be cmpInst based
+  const CmpInst *cmpInst;
 
   void apply(Task *task);
   bool compare(const Remedy_ptr rhs) const;

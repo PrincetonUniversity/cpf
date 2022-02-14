@@ -140,7 +140,7 @@ void ExternICallProf::instrumentICall(Instruction *I, unsigned id, Module &M){
 
   gv->setAlignment(8);
 
-  // 2. add a call to __extern_icall_prof_invoc(fn_ptr, gv_ptr, maxnumtarget)
+  // 2. add a call to __extern_icall_prof_invoc(fn_ptr, gv_ptr, id, maxnumtarget)
   Builder.CreateCall(
       getOrInsertProfilingCall(M),
       {Builder.CreateBitCast(Callee, Builder.getInt8PtrTy()),
@@ -155,7 +155,7 @@ bool ExternICallProf::runOnModule(Module& M)
   numICall = 0;
 
   // Go through and instrument each function
-  for(Module::iterator IF = M.begin(), E = M.end(); IF != E; ++IF)
+  for(auto IF = M.begin(), E = M.end(); IF != E; ++IF)
   {
     Function &F = *IF;
     if(F.isDeclaration())
