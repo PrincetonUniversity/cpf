@@ -4,7 +4,7 @@
 #ifndef LIBERTY_SPEC_PRIV_PREDICTION_ORACLE_AA_H
 #define LIBERTY_SPEC_PRIV_PREDICTION_ORACLE_AA_H
 
-#include "liberty/Orchestration/PredictionSpeculation.h"
+#include "scaf/SpeculationModules/PredictionSpeculation.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/UpdateOnClone.h"
 

@@ -14,7 +14,7 @@
 
 #if MTCG_VALUE_DEBUG
 #include "llvm/IR/InstIterator.h"
-#include "Metadata.h"
+#include "scaf/Utilities/Metadata.h"
 #include <sstream>
 #endif
 

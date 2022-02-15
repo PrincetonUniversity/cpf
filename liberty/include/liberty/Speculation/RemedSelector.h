@@ -9,14 +9,14 @@
 #include <set>
 #include <map>
 
-#include "liberty/Orchestration/EdgeCountOracleAA.h"
-#include "liberty/Orchestration/PredictionSpeculation.h"
+#include "scaf/SpeculationModules/EdgeCountOracleAA.h"
+#include "scaf/SpeculationModules/PredictionSpeculation.h"
 #include "liberty/Speculation/Selector.h"
-#include "liberty/Orchestration/TXIOAA.h"
-#include "liberty/Orchestration/ControlSpecRemed.h"
-#include "liberty/Orchestration/ReduxRemed.h"
-#include "liberty/Orchestration/CommutativeLibsAA.h"
-#include "liberty/Orchestration/Remediator.h"
+#include "scaf/SpeculationModules/TXIOAA.h"
+#include "scaf/SpeculationModules/ControlSpecRemed.h"
+#include "scaf/SpeculationModules/ReduxRemed.h"
+#include "scaf/SpeculationModules/CommutativeLibsAA.h"
+#include "scaf/SpeculationModules/Remediator.h"
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Speculation/Classify.h"
 

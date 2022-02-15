@@ -16,7 +16,7 @@
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/Recovery.h"
 #include "liberty/CodeGen/RoI.h"
-#include "liberty/Redux/Reduction.h"
+#include "scaf/SpeculationModules/Redux/Reduction.h"
 
 #include "noelle/core/PDG.hpp"
 

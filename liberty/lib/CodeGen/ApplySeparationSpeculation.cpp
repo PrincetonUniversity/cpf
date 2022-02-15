@@ -9,7 +9,7 @@
 #include "liberty/Speculation/PredictionSpeculator.h"
 #include "liberty/Speculation/Read.h"
 #include "liberty/Speculation/Selector.h"
-#include "liberty/Redux/Reduction.h"
+#include "scaf/SpeculationModules/Redux/Reduction.h"
 #include "liberty/PointsToProfiler/Indeterminate.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/GlobalCtors.h"

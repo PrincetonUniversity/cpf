@@ -27,7 +27,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalVariable.h"
 
-#include "Metadata.h"
+#include "scaf/Utilities/Metadata.h"
 #include <list>
 
 namespace liberty {

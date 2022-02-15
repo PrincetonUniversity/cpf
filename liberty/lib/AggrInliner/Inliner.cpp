@@ -17,8 +17,8 @@
 
 #include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/Orchestration/SmtxAA.h"
-#include "liberty/Strategy/ProfilePerformanceEstimator.h"
+#include "scaf/SpeculationModules/SmtxAA.h"
+#include "scaf/SpeculationModules/ProfilePerformanceEstimator.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/ModuleLoops.h"
 

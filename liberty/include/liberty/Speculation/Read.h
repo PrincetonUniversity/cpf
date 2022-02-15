@@ -12,7 +12,7 @@
 #include "liberty/Speculation/FoldManager.h"
 #include "liberty/Speculation/UpdateOnClone.h"
 #include "liberty/PointsToProfiler/Parse.h"
-#include "liberty/Redux/Reduction.h"
+#include "scaf/SpeculationModules/Redux/Reduction.h"
 
 #include <map>
 #include <list>

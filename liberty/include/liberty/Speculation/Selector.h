@@ -21,9 +21,9 @@
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "scaf/Utilities/ControlSpeculation.h"
-#include "liberty/Orchestration/PredictionSpeculation.h"
+#include "scaf/SpeculationModules/PredictionSpeculation.h"
 #include "liberty/Orchestration/Orchestrator.h"
-#include "liberty/Orchestration/Remediator.h"
+#include "scaf/SpeculationModules/Remediator.h"
 
 namespace liberty
 {

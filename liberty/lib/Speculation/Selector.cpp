@@ -37,7 +37,7 @@
 #include "liberty/GraphAlgorithms/Ebk.h"
 #include "liberty/Speculation/Classify.h"
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
-#include "liberty/Orchestration/LocalityAA.h"
+#include "scaf/SpeculationModules/LocalityAA.h"
 
 #include "noelle/core/PDG.hpp"
 #include "noelle/core/LoopDependenceInfo.hpp"

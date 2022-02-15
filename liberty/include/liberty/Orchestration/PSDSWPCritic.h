@@ -10,9 +10,9 @@
 #include "liberty/GraphAlgorithms/EdmondsKarp.h"
 #include "liberty/GraphAlgorithms/Graphs.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
-#include "liberty/Orchestration/ControlSpecRemed.h"
+#include "scaf/SpeculationModules/ControlSpecRemed.h"
 #include "liberty/Orchestration/Critic.h"
-#include "liberty/Orchestration/ReduxRemed.h"
+#include "scaf/SpeculationModules/ReduxRemed.h"
 #include "liberty/Strategy/PerformanceEstimator.h"
 
 #include "noelle/core/DGGraphTraits.hpp"

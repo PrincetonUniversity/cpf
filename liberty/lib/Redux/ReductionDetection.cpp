@@ -4,7 +4,7 @@
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "liberty/Redux/ReductionDetection.h"
+#include "scaf/SpeculationModules/ReductionDetection.h"
 
 namespace liberty
 {

@@ -14,7 +14,7 @@
 
 // For debugging
 #include "llvm/IR/InstIterator.h"
-#include "Metadata.h"
+#include "scaf/Utilities/Metadata.h"
 #include <sstream>
 
 #include "liberty/Speculation/Recovery.h"

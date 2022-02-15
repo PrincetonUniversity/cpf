@@ -233,3 +233,4 @@ copy-makefile:
 	mkdir -p ${install-prefix}
 	- cp cpf-env.rc.template ${install-prefix}/cpf-env.rc.template
 	- cp Makefile ${install-prefix}/Makefile
+	- cp Makefile.root ${install-prefix}/Makefile.root

@@ -3,7 +3,7 @@
 //#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
-#include "liberty/Orchestration/TXIOAA.h"
+#include "scaf/SpeculationModules/TXIOAA.h"
 #include "liberty/Utilities/ReportDump.h"
 
 #include <unordered_set>
