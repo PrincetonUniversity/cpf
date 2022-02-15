@@ -25,15 +25,17 @@ else
 fi
 
 LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
-      -load $LIBERTY_LIBS_DIR/libLoopProf.so
-      -load $LIBERTY_LIBS_DIR/libMetadata.so
-      -load $LIBERTY_LIBS_DIR/libLAMPLoad.so
+      -load $SCAF_LIBS_DIR/libSCAFUtilities.so
+      -load $SCAF_LIBS_DIR/libMemoryAnalysisModules.so
+      -load $SCAF_LIBS_DIR/libLoopProf.so
+      -load $SCAF_LIBS_DIR/libLAMPLoad.so
+      -load $SCAF_LIBS_DIR/libPointsToProfiler.so
       -load $LIBERTY_LIBS_DIR/libLAMP.so
       -load $LIBERTY_LIBS_DIR/libRedux.so
-      -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so
       -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so 
       -load $LIBERTY_LIBS_DIR/libStrategy.so
+      -load $SCAF_LIBS_DIR/libSpeculationModules.so
       -load $LIBERTY_LIBS_DIR/libOrchestration.so
       -load $LIBERTY_LIBS_DIR/libSpeculation.so
       -load $LIBERTY_LIBS_DIR/libCodeGen.so
