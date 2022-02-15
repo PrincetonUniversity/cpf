@@ -519,10 +519,10 @@ def preview_config(config):
 
 if __name__ == "__main__":
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "PDG"] # "Experiment"]
-    #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
+    passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment"]
     #passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
     #passes = ["Edge", "Loop"]
-    passes = ["Inline"]
+    #  passes = ["Inline"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Exp-3"]
     # passes = ["Edge", "Loop", "LAMP", "SpecPriv", "Experiment", "RealSpeedup"]
     # passes = ["Edge", "Loop", "LAMP", "SLAMP", "SpecPriv", "HeaderPhi", "Experiment"]
