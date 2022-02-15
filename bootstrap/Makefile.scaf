@@ -20,11 +20,11 @@ $(error NOELLE_INSTALL_RELEASE is not set)
 endif
 
 all: scaf-objects-debug scaf-objects-release
-.PHONY: scaf-objects-debug scaf-objects-release clean
+.PHONY: scaf scaf-objects-debug scaf-objects-release clean
 
 scaf:
-	git clone -n ${SCAF_REMOTE} scaf
-	cd scaf && git checkout ${SCAF_BRANCH}
+	- git clone -n ${SCAF_REMOTE} scaf
+	cd scaf && git fetch && git checkout ${SCAF_BRANCH}
 
 clean:
 	rm -rf scaf
