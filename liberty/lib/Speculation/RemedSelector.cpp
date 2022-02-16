@@ -17,7 +17,7 @@
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/ReportDump.h"
 
 #include "liberty/Speculation/RemedSelector.h"
 

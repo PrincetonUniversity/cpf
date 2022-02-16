@@ -3,7 +3,7 @@
 #include "liberty/Orchestration/PSDSWPCritic.h"
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/ReportDump.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"

@@ -18,7 +18,7 @@
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
 
-#include "liberty/Utilities/ReportDump.h"
+#include "scaf/Utilities/ReportDump.h"
 
 #include <iterator>
 
