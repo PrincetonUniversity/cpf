@@ -27,6 +27,7 @@ namespace slamp {
 
 class MemoryMap {
 public:
+  uint64_t heapStart = 0;
   MemoryMap(unsigned r) : ratio(r), ratio_shift(0) {
     // ratio expected to be a power of 2
     assert((r & (r - 1)) == 0);
@@ -147,6 +148,11 @@ public:
 
       if (n != 3) {
         continue;
+      }
+
+      // FIXME: get heap start addr
+      if (!strcmp(name, "[heap]")) {
+        heapStart = start;
       }
 
       if (!strcmp(name, "[stack]")) {

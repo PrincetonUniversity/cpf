@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <cstdint>
 #include <unordered_set>
 
 #include "slamp_timestamp.h"
@@ -279,6 +280,18 @@ void SLAMP_pop() {
   context = 0;
 }
 
+bool SLAMP_isBadAlloc(uint64_t addr) {
+  const uint64_t  lower = 0x100000000L;
+  const uint64_t higher =  0x010000000000L;
+  const uint64_t heapStart = smmap->heapStart;
+
+  if (addr < lower && addr > heapStart) {
+    return true;
+  }
+
+  return false;
+}
+
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
 {
   if (invokedepth > 1)
@@ -292,6 +305,9 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 #endif
 
+  if (SLAMP_isBadAlloc(addr))
+    return;
+
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS  ts = *s;
 
@@ -304,6 +320,9 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
 void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
 {
+  if (SLAMP_isBadAlloc(addr))
+    return;
+
   if (invokedepth > 1)
     instr = context;
 
@@ -327,6 +346,8 @@ void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
 {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -360,6 +381,8 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
 {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -409,6 +432,8 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
                  size_t n) {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -506,6 +531,8 @@ void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) {
 }
 
 void SLAMP_store1(uint32_t instr, const uint64_t addr) {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -533,6 +560,8 @@ void SLAMP_store1(uint32_t instr, const uint64_t addr) {
 }
 
 void SLAMP_store2(uint32_t instr, const uint64_t addr) {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -560,6 +589,8 @@ void SLAMP_store2(uint32_t instr, const uint64_t addr) {
 }
 
 void SLAMP_store4(uint32_t instr, const uint64_t addr) {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -587,6 +618,8 @@ void SLAMP_store4(uint32_t instr, const uint64_t addr) {
 }
 
 void SLAMP_store8(uint32_t instr, const uint64_t addr) {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
@@ -613,6 +646,8 @@ void SLAMP_store8(uint32_t instr, const uint64_t addr) {
 }
 
 void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
+  if (SLAMP_isBadAlloc(addr))
+    return;
   if (invokedepth > 1)
     instr = context;
 
