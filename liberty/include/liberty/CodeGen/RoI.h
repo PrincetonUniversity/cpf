@@ -14,7 +14,7 @@
 #include "liberty/Speculation/FoldManager.h"
 #include "liberty/Speculation/Selector.h"
 #include "liberty/Speculation/UpdateOnClone.h"
-#include "liberty/Utilities/MakePtr.h"
+#include "scaf/Utilities/MakePtr.h"
 
 namespace liberty
 {

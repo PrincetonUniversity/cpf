@@ -7,7 +7,7 @@
 #endif
 
 #include "liberty/Strategy/PipelineStrategy.h"
-#include "liberty/Utilities/MakePtr.h"
+#include "scaf/Utilities/MakePtr.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/Debug.h"
 
