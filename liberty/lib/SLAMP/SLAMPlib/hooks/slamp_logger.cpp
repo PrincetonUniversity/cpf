@@ -327,6 +327,10 @@ void print_log(const char *filename) {
 
   std::map<KEY, Value, KEYComp> ordered(deplog->begin(), deplog->end());
 
+  // Add a fake dependence so the loop is recognized
+  of << target_loop_id << " " << 0 << " " << 0 << " "
+       << 0 << " " << 0 << " " << 0 << "\n";
+
   for (auto &&mi : ordered) {
     KEY key = mi.first;
     Value &v = mi.second;
