@@ -50,12 +50,11 @@ jobs:
         ref: master # optional
         path: Driver
 
-    # Runs a set of commands using the runners shell
-    - name: Build CPF
-      run: make -C bootstrap -f Makefile.github all
+    # # Runs a set of commands using the runners shell
+    # - name: Build CPF
+    #   run: make -C bootstrap -f Makefile.github all
 
     - name: Run tests
-
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc

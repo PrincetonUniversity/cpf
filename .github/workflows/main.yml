@@ -35,5 +35,7 @@ jobs:
 
               # Runs a set of commands using the runners shell
             - name: Build CPF
-              run: make -C bootstrap -f Makefile.github all compile-noelle=${{ github.event.inputs.noelle }}
+              run: |
+                  rm -rf /tmp/github-cpf-test/cpf* /tmp/github-cpf-test/scaf*
+                  make -C bootstrap -f Makefile.github all compile-noelle=${{ github.event.inputs.noelle }}
 
