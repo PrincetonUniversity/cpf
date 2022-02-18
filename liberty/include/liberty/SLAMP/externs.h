@@ -114,6 +114,7 @@ std::string externs_str[] = {
 
 "time",
 "localtime",
+"localeconv",
 "gmtime",
 "gettimeofday",
 "ldexp",

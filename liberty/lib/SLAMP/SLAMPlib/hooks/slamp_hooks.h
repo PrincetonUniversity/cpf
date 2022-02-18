@@ -1,6 +1,7 @@
 #ifndef SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 #define SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 
+#include <clocale>
 #include <dirent.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -219,6 +220,7 @@ int SLAMP_vsscanf(const char *s, const char *format, va_list ap);
 /* Time */
 time_t SLAMP_time(time_t *t);
 struct tm *SLAMP_localtime(const time_t *timer);
+struct lconv* SLAMP_localeconv();
 struct tm *SLAMP_gmtime(const time_t *timer);
 int SLAMP_gettimeofday(struct timeval *tv, struct timezone *tz);
 

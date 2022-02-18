@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <clocale>
 #include <cstdint>
 #include <unordered_set>
 
@@ -1954,6 +1955,20 @@ struct tm *SLAMP_localtime(const time_t *timer)
 
   SLAMP_storen_ext(reinterpret_cast<uint64_t>(result), 0, sizeof(*result));
   return result;
+}
+
+struct lconv* SLAMP_localeconv() {
+  struct lconv* lc = localeconv();
+
+  if ( !smmap->is_allocated(reinterpret_cast<void*>(lc)) )
+    smmap->allocate(lc, sizeof(*lc));
+
+  if ( !smmap->is_allocated(reinterpret_cast<void*>(lc->decimal_point)) )
+    smmap->allocate(lc->decimal_point, sizeof(*(lc->decimal_point)));
+
+  SLAMP_storen_ext(reinterpret_cast<uint64_t>(lc), 0, sizeof(*lc));
+  SLAMP_storen_ext(reinterpret_cast<uint64_t>(lc->decimal_point), 0, sizeof(*(lc->decimal_point)));
+  return lc;
 }
 
 struct tm *SLAMP_gmtime(const time_t *timer)
