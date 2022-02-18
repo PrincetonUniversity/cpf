@@ -975,9 +975,11 @@ size_t SLAMP_strlen(const char *str)
   size_t result = strlen(str);
 
   // TODO: Guarantee str has shadow at this point
-  smmap->allocate((void*)str, result);
+  //
+  // FIXME: bypass strlen
+  // smmap->allocate((void*)str, result);
 
-  load_string(str);
+  // load_string(str);
   return result;
 }
 
