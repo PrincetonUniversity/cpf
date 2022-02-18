@@ -22,6 +22,7 @@ std::string externs_str[] = {
 "strdup",
 "__strdup",
 "strpbrk",
+
 "malloc",
 "free",
 "cfree",
@@ -38,6 +39,7 @@ std::string externs_str[] = {
 "__rawmemchr", /* implementation added by a compiler */
 "bzero",
 "bcopy",
+
 "read",
 "open",
 "close",
@@ -65,6 +67,7 @@ std::string externs_str[] = {
 "fileno",
 "gets",
 "puts",
+
 "select",
 "remove",
 "setbuf",
@@ -92,6 +95,7 @@ std::string externs_str[] = {
 "readdir",
 "readdir64",
 "closedir",
+
 // "printf",
 // "fprintf",
 // "sprintf",
@@ -107,6 +111,7 @@ std::string externs_str[] = {
 // "vfscanf",
 // "vscanf",
 // "vsscanf",
+
 "time",
 "localtime",
 "gmtime",
@@ -158,6 +163,7 @@ std::string externs_str[] = {
 "frexp",
 "frexpf",
 "frexpl",
+
 "getenv",
 "putenv",
 "getcwd",

@@ -1972,8 +1972,10 @@ struct tm *SLAMP_gmtime(const time_t *timer)
 int SLAMP_gettimeofday(struct timeval *tv, struct timezone *tz)
 {
   int result = gettimeofday(tv, tz);
-  SLAMP_storen_ext(reinterpret_cast<uint64_t>(tv), 0, sizeof(*tv));
-  SLAMP_storen_ext(reinterpret_cast<uint64_t>(tz), 0, sizeof(struct timezone));
+  if (tv)
+    SLAMP_storen_ext(reinterpret_cast<uint64_t>(tv), 0, sizeof(*tv));
+  if (tz)
+    SLAMP_storen_ext(reinterpret_cast<uint64_t>(tz), 0, sizeof(struct timezone));
   return result;
 }
 
@@ -2386,6 +2388,7 @@ void SLAMP_qsort(void* base, size_t nmemb, size_t size, int(*compare)(const void
 {
   SLAMP_loadn_ext(reinterpret_cast<uint64_t>(base), 0, nmemb * size);
   SLAMP_storen_ext(reinterpret_cast<uint64_t>(base), 0, nmemb * size);
+  qsort(base, nmemb, size, compare);
 }
 
 int SLAMP_ioctl(int d, int request, ...)
