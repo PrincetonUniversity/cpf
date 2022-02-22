@@ -5,19 +5,23 @@ name: SpecTest
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
+    # schedule:
+    # - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
     workflow_dispatch:
         inputs:
             suite:
                 description: 'Benchmark suite option to run'
                 required: true
                 default: 'All'
-                # schedule:
-                # - cron: "0 5 * * *" # 5AM UTC everyday (12AM ET)
             reg_option:
                 description: 'Regression Option (0: start from scratch; 1: with existing profiles)'
                 required: true
                 default: 0
                 type: number
+            memo:
+                description: 'Memo'
+                required: true
+                default: "GitHub Action run"
 
 #   pull_request:
 #     branches: [ master ]
@@ -63,7 +67,7 @@ jobs:
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -n 15 -s ${{ env.REG_SUITE }}
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m ${{ github.event.inputs.memo }} -n 15 -s ${{ env.REG_SUITE }}
 
     - name: Upload artifacts
       run: |
