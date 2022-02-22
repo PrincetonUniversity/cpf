@@ -23,8 +23,8 @@ std::string externs_str[] = {
 "__strdup",
 "strpbrk",
 
-"malloc",
-"free",
+// "malloc",
+// "free",
 "cfree",
 "calloc",
 "realloc",
@@ -196,10 +196,10 @@ std::string externs_str[] = {
 "__fxstat",
 "__xstat",
 /* c++ memory allocation */
-"_Znwm",
-"_Znam",
-"_ZdlPv",
-"_ZdaPv"
+// "_Znwm",
+// "_Znam",
+// "_ZdlPv",
+// "_ZdaPv"
 };
 
 /* external functions to ignore */

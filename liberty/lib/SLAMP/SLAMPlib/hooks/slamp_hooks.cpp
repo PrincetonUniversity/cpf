@@ -5,6 +5,7 @@
 #include <clocale>
 #include <cstdint>
 #include <unordered_set>
+#include "malloc.h"
 
 #include "slamp_timestamp.h"
 #include "slamp_logger.h"
@@ -12,6 +13,7 @@
 #include "slamp_shadow_mem.h"
 #include "slamp_bound_malloc.h"
 #include "slamp_debug.h"
+
 
 #include <set>
 #include <map>
@@ -103,6 +105,28 @@ static void __slamp_sigsegv_handler(int sig, siginfo_t *siginfo, void *dummy)
   sigprocmask(SIG_SETMASK, &old_sigs, 0);
 
   _exit(1);
+}
+
+
+static void *(*old_malloc_hook)(unsigned long, const void *);
+static void (*old_free_hook)(void *, const void *);
+
+static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
+  __malloc_hook = old_malloc_hook;
+  __free_hook = old_free_hook;
+  auto ptr = SLAMP_malloc(size);
+
+  __malloc_hook = SLAMP_malloc_hook;
+  __free_hook = SLAMP_free_hook;
+  return ptr;
+}
+
+static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
+  __malloc_hook = old_malloc_hook;
+  __free_hook = old_free_hook;
+  SLAMP_free(ptr);
+  __malloc_hook = SLAMP_malloc_hook;
+  __free_hook = SLAMP_free_hook;
 }
 
 
@@ -211,6 +235,13 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
     }
     smmap->allocate( env, sizeof(char*) * (env_len+1) );
   }
+
+
+  // replace hooks
+  old_malloc_hook = __malloc_hook;
+  old_free_hook = __free_hook;
+  __malloc_hook = SLAMP_malloc_hook;
+  __free_hook = SLAMP_free_hook;
 }
 
 /// update the invocation count

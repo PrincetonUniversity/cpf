@@ -72,6 +72,9 @@ void SLAMP_store8_ext(const uint64_t addr, const uint64_t bare_inst);
 void SLAMP_storen_ext(const uint64_t addr, const uint64_t bare_inst, size_t n);
 
 /* wrappers */
+static void* SLAMP_malloc_hook(size_t size, const void *caller);
+static void SLAMP_free_hook(void *ptr, const void *caller);
+void* SLAMP_malloc(size_t size);
 
 void* SLAMP_malloc(size_t size);
 void* SLAMP_calloc(size_t nelem, size_t elsize);
