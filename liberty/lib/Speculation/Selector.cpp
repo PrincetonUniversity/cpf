@@ -43,15 +43,13 @@
 #include "noelle/core/LoopDependenceInfo.hpp"
 #include "noelle/core/DGGraphTraits.hpp"
 #include "noelle/core/DominatorSummary.hpp"
+#include "noelle/core/Noelle.hpp"
 #include <algorithm>
-//#include "Noelle.hpp"
 
 using namespace llvm;
 using namespace llvm::noelle;
 
-namespace liberty
-{
-namespace SpecPriv
+namespace liberty::SpecPriv
 {
 
 static cl::opt<unsigned> LateInlineMinCallsiteCoverage(
@@ -85,7 +83,7 @@ HeapAssignment &Selector::getAssignment()
 
 void Selector::analysisUsage(AnalysisUsage &au)
 {
-  //au.addRequired< Noelle >();
+  au.addRequired< Noelle >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   //au.addRequired< BlockFrequencyInfoWrapperPass >();
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
@@ -484,10 +482,10 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
   return numApplicable;
 }
 
-void getCalledFuns(llvm::CallGraphNode *cgNode,
+void getCalledFuns(llvm::noelle::CallGraphFunctionNode *cgNode,
                    unordered_set<const Function *> &calledFuns) {
-  for (auto i = cgNode->begin(), e = cgNode->end(); i != e; ++i) {
-    auto *succ = i->second;
+  for (auto callEdge : cgNode->getOutgoingEdges()) {
+    auto *succ = callEdge->getCallee();
     auto *F = succ->getFunction();
     if (!F || calledFuns.count(F) || F->isDeclaration())
       continue;
@@ -498,19 +496,19 @@ void getCalledFuns(llvm::CallGraphNode *cgNode,
 
 bool Selector::callsFun(const Loop *l, const Function *tgtF,
                         LoopToTransCalledFuncs &loopTransCallGraph,
-                        llvm::CallGraph &callGraph) {
+                        llvm::noelle::CallGraph &callGraph) {
   if (loopTransCallGraph.count(l))
     return loopTransCallGraph[l].count(tgtF);
 
   for (const BasicBlock *BB : l->getBlocks()) {
     for (const Instruction &I : *BB) {
-      const CallInst *call = dyn_cast<CallInst>(&I);
+      const auto *call = dyn_cast<CallBase>(&I);
       if (!call)
         continue;
-      const Function *cFun = call->getCalledFunction();
+      Function *cFun = call->getCalledFunction();
       if (!cFun || cFun->isDeclaration())
         continue;
-      auto *cgNode = callGraph[cFun];
+      auto *cgNode = callGraph.getFunctionNode(cFun);
       loopTransCallGraph[l].insert(cFun);
       getCalledFuns(cgNode, loopTransCallGraph[l]);
     }
@@ -520,7 +518,7 @@ bool Selector::callsFun(const Loop *l, const Function *tgtF,
 
 bool Selector::mustBeSimultaneouslyActive(
     const Loop *A, const Loop *B, LoopToTransCalledFuncs &loopTransCallGraph,
-    llvm::CallGraph &callGraph) {
+    llvm::noelle::CallGraph &callGraph) {
 
   if (A->contains(B->getHeader()) || B->contains(A->getHeader()))
     return true;
@@ -537,7 +535,15 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
   const unsigned N = vertices.size();
   LoopToTransCalledFuncs loopTransCallGraph;
   Pass &proxy = getPass();
-  auto &callGraph = proxy.getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  // auto &callGraph = proxy.getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  
+  auto& noelle = proxy.getAnalysis<Noelle>();
+  auto fm = noelle.getFunctionsManager();
+  /*
+   *   Call graph.
+   */
+  auto &callGraph = *fm->getProgramCallGraph();
+
   for(unsigned i=0; i<N; ++i)
   {
     Loop *A = vertices[i];
@@ -563,6 +569,9 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
         continue;
       }
 
+      /*
+       * This requires SpecPriv
+       */
       if (!compatibleParallelizations(A, B)) {
         REPORT_DUMP(errs() << "Loop " << fA->getName() << " :: " << hA->getName()
                      << " is incompatible with loop " << fB->getName()
@@ -1067,5 +1076,4 @@ bool Selector::doSelection(
 
 char Selector::ID = 0;
 static RegisterAnalysisGroup< Selector > group("Parallelization selector");
-}
 }

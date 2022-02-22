@@ -25,9 +25,7 @@
 #include "liberty/Orchestration/Orchestrator.h"
 #include "scaf/SpeculationModules/Remediator.h"
 
-namespace liberty
-{
-namespace SpecPriv
+namespace liberty::SpecPriv
 {
 using namespace llvm::noelle;
 
@@ -41,7 +39,7 @@ void printOneLoopStrategy(raw_ostream &fout, Loop *loop,
 struct Selector : public UpdateOnClone
 {
   static char ID;
-  Selector() {}
+  Selector() = default;
   virtual ~Selector();
 
   static const unsigned FixedPoint;
@@ -52,21 +50,18 @@ struct Selector : public UpdateOnClone
   LoopParallelizationStrategy &getStrategy(Loop *loop);
 
   //typedef std::map<BasicBlock*, LoopParallelizationStrategy*> Loop2Strategy;
-  typedef std::map<BasicBlock *, std::unique_ptr<LoopParallelizationStrategy>>
-      Loop2Strategy;
-  typedef Loop2Strategy::const_iterator strat_iterator;
+  using Loop2Strategy = std::map<BasicBlock *, std::unique_ptr<LoopParallelizationStrategy>>;
+  using strat_iterator = Loop2Strategy::const_iterator;
 
-  typedef std::map<BasicBlock *, std::unique_ptr<SelectedRemedies>>
-      Loop2SelectedRemedies;
-  typedef std::map<BasicBlock *, Critic_ptr> Loop2SelectedCritics;
-  typedef std::map<BasicBlock *, std::unique_ptr<LoopDependenceInfo>>
-      Loop2DepInfo;
+  using Loop2SelectedRemedies = std::map<BasicBlock *, std::unique_ptr<SelectedRemedies>>;
+  using Loop2SelectedCritics = std::map<BasicBlock *, Critic_ptr>;
+  using Loop2DepInfo = std::map<BasicBlock *, std::unique_ptr<LoopDependenceInfo>>;
 
   strat_iterator strat_begin() const { return strategies.begin(); }
   strat_iterator strat_end() const { return strategies.end(); }
 
-  typedef std::unordered_set<BasicBlock *> SelectedLoops;
-  typedef SelectedLoops::iterator sloops_iterator;
+  using SelectedLoops = std::unordered_set<BasicBlock *>;
+  using sloops_iterator = SelectedLoops::iterator;
   sloops_iterator sloops_begin() { return selectedLoops.begin(); }
   sloops_iterator sloops_end() { return selectedLoops.end(); }
 
@@ -88,10 +83,10 @@ struct Selector : public UpdateOnClone
     return this;
   }
 
-  typedef std::vector<Loop*> Vertices;
+  using Vertices = std::vector<Loop *>;
   /// Represents a set of callsites that, if inlined, might improve
   /// the pipeline partition.
-  typedef std::set< Instruction* > LateInliningOpportunities;
+  using LateInliningOpportunities = std::set<Instruction *>;
 
   // Update on clone
   virtual void contextRenamedViaClone(
@@ -101,16 +96,15 @@ struct Selector : public UpdateOnClone
     const AuToAuMap &amap);
 
 private:
-  typedef std::unordered_map<const Loop *, std::unordered_set<const Function *>>
-      LoopToTransCalledFuncs;
+  using LoopToTransCalledFuncs = std::unordered_map<const Loop *, std::unordered_set<const Function *>>;
   static bool callsFun(const Loop *l, const Function *tgtF,
                        LoopToTransCalledFuncs &l2cF,
-                       llvm::CallGraph &callGraph);
+                       llvm::noelle::CallGraph &callGraph);
 
   void computeEdges(const Vertices &vertices, Edges &edges);
   static bool mustBeSimultaneouslyActive(const Loop *A, const Loop *B,
                                          LoopToTransCalledFuncs &l2cF,
-                                         llvm::CallGraph &callGraph);
+                                         llvm::noelle::CallGraph &callGraph);
   bool doInlining(LateInliningOpportunities &opps);
   // Reduction into maximum weighted clique problem
   unsigned computeWeights(
@@ -207,7 +201,6 @@ protected:
     const CallsPromotedToInvoke &call2invoke) {}
 };
 
-}
 }
 
 #endif
