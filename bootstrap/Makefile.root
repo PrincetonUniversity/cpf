@@ -61,8 +61,8 @@ default:
 	@echo After the initial installation, run \`make cpf\` to only update cpf.
 	@echo Nothing has been done.
 
-all: copy-makefile llvm noelle scaf cpf cpf-env-debug.rc cpf-env-release.rc
-.PHONY: copy-makefile llvm noelle scaf cpf cpf-env-debug.rc cpf-env-release.rc clean
+all: copy-makefile llvm noelle scaf patch-noelle-scaf cpf cpf-env-debug.rc cpf-env-release.rc
+.PHONY: copy-makefile llvm noelle scaf cpf cpf-env-debug.rc cpf-env-release.rc patch-noelle-scaf clean
 
 clean:
 	@echo Too dangerous! Please go to ${install-prefix} and remove by yourself
@@ -234,3 +234,13 @@ copy-makefile:
 	- cp cpf-env.rc.template ${install-prefix}/cpf-env.rc.template
 	- cp Makefile ${install-prefix}/Makefile
 	- cp Makefile.root ${install-prefix}/Makefile.root
+
+patch-noelle-scaf:
+ifeq (${use-noelle-scaf}, 0)
+ifeq (${compile-scaf}, 1)
+	ln -sf ${scaf-install-dir-debug}/lib/* ${noelle-install-dir-debug}/lib/
+	ln -sf ${scaf-install-dir-debug}/include/* ${noelle-install-dir-debug}/include/
+	ln -sf ${scaf-install-dir-release}/lib/* ${noelle-install-dir-release}/lib/
+	ln -sf ${scaf-install-dir-release}/include/* ${noelle-install-dir-release}/include/
+endif
+endif
