@@ -67,7 +67,7 @@ jobs:
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m ${{ github.event.inputs.memo }} -n 15 -s ${{ env.REG_SUITE }}
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m "${{ github.event.inputs.memo }}" -n 15 -s ${{ env.REG_SUITE }}
 
     - name: Upload artifacts
       run: |
