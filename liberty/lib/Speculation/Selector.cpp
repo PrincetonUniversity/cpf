@@ -1,3 +1,5 @@
+#include "noelle/core/FunctionsManager.hpp"
+#include "noelle/core/PDGAnalysis.hpp"
 #include "scaf/Utilities/PrintDebugInfo.h"
 #include <iomanip>
 #define DEBUG_TYPE "selector"
@@ -83,7 +85,8 @@ HeapAssignment &Selector::getAssignment()
 
 void Selector::analysisUsage(AnalysisUsage &au)
 {
-  au.addRequired< Noelle >();
+  // au.addRequired< Noelle >();
+  au.addRequired< PDGAnalysis >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   //au.addRequired< BlockFrequencyInfoWrapperPass >();
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
@@ -537,12 +540,21 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
   Pass &proxy = getPass();
   // auto &callGraph = proxy.getAnalysis<CallGraphWrapperPass>().getCallGraph();
   
-  auto& noelle = proxy.getAnalysis<Noelle>();
-  auto fm = noelle.getFunctionsManager();
+  auto& pdgAnalysis = proxy.getAnalysis<PDGAnalysis>();
+  // auto& noelle = proxy.getAnalysis<Noelle>();
+
+  // get a module
+  if (vertices.size() == 0)
+    return;
+  Loop *A = vertices[0];
+  BasicBlock *hA = A->getHeader();
+  Function *fA = hA->getParent();
+  Module *m = fA->getParent();
+  auto fm = FunctionsManager(*m, pdgAnalysis);
   /*
    *   Call graph.
    */
-  auto &callGraph = *fm->getProgramCallGraph();
+  auto &callGraph = *fm.getProgramCallGraph();
 
   for(unsigned i=0; i<N; ++i)
   {
