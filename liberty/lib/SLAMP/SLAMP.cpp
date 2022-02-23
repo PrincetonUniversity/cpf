@@ -20,6 +20,7 @@
 #include "scaf/Utilities/InsertPrintf.h"
 #include "scaf/Utilities/InstInsertPt.h"
 #include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/Metadata.h"
 
 #include <sstream>
 #include <vector>
@@ -54,7 +55,7 @@ SLAMP::SLAMP() : ModulePass(ID) {}
 SLAMP::~SLAMP() = default;
 
 void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
-  au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
+  // au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
   au.addRequired<ModuleLoops>();
   au.setPreservesAll();
 }
@@ -298,18 +299,17 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
     }
   }
 
-  /*
-   * if (hasUnrecognizedFunction) {
-   *   // assert only turned on for debug
-   *   assert(false && "Wrapper for external function not implemented.\n");
-   * }
-   */
+  if (hasUnrecognizedFunction) {
+    // assert only turned on for debug
+    // assert(false && "Wrapper for external function not implemented.\n");
+    LLVM_DEBUG(errs() << "Wrapper for external function not implemented.\n");
+  }
 }
 
 /// Create a function `___SLAMP_ctor` that calls `SLAMP_init` and
 /// `SLAMP_init_global_vars` before everything (llvm.global_ctors)
 Function *SLAMP::instrumentConstructor(Module &m) {
-  sid = &getAnalysis<StaticID>();
+  // sid = &getAnalysis<StaticID>();
 
   LLVMContext &c = m.getContext();
   auto *ctor =
@@ -324,9 +324,10 @@ Function *SLAMP::instrumentConstructor(Module &m) {
   // I32, I32, (Type*)0) );
   auto *init = cast<Function>(
       m.getOrInsertFunction("SLAMP_init", Void, I32, I32).getCallee());
+
   Value *args[] = {
-      ConstantInt::get(I32, sid->getID(this->target_fn)),
-      ConstantInt::get(I32, sid->getID(this->target_loop->getHeader()))};
+      ConstantInt::get(I32, Namer::getFuncId(this->target_fn)),
+      ConstantInt::get(I32, Namer::getBlkId(this->target_loop->getHeader()))};
   CallInst::Create(init, args, "", entry->getTerminator());
 
   return ctor;
@@ -591,10 +592,10 @@ void SLAMP::instrumentInstructions(Module &m, Loop *loop) {
       if (auto *mi = dyn_cast<MemIntrinsic>(&inst)) {
         instrumentMemIntrinsics(m, mi);
       } else if (loopinsts.find(&inst) != loopinsts.end()) {
-        instrumentLoopInst(m, &inst, sid->getID(&inst));
+        instrumentLoopInst(m, &inst, Namer::getInstrId(&inst));
       } else {
         // instrumentExtInst(m, &inst, sid.getFuncLocalIDWithInst(&*fi, &inst));
-        instrumentExtInst(m, &inst, sid->getID(&inst));
+        instrumentExtInst(m, &inst, Namer::getInstrId(&inst));
       }
     }
   }
@@ -743,7 +744,7 @@ void SLAMP::instrumentLifetimeIntrinsics(Module &m, Instruction *inst) {
 void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
   const DataLayout &DL = m.getDataLayout();
 
-  assert(id < INST_ID_BOUND);
+  // assert(id < INST_ID_BOUND);
 
   if (id == 0) // instrumented instructions
     return;

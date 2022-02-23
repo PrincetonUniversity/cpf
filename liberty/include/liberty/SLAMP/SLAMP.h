@@ -67,7 +67,7 @@ private:
 
   Type *Void, *I32, *I64, *I8Ptr;
 
-  StaticID* sid;
+  // StaticID* sid;
 
   Function* target_fn;
   Loop*     target_loop;
