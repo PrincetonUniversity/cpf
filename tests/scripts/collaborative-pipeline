@@ -99,7 +99,8 @@ CPF_LIBS="-load $LIBERTY_LIBS_DIR/libSpeculation.so\
     -load $LIBERTY_LIBS_DIR/libRedux.so\
     -load $LIBERTY_LIBS_DIR/libOrchestration.so"
 
-LIBS="$SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS"
+# LIBS="$SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS"
+LIBS="$SCAF_SPEC_LIBS $CPF_LIBS"
 
 #LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       #-load $LIBERTY_LIBS_DIR/libLoopProf.so
@@ -164,8 +165,9 @@ fi
 rm -f $NOPEEP
 OUT="-o $NOPEEP"
 
-CMD="opt $LIBS $OPTS $FCN $LOOP $1 $OUT"
-#CMD="noelle-load $LIBS $OPTS $FCN $LOOP -debug-only=reduxdet,specpriv-transform $1 $OUT"
+# CMD="opt $LIBS $OPTS $FCN $LOOP $1 $OUT"
+CMD="noelle-load $LIBS $OPTS $FCN $LOOP $1 $OUT"
+# CMD="noelle-load $LIBS $OPTS $FCN $LOOP -debug-only=reduxdet,specpriv-transform $1 $OUT"
 
 echo Running: $CMD
 ulimit -S -v $[48*1024*1024]
