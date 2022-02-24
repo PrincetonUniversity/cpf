@@ -54,7 +54,8 @@ EXTRACHECK?=
 CFLAGS?= -c $(OPT) $(PREPROCESSING_OPTIONS)  $(PREPROCESSOR_OPTIONS) $(PROFILE) $(DEBUG)
 LDFLAGS?= $(PROFILE) $(DEBUG)
 LLVM_CFLAGS?=-O1 -g -c -emit-llvm $(PREPROCESSOR_OPTIONS) $(PREPROCESSING_OPTIONS) $(DEBUG) -Xclang -disable-llvm-passes $(FINAL_CFLAGS) $(FINAL_CXXFLAGS)
-TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
+TRANSFORMATIONS_BEFORE_PARALLELIZATION=-load ${SCAF_LIBS_DIR}/lib/libSvf.so -load ${SCAF_LIBS_DIR}/lib/libCudd.so -stat=false -mem2reg -simplifycfg -simplifycfg-sink-common=false -break-constgeps -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
+# TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
 LLVM_LINK_FLAGS?=
 QUEUES=$(LIBERTY_SMTX_DIR)/sw_queue.noinline.o
 EDGEPROFLIB=$(LLVM_INSTALL_DIR)/lib/clang/9.0.1/lib/linux/libclang_rt.profile-x86_64.a
