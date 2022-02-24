@@ -15,7 +15,7 @@ BENCH_DIR?= ../../$(BENCH_NAME)
 RESULT_FILE?=$(BENCH_NAME).result
 BENCH_ROOT?=../..
 
-RUN_TIMEOUT?=7200 # 2 hours.
+RUN_TIMEOUT?=14400 # 4 hours.
 TRANSFORM_TIMEOUT?=21600 # 6 hours.
 PROFILE_TIMEOUT?=36000 # 10 hours.
 
@@ -35,7 +35,7 @@ LLVM_OPT?= opt
 
 ARGS?=$(TRAINARGS)
 TESTARGS?=$(REFARGS)
-TESTARGS=$(ARGS)
+TESTARGS?=$(ARGS)
 PROFILEARGS?=$(TRAINARGS)
 
 LARGETESTARGS?=$(TESTARGS)
@@ -54,7 +54,7 @@ EXTRACHECK?=
 CFLAGS?= -c $(OPT) $(PREPROCESSING_OPTIONS)  $(PREPROCESSOR_OPTIONS) $(PROFILE) $(DEBUG)
 LDFLAGS?= $(PROFILE) $(DEBUG)
 LLVM_CFLAGS?=-O1 -g -c -emit-llvm $(PREPROCESSOR_OPTIONS) $(PREPROCESSING_OPTIONS) $(DEBUG) -Xclang -disable-llvm-passes $(FINAL_CFLAGS) $(FINAL_CXXFLAGS)
-TRANSFORMATIONS_BEFORE_PARALLELIZATION=-load ${SCAF_LIBS_DIR}/lib/libSvf.so -load ${SCAF_LIBS_DIR}/lib/libCudd.so -stat=false -mem2reg -simplifycfg -simplifycfg-sink-common=false -break-constgeps -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
+TRANSFORMATIONS_BEFORE_PARALLELIZATION=-load ${NOELLE_LIBS_DIR}/libSvf.so -load ${NOELLE_LIBS_DIR}/libCudd.so -stat=false -mem2reg -simplifycfg -simplifycfg-sink-common=false -break-constgeps -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
 # TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
 LLVM_LINK_FLAGS?=
 QUEUES=$(LIBERTY_SMTX_DIR)/sw_queue.noinline.o
@@ -281,7 +281,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	$(SETUP)
 	$(PROFILESETUP)
 	cp $*.loopProf.out loopProf.out
-	DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
+	DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	mv result.slamp.profile $@
 	rm -f loopProf.out
 	$(CLEANUP)
@@ -336,7 +336,31 @@ loopProf.out: $(CANON).loopProf.out
 result.lamp.profile: $(CANON).lamp.out
 	cp $< $@
 
+result.slamp.profile: $(CANON).result.slamp.profile
+	cp $< $@
+
+result.specpriv.profile.txt: $(CANON).specpriv-profile.out
+	cp $< $@
+
 setup_codegen: llvmprof.out loopProf.out result.lamp.profile
+
+no-spec.dump:
+	regressions-watchdog $(RUN_TIMEOUT) no-spec-dump.time genDumps $@
+
+cheap-spec.dump:
+	regressions-watchdog $(RUN_TIMEOUT) cheap-spec-dump.time genDumps $@ -enable-specpriv -enable-edgeprof
+	
+all-spec.dump: llvmprof.out loopProf.out result.lamp.profile result.specpriv.profile.txt
+	regressions-watchdog $(RUN_TIMEOUT) all-spec-dump.time genDumps $@ -enable-specpriv -enable-edgeprof -lamp-map-loop -enable-lamp
+
+no-specpriv.dump: llvmprof.out loopProf.out result.lamp.profile
+	regressions-watchdog $(RUN_TIMEOUT) no-specpriv-dump.time genDumps $@ -enable-edgeprof -lamp-map-loop -enable-lamp
+
+slamp.dump: llvmprof.out loopProf.out result.slamp.profile
+	regressions-watchdog $(RUN_TIMEOUT) slamp.time genDumps $@ -enable-edgeprof -enable-slamp
+
+ignorefn.dump: llvmprof.out loopProf.out
+	regressions-watchdog $(RUN_TIMEOUT) ignorefn.time genDumps $@ -enable-edgeprof -pdg-ignore-callsite
 
 $(CANON).collaborative-pipeline.dump : | setup_codegen $(CANON).specpriv-profile.out $(CANON).bc
 	collaborative-pipeline $(CANON).bc
@@ -396,7 +420,8 @@ $(CANON).compare.out : seq.out parallel.out
 
 %.internalized.bc : %.bc
 	date
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.internalize.time $(LLVM_OPT) $< -internalize -internalize-public-api-list=main -ipconstprop -ipsccp -deadargelim -o $@
+	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.internalize.time $(LLVM_OPT) $< -internalize -internalize-public-api-list=main -ipconstprop -ipsccp -o $@
+	#regressions-watchdog $(TRANSFORM_TIMEOUT) $<.internalize.time $(LLVM_OPT) $< -internalize -internalize-public-api-list=main -ipconstprop -ipsccp -deadargelim -o $@
 	date
 
 %.devirt.bc : %.bc $(DEVIRTLIBS)
