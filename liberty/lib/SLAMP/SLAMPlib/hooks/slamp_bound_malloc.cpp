@@ -81,7 +81,7 @@ void *bound_malloc(size_t size) {
   // store size of the unit
   auto *sz_ptr = (size_t *)(heap_next);
   *sz_ptr = sz;
-  heap_next += sizeof(size_t);
+  heap_next += ROUND_UP(sizeof(size_t), ALIGNMENT);
 
   void *ret = (size_t *)(heap_next);
   heap_next += sz;
