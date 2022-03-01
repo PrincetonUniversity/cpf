@@ -78,10 +78,12 @@ void *bound_malloc(size_t size) {
   // allocation unit size
   size_t sz = ROUND_UP(size, ALIGNMENT);
 
+  // FIXME: offset 8 so the return address can be 16 byte aligned
+  heap_next += sizeof(size_t);
   // store size of the unit
   auto *sz_ptr = (size_t *)(heap_next);
   *sz_ptr = sz;
-  heap_next += ROUND_UP(sizeof(size_t), ALIGNMENT);
+  heap_next += sizeof(size_t);
 
   void *ret = (size_t *)(heap_next);
   heap_next += sz;
@@ -132,6 +134,8 @@ void *bound_realloc(void *ptr, size_t size) {
     // do the same thing as malloc
     size_t sz = ROUND_UP(size, ALIGNMENT);
 
+    // FIXME: offset 8 so the return address can be 16 byte aligned
+    heap_next += sizeof(size_t);
     auto *sz_ptr = (size_t *)(heap_next);
     *sz_ptr = sz;
     heap_next += sizeof(size_t);
@@ -142,6 +146,8 @@ void *bound_realloc(void *ptr, size_t size) {
     // if there is not enough memory, just return the original pointer
     if (heap_next > heap_end) {
       heap_next -= sz;
+      heap_next -= sizeof(size_t);
+      // FIXME: offset 8 so the return address can be 16 byte aligned
       heap_next -= sizeof(size_t);
       return ptr;
     }
