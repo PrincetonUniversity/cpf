@@ -112,21 +112,13 @@ static void *(*old_malloc_hook)(unsigned long, const void *);
 static void (*old_free_hook)(void *, const void *);
 
 static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
-  __malloc_hook = old_malloc_hook;
-  __free_hook = old_free_hook;
   auto ptr = SLAMP_malloc(size);
 
-  __malloc_hook = SLAMP_malloc_hook;
-  __free_hook = SLAMP_free_hook;
   return ptr;
 }
 
 static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
-  __malloc_hook = old_malloc_hook;
-  __free_hook = old_free_hook;
   SLAMP_free(ptr);
-  __malloc_hook = SLAMP_malloc_hook;
-  __free_hook = SLAMP_free_hook;
 }
 
 
@@ -845,13 +837,19 @@ void SLAMP_llvm_lifetime_end_p0i8(uint64_t size, uint8_t* ptr)
 
 void* SLAMP_malloc(size_t size)
 {
+  __malloc_hook = old_malloc_hook;
+  __free_hook = old_free_hook;
   //fprintf(stderr, "SLAMP_malloc, size: %lu\n", size);
   void* result = (void*)slamp::bound_malloc(size);
   unsigned count = 0;
   while( true )
   {
-    if ( !result )
+    if ( !result ) {
+
+      __malloc_hook = SLAMP_malloc_hook;
+      __free_hook = SLAMP_free_hook;
       return nullptr;
+    }
 
     void* shadow = smmap->allocate(result, size);
     if (shadow)
@@ -861,6 +859,8 @@ void* SLAMP_malloc(size_t size)
         (*alloc_in_the_loop)[result] = size;
       }
       //std::cout << "SLAMP_malloc result is " << std::hex << result << "\n";
+      __malloc_hook = SLAMP_malloc_hook;
+      __free_hook = SLAMP_free_hook;
       return result;
     }
     else
@@ -964,7 +964,11 @@ void  SLAMP_cfree(void* ptr)
 
 void  SLAMP_free(void* ptr)
 {
+  __malloc_hook = old_malloc_hook;
+  __free_hook = old_free_hook;
   slamp::bound_free(ptr);
+  __malloc_hook = SLAMP_malloc_hook;
+  __free_hook = SLAMP_free_hook;
 }
 
 // TODO: describe the difference (the constructor and the exception handling)
