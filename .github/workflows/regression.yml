@@ -36,9 +36,9 @@ jobs:
     - name: Confirm
       run: echo "Start building!"
 
-    # Runs a set of commands using the runners shell
-    - name: Build CPF
-      run: make -C bootstrap -f Makefile.github all
+    # # Runs a set of commands using the runners shell
+    # - name: Build CPF
+    #   run: make -C bootstrap -f Makefile.github all
 
     - name: Run regression
       run: |
