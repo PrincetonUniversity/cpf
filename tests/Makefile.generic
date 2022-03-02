@@ -54,8 +54,7 @@ EXTRACHECK?=
 CFLAGS?= -c $(OPT) $(PREPROCESSING_OPTIONS)  $(PREPROCESSOR_OPTIONS) $(PROFILE) $(DEBUG)
 LDFLAGS?= $(PROFILE) $(DEBUG)
 LLVM_CFLAGS?=-O1 -g -c -emit-llvm $(PREPROCESSOR_OPTIONS) $(PREPROCESSING_OPTIONS) $(DEBUG) -Xclang -disable-llvm-passes $(FINAL_CFLAGS) $(FINAL_CXXFLAGS)
-TRANSFORMATIONS_BEFORE_PARALLELIZATION=-load ${NOELLE_LIBS_DIR}/libSvf.so -load ${NOELLE_LIBS_DIR}/libCudd.so -stat=false -mem2reg -simplifycfg -simplifycfg-sink-common=false -break-constgeps -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
-# TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
+TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
 LLVM_LINK_FLAGS?=
 QUEUES=$(LIBERTY_SMTX_DIR)/sw_queue.noinline.o
 EDGEPROFLIB=$(LLVM_INSTALL_DIR)/lib/clang/9.0.1/lib/linux/libclang_rt.profile-x86_64.a
@@ -467,6 +466,7 @@ $(CANON).bc : $(CANON).pre_pgo.bc $(CANON).edgeProf.out $(NAMEDLIBS)
 	regressions-watchdog $(TRANSFORM_TIMEOUT) insert-edge-prof.time $(LLVM_OPT) -block-freq -pgo-instr-use -pgo-test-profile-file=./llvmprof.out $< -o $@
 	regressions-watchdog $(TRANSFORM_TIMEOUT) simplify.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) -loop-simplify -indvars $@ -o $@
 	#regressions-watchdog $(TRANSFORM_TIMEOUT) $<.dbgCl.time opt $@ -o $@ -load $(LIBERTY_LIBS_DIR)/libDbgClean.so -dbg-clean
+	regressions-watchdog $(TRANSFORM_TIMEOUT) break-constgeps.time opt -load ${NOELLE_LIBS_DIR}/libSvf.so -load ${NOELLE_LIBS_DIR}/libCudd.so -stat=false -break-constgeps $@ -o $@
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.namer.time opt $@ -o $@ -load $(SCAF_LIBS_DIR)/libSCAFUtilities.so -metadata-namer
 
 ifdef ALWAYSINLINE
@@ -513,7 +513,7 @@ clean-runtime :
 
 clean :
 	- $(CLEANUP)
-	rm -f *.o *.ll *.bc *.pdf *.dot $(CANON).* $(CANON).opt.* *.time *.dump compare1.out rabbit* seq.out seq_check* parallel.out parallel_* compare.out compare_* check.out check_* $(CANON).compare.out dout.out loops.out auxout.out lcout.out loopProf.out llvmprof.out __targets.txt result.lamp.profile a.out result.specpriv.profile.txt 
+	rm -f *.o *.ll *.bc *.pdf *.dot $(CANON).* $(CANON).opt.* *.time *.dump compare1.out rabbit* seq.out seq_check* parallel.out parallel_* compare.out compare_* check.out check_* $(CANON).compare.out dout.out loops.out auxout.out lcout.out loopProf.out llvmprof.out __targets.txt result.lamp.profile a.out result.specpriv.profile.txt result.slamp.profile
 	find . -type f -name '*.bc' -delete
 
 clean-exp:
