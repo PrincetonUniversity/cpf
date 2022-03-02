@@ -67,11 +67,14 @@ jobs:
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017 -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m "${{ github.event.inputs.memo }}" -n 15 -s ${{ env.REG_SUITE }}
+          echo "DATE_STR=$(date +%Y-%m-%d-%H-%M)" >> $GITHUB_ENV
+          cp -sR /scratch/spec2017-workspace/spec2017/ /scratch/spec2017-workspace/spec2017-${DATE_STR}
+          rm -rf /scratch/spec2017-workspace/spec2017-${DATE_STR}/results/*
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017-${DATE_STR} -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m "${{ github.event.inputs.memo }}" -n 15 -s ${{ env.REG_SUITE }}
 
     - name: Upload artifacts
       run: |
-          pushd /scratch/spec2017-workspace/spec2017
+          pushd /scratch/spec2017-workspace/spec2017-${DATE_STR}
           ~/update_and_sync.sh results
           popd
 
