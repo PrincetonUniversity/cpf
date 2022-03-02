@@ -172,9 +172,9 @@ void SLAMP_fini(const char* filename)
 
   slamp::fini_logger(filename);
 
-  delete smmap;
+  // delete smmap;
 
-  slamp::fini_bound_malloc();
+  // slamp::fini_bound_malloc();
 }
 
 void SLAMP_allocated(uint64_t addr)
