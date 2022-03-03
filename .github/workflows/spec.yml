@@ -31,7 +31,7 @@ env:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  reg:
+  spec_test:
     # The type of runner that the job will run on
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 1440
@@ -68,13 +68,13 @@ jobs:
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
           echo "DATE_STR=$(date +%Y-%m-%d-%H-%M)" >> $GITHUB_ENV
-          cp -sR /scratch/spec2017-workspace/spec2017/ /scratch/spec2017-workspace/spec2017-${DATE_STR}
-          rm -rf /scratch/spec2017-workspace/spec2017-${DATE_STR}/results/*
-          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017-${DATE_STR} -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m "${{ github.event.inputs.memo }}" -n 15 -s ${{ env.REG_SUITE }}
+          cp -sR /scratch/spec2017-workspace/spec2017/ /scratch/spec2017-workspace/spec2017-${{ env.DATE_STR }}
+          rm -rf /scratch/spec2017-workspace/spec2017-${{ env.DATE_STR }}/results/*
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -p /scratch/spec2017-workspace/spec2017-${{ env.DATE_STR }} -b /scratch/spec2017-workspace/spec2017/bmark_list_spec2017.json -r ${{ github.event.inputs.reg_option }} -m "${{ github.event.inputs.memo }}" -n 15 -s ${{ env.REG_SUITE }}
 
     - name: Upload artifacts
       run: |
-          pushd /scratch/spec2017-workspace/spec2017-${DATE_STR}
+          pushd /scratch/spec2017-workspace/spec2017-${{ env.DATE_STR }}
           ~/update_and_sync.sh results
           popd
 
