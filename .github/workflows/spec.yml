@@ -63,11 +63,14 @@ jobs:
     # - name: Build CPF
     #   run: make -C bootstrap -f Makefile.github all
 
+    - name: Set Date
+      run: |
+          echo "DATE_STR=$(date '+%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+
     - name: Run tests
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          echo "DATE_STR=$(date '+%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
           echo ${{ env.DATE_STR }}
           cp -sR /scratch/spec2017-workspace/spec2017/ /scratch/spec2017-workspace/spec2017-${{ env.DATE_STR }}
           rm -rf /scratch/spec2017-workspace/spec2017-${{ env.DATE_STR }}/results/*
