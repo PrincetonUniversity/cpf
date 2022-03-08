@@ -34,8 +34,17 @@ extern "C" {
 void SLAMP_dbggv(int id);
 void SLAMP_dbggvstr(char* str);
 
+// SLAMP measure functions
+void SLAMP_measure_init();
+void SLAMP_measure_fini();
+void SLAMP_measure_load(uint32_t id, uint64_t size);
+void SLAMP_measure_store(uint32_t id, uint64_t size);
+static void* SLAMP_measure_malloc_hook(size_t size, const void *caller);
+static void SLAMP_measure_free_hook(void *ptr, const void *caller);
+
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id);
 void SLAMP_fini(const char* filename);
+
 void SLAMP_allocated(uint64_t addr);
 void SLAMP_init_global_vars(uint64_t addr, size_t size);
 void SLAMP_main_entry(uint32_t argc, char** argv, char** env);

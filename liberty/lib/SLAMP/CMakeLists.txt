@@ -1,6 +1,7 @@
 file(GLOB SRCS
     "SLAMP.cpp"
     "SLAMPLoad.cpp"
+    "MemoryMeasure.cpp"
 )
 
 # Compilation flags
