@@ -23,6 +23,7 @@ using namespace llvm;
 
 class SLAMP: public ModulePass
 {
+  friend class MemoryMeasure;
 public:
   static char ID;
   SLAMP();
@@ -55,7 +56,7 @@ private:
 
   void instrumentMainFunction(Module& m);
 
-  int  getIndex(PointerType* ty, size_t& size, const DataLayout& DL);
+  static int  getIndex(PointerType* ty, size_t& size, const DataLayout& DL);
   void instrumentMemIntrinsics(Module& m, MemIntrinsic* mi);
   void instrumentLifetimeIntrinsics(Module& m, Instruction* inst);
   void instrumentLoopInst(Module& m, Instruction* inst, uint32_t id);

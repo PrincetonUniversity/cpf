@@ -49,6 +49,12 @@ void SLAMP_dbggvstr(char* str) {
 uint8_t __slamp_begin_trace = 0;
 #endif
 
+bool DISTANCE_MODULE = false;
+bool CONSTANT_ADDRESS_MODULE = false;
+bool LINEAR_ADDRESS_MODULE = false;
+bool CONSTANT_VALUE_MODULE = false;
+bool LINEAR_VALUE_MODULE = false;
+
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
 std::map<void*, size_t>* alloc_in_the_loop;
@@ -124,6 +130,19 @@ static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
+  auto setModule = [](bool &var, const char *name) {
+    auto *module = getenv(name);
+    if (module && strcmp(module, "1") == 0) {
+      var= true;
+    }
+  };
+
+  setModule(DISTANCE_MODULE, "DISTANCE_MODULE");
+  setModule(CONSTANT_VALUE_MODULE, "CONSTANT_VALUE_MODULE");
+  setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
+  setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
+  setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
+
   // initializing customized malloc should be done very first
 
   slamp::init_bound_malloc((void*)(HEAP_BOUND_LOWER));
