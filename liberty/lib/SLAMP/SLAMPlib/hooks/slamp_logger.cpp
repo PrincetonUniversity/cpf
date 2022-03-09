@@ -324,6 +324,7 @@ void log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
       lp_addr->add_sample(__slamp_iteration, addr, addr);
     } else {
       lp_addr = new LinearPredictor(__slamp_iteration, addr, addr);
+      lp_addr->valid_as_double = false;
       lpmap_addr->insert(std::make_pair(constkey, lp_addr));
     }
 
