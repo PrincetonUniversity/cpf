@@ -8,8 +8,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-void foo(int *ptr, int i) {
-    *ptr = 2 * i + 7;
+void foo(int *ptr) {
+  *ptr = 10;
 }
 
 int main(int argc, char **argv) {
@@ -20,13 +20,13 @@ int main(int argc, char **argv) {
     printf("Need one arguments: iter\n");
   }
 
-  auto p = new int();
+  auto a = new int[iter]();
 
   // initialize value
   auto sum = 0;
   for (int i = 0; i < iter; i++) {
-    foo(p, i);
-    sum = (sum + *p) % 101;
+    foo(a + i);
+    sum = (sum + a[i]) % 101;
   }
   
   printf("%d\n", sum);

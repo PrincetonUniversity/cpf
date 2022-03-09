@@ -9,7 +9,7 @@
 #include <cstdlib>
 
 void foo(int *ptr, int i) {
-    *ptr = 2 * i + 7;
+    *ptr = 10;
 }
 
 int main(int argc, char **argv) {
