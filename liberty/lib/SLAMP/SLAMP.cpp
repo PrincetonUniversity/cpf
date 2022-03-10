@@ -3,17 +3,19 @@
 // Single Loop Aware Memory Profiler.
 //
 
-#include "llvm/IR/CFG.h"
 #define DEBUG_TYPE "SLAMP"
+
+#include "scaf/SpeculationModules/PDGBuilder.hpp"
 
 #include "liberty/SLAMP/SLAMP.h"
 #include "liberty/SLAMP/externs.h"
 
+#include "llvm/IR/CFG.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/IR/InlineAsm.h"
-
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/IR/InstIterator.h"
 
 #include "liberty/Utilities/CastUtil.h"
 #include "scaf/Utilities/GlobalCtors.h"
@@ -34,6 +36,8 @@ using namespace llvm;
 namespace liberty::slamp {
 
 char SLAMP::ID = 0;
+STATISTIC(numElidedNode, "Number of instructions in the loop that are ignored for SLAMP due to pruning");
+STATISTIC(numInstrumentedNode, "Number of instructions in the loop that are instrumented ");
 static RegisterPass<SLAMP> RP("slamp-insts",
                               "Insert instrumentation for SLAMP profiling",
                               false, false);
@@ -57,6 +61,7 @@ SLAMP::~SLAMP() = default;
 void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
   // au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
   au.addRequired<ModuleLoops>();
+  au.addRequired<PDGBuilder>();
   au.setPreservesAll();
 }
 
@@ -77,6 +82,58 @@ bool SLAMP::runOnModule(Module &m) {
   if (mayCallSetjmpLongjmp(this->target_loop)) {
     LLVM_DEBUG(errs() << "Warning! target loop may call setjmp/longjmp\n");
     // return false;
+  }
+
+  // get PDG and 
+  auto *pdgbuilder = getAnalysisIfAvailable<PDGBuilder>();
+
+  if (pdgbuilder) {
+    auto pdg = pdgbuilder->getLoopPDG(this->target_loop);
+    errs() << "Try to elide nodes "  << pdg->numNodes() << "\n";
+    // go through all the nodes and see if they still have potential dependences
+    for (auto node : pdg->getNodes()) {
+      bool canBeElided = true;
+
+      // have to be instruction and mayReadOrWriteMemory
+      if (auto inst = dyn_cast<Instruction>(node->getT())){
+        if (!inst->mayReadOrWriteMemory()) {
+          continue;
+        }
+      } else {
+        continue;
+      }
+
+      numInstrumentedNode++;
+
+      if (dyn_cast<Instruction>(node->getT())->mayWriteToMemory()) {
+        for (auto &edge : node->getOutgoingEdges()) {
+          if (edge->isRAWDependence()) {
+            canBeElided = false;
+            break;
+          }
+        }
+      }
+
+      if (dyn_cast<Instruction>(node->getT())->mayReadFromMemory()) {
+        for (auto &edge : node->getIncomingEdges()) {
+          if (edge->isRAWDependence()) {
+            canBeElided = false;
+            break;
+          }
+        }
+      }
+
+      if (canBeElided) {
+        if (auto *inst = dyn_cast<Instruction>(node->getT())) {
+          errs() << "Elided: " << *inst << "\n";
+          numElidedNode++;
+          numInstrumentedNode--;
+          elidedLoopInsts.insert(inst);
+        }
+      }
+    }
+  } else {
+    errs() << "PDGBuilder not added, cannot elide nodes\n";
   }
 
   // replace external function calls to wrapper function calls
@@ -742,6 +799,10 @@ void SLAMP::instrumentLifetimeIntrinsics(Module &m, Instruction *inst) {
 
 /// handle each instruction (load, store, callbase) in the targeted loop
 void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
+  // if elided
+  if (elidedLoopInsts.count(inst)) {
+    return;
+  }
   const DataLayout &DL = m.getDataLayout();
 
   // assert(id < INST_ID_BOUND);

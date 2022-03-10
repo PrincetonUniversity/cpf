@@ -13,6 +13,7 @@
 
 #include "scaf/Utilities/StaticID.h"
 
+#include <unordered_set>
 #include <set>
 
 namespace liberty::slamp
@@ -72,6 +73,7 @@ private:
 
   Function* target_fn;
   Loop*     target_loop;
+  unordered_set<Instruction *> elidedLoopInsts;
 };
 
 } // namespace liberty::slamp
