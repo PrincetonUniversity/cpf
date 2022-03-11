@@ -12,6 +12,8 @@
 #include "slamp_debug.h"
 #include "slamp_timestamp.h"
 
+#include "slamp_timer.h"
+
 // defined in slamp_hooks.cpp
 extern bool DISTANCE_MODULE;
 extern bool CONSTANT_ADDRESS_MODULE;
@@ -411,15 +413,15 @@ void print_log(const char *filename) {
 
     if (DISTANCE_MODULE) {
       of << " ";
+      of << "[";
       if (v.d->isConstant) {
         of << v.d->distance;
       } else {
-        of << "[";
         for (auto &[distance, count] : v.d->distribution) {
           of << "(" << distance << " " << count << "), ";
         }
-        of << "]";
       }
+      of << "]";
     }
 
     auto printCp = [&of](Constant *cp) {

@@ -5,7 +5,9 @@
 
 #define DEBUG_TYPE "SLAMP"
 
+#ifdef USE_PDG
 #include "scaf/SpeculationModules/PDGBuilder.hpp"
+#endif
 
 #include "liberty/SLAMP/SLAMP.h"
 #include "liberty/SLAMP/externs.h"
@@ -61,7 +63,9 @@ SLAMP::~SLAMP() = default;
 void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
   // au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
   au.addRequired<ModuleLoops>();
+#ifdef USE_PDG
   au.addRequired<PDGBuilder>();
+#endif
   au.setPreservesAll();
 }
 
@@ -84,6 +88,7 @@ bool SLAMP::runOnModule(Module &m) {
     // return false;
   }
 
+#ifdef USE_PDG
   // get PDG and 
   auto *pdgbuilder = getAnalysisIfAvailable<PDGBuilder>();
 
@@ -135,6 +140,7 @@ bool SLAMP::runOnModule(Module &m) {
   } else {
     errs() << "PDGBuilder not added, cannot elide nodes\n";
   }
+#endif
 
   // replace external function calls to wrapper function calls
   replaceExternalFunctionCalls(m);

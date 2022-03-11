@@ -14,6 +14,8 @@
 #include "slamp_bound_malloc.h"
 #include "slamp_debug.h"
 
+#include "slamp_timer.h"
+
 
 #include <set>
 #include <map>
@@ -137,12 +139,16 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
     }
   };
 
+  // check if the modules are turned on in the environment variable
   setModule(DISTANCE_MODULE, "DISTANCE_MODULE");
   setModule(CONSTANT_VALUE_MODULE, "CONSTANT_VALUE_MODULE");
   setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
   setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
   setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
 
+
+  uint64_t START;
+  TIME(START);
   // initializing customized malloc should be done very first
 
   slamp::init_bound_malloc((void*)(HEAP_BOUND_LOWER));
@@ -150,7 +156,10 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   smmap = new slamp::MemoryMap(TIMESTAMP_SIZE_IN_BYTES);
 
   slamp::init_logger(fn_id, loop_id);
+  TADD(overhead_init_fini, START);
 
+
+  TIME(START);
   // allocate shadow for linux standard base, etc
 
   smmap->allocate((void*)&errno, sizeof(errno));
@@ -173,7 +182,9 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   }
 
   alloc_in_the_loop = new std::map<void*, size_t>();
+  TADD(overhead_shadow_allocate, START);
 
+  TIME(START);
   // install sigsegv handler for debuggin
 
   struct sigaction replacement;
@@ -183,10 +194,13 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   if ( sigaction(SIGSEGV, &replacement, nullptr) < 0 ) {
     assert(false && "SIGSEGV handler install failed");
   }
+  TADD(overhead_init_fini, START);
 }
 
 void SLAMP_fini(const char* filename)
 {
+  uint64_t START;
+  TIME(START);
   delete alloc_in_the_loop;
 
   slamp::fini_logger(filename);
@@ -194,6 +208,8 @@ void SLAMP_fini(const char* filename)
   // delete smmap;
 
   // slamp::fini_bound_malloc();
+  TADD(overhead_init_fini, START);
+  slamp_time_dump("slamp_overhead.dump");
 }
 
 void SLAMP_allocated(uint64_t addr)
@@ -323,6 +339,7 @@ void SLAMP_pop() {
   context = 0;
 }
 
+// FIXME: a temporary patch for out of handling program original heap
 bool SLAMP_isBadAlloc(uint64_t addr) {
   const uint64_t  lower = 0x100000000L;
   const uint64_t higher =  0x010000000000L;
@@ -351,14 +368,19 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (SLAMP_isBadAlloc(addr))
     return;
 
+  uint64_t START;
+  TIME(START);
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS  ts = *s;
+  TADD(overhead_shadow_read, START);
 
   // check loop-specific flow-dependence.
   // ts==0 means that the stored value comes outside of the loop
 
   //if (ts) slamp::log(ts, instr, s, bare_instr, addr, value, 1);
+  TIME(START);
   slamp::log(ts, instr, s, bare_instr, addr, value, 1);
+  TADD(overhead_log_total, START);
 }
 
 void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -377,14 +399,21 @@ void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
+
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS  ts0 = s[0];
   TS  ts1 = s[1];
 
+  TADD(overhead_shadow_read, START);
+
   //if (ts0) slamp::log(ts0, instr, s, bare_instr, addr, value, 2);
   //if (ts1 && ts0!=ts1) slamp::log(ts1, instr, s+1, bare_instr, addr, value, 2);
+  TIME(START);
   slamp::log(ts0, instr, s, bare_instr, addr, value, 2);
   if (ts0!=ts1) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 2);
+  TADD(overhead_log_total, START);
 }
 
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -402,11 +431,16 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
+
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS  ts0 = s[0];
   TS  ts1 = s[1];
   TS  ts2 = s[2];
   TS  ts3 = s[3];
+
+  TADD(overhead_shadow_read, START);
 
   bool ts1_cond = ts0!=ts1;
   bool ts2_cond = ts0!=ts2 && ts1!=ts2;
@@ -416,10 +450,12 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   //if (ts1 && ts1_cond) slamp::log(ts1, instr, s+1, bare_instr, addr, value, 4);
   //if (ts2 && ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr, value, 4);
   //if (ts3 && ts3_cond) slamp::log(ts3, instr, s+3, bare_instr, addr, value, 4);
+  TIME(START);
   slamp::log(ts0, instr, s, bare_instr, addr, value, 4);
   if (ts1_cond) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 4);
   if (ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr+2, value, 4);
   if (ts3_cond) slamp::log(ts3, instr, s+3, bare_instr, addr+3, value, 4);
+  TADD(overhead_log_total, START);
 }
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -437,6 +473,9 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
+
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS  ts0 = s[0];
   TS  ts1 = s[1];
@@ -446,6 +485,8 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   TS  ts5 = s[5];
   TS  ts6 = s[6];
   TS  ts7 = s[7];
+
+  TADD(overhead_shadow_read, START);
 
   bool ts1_cond = ts0!=ts1;
   bool ts2_cond = ts0!=ts2 && ts1!=ts2;
@@ -463,6 +504,8 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   //if (ts5 && ts5_cond) slamp::log(ts5, instr, s+5, bare_instr, addr, value, 8);
   //if (ts6 && ts6_cond) slamp::log(ts6, instr, s+6, bare_instr, addr, value, 8);
   //if (ts7 && ts7_cond) slamp::log(ts7, instr, s+7, bare_instr, addr, value, 8);
+
+  TIME(START);
   slamp::log(ts0, instr, s, bare_instr, addr, value, 8);
   if (ts1_cond) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 8);
   if (ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr+2, value, 8);
@@ -471,6 +514,8 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (ts5_cond) slamp::log(ts5, instr, s+5, bare_instr, addr+5, value, 8);
   if (ts6_cond) slamp::log(ts6, instr, s+6, bare_instr, addr+6, value, 8);
   if (ts7_cond) slamp::log(ts7, instr, s+7, bare_instr, addr+7, value, 8);
+
+  TADD(overhead_log_total, START);
 }
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
@@ -492,17 +537,23 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 #endif
 
+  uint64_t START;
+
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
 
   std::unordered_set<TS> m;
 
   for (unsigned i = 0; i < n; i++) {
+    TIME(START);
     TS ts = s[i];
+    TADD(overhead_shadow_read, START);
 
+    TIME(START);
     if (m.count(ts) == 0) {
       slamp::log(ts, instr, s + i, 0, addr + i, 0, 0);
       m.insert(ts);
     }
+    TADD(overhead_log_total, START);
   }
 }
 
@@ -592,12 +643,17 @@ void SLAMP_store1(uint32_t instr, const uint64_t addr) {
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
+
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
   *s = ts;
+
+  TADD(overhead_shadow_write, START);
 
   slamp::capturestorecallstack(s);
 }
@@ -621,12 +677,16 @@ void SLAMP_store2(uint32_t instr, const uint64_t addr) {
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
+
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
   s[0] = s[1] = ts;
+  TADD(overhead_shadow_write, START);
 
   slamp::capturestorecallstack(s);
 }
@@ -650,12 +710,15 @@ void SLAMP_store4(uint32_t instr, const uint64_t addr) {
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
   // TODO: handle output dependence. ignore it as of now.
 
   s[0] = s[1] = s[2] = s[3] = ts;
+  TADD(overhead_shadow_write, START);
 
   slamp::capturestorecallstack(s);
 }
@@ -678,6 +741,8 @@ void SLAMP_store8(uint32_t instr, const uint64_t addr) {
     assert(false);
   }
 #endif
+  uint64_t START;
+  TIME(START);
 
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
@@ -685,6 +750,7 @@ void SLAMP_store8(uint32_t instr, const uint64_t addr) {
   // TODO: handle output dependence. ignore it as of now.
   s[0] = s[1] = s[2] = s[3] = s[4] = s[5] = s[6] = s[7] = ts;
 
+  TADD(overhead_shadow_write, START);
   slamp::capturestorecallstack(s);
 }
 
@@ -705,6 +771,9 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   }
 #endif
 
+  uint64_t START;
+  TIME(START);
+
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
@@ -713,6 +782,7 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   for (unsigned i = 0; i < n; i++)
     s[i] = ts;
 
+  TADD(overhead_shadow_write, START);
   slamp::capturestorecallstack(s);
 }
 
@@ -858,6 +928,9 @@ void* SLAMP_malloc(size_t size)
 {
   __malloc_hook = old_malloc_hook;
   __free_hook = old_free_hook;
+
+  uint64_t START;
+  TIME(START);
   //fprintf(stderr, "SLAMP_malloc, size: %lu\n", size);
   void* result = (void*)slamp::bound_malloc(size);
   unsigned count = 0;
@@ -865,6 +938,7 @@ void* SLAMP_malloc(size_t size)
   {
     if ( !result ) {
 
+      TADD(overhead_shadow_allocate, START);
       __malloc_hook = SLAMP_malloc_hook;
       __free_hook = SLAMP_free_hook;
       return nullptr;
@@ -878,6 +952,7 @@ void* SLAMP_malloc(size_t size)
         (*alloc_in_the_loop)[result] = size;
       }
       //std::cout << "SLAMP_malloc result is " << std::hex << result << "\n";
+      TADD(overhead_shadow_allocate, START);
       __malloc_hook = SLAMP_malloc_hook;
       __free_hook = SLAMP_free_hook;
       return result;
