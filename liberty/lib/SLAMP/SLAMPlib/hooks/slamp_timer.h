@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <string>
 
-#define PERFORMANCE_ANALYSIS 1
+#define PERFORMANCE_ANALYSIS 0
 
 #if PERFORMANCE_ANALYSIS
 #define TOUT(...)   do { __VA_ARGS__ ; } while(0)
