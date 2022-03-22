@@ -4,7 +4,10 @@
 #include <cerrno>
 #include <clocale>
 #include <cstdint>
+#include <tuple>
+#include <unordered_map>
 #include <unordered_set>
+#include <fstream>
 #include "malloc.h"
 
 #include "slamp_timestamp.h"
@@ -19,6 +22,7 @@
 
 #include <set>
 #include <map>
+#include <utility>
 
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
@@ -56,6 +60,7 @@ bool CONSTANT_ADDRESS_MODULE = false;
 bool LINEAR_ADDRESS_MODULE = false;
 bool CONSTANT_VALUE_MODULE = false;
 bool LINEAR_VALUE_MODULE = false;
+bool REASON_MODULE = false;
 
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
@@ -65,6 +70,110 @@ static uint32_t          context = 0;
 static slamp::MemoryMap* smmap = nullptr;
 static const char* percent_c = "%c";
 static const char* percent_s = "%s";
+
+struct InstructionRecord {
+  uint64_t last_addr;
+  uint64_t last_iter;
+  static const uint64_t INVALID = UINT64_MAX;
+};
+
+std::unordered_map<uint32_t, InstructionRecord*> instructionMap;
+
+static void updateInstruction(uint32_t instr, uint64_t addr) {
+  if (!REASON_MODULE) {
+    return;
+  }
+
+  if (instructionMap.find(instr) != instructionMap.end()) {
+    auto &record = instructionMap[instr];
+    record->last_addr = addr;
+    record->last_iter = __slamp_iteration;
+  } else {
+    auto &record = instructionMap[instr];
+    record = new InstructionRecord{addr, __slamp_iteration};
+  }
+}
+
+// -1->inconclusive
+// 0->killed
+// 1->no-alias
+// 2->no-path
+enum NoDepReason {
+  INCONCLUSIVE=-1,
+  KILLED=0,
+  NO_ALIAS=1,
+  NO_PATH=2,
+};
+
+static NoDepReason reasonLoad(uint32_t store_instr, uint64_t addr) {
+  if (!REASON_MODULE) {
+    return NoDepReason::INCONCLUSIVE;
+  }
+
+  // no path
+  if (!instructionMap.count(store_instr)) {
+    return NoDepReason::NO_PATH;
+  } 
+
+  auto record = instructionMap[store_instr];
+
+  if (record->last_iter == InstructionRecord::INVALID){
+    return NoDepReason::NO_PATH;
+  }
+
+  // no alias
+  if (record->last_addr != addr) {
+    return NoDepReason::NO_ALIAS;
+  }
+
+  // killed
+  return NoDepReason::KILLED;
+}
+
+using DepPair = std::pair<uint32_t, uint32_t>;
+using ReasonCounter = std::array<unsigned, 4>;
+struct DepPairHash
+{
+    std::size_t operator () (DepPair const &v) const
+    {
+      std::hash<uint32_t> hash_fn;
+
+      return hash_fn(v.first) ^ hash_fn(v.second);
+    }
+};
+
+static std::unordered_map<DepPair, ReasonCounter, DepPairHash> *depReasonMap;
+static  uint32_t STORE_INST = 33;
+
+static void updateReasonMap(uint32_t inst, uint64_t addr){
+  if (!REASON_MODULE) {
+    return;
+  }
+
+  // uint32_t store_inst = 18603;
+  NoDepReason reason = reasonLoad(STORE_INST, addr);
+  unsigned reasonIdx = reason + 1;
+
+  DepPair dep = std::make_pair(STORE_INST, inst);
+  (*depReasonMap)[dep][reasonIdx]++;
+}
+
+static void dumpReason() {
+  if (REASON_MODULE) {
+    std::ofstream of("slamp_reason.dump", std::ios::app);
+    of << "From: " << STORE_INST << "; " << depReasonMap->size() << " deps \n";
+
+    for (auto &[dep, counter]: *depReasonMap) {
+      of << dep.first << "->" << dep.second << ": [";
+      for (int i = 0; i < 4; i++) {
+        of << counter[i] << ",";
+      }
+      of << "]\n";
+    }
+
+    of.close();
+  }
+}
 
 static uint32_t invokedepth = 0; // recursive function
 
@@ -132,6 +241,10 @@ static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
+
+  // per instruction map
+
+
   auto setModule = [](bool &var, const char *name) {
     auto *module = getenv(name);
     if (module && strcmp(module, "1") == 0) {
@@ -145,7 +258,15 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
   setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
   setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
+  setModule(REASON_MODULE, "REASON_MODULE");
 
+  if (REASON_MODULE) {
+    auto *store = getenv("STORE_INST");
+    if (store) {
+      STORE_INST = atoi(store);
+    }
+    depReasonMap = new std::unordered_map<DepPair, ReasonCounter, DepPairHash>();
+  }
 
   uint64_t START;
   TIME(START);
@@ -210,6 +331,10 @@ void SLAMP_fini(const char* filename)
   // slamp::fini_bound_malloc();
   TADD(overhead_init_fini, START);
   slamp_time_dump("slamp_overhead.dump");
+
+  
+  // dump 
+  dumpReason();
 }
 
 void SLAMP_allocated(uint64_t addr)
@@ -278,6 +403,10 @@ void SLAMP_loop_invocation() {
 
   if (invokedepth > 1)
     return;
+
+  for (auto &[k, v]: instructionMap) {
+    v->last_iter = InstructionRecord::INVALID;
+  }
 
   ++__slamp_invocation;
   ++__slamp_iteration;
@@ -379,8 +508,10 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
   //if (ts) slamp::log(ts, instr, s, bare_instr, addr, value, 1);
   TIME(START);
+
   slamp::log(ts, instr, s, bare_instr, addr, value, 1);
   TADD(overhead_log_total, START);
+  updateReasonMap(instr, addr);
 }
 
 void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -414,6 +545,8 @@ void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   slamp::log(ts0, instr, s, bare_instr, addr, value, 2);
   if (ts0!=ts1) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 2);
   TADD(overhead_log_total, START);
+
+  updateReasonMap(instr, addr);
 }
 
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -456,6 +589,8 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr+2, value, 4);
   if (ts3_cond) slamp::log(ts3, instr, s+3, bare_instr, addr+3, value, 4);
   TADD(overhead_log_total, START);
+
+  updateReasonMap(instr, addr);
 }
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -516,6 +651,7 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (ts7_cond) slamp::log(ts7, instr, s+7, bare_instr, addr+7, value, 8);
 
   TADD(overhead_log_total, START);
+  updateReasonMap(instr, addr);
 }
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
@@ -555,6 +691,7 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
     }
     TADD(overhead_log_total, START);
   }
+  updateReasonMap(instr, addr);
 }
 
 void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr,
@@ -630,6 +767,8 @@ void SLAMP_store1(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
+  updateInstruction(instr, addr);
+
 #if DEBUG
   uint8_t *ptr = (uint8_t *)addr;
   if (__slamp_begin_trace)
@@ -664,6 +803,7 @@ void SLAMP_store2(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
+  updateInstruction(instr, addr);
 #if DEBUG
   uint16_t *ptr = (uint16_t *)addr;
   if (__slamp_begin_trace)
@@ -697,6 +837,7 @@ void SLAMP_store4(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
+  updateInstruction(instr, addr);
 #if DEBUG
   uint32_t *ptr = (uint32_t *)addr;
   if (__slamp_begin_trace)
@@ -729,6 +870,7 @@ void SLAMP_store8(uint32_t instr, const uint64_t addr) {
   if (invokedepth > 1)
     instr = context;
 
+  updateInstruction(instr, addr);
 #if DEBUG
   uint64_t *ptr = (uint64_t *)addr;
   if (__slamp_begin_trace)
@@ -760,6 +902,7 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   if (invokedepth > 1)
     instr = context;
 
+  updateInstruction(instr, addr);
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    storen " << instr << " iteration " << __slamp_iteration

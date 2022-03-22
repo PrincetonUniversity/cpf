@@ -21,6 +21,7 @@ uint64_t overhead_out_of_path_extern_load = 0;
 uint64_t overhead_extern_wrapper = 0;
 
 void slamp_time_dump(std::string fname){
+#ifdef PERFORMANCE_ANALYSIS
   std::ofstream of(fname, std::ios::app);
 
   // module_total is a part of log total
@@ -40,4 +41,5 @@ void slamp_time_dump(std::string fname){
      << "Overhead Extern Wrapper:\t" << overhead_extern_wrapper << "\n";
 
   of.close();
+#endif
 }
