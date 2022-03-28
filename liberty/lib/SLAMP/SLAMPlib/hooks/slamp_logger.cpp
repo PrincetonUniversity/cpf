@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #include <map>
 #include <unordered_map>
@@ -20,6 +21,7 @@ extern bool CONSTANT_ADDRESS_MODULE;
 extern bool LINEAR_ADDRESS_MODULE;
 extern bool CONSTANT_VALUE_MODULE;
 extern bool LINEAR_VALUE_MODULE;
+extern bool TRACE_MODULE;
 
 /*
  * #define CREATE_KEY(src, dst, cross) ( ((KEY)(cross) << 40) | ((KEY)(src) <<
@@ -42,6 +44,63 @@ extern std::map<void *, size_t> *alloc_in_the_loop;
 
 extern uint8_t __slamp_begin_trace;
 #endif
+
+static uint64_t __slamp_dep_count = 0;
+
+struct TraceRecord {
+  uint32_t instrS;
+  uint32_t instrL;
+  uint64_t invocS;
+  uint64_t invocL;
+  uint64_t iterS;
+  uint64_t iterL;
+  uint64_t addr;
+  uint64_t value;
+  uint32_t size;
+};
+
+const uint64_t MAX_TRACE_SIZE = 10000;
+
+static std::vector<TraceRecord> trace;
+// dump trace stats into a file called trace.txt
+static void dumpTrace() {
+  if (!TRACE_MODULE) {
+    return;
+  }
+
+  std::ofstream of("trace.txt", std::ios::app);
+  of << __slamp_dep_count << "\n";
+
+  // of << "instrS, instrL, invocS, invocL, iterS, iterL, addr, value, size\n";
+  // auto id = 0;
+  // for (auto &it: trace) {
+    // of << id++ << "," << it.instrS << "," << it.instrL << "," << it.invocS
+       // << "," << it.invocL << "," << it.iterS << "," << it.iterL << ","
+       // << it.addr << "," << it.value << "," << it.size << "\n";
+  // }
+
+  of.close();
+}
+
+
+static void recordTrace(uint32_t instrS, uint32_t instrL, uint64_t invocS,
+                        uint64_t invocL, uint64_t iterS, uint64_t iterL,
+                        uint64_t addr, uint64_t value, uint32_t size) {
+  if (!TRACE_MODULE) {
+    return;
+  }
+  __slamp_dep_count++;
+
+  if (trace.size() >= MAX_TRACE_SIZE) {
+    return;
+  }
+
+
+  TraceRecord record{instrS, instrL, invocS, invocL, iterS, iterL, addr, value,
+                     size};
+
+  trace.push_back(record);
+}
 
 namespace slamp {
 
@@ -230,14 +289,14 @@ void fini_logger(const char *filename) {
   delete deplog;
 }
 
-void log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
+uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
          uint64_t addr, uint64_t value, uint8_t size) {
   // ZY: check invocation counter, if not the same, just return; because don't
   // create new dependence between two invocations
   if (ts) {
     uint64_t src_invoc = GET_INVOC(ts);
     if (src_invoc != __slamp_invocation)
-      return;
+      return UINT32_MAX;
   }
 
   Constant *cp = nullptr;
@@ -338,6 +397,11 @@ void log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
     uint32_t src_inst = GET_INSTR(ts);
     uint64_t src_iter = GET_ITER(ts);
 
+    uint64_t src_invoc = GET_INVOC(ts);
+
+    recordTrace(src_inst, dst_inst, src_invoc, __slamp_invocation, src_iter,
+                __slamp_iteration, addr, value, size);
+
     // source is a Write
     KEY key(src_inst, dst_inst, bare_inst, src_iter != __slamp_iteration);
 
@@ -388,7 +452,10 @@ void log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
 #if CTXTDEBUG
     dumpdependencecallstack(pts, key);
 #endif
+    return src_inst;
   }
+
+  return UINT32_MAX;
 }
 
 void print_log(const char *filename) {
@@ -459,6 +526,10 @@ void print_log(const char *filename) {
   }
 
   of.close();
+
+  if (TRACE_MODULE) {
+    dumpTrace();
+  }
 }
 
 } // namespace slamp

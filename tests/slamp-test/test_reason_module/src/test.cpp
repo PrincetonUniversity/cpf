@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
   auto sum = 0;
   for (int i = 0; i < iter; i++) {
     foo(p, i);
+    foo(p, i + 1);
     sum = (sum + *p) % 101;
   }
   

@@ -101,7 +101,7 @@ struct KEYEqual
 void init_logger(uint32_t fn_id, uint32_t loop_id);
 void fini_logger(const char* filename);
 
-void log(TS ts, const uint32_t dst_instr, TS* pts, const uint32_t bare_inst, uint64_t addr, uint64_t value, uint8_t size);
+uint32_t log(TS ts, const uint32_t dst_instr, TS* pts, const uint32_t bare_inst, uint64_t addr, uint64_t value, uint8_t size);
 void print_log(const char* filename);
 
 }

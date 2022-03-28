@@ -1,10 +1,12 @@
 // NOTE: We don't care about dependence distance
 
+#include <bits/stdint-uintn.h>
 #include <cassert>
 #include <cerrno>
 #include <clocale>
 #include <cstdint>
 #include <tuple>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 #include <fstream>
@@ -61,9 +63,11 @@ bool LINEAR_ADDRESS_MODULE = false;
 bool CONSTANT_VALUE_MODULE = false;
 bool LINEAR_VALUE_MODULE = false;
 bool REASON_MODULE = false;
+bool TRACE_MODULE = false;
 
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
+
 std::map<void*, size_t>* alloc_in_the_loop;
 
 static uint32_t          context = 0;
@@ -145,7 +149,8 @@ struct DepPairHash
 static std::unordered_map<DepPair, ReasonCounter, DepPairHash> *depReasonMap;
 static  uint32_t STORE_INST = 33;
 
-static void updateReasonMap(uint32_t inst, uint64_t addr){
+// update depReasonMap
+static void updateReasonMap(uint32_t inst, uint64_t addr) {
   if (!REASON_MODULE) {
     return;
   }
@@ -259,6 +264,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
   setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
   setModule(REASON_MODULE, "REASON_MODULE");
+  setModule(TRACE_MODULE, "TRACE_MODULE");
 
   if (REASON_MODULE) {
     auto *store = getenv("STORE_INST");
@@ -332,7 +338,6 @@ void SLAMP_fini(const char* filename)
   TADD(overhead_init_fini, START);
   slamp_time_dump("slamp_overhead.dump");
 
-  
   // dump 
   dumpReason();
 }
@@ -485,6 +490,8 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 {
   if (invokedepth > 1)
     instr = context;
+  if (SLAMP_isBadAlloc(addr))
+    return;
 
 #if DEBUG
   if (__slamp_begin_trace) std::cout << "    load1 " << instr << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << value << std::dec << "\n" << std::flush;
@@ -493,9 +500,6 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
     assert(false);
   }
 #endif
-
-  if (SLAMP_isBadAlloc(addr))
-    return;
 
   uint64_t START;
   TIME(START);
@@ -509,9 +513,11 @@ void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   //if (ts) slamp::log(ts, instr, s, bare_instr, addr, value, 1);
   TIME(START);
 
-  slamp::log(ts, instr, s, bare_instr, addr, value, 1);
+  uint32_t src_inst = slamp::log(ts, instr, s, bare_instr, addr, value, 1);
   TADD(overhead_log_total, START);
-  updateReasonMap(instr, addr);
+  if (src_inst != STORE_INST) {
+    updateReasonMap(instr, addr);
+  }
 }
 
 void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -542,11 +548,13 @@ void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   //if (ts0) slamp::log(ts0, instr, s, bare_instr, addr, value, 2);
   //if (ts1 && ts0!=ts1) slamp::log(ts1, instr, s+1, bare_instr, addr, value, 2);
   TIME(START);
-  slamp::log(ts0, instr, s, bare_instr, addr, value, 2);
+  uint32_t src_inst = slamp::log(ts0, instr, s, bare_instr, addr, value, 2);
   if (ts0!=ts1) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 2);
   TADD(overhead_log_total, START);
 
-  updateReasonMap(instr, addr);
+  if (src_inst != STORE_INST) {
+    updateReasonMap(instr, addr);
+  }
 }
 
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -555,6 +563,7 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
     return;
   if (invokedepth > 1)
     instr = context;
+
 
 #if DEBUG
   if (__slamp_begin_trace) std::cout << "    load4 " << instr << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << value << std::dec << "\n" << std::flush;
@@ -584,13 +593,15 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   //if (ts2 && ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr, value, 4);
   //if (ts3 && ts3_cond) slamp::log(ts3, instr, s+3, bare_instr, addr, value, 4);
   TIME(START);
-  slamp::log(ts0, instr, s, bare_instr, addr, value, 4);
+  uint32_t src_inst = slamp::log(ts0, instr, s, bare_instr, addr, value, 4);
   if (ts1_cond) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 4);
   if (ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr+2, value, 4);
   if (ts3_cond) slamp::log(ts3, instr, s+3, bare_instr, addr+3, value, 4);
   TADD(overhead_log_total, START);
 
-  updateReasonMap(instr, addr);
+  if (src_inst != STORE_INST) {
+    updateReasonMap(instr, addr);
+  }
 }
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -641,7 +652,7 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   //if (ts7 && ts7_cond) slamp::log(ts7, instr, s+7, bare_instr, addr, value, 8);
 
   TIME(START);
-  slamp::log(ts0, instr, s, bare_instr, addr, value, 8);
+  uint32_t src_inst = slamp::log(ts0, instr, s, bare_instr, addr, value, 8);
   if (ts1_cond) slamp::log(ts1, instr, s+1, bare_instr, addr+1, value, 8);
   if (ts2_cond) slamp::log(ts2, instr, s+2, bare_instr, addr+2, value, 8);
   if (ts3_cond) slamp::log(ts3, instr, s+3, bare_instr, addr+3, value, 8);
@@ -651,7 +662,10 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (ts7_cond) slamp::log(ts7, instr, s+7, bare_instr, addr+7, value, 8);
 
   TADD(overhead_log_total, START);
-  updateReasonMap(instr, addr);
+  // FIXEME: no dependence, not consider other branches
+  if (src_inst != STORE_INST) {
+    updateReasonMap(instr, addr);
+  }
 }
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
@@ -679,19 +693,27 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
   std::unordered_set<TS> m;
 
+  bool noDep = true;
   for (unsigned i = 0; i < n; i++) {
     TIME(START);
     TS ts = s[i];
     TADD(overhead_shadow_read, START);
 
+
     TIME(START);
     if (m.count(ts) == 0) {
-      slamp::log(ts, instr, s + i, 0, addr + i, 0, 0);
+      uint32_t src_inst = slamp::log(ts, instr, s + i, 0, addr + i, 0, 0);
+      if (src_inst != STORE_INST) {
+        noDep = false;
+      }
       m.insert(ts);
     }
     TADD(overhead_log_total, START);
   }
-  updateReasonMap(instr, addr);
+
+  if (noDep) {
+    updateReasonMap(instr, addr);
+  }
 }
 
 void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr,
