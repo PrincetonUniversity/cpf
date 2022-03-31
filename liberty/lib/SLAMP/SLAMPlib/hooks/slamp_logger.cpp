@@ -34,6 +34,8 @@ extern bool TRACE_MODULE;
  */
 extern uint64_t __slamp_iteration;
 extern uint64_t __slamp_invocation;
+extern uint64_t __slamp_load_count;
+extern uint64_t __slamp_store_count;
 extern std::map<void *, size_t> *alloc_in_the_loop;
 
 
@@ -69,7 +71,8 @@ static void dumpTrace() {
   }
 
   std::ofstream of("trace.txt", std::ios::app);
-  of << __slamp_dep_count << "\n";
+  of << __slamp_load_count << " " << __slamp_store_count << " "
+     << __slamp_dep_count << "\n";
 
   // of << "instrS, instrL, invocS, invocL, iterS, iterL, addr, value, size\n";
   // auto id = 0;
@@ -301,6 +304,7 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
 
   Constant *cp = nullptr;
 
+  // FIXME: address and value modules need to moved to access events
   // check if constant
   if (CONSTANT_VALUE_MODULE) {
     KEY constkey(0, dst_inst, bare_inst, 0);
@@ -417,9 +421,7 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
     depset->insert(ss.str());
 #endif
 
-    // 0 -> intra-iteration; >=1 loop-carried
     auto distance = __slamp_iteration - src_iter;
-
     if (deplog->count(key)) {
       Value &v = (*deplog)[key];
       v.count += 1;
@@ -456,6 +458,14 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
   }
 
   return UINT32_MAX;
+}
+
+void distance_module_callback(uint32_t src_inst, uint32_t dst_inst, uint32_t bare_inst, uint64_t src_iter) {
+  KEY key(src_inst, dst_inst, bare_inst, src_iter != __slamp_iteration);
+
+  // 0 -> intra-iteration; >=1 loop-carried
+  auto distance = __slamp_iteration - src_iter;
+
 }
 
 void print_log(const char *filename) {

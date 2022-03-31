@@ -1,5 +1,3 @@
-// NOTE: We don't care about dependence distance
-
 #include <bits/stdint-uintn.h>
 #include <cassert>
 #include <cerrno>
@@ -67,6 +65,9 @@ bool TRACE_MODULE = false;
 
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
+
+uint64_t __slamp_load_count = 0;
+uint64_t __slamp_store_count = 0;
 
 std::map<void*, size_t>* alloc_in_the_loop;
 
@@ -491,6 +492,7 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
   if (SLAMP_isBadAlloc(addr))
     return;
 
+  __slamp_load_count++;
 #if DEBUG
   if (__slamp_begin_trace) std::cout << "    load"<< size << " " << instr << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << value << std::dec << "\n" << std::flush;
   if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
@@ -652,6 +654,8 @@ void SLAMP_store(uint32_t instr, const uint64_t addr) {
     return;
   if (invokedepth > 1)
     instr = context;
+
+  __slamp_store_count++;
 
   updateInstruction(instr, addr);
 #if DEBUG
