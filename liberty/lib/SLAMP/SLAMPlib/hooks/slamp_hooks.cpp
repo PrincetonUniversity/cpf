@@ -505,9 +505,9 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
   TIME(START);
 
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-  std::vector<TS> tss;
+  TS tss[8]; // HACK: avoid using malloc
   for (auto i = 0; i < size; i++) {
-    tss.push_back(s[i]);
+    tss[i] = s[i];
   }
 
   TADD(overhead_shadow_read, START);
@@ -575,6 +575,7 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
 
+  // FIXME: beware of the malloc hook being changed at this point, any allocation is super costly
   std::unordered_set<TS> m;
 
   bool noDep = true;
