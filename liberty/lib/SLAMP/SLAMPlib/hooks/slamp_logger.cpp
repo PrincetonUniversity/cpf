@@ -296,37 +296,6 @@ void print_log(const char *filename) {
       of << "]";
     }
 
-    // auto printCp = [&of](Constant *cp) {
-    //    of << " ["
-    //       << cp->valid << " " << (unsigned)(cp->valid ? cp->size : 0) << " " << (cp->valid ? cp->value: 0) << "]";
-    // };
- 
-    // auto printLp = [&of](LinearPredictor *lp) {
-    //   bool lp_int_valid = (lp->stable && lp->valid_as_int);
-    //   bool lp_double_valid = (lp->stable && lp->valid_as_double);
-    //   of << " ["
-    //      << lp_int_valid << " " << (lp_int_valid ? lp->ia : 0) << " "
-    //      << (lp_int_valid ? lp->ib : 0) << " " << lp_double_valid << " "
-    //      << (lp_double_valid ? lp->da : 0) << " "
-    //      << (lp_double_valid ? lp->db : 0) << "]";
-    // };
-
-    // if (CONSTANT_VALUE_MODULE) {
-       // printCp(v.c_value);
-    // }
-
-    // if (LINEAR_VALUE_MODULE) {
-    //   printLp(v.lp_value);
-    // }
-
-    // if (CONSTANT_ADDRESS_MODULE) {
-       // printCp(v.c_addr);
-    // }
-
-    // if (LINEAR_ADDRESS_MODULE) {
-    //   printLp(v.lp_addr);
-    // }
-
     of << "\n";
   }
 

@@ -5,6 +5,7 @@
 
 #define DEBUG_TYPE "SLAMP"
 
+#define USE_PDG
 #ifdef USE_PDG
 #include "scaf/SpeculationModules/PDGBuilder.hpp"
 #endif
@@ -37,6 +38,7 @@ using namespace llvm;
 
 namespace liberty::slamp {
 
+static bool IS_DOALL = false;
 char SLAMP::ID = 0;
 STATISTIC(numElidedNode, "Number of instructions in the loop that are ignored for SLAMP due to pruning");
 STATISTIC(numInstrumentedNode, "Number of instructions in the loop that are instrumented ");
@@ -113,6 +115,10 @@ bool SLAMP::runOnModule(Module &m) {
       if (dyn_cast<Instruction>(node->getT())->mayWriteToMemory()) {
         for (auto &edge : node->getOutgoingEdges()) {
           if (edge->isRAWDependence()) {
+            // FIXME: hack for DOALL
+            if (IS_DOALL && !edge->isLoopCarriedDependence()) {
+              continue;
+            }
             canBeElided = false;
             break;
           }
@@ -122,6 +128,10 @@ bool SLAMP::runOnModule(Module &m) {
       if (dyn_cast<Instruction>(node->getT())->mayReadFromMemory()) {
         for (auto &edge : node->getIncomingEdges()) {
           if (edge->isRAWDependence()) {
+            // FIXME: hack for DOALL
+            if (IS_DOALL && !edge->isLoopCarriedDependence()) {
+              continue;
+            }
             canBeElided = false;
             break;
           }
