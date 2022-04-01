@@ -27,6 +27,16 @@
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 
+#define TURN_OFF_CUSTOM_MALLOC do {\
+  __malloc_hook = old_malloc_hook; \
+  __free_hook = old_free_hook; \
+} while (false);
+
+#define TURN_ON_CUSTOM_MALLOC do { \
+  __malloc_hook = SLAMP_malloc_hook; \
+  __free_hook = SLAMP_free_hook; \
+} while (false);
+
 // shadow memory parameters
 
 #define HEAP_BOUND_LOWER 0x010000000000L
@@ -70,6 +80,229 @@ uint64_t __slamp_load_count = 0;
 uint64_t __slamp_store_count = 0;
 
 std::map<void*, size_t>* alloc_in_the_loop;
+
+// Type of the access callback function
+// instr, bare_instr, address, value, size
+using AccessCallbackTy = void (*)(uint32_t, uint32_t, uint64_t, uint64_t, uint8_t);
+
+// Callback functions
+void slamp_access_callback_constant_value(uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
+void slamp_access_callback_constant_addr(uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
+
+// Callback function pointers
+AccessCallbackTy access_callbacks[8] = {
+  // &slamp_access_callback_constant_addr,
+  // &slamp_access_callback_linear_address,
+  // &slamp_access_callback_constant_value,
+  // &slamp_access_callback_linear_value,
+  // &slamp_access_callback_reason,
+  // &slamp_access_callback_trace
+};
+
+template <typename T1, typename T2>
+struct PairHash
+{
+    std::size_t operator () (std::pair<T1, T2> const &v) const
+    {
+      std::hash<uint32_t> hash_fn;
+
+      return hash_fn(v.first) ^ hash_fn(v.second);
+    }
+};
+
+// instr, bare_instr
+using AccessKey = std::pair<uint32_t, uint32_t>;
+struct Constant {
+  bool valid;
+  bool valueinit;
+  uint8_t size;
+  uint64_t addr;
+  uint64_t value;
+  char pad[64 - sizeof(uint64_t) - sizeof(uint64_t) - sizeof(uint8_t) -
+           sizeof(bool) - sizeof(bool)];
+
+  Constant(bool va, bool vi, uint8_t s, uint64_t a, uint64_t v)
+      : valid(va), valueinit(vi), size(s), addr(a), value(v) {}
+};
+
+struct LinearPredictor {
+  using value = union {
+    int64_t ival;
+    double dval;
+  };
+
+  uint64_t addr;
+  int64_t ia;
+  int64_t ib;
+  double da;
+  double db;
+  int64_t x;
+  value y;
+  bool init;
+  bool ready;
+  bool stable;
+  bool valid_as_int;
+  bool valid_as_double;
+
+  LinearPredictor(int64_t x1, int64_t y1, uint64_t addr)
+      : addr(addr), init(false), ready(false), stable(false),
+        valid_as_int(true), valid_as_double(true) {
+    ia = ib = 0;
+    da = db = 0.0;
+    x = x1;
+    y.ival = y1;
+  }
+
+  void add_sample(int64_t x1, int64_t y1, uint64_t sample_addr) {
+    if (!valid_as_int && !valid_as_double)
+      return;
+
+
+    // // Remove check for constant need to have the same address
+    // if (addr != sample_addr) {
+    //   valid_as_int = valid_as_double = false;
+    //   return;
+    // }
+
+    if (!init) {
+      x = x1;
+      y.ival = y1;
+      init = true;
+    } else if (!ready) {
+      if ((x == x1 && y.ival != y1) || (x != x1 && y.ival == y1)) {
+        valid_as_int = valid_as_double = false;
+        return;
+      }
+
+      if (x == x1 && y.ival == y1) {
+        // Nothing to do but not ready yet
+        return;
+      }
+
+      // for int
+      {
+        int64_t y_diff = y1 - y.ival;
+        int64_t x_diff = x1 - x;
+
+        ia = y_diff / x_diff;
+        ib = y.ival - (ia * x);
+      }
+
+      // for double
+      {
+        value vy;
+        vy.ival = y1;
+
+        double y_diff = vy.dval - y.dval;
+        double x_diff = (double)x1 - (double)x;
+
+        da = y_diff / x_diff;
+        db = y.dval - (da * x);
+      }
+
+      ready = true;
+    } else {
+      if (valid_as_int) {
+        if ((ia * x1 + ib) != y1)
+          valid_as_int = false;
+      }
+
+      if (valid_as_double) {
+        value vy;
+        vy.ival = y1;
+
+        if ((da * (double)x1 + db) != vy.dval)
+          valid_as_double = false;
+      }
+
+      stable = true;
+    }
+  }
+};
+
+static std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>> *constmap_value;
+static std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>> *constmap_addr;
+static std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t> > *lpmap_value;
+static std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t> > *lpmap_addr;
+
+void slamp_access_callback_constant_value(uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
+  AccessKey key(instr, bare_instr);
+  if (constmap_value->count(key) != 0) {
+    auto cp = (*constmap_value)[key];
+
+    // // Remove check for constant need to have the same address
+    // if (cp->valueinit && cp->addr != addr)
+    //   cp->valid = false;
+    if (cp->valid) {
+      if (cp->valueinit && cp->value != value) {
+        cp->valid = false;
+      }
+      else {
+        cp->valueinit = true;
+        cp->value = value;
+        cp->addr = addr;
+      }
+    }
+  } else {
+    auto cp = new Constant(1, 1, size, addr, value);
+    constmap_value->insert(std::make_pair(key, cp));
+  }
+}
+
+void slamp_access_callback_constant_addr(uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
+  AccessKey key(instr, bare_instr);
+  if (constmap_addr->count(key) != 0) {
+    auto cp = (*constmap_addr)[key];
+
+    // // Remove check for constant need to have the same address
+    // if (cp->valueinit && cp->addr != addr)
+    //   cp->valid = false;
+    if (cp->valid) {
+      if (cp->valueinit && cp->value != addr) {
+        cp->valid = false;
+      }
+      else {
+        cp->valueinit = true;
+        cp->value = addr;
+        cp->addr = addr;
+      }
+    }
+  } else {
+    auto cp = new Constant(1, 1, size, addr, addr);
+    constmap_addr->insert(std::make_pair(key, cp));
+  }
+}
+
+
+void slamp_access_callback_linear_value(uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
+  // check if linear predictable. constkey can be reused here.
+  auto key = AccessKey(instr, bare_instr);
+  if (LINEAR_VALUE_MODULE) {
+    if (lpmap_value->count(key)) {
+      auto lp = (*lpmap_value)[key];
+      lp->add_sample(__slamp_iteration, value, addr);
+    } else {
+      auto lp = new LinearPredictor(__slamp_iteration, value, addr);
+      lpmap_value->insert(std::make_pair(key, lp));
+    }
+  }
+}
+
+void slamp_access_callback_linear_addr(uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
+  // check if linear predictable.
+  auto key = AccessKey(instr, bare_instr);
+  if (LINEAR_ADDRESS_MODULE) {
+    if (lpmap_addr->count(key)) {
+      auto lp_addr = (*lpmap_addr)[key];
+      // this one checks for if addr is linear
+      lp_addr->add_sample(__slamp_iteration, addr, addr);
+    } else {
+      auto lp_addr = new LinearPredictor(__slamp_iteration, addr, addr);
+      lp_addr->valid_as_double = false;
+      lpmap_addr->insert(std::make_pair(key, lp_addr));
+    }
+  }
+}
 
 static uint32_t          context = 0;
 slamp::MemoryMap* smmap = nullptr;
@@ -135,21 +368,12 @@ static NoDepReason reasonLoad(uint32_t store_instr, uint64_t addr) {
 
 using DepPair = std::pair<uint32_t, uint32_t>;
 using ReasonCounter = std::array<unsigned, 4>;
-struct DepPairHash
-{
-    std::size_t operator () (DepPair const &v) const
-    {
-      std::hash<uint32_t> hash_fn;
 
-      return hash_fn(v.first) ^ hash_fn(v.second);
-    }
-};
-
-static std::unordered_map<DepPair, ReasonCounter, DepPairHash> *depReasonMap;
+static std::unordered_map<DepPair, ReasonCounter, PairHash<uint32_t, uint32_t>> *depReasonMap;
 static  uint32_t STORE_INST = 33;
 
 // update depReasonMap
-static void updateReasonMap(uint32_t inst, uint64_t addr) {
+static void updateReasonMap(uint32_t inst, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
   if (!REASON_MODULE) {
     return;
   }
@@ -160,6 +384,69 @@ static void updateReasonMap(uint32_t inst, uint64_t addr) {
 
   DepPair dep = std::make_pair(STORE_INST, inst);
   (*depReasonMap)[dep][reasonIdx]++;
+}
+
+// dump all access event modules
+static void accessModuleDump(std::string fname) {
+  std::ofstream of(fname, std::ios::app);
+
+  auto printCp = [&of](AccessKey key, Constant *cp) {
+    of << "(" << key.first << ":" << key.second << ")" << " ["
+      << cp->valid << " " << (unsigned)(cp->valid ? cp->size : 0) << " " << (cp->valid ? cp->value: 0) << "]";
+  };
+
+  auto printLp = [&of](AccessKey key, LinearPredictor *lp) {
+    bool lp_int_valid = (lp->stable && lp->valid_as_int);
+    bool lp_double_valid = (lp->stable && lp->valid_as_double);
+    of << "(" << key.first << ":" << key.second << ")" <<  " ["
+      << lp_int_valid << " " << (lp_int_valid ? lp->ia : 0) << " "
+      << (lp_int_valid ? lp->ib : 0) << " " << lp_double_valid << " "
+      << (lp_double_valid ? lp->da : 0) << " "
+      << (lp_double_valid ? lp->db : 0) << "]";
+  };
+
+  if (CONSTANT_VALUE_MODULE) {
+    // dump constant_value map
+    of << "constant_value_map:\n";
+    for (auto &[key, cp] : *constmap_value) {
+      if (cp->valid) {
+        printCp(key, cp);
+        of << "\n";
+      }
+    }
+  }
+  if (CONSTANT_ADDRESS_MODULE) {
+    // dump constant_address map
+    of << "constant_address_map:\n";
+    for (auto &[key, cp] : *constmap_addr) {
+      if (cp->valid) {
+        printCp(key, cp);
+        of << "\n";
+      }
+    }
+  }
+
+  if (LINEAR_VALUE_MODULE) {
+    // dump linear_value map
+    of << "linear_value_map:\n";
+    for (auto &[key, lp] : *lpmap_value) {
+      if (lp->valid_as_int || lp->valid_as_double) {
+        printLp(key, lp);
+        of << "\n";
+      }
+    }
+  }
+
+  if (LINEAR_ADDRESS_MODULE) {
+    // dump linear_address map
+    of << "linear_address_map:\n";
+    for (auto &[key, lp] : *lpmap_addr) {
+      if (lp->valid_as_int || lp->valid_as_double) {
+        printLp(key, lp);
+        of << "\n";
+      }
+    }
+  }
 }
 
 static void dumpReason() {
@@ -180,7 +467,6 @@ static void dumpReason() {
 }
 
 static uint32_t invokedepth = 0; // recursive function
-
 
 static void dumpstack()  {
   unw_cursor_t cursor;
@@ -245,6 +531,10 @@ static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
+  constmap_value = new std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>>();
+  constmap_addr = new std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>>();
+  lpmap_value  = new std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t>>();
+  lpmap_addr = new std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t>>();
 
   // per instruction map
 
@@ -265,12 +555,28 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   setModule(REASON_MODULE, "REASON_MODULE");
   setModule(TRACE_MODULE, "TRACE_MODULE");
 
+  if (CONSTANT_VALUE_MODULE) {
+    access_callbacks[0] = &slamp_access_callback_constant_value;
+  }
+
+  if (CONSTANT_ADDRESS_MODULE) {
+    access_callbacks[1] = &slamp_access_callback_constant_addr;
+  }
+
+  if (LINEAR_VALUE_MODULE) {
+    access_callbacks[2] = &slamp_access_callback_linear_value;
+  }
+
+  if (LINEAR_ADDRESS_MODULE) {
+    access_callbacks[3] = &slamp_access_callback_linear_addr;
+  }
+
   if (REASON_MODULE) {
     auto *store = getenv("STORE_INST");
     if (store) {
       STORE_INST = atoi(store);
     }
-    depReasonMap = new std::unordered_map<DepPair, ReasonCounter, DepPairHash>();
+    depReasonMap = new std::unordered_map<DepPair, ReasonCounter, PairHash<uint32_t, uint32_t>>();
   }
 
   uint64_t START;
@@ -336,6 +642,8 @@ void SLAMP_fini(const char* filename)
   // slamp::fini_bound_malloc();
   TADD(overhead_init_fini, START);
   slamp_time_dump("slamp_overhead.dump");
+
+  accessModuleDump("slamp_access_module.dump");
 
   // dump 
   dumpReason();
@@ -524,9 +832,17 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
       uint32_t src_inst = slamp::log(tss[i], instr, s, bare_instr, addr, value, size);
       // FIXME: no dependence, not consider other branches
       if (src_inst != STORE_INST) {
-        updateReasonMap(instr, addr);
+        updateReasonMap(instr, bare_instr, addr, value, size);
       }
     }
+  }
+
+  for (auto *f: access_callbacks) {
+    TURN_OFF_CUSTOM_MALLOC;
+    if (f) {
+      f(instr, bare_instr, addr, value, size);
+    }
+    TURN_ON_CUSTOM_MALLOC;
   }
 
   TADD(overhead_log_total, START);
@@ -597,7 +913,7 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 
   if (noDep) {
-    updateReasonMap(instr, addr);
+    updateReasonMap(instr, bare_instr, addr, 0, n);
   }
 }
 

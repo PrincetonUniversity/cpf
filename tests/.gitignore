@@ -4,6 +4,7 @@
 *.ll
 *.out
 *.exe
+*.o
 *.s
 rabbit*
 *.dot
@@ -12,3 +13,8 @@ result.specpriv.profile.txt
 result.lamp.profile
 benchmark.profraw
 results
+
+__targets.txt
+*result.slamp.profile
+trace.txt
+
