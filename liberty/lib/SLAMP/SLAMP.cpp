@@ -38,10 +38,12 @@ using namespace llvm;
 
 namespace liberty::slamp {
 
-static bool IS_DOALL = false;
+static bool IS_DOALL = true;
 char SLAMP::ID = 0;
-STATISTIC(numElidedNode, "Number of instructions in the loop that are ignored for SLAMP due to pruning");
-STATISTIC(numInstrumentedNode, "Number of instructions in the loop that are instrumented ");
+static uint64_t numElidedNode = 0;
+static uint64_t numInstrumentedNode = 0;
+STATISTIC(numElidedNodeStats, "Number of instructions in the loop that are ignored for SLAMP due to pruning");
+STATISTIC(numInstrumentedNodeStats, "Number of instructions in the loop that are instrumented ");
 static RegisterPass<SLAMP> RP("slamp-insts",
                               "Insert instrumentation for SLAMP profiling",
                               false, false);
@@ -114,7 +116,7 @@ bool SLAMP::runOnModule(Module &m) {
 
       if (dyn_cast<Instruction>(node->getT())->mayWriteToMemory()) {
         for (auto &edge : node->getOutgoingEdges()) {
-          if (edge->isRAWDependence()) {
+          if (edge->isRAWDependence() && edge->isMemoryDependence()) {
             // FIXME: hack for DOALL
             if (IS_DOALL && !edge->isLoopCarriedDependence()) {
               continue;
@@ -127,7 +129,7 @@ bool SLAMP::runOnModule(Module &m) {
 
       if (dyn_cast<Instruction>(node->getT())->mayReadFromMemory()) {
         for (auto &edge : node->getIncomingEdges()) {
-          if (edge->isRAWDependence()) {
+          if (edge->isRAWDependence() && edge->isMemoryDependence()) {
             // FIXME: hack for DOALL
             if (IS_DOALL && !edge->isLoopCarriedDependence()) {
               continue;
@@ -151,6 +153,12 @@ bool SLAMP::runOnModule(Module &m) {
     errs() << "PDGBuilder not added, cannot elide nodes\n";
   }
 #endif
+
+  numInstrumentedNodeStats = numInstrumentedNode;
+  numElidedNodeStats = numElidedNode;
+
+  errs() << "Instrumented Count: " << numInstrumentedNode << "\n";
+  errs() << "Elided Count: " << numElidedNode << "\n";
 
   // replace external function calls to wrapper function calls
   replaceExternalFunctionCalls(m);
