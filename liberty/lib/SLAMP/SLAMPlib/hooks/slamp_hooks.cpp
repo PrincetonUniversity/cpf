@@ -78,6 +78,8 @@ uint64_t __slamp_invocation = 0;
 
 uint64_t __slamp_load_count = 0;
 uint64_t __slamp_store_count = 0;
+uint64_t __slamp_malloc_count = 0;
+uint64_t __slamp_free_count = 0;
 
 std::map<void*, size_t>* alloc_in_the_loop;
 
@@ -521,11 +523,13 @@ static void (*old_free_hook)(void *, const void *);
 static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
   auto ptr = SLAMP_malloc(size);
 
+  __slamp_malloc_count++;
   return ptr;
 }
 
 static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
   SLAMP_free(ptr);
+  __slamp_free_count++;
 }
 
 

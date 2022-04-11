@@ -3,6 +3,7 @@
 // Single Loop Aware Memory Profiler.
 //
 
+#include <bits/stdint-uintn.h>
 #define DEBUG_TYPE "SLAMP"
 
 #define USE_PDG
@@ -26,6 +27,7 @@
 #include "scaf/Utilities/InstInsertPt.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/Metadata.h"
+#include "scaf/Utilities/PDGQueries.h"
 
 #include <sstream>
 #include <vector>
@@ -39,6 +41,7 @@ using namespace llvm;
 namespace liberty::slamp {
 
 static bool IS_DOALL = true;
+static bool IGNORE_CALL = true;
 char SLAMP::ID = 0;
 static uint64_t numElidedNode = 0;
 static uint64_t numInstrumentedNode = 0;
@@ -52,6 +55,11 @@ static RegisterPass<SLAMP> RP("slamp-insts",
 static cl::opt<std::string> TargetFcn("slamp-target-fn", cl::init(""),
                                       cl::NotHidden,
                                       cl::desc("Target Function"));
+
+// target instruction with metadata ID
+static cl::opt<uint32_t> TargetInst("slamp-target-inst", cl::init(0),
+                                       cl::NotHidden,
+                                       cl::desc("Target Instruction"));
 
 // passed in based on the target loop info
 static cl::opt<std::string> TargetLoop("slamp-target-loop", cl::init(""),
@@ -68,6 +76,7 @@ void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
   // au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
   au.addRequired<ModuleLoops>();
 #ifdef USE_PDG
+  au.addRequired<LoopAA>();
   au.addRequired<PDGBuilder>();
 #endif
   au.setPreservesAll();
@@ -92,7 +101,74 @@ bool SLAMP::runOnModule(Module &m) {
     // return false;
   }
 
+#define ONE_DEP
+#ifdef ONE_DEP
+  auto *aa = getAnalysis< LoopAA >().getTopAA();
+  aa->dump();
+
+  
+  // find the instruction based on the metadata
+  Instruction *target_inst = nullptr;
+  for (auto *BB: this->target_loop->blocks()) {
+    for (Instruction &I: *BB) {
+      if (!I.mayReadOrWriteMemory()) {
+        continue;
+      }
+      if (Namer::getInstrId(&I) == TargetInst) {
+        target_inst = &I;
+        break;
+      }
+    }
+  }
+
+  if (target_inst == nullptr) {
+    errs() << "Error! cannot find target instruction\n";
+
+    for (auto *BB : this->target_loop->blocks()) {
+      for (Instruction &I : *BB) {
+        if (!I.mayReadOrWriteMemory()) {
+          continue;
+        }
+        elidedLoopInsts.insert(&I);
+        numElidedNode++;
+      }
+    }
+  } else {
+
+    errs() << "Target ID: " << TargetInst << "\n";
+    errs() << "Target instruction: " << *target_inst << "\n";
+
+    for (auto *BB: this->target_loop->blocks()) {
+      for (Instruction &I: *BB) {
+        if (!I.mayReadOrWriteMemory()) {
+          continue;
+        }
+        if (&I == target_inst) {
+          numInstrumentedNode++;
+          continue;
+        }
+        // any dependence that has a RAW dep to the target instruction should not be elided
+        auto retLCFW = liberty::disproveLoopCarriedMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
+        auto retLCBW = liberty::disproveLoopCarriedMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
+        auto retIIFW = liberty::disproveIntraIterationMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
+        auto retIIBW = liberty::disproveIntraIterationMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
+
+        // RAW disproved for all deps
+        if ((retLCFW & 0b001) && (retLCBW & 0b001) && (retIIFW & 0b001) && (retIIBW & 0b001)) {
+          elidedLoopInsts.insert(&I);
+          numElidedNode++;
+        } else {
+          numInstrumentedNode++;
+        }
+      }
+    }
+  }
+
+#endif
+
 #ifdef USE_PDG
+
+#if 0
   // get PDG and 
   auto *pdgbuilder = getAnalysisIfAvailable<PDGBuilder>();
 
@@ -121,6 +197,12 @@ bool SLAMP::runOnModule(Module &m) {
             if (IS_DOALL && !edge->isLoopCarriedDependence()) {
               continue;
             }
+            if (IGNORE_CALL) {
+              // ignore dep to call
+              if (isa<CallBase>(edge->getIncomingT())) {
+                continue;
+              }
+            }
             canBeElided = false;
             break;
           }
@@ -133,6 +215,12 @@ bool SLAMP::runOnModule(Module &m) {
             // FIXME: hack for DOALL
             if (IS_DOALL && !edge->isLoopCarriedDependence()) {
               continue;
+            }
+            if (IGNORE_CALL) {
+              // ignore dep to call
+              if (isa<CallBase>(edge->getOutgoingT())) {
+                continue;
+              }
             }
             canBeElided = false;
             break;
@@ -152,6 +240,7 @@ bool SLAMP::runOnModule(Module &m) {
   } else {
     errs() << "PDGBuilder not added, cannot elide nodes\n";
   }
+#endif
 #endif
 
   numInstrumentedNodeStats = numInstrumentedNode;
@@ -825,6 +914,7 @@ void SLAMP::instrumentLifetimeIntrinsics(Module &m, Instruction *inst) {
 void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
   // if elided
   if (elidedLoopInsts.count(inst)) {
+    // errs() << "SLAMP: elided " << *inst << "\n";
     return;
   }
   const DataLayout &DL = m.getDataLayout();

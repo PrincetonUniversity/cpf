@@ -37,6 +37,8 @@ extern uint64_t __slamp_iteration;
 extern uint64_t __slamp_invocation;
 extern uint64_t __slamp_load_count;
 extern uint64_t __slamp_store_count;
+extern uint64_t __slamp_malloc_count;
+extern uint64_t __slamp_free_count;
 extern std::map<void *, size_t> *alloc_in_the_loop;
 
 
@@ -73,7 +75,10 @@ static void dumpTrace() {
 
   std::ofstream of("trace.txt", std::ios::app);
   of << __slamp_load_count << " " << __slamp_store_count << " "
-     << __slamp_dep_count << "\n";
+     << __slamp_dep_count << " "
+     << __slamp_malloc_count << " " << __slamp_free_count << " "
+     << __slamp_invocation << " " << __slamp_iteration
+     << "\n";
 
   // of << "instrS, instrL, invocS, invocL, iterS, iterL, addr, value, size\n";
   // auto id = 0;
@@ -95,15 +100,16 @@ static void recordTrace(uint32_t instrS, uint32_t instrL, uint64_t invocS,
   }
   __slamp_dep_count++;
 
-  if (trace.size() >= MAX_TRACE_SIZE) {
-    return;
-  }
+  // FIXME: turned off trace
+  // if (trace.size() >= MAX_TRACE_SIZE) {
+    // return;
+  // }
 
 
-  TraceRecord record{instrS, instrL, invocS, invocL, iterS, iterL, addr, value,
-                     size};
+  // TraceRecord record{instrS, instrL, invocS, invocL, iterS, iterL, addr, value,
+                     // size};
 
-  trace.push_back(record);
+  // trace.push_back(record);
 }
 
 namespace slamp {
