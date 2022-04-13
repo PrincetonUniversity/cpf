@@ -3,10 +3,10 @@
 // Single Loop Aware Memory Profiler.
 //
 
-#include <bits/stdint-uintn.h>
 #define DEBUG_TYPE "SLAMP"
 
 #define USE_PDG
+
 #ifdef USE_PDG
 #include "scaf/SpeculationModules/PDGBuilder.hpp"
 #endif
@@ -40,8 +40,6 @@ using namespace llvm;
 
 namespace liberty::slamp {
 
-static bool IS_DOALL = true;
-static bool IGNORE_CALL = true;
 char SLAMP::ID = 0;
 static uint64_t numElidedNode = 0;
 static uint64_t numInstrumentedNode = 0;
@@ -55,6 +53,24 @@ static RegisterPass<SLAMP> RP("slamp-insts",
 static cl::opt<std::string> TargetFcn("slamp-target-fn", cl::init(""),
                                       cl::NotHidden,
                                       cl::desc("Target Function"));
+
+// top priority; not compatible with the rest
+static cl::list<uint32_t> ExplicitInsts("slamp-explicit-insts",
+                  cl::NotHidden, cl::CommaSeparated,
+                  cl::desc("Explicitly instrumented instructions"),
+                  cl::value_desc("inst_id"));
+
+static cl::opt<bool> IgnoreCall("slamp-ignore-call", cl::init(false),
+                                       cl::NotHidden,
+                                       cl::desc("Ignore dependences from call"));
+
+static cl::opt<bool> IsDOALL("slamp-doall", cl::init(false),
+                                       cl::NotHidden,
+                                       cl::desc("Doall"));
+
+static cl::opt<bool> UsePruning("slamp-pruning", cl::init(false),
+                                       cl::NotHidden,
+                                       cl::desc("Use PDG to pruning"));
 
 // target instruction with metadata ID
 static cl::opt<uint32_t> TargetInst("slamp-target-inst", cl::init(0),
@@ -82,6 +98,16 @@ void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
   au.setPreservesAll();
 }
 
+static std::vector<uint32_t> elidedLoopInstsId;
+// https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+static size_t elidedHash(std::vector<uint32_t> const& vec) {
+  std::size_t seed = vec.size();
+  for(auto& i : vec) {
+    seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+  return seed;
+}
+
 bool SLAMP::runOnModule(Module &m) {
   LLVMContext &ctxt = m.getContext();
 
@@ -101,146 +127,167 @@ bool SLAMP::runOnModule(Module &m) {
     // return false;
   }
 
-#define ONE_DEP
-#ifdef ONE_DEP
-  auto *aa = getAnalysis< LoopAA >().getTopAA();
-  aa->dump();
-
-  
-  // find the instruction based on the metadata
-  Instruction *target_inst = nullptr;
-  for (auto *BB: this->target_loop->blocks()) {
-    for (Instruction &I: *BB) {
-      if (!I.mayReadOrWriteMemory()) {
-        continue;
-      }
-      if (Namer::getInstrId(&I) == TargetInst) {
-        target_inst = &I;
-        break;
-      }
-    }
-  }
-
-  if (target_inst == nullptr) {
-    errs() << "Error! cannot find target instruction\n";
-
-    for (auto *BB : this->target_loop->blocks()) {
-      for (Instruction &I : *BB) {
-        if (!I.mayReadOrWriteMemory()) {
-          continue;
-        }
-        elidedLoopInsts.insert(&I);
-        numElidedNode++;
-      }
-    }
-  } else {
-
-    errs() << "Target ID: " << TargetInst << "\n";
-    errs() << "Target instruction: " << *target_inst << "\n";
-
+#ifdef USE_PDG
+  // User set the explicit insts through slamp-explicit-insts
+  if (!ExplicitInsts.empty()) {
     for (auto *BB: this->target_loop->blocks()) {
       for (Instruction &I: *BB) {
         if (!I.mayReadOrWriteMemory()) {
           continue;
         }
-        if (&I == target_inst) {
-          numInstrumentedNode++;
-          continue;
-        }
-        // any dependence that has a RAW dep to the target instruction should not be elided
-        auto retLCFW = liberty::disproveLoopCarriedMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
-        auto retLCBW = liberty::disproveLoopCarriedMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
-        auto retIIFW = liberty::disproveIntraIterationMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
-        auto retIIBW = liberty::disproveIntraIterationMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
 
-        // RAW disproved for all deps
-        if ((retLCFW & 0b001) && (retLCBW & 0b001) && (retIIFW & 0b001) && (retIIBW & 0b001)) {
+        auto inst_id = Namer::getInstrId(&I);
+
+        // check if the instruction is explicitly instrumented
+        if (std::find(ExplicitInsts.begin(), ExplicitInsts.end(), inst_id) != ExplicitInsts.end()) {
+          numInstrumentedNode++;
+        } else {
+          elidedLoopInstsId.push_back(inst_id);
           elidedLoopInsts.insert(&I);
           numElidedNode++;
-        } else {
-          numInstrumentedNode++;
         }
       }
     }
   }
+  // User set the targeted inst through slamp-target-inst
+  else if (TargetInst != 0) {
+    auto *aa = getAnalysis< LoopAA >().getTopAA();
+    aa->dump();
 
-#endif
 
-#ifdef USE_PDG
-
-#if 0
-  // get PDG and 
-  auto *pdgbuilder = getAnalysisIfAvailable<PDGBuilder>();
-
-  if (pdgbuilder) {
-    auto pdg = pdgbuilder->getLoopPDG(this->target_loop);
-    errs() << "Try to elide nodes "  << pdg->numNodes() << "\n";
-    // go through all the nodes and see if they still have potential dependences
-    for (auto node : pdg->getNodes()) {
-      bool canBeElided = true;
-
-      // have to be instruction and mayReadOrWriteMemory
-      if (auto inst = dyn_cast<Instruction>(node->getT())){
-        if (!inst->mayReadOrWriteMemory()) {
+    // find the instruction based on the metadata
+    Instruction *target_inst = nullptr;
+    for (auto *BB: this->target_loop->blocks()) {
+      for (Instruction &I: *BB) {
+        if (!I.mayReadOrWriteMemory()) {
           continue;
         }
-      } else {
-        continue;
-      }
-
-      numInstrumentedNode++;
-
-      if (dyn_cast<Instruction>(node->getT())->mayWriteToMemory()) {
-        for (auto &edge : node->getOutgoingEdges()) {
-          if (edge->isRAWDependence() && edge->isMemoryDependence()) {
-            // FIXME: hack for DOALL
-            if (IS_DOALL && !edge->isLoopCarriedDependence()) {
-              continue;
-            }
-            if (IGNORE_CALL) {
-              // ignore dep to call
-              if (isa<CallBase>(edge->getIncomingT())) {
-                continue;
-              }
-            }
-            canBeElided = false;
-            break;
-          }
-        }
-      }
-
-      if (dyn_cast<Instruction>(node->getT())->mayReadFromMemory()) {
-        for (auto &edge : node->getIncomingEdges()) {
-          if (edge->isRAWDependence() && edge->isMemoryDependence()) {
-            // FIXME: hack for DOALL
-            if (IS_DOALL && !edge->isLoopCarriedDependence()) {
-              continue;
-            }
-            if (IGNORE_CALL) {
-              // ignore dep to call
-              if (isa<CallBase>(edge->getOutgoingT())) {
-                continue;
-              }
-            }
-            canBeElided = false;
-            break;
-          }
-        }
-      }
-
-      if (canBeElided) {
-        if (auto *inst = dyn_cast<Instruction>(node->getT())) {
-          errs() << "Elided: " << *inst << "\n";
-          numElidedNode++;
-          numInstrumentedNode--;
-          elidedLoopInsts.insert(inst);
+        if (Namer::getInstrId(&I) == TargetInst) {
+          target_inst = &I;
+          break;
         }
       }
     }
-  } else {
-    errs() << "PDGBuilder not added, cannot elide nodes\n";
+
+    if (target_inst == nullptr) {
+      errs() << "Error! cannot find target instruction\n";
+
+      for (auto *BB : this->target_loop->blocks()) {
+        for (Instruction &I : *BB) {
+          if (!I.mayReadOrWriteMemory()) {
+            continue;
+          }
+          elidedLoopInstsId.push_back(Namer::getInstrId(&I));
+          elidedLoopInsts.insert(&I);
+          numElidedNode++;
+        }
+      }
+    } else {
+
+      errs() << "Target ID: " << TargetInst << "\n";
+      errs() << "Target instruction: " << *target_inst << "\n";
+
+      for (auto *BB: this->target_loop->blocks()) {
+        for (Instruction &I: *BB) {
+          if (!I.mayReadOrWriteMemory()) {
+            continue;
+          }
+          if (&I == target_inst) {
+            numInstrumentedNode++;
+            continue;
+          }
+          // any dependence that has a RAW dep to the target instruction should not be elided
+          auto retLCFW = liberty::disproveLoopCarriedMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
+          auto retLCBW = liberty::disproveLoopCarriedMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
+          auto retIIFW = liberty::disproveIntraIterationMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
+          auto retIIBW = liberty::disproveIntraIterationMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
+
+          // RAW disproved for all deps
+          if ((retLCFW & 0b001) && (retLCBW & 0b001) && (retIIFW & 0b001) && (retIIBW & 0b001)) {
+            elidedLoopInstsId.push_back(Namer::getInstrId(&I));
+            elidedLoopInsts.insert(&I);
+            numElidedNode++;
+          } else {
+            numInstrumentedNode++;
+          }
+        }
+      }
+    }
   }
-#endif
+  else if (UsePruning || IsDOALL) { // is DOALL implies use pruning
+    // get PDG and prune
+    auto *pdgbuilder = getAnalysisIfAvailable<PDGBuilder>();
+
+    if (pdgbuilder) {
+      auto pdg = pdgbuilder->getLoopPDG(this->target_loop);
+      errs() << "Try to elide nodes "  << pdg->numNodes() << "\n";
+      // go through all the nodes and see if they still have potential dependences
+      for (auto node : pdg->getNodes()) {
+        bool canBeElided = true;
+
+        // have to be instruction and mayReadOrWriteMemory
+        if (auto inst = dyn_cast<Instruction>(node->getT())){
+          if (!inst->mayReadOrWriteMemory()) {
+            continue;
+          }
+        } else {
+          continue;
+        }
+
+        numInstrumentedNode++;
+
+        if (dyn_cast<Instruction>(node->getT())->mayWriteToMemory()) {
+          for (auto &edge : node->getOutgoingEdges()) {
+            if (edge->isRAWDependence() && edge->isMemoryDependence()) {
+              // FIXME: hack for DOALL
+              if (IsDOALL && !edge->isLoopCarriedDependence()) {
+                continue;
+              }
+              if (IgnoreCall) {
+                // ignore dep to call
+                if (isa<CallBase>(edge->getIncomingT())) {
+                  continue;
+                }
+              }
+              canBeElided = false;
+              break;
+            }
+          }
+        }
+
+        if (dyn_cast<Instruction>(node->getT())->mayReadFromMemory()) {
+          for (auto &edge : node->getIncomingEdges()) {
+            if (edge->isRAWDependence() && edge->isMemoryDependence()) {
+              // FIXME: hack for DOALL
+              if (IsDOALL && !edge->isLoopCarriedDependence()) {
+                continue;
+              }
+              if (IgnoreCall) {
+                // ignore dep to call
+                if (isa<CallBase>(edge->getOutgoingT())) {
+                  continue;
+                }
+              }
+              canBeElided = false;
+              break;
+            }
+          }
+        }
+
+        if (canBeElided) {
+          if (auto *inst = dyn_cast<Instruction>(node->getT())) {
+            errs() << "Elided: " << *inst << "\n";
+            numElidedNode++;
+            numInstrumentedNode--;
+            elidedLoopInsts.insert(inst);
+            elidedLoopInstsId.push_back(Namer::getInstrId(inst));
+          }
+        }
+      }
+    } else {
+      errs() << "PDGBuilder not added, cannot elide nodes\n";
+    }
+  }
 #endif
 
   numInstrumentedNodeStats = numInstrumentedNode;
@@ -248,6 +295,8 @@ bool SLAMP::runOnModule(Module &m) {
 
   errs() << "Instrumented Count: " << numInstrumentedNode << "\n";
   errs() << "Elided Count: " << numElidedNode << "\n";
+  std::sort(elidedLoopInstsId.begin(), elidedLoopInstsId.end());
+  errs() << "Elided Hash: " << elidedHash(elidedLoopInstsId) << "\n";
 
   // replace external function calls to wrapper function calls
   replaceExternalFunctionCalls(m);
