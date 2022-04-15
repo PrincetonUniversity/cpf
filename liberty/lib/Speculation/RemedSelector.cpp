@@ -40,8 +40,8 @@ void RemedSelector::getAnalysisUsage(AnalysisUsage &au) const
 
   if (EnableEdgeProf) {
     au.addRequired< ProfileGuidedControlSpeculator >();
-    //au.addRequired<KillFlow_CtrlSpecAware>();
-    //au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+    au.addRequired<KillFlow_CtrlSpecAware>();
+    au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   }
 
 
