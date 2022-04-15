@@ -27,6 +27,9 @@ struct KEYHash
   {
     std::tr1::hash<uint32_t> hash_fn;
 
+    // when dst == dst_bare, which means not a function call
+    // hash_fn(key.dst) ^ hash_fn(key.dst_bare) == 0
+    // => hash_fn(key.src) ^ 0 ^ hash_fn(key.cross)
     return hash_fn(key.src) 
       ^ hash_fn(key.dst) 
       ^ hash_fn(key.dst_bare) 
