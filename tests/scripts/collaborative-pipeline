@@ -136,7 +136,7 @@ OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
 
 else
 OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF $HDRPHIPROF
-  -remed-selector
+  -remed-selector -enable-specpriv -enable-lamp -enable-edgeprof
   -stats 
   $DBG "
 fi

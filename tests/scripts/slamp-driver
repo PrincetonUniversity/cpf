@@ -16,6 +16,7 @@ function drive {
     #-load $LIBERTY_LIBS_DIR/libLAMPLoad.so 
     #-load $LIBERTY_LIBS_DIR/libLoopProf.so
     #-load $LIBERTY_LIBS_DIR/libLAMP.so 
+    EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
   local SLAMP_LIBS="
      -load $NOELLE_LIBS_DIR/CallGraph.so 
      -load $NOELLE_LIBS_DIR/libSvf.so 
@@ -47,7 +48,7 @@ function drive {
      -load $NOELLE_LIBS_DIR/Noelle.so 
      -load $SCAF_LIBS_DIR/libSpeculationModules.so 
      -load $LIBERTY_LIBS_DIR/libSLAMP.so
-     -basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa -global-malloc-aa -pure-fun-aa -semi-local-fun-aa -phi-maze-aa -no-capture-global-aa -no-capture-src-aa -type-aa -no-escape-fields-aa -acyclic-aa -disjoint-fields-aa -field-malloc-aa -loop-variant-allocation-aa -std-in-out-err-aa -array-of-structures-aa -kill-flow-aa -callsite-depth-combinator-aa -unique-access-paths-aa -llvm-aa-results  -pdgbuilder "
+     -basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa -global-malloc-aa -pure-fun-aa -semi-local-fun-aa -phi-maze-aa -no-capture-global-aa -no-capture-src-aa -type-aa -no-escape-fields-aa -acyclic-aa -disjoint-fields-aa -field-malloc-aa -loop-variant-allocation-aa -std-in-out-err-aa -array-of-structures-aa -kill-flow-aa -callsite-depth-combinator-aa -unique-access-paths-aa $EXTRA -llvm-aa-results  -pdgbuilder "
   # local SLAMP_LIBS="
     # -load $SCAF_LIBS_DIR/libSCAFUtilities.so 
     # -load $LIBERTY_LIBS_DIR/libUtil.so 
@@ -67,7 +68,7 @@ function drive {
   local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks.a"
   local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
 
-  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 -slamp-outfile=$SLAMP_OUTFILE"
+  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
   #local OPTS="-slamp-insts --print-load-static-id=true -slamp-target-fn=$2 -slamp-target-loop=$3 -slamp-outfile=$SLAMP_OUTFILE"
   local PRELINK_BC="`basename $1 .bc`.slamp.prelink.bc"
   local PRELINK_OBJ="`basename $1 .bc`.slamp.prelink.o"
@@ -156,7 +157,7 @@ let i=0
 while (( ${#lines[@]} > i )); do
   IFS=' ' read -a array <<< ${lines[i++]}
   if [ ${array[0]} == "-" ]; then
-    drive $1 ${array[1]} ${array[3]} 
+    drive $1 ${array[1]} ${array[3]}
   fi
 done
 
