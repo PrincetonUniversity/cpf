@@ -202,6 +202,24 @@ bool SLAMP::runOnModule(Module &m) {
           auto retIIFW = liberty::disproveIntraIterationMemoryDep(target_inst, &I, 0b111, this->target_loop, aa);
           auto retIIBW = liberty::disproveIntraIterationMemoryDep(&I, target_inst, 0b111, this->target_loop, aa);
 
+          // debug
+          LLVM_DEBUG(if (Namer::getInstrId(&I) == 21182) {
+            Remedies remedies;
+            LoopAA::ModRefResult modrefIIFW = aa->modref(
+                target_inst, LoopAA::Same, &I, target_loop, remedies);
+            auto modrefIIBW = aa->modref(&I, LoopAA::Same, target_inst,
+                                         target_loop, remedies);
+            errs() << "Target inst: " << *target_inst << "\n";
+            errs() << "I: " << I << "\n";
+            // convert retLCFW to int and print
+            errs() << "retLCFW: " << (int)(retLCFW) << "\n";
+            errs() << "retLCBW: " << (int)(retLCBW) << "\n";
+            errs() << "retIIFW: " << (int)(retIIFW) << "\n";
+            errs() << "retIIBW: " << (int)(retIIBW) << "\n";
+            errs() << "modrefIIFW: " << (modrefIIFW) << "\n";
+            errs() << "modrefIIBW: " << (modrefIIBW) << "\n";
+          });
+
           // RAW disproved for all deps
           if ((retLCFW & 0b001) && (retLCBW & 0b001) && (retIIFW & 0b001) && (retIIBW & 0b001)) {
             elidedLoopInstsId.push_back(Namer::getInstrId(&I));
@@ -228,6 +246,9 @@ bool SLAMP::runOnModule(Module &m) {
         // have to be instruction and mayReadOrWriteMemory
         if (auto inst = dyn_cast<Instruction>(node->getT())){
           if (!inst->mayReadOrWriteMemory()) {
+            continue;
+          }
+          if (IgnoreCall && isa<CallBase>(inst)) {
             continue;
           }
         } else {
@@ -286,6 +307,16 @@ bool SLAMP::runOnModule(Module &m) {
       }
     } else {
       errs() << "PDGBuilder not added, cannot elide nodes\n";
+    }
+  } else {
+    errs() << "No elision technique is selected\n";
+    for (auto *BB : this->target_loop->blocks()) {
+      for (Instruction &I : *BB) {
+        if (!I.mayReadOrWriteMemory()) {
+          continue;
+        }
+        numInstrumentedNode++;
+      }
     }
   }
 #endif
@@ -961,11 +992,22 @@ void SLAMP::instrumentLifetimeIntrinsics(Module &m, Instruction *inst) {
 
 /// handle each instruction (load, store, callbase) in the targeted loop
 void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
+  if (IgnoreCall) {
+    if (isa<CallBase>(inst)) {
+      LLVM_DEBUG( errs() << "SLAMP: ignore call " << *inst << "\n" );
+      return;
+    }
+  }
   // if elided
   if (elidedLoopInsts.count(inst)) {
-    // errs() << "SLAMP: elided " << *inst << "\n";
+    LLVM_DEBUG( errs() << "SLAMP: elided " << *inst << "\n" );
     return;
   }
+  else {
+    LLVM_DEBUG(if (inst->mayReadOrWriteMemory()) errs()
+                   << "SLAMP: instrument " << *inst << "\n";);
+  }
+
   const DataLayout &DL = m.getDataLayout();
 
   // assert(id < INST_ID_BOUND);
