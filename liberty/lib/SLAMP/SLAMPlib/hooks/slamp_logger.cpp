@@ -67,6 +67,28 @@ struct TraceRecord {
 const uint64_t MAX_TRACE_SIZE = 10000;
 
 static std::vector<TraceRecord> trace;
+
+// (src_inst, dst_inst, bare_inst, src_invoc, __slamp_invocation, src_iter,
+// __slamp_iteration, addr, value, size);
+using DepCallbackTy = void (*)(uint32_t, uint32_t, uint32_t, uint64_t, uint64_t,
+                               uint64_t, uint64_t, uint64_t, uint64_t,
+                               uint32_t);
+
+// Callback functions
+void slamp_dep_callback_log(uint32_t src_inst, uint32_t dst_inst,
+                            uint32_t bare_inst, uint64_t src_invoc,
+                            uint64_t dst_invoc, uint64_t src_iter,
+                            uint64_t dst_iter, uint64_t addr, uint64_t value,
+                            uint32_t size);
+void slamp_dep_callback_distance(uint32_t src_inst, uint32_t dst_inst,
+                                 uint32_t bare_inst, uint64_t src_invoc,
+                                 uint64_t dst_invoc, uint64_t src_iter,
+                                 uint64_t dst_iter, uint64_t addr,
+                                 uint64_t value, uint32_t size);
+
+// Callback function pointers
+DepCallbackTy dep_callbacks[2] = {};
+
 // dump trace stats into a file called trace.txt
 static void dumpTrace() {
   if (!TRACE_MODULE) {
@@ -98,7 +120,6 @@ static void recordTrace(uint32_t instrS, uint32_t instrL, uint64_t invocS,
   if (!TRACE_MODULE) {
     return;
   }
-  __slamp_dep_count++;
 
   // FIXME: turned off trace
   // if (trace.size() >= MAX_TRACE_SIZE) {
@@ -187,6 +208,7 @@ void fini_logger(const char *filename) {
 
 uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
          uint64_t addr, uint64_t value, uint8_t size) {
+  // FIXME: should turn off custom malloc here
   // ZY: check invocation counter, if not the same, just return; because don't
   // create new dependence between two invocations
   if (ts) {
@@ -195,7 +217,11 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
       return UINT32_MAX;
   }
 
+  if (ts) {
+    __slamp_dep_count++;
+  }
 
+// #if 0
   // update log
   if (ts) {
     uint32_t src_inst = GET_INSTR(ts);
@@ -203,8 +229,14 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
 
     uint64_t src_invoc = GET_INVOC(ts);
 
-    recordTrace(src_inst, dst_inst, src_invoc, __slamp_invocation, src_iter,
-                __slamp_iteration, addr, value, size);
+    // do dep callbacks
+    for (auto *f: dep_callbacks) {
+      if (f) {
+        f(src_inst, dst_inst, bare_inst, src_invoc, __slamp_invocation,
+          src_iter, __slamp_iteration, addr, value, size);
+      }
+    }
+    
 
     // source is a Write
     KEY key(src_inst, dst_inst, bare_inst, src_iter != __slamp_iteration);
@@ -257,6 +289,7 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
 #endif
     return src_inst;
   }
+// #endif
 
   return UINT32_MAX;
 }
