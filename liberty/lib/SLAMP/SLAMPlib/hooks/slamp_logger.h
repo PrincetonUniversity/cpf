@@ -1,9 +1,10 @@
 #ifndef SLAMPLIB_HOOKS_SLAMP_LOGGER
 #define SLAMPLIB_HOOKS_SLAMP_LOGGER
 
+#include <cstdint>
 #include <stdint.h>
 #include <stdlib.h>
-#include <tr1/functional>
+#include <functional>
 
 #include "slamp_timestamp.h"
 
@@ -25,15 +26,12 @@ struct KEYHash
 {
   size_t operator()(const KEY& key) const
   {
-    std::tr1::hash<uint32_t> hash_fn;
+    static_assert(sizeof(size_t) == sizeof(uint64_t), "Should be 64bit address");
+    std::hash<uint64_t> hash_fn;
 
-    // when dst == dst_bare, which means not a function call
-    // hash_fn(key.dst) ^ hash_fn(key.dst_bare) == 0
-    // => hash_fn(key.src) ^ 0 ^ hash_fn(key.cross)
-    return hash_fn(key.src) 
-      ^ hash_fn(key.dst) 
-      ^ hash_fn(key.dst_bare) 
-      ^ hash_fn(key.cross);
+    // hash(32-32) ^ hash(32-1)
+    // FIXME: find a better hash function
+    return hash_fn(((uint64_t)key.src << 32) | key.dst) ^ hash_fn(((uint64_t)key.dst_bare << 1) | (key.cross & 0x1));
   }
 };
 

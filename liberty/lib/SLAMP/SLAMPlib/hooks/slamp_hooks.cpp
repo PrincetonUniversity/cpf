@@ -104,14 +104,14 @@ AccessCallbackTy access_callbacks[8] = {
   // &slamp_access_callback_trace
 };
 
-template <typename T1, typename T2>
 struct PairHash
 {
-    std::size_t operator () (std::pair<T1, T2> const &v) const
+    std::size_t operator () (std::pair<uint32_t, uint32_t> const &v) const
     {
-      std::hash<uint32_t> hash_fn;
-
-      return hash_fn(v.first) ^ hash_fn(v.second);
+      static_assert(sizeof(size_t) == sizeof(uint64_t), "Should be 64bit address");
+      // std::hash<uint32_t> hash_fn;
+      // need to make sure if the pair are the same, this doesn't generate 0
+      return ((uint64_t)v.first << 32) | v.second;
     }
 };
 
@@ -225,10 +225,10 @@ struct LinearPredictor {
   }
 };
 
-static std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>> *constmap_value;
-static std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>> *constmap_addr;
-static std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t> > *lpmap_value;
-static std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t> > *lpmap_addr;
+static std::unordered_map<AccessKey, Constant *, PairHash> *constmap_value;
+static std::unordered_map<AccessKey, Constant *, PairHash> *constmap_addr;
+static std::unordered_map<AccessKey, LinearPredictor *, PairHash > *lpmap_value;
+static std::unordered_map<AccessKey, LinearPredictor *, PairHash > *lpmap_addr;
 
 void slamp_access_callback_constant_value(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
   if (!isLoad) {
@@ -388,7 +388,7 @@ static NoDepReason reasonLoad(uint32_t store_instr, uint64_t addr) {
 using DepPair = std::pair<uint32_t, uint32_t>;
 using ReasonCounter = std::array<unsigned, 4>;
 
-static std::unordered_map<DepPair, ReasonCounter, PairHash<uint32_t, uint32_t>> *depReasonMap;
+static std::unordered_map<DepPair, ReasonCounter, PairHash> *depReasonMap;
 static  uint32_t STORE_INST = 33;
 
 // update depReasonMap
@@ -552,10 +552,10 @@ static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
-  constmap_value = new std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>>();
-  constmap_addr = new std::unordered_map<AccessKey, Constant *, PairHash<uint32_t, uint32_t>>();
-  lpmap_value  = new std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t>>();
-  lpmap_addr = new std::unordered_map<AccessKey, LinearPredictor *, PairHash<uint32_t, uint32_t>>();
+  constmap_value = new std::unordered_map<AccessKey, Constant *, PairHash>();
+  constmap_addr = new std::unordered_map<AccessKey, Constant *, PairHash>();
+  lpmap_value  = new std::unordered_map<AccessKey, LinearPredictor *, PairHash>();
+  lpmap_addr = new std::unordered_map<AccessKey, LinearPredictor *, PairHash>();
 
   // per instruction map
 
@@ -599,7 +599,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
     if (store) {
       STORE_INST = atoi(store);
     }
-    depReasonMap = new std::unordered_map<DepPair, ReasonCounter, PairHash<uint32_t, uint32_t>>();
+    depReasonMap = new std::unordered_map<DepPair, ReasonCounter, PairHash>();
   }
 
   uint64_t START;
