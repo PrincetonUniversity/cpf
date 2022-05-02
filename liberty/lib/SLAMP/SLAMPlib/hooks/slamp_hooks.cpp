@@ -10,6 +10,7 @@
 #include <fstream>
 #include "malloc.h"
 
+#include "json.hpp"
 #include "slamp_timestamp.h"
 #include "slamp_logger.h"
 #include "slamp_hooks.h"
@@ -408,66 +409,113 @@ static void updateReasonMap(uint32_t inst, uint32_t bare_instr, uint64_t addr, u
 }
 
 // dump all access event modules
-static void accessModuleDump(std::string fname) {
-  std::ofstream of(fname, std::ios::app);
+static void accessModuleDump(std::string fname, std::string jname) {
+  using json = nlohmann::json;
+  std::ofstream jfile(jname, std::ios::app);
+  //std::ofstream of(fname, std::ios::app);
 
-  auto printCp = [&of](AccessKey key, Constant *cp) {
-    of << "(" << key.first << ":" << key.second << ")" << " ["
-      << cp->valid << " " << (unsigned)(cp->valid ? cp->size : 0) << " " << (cp->valid ? cp->value: 0) << "]";
-  };
+  json outfile;
 
-  auto printLp = [&of](AccessKey key, LinearPredictor *lp) {
-    bool lp_int_valid = (lp->stable && lp->valid_as_int);
-    bool lp_double_valid = (lp->stable && lp->valid_as_double);
-    of << "(" << key.first << ":" << key.second << ")" <<  " ["
-      << lp_int_valid << " " << (lp_int_valid ? lp->ia : 0) << " "
-      << (lp_int_valid ? lp->ib : 0) << " " << lp_double_valid << " "
-      << (lp_double_valid ? lp->da : 0) << " "
-      << (lp_double_valid ? lp->db : 0) << "]";
-  };
+  //auto printCp = [&of](AccessKey key, Constant *cp) {
+  //  of << "(" << key.first << ":" << key.second << ")" << " ["
+  //    << cp->valid << " " << (unsigned)(cp->valid ? cp->size : 0) << " " << (cp->valid ? cp->value: 0) << "]";
+  //};
+
+  //auto printLp = [&of](AccessKey key, LinearPredictor *lp) {
+  //  bool lp_int_valid = (lp->stable && lp->valid_as_int);
+  //  bool lp_double_valid = (lp->stable && lp->valid_as_double);
+  //  of << "(" << key.first << ":" << key.second << ")" <<  " ["
+  //    << lp_int_valid << " " << (lp_int_valid ? lp->ia : 0) << " "
+  //    << (lp_int_valid ? lp->ib : 0) << " " << lp_double_valid << " "
+  //    << (lp_double_valid ? lp->da : 0) << " "
+  //    << (lp_double_valid ? lp->db : 0) << "]";
+  //};
 
   if (CONSTANT_VALUE_MODULE) {
+    json constval;
     // dump constant_value map
-    of << "constant_value_map:\n";
+    //of << "constant_value_map:\n";
     for (auto &[key, cp] : *constmap_value) {
       if (cp->valid) {
-        printCp(key, cp);
-        of << "\n";
+        constval["inst"] = key.first;
+        constval["bare inst"] = key.second;
+        constval["valid"] = cp->valid;
+        constval["size"] = cp->size;;
+        constval["value"] = cp->value;
+
+        //printCp(key, cp);
+        //of << "\n";
       }
     }
+    outfile["constVal"] = constval;
   }
   if (CONSTANT_ADDRESS_MODULE) {
+    json constaddr;
     // dump constant_address map
-    of << "constant_address_map:\n";
+    //of << "constant_address_map:\n";
     for (auto &[key, cp] : *constmap_addr) {
       if (cp->valid) {
-        printCp(key, cp);
-        of << "\n";
+        constaddr["inst"] = key.first;
+        constaddr["bare inst"] = key.second;
+        constaddr["valid"] = cp->valid;
+        constaddr["size"] = cp->size;;
+        constaddr["value"] = cp->value;
+
+        //printCp(key, cp);
+        //of << "\n";
       }
     }
+    outfile["constAddr"] = constaddr;
   }
 
   if (LINEAR_VALUE_MODULE) {
+    json linval;
     // dump linear_value map
-    of << "linear_value_map:\n";
+    //of << "linear_value_map:\n";
     for (auto &[key, lp] : *lpmap_value) {
       if (lp->valid_as_int || lp->valid_as_double) {
-        printLp(key, lp);
-        of << "\n";
+        bool lp_int_valid = lp->stable && lp->valid_as_int;
+        bool lp_double_valid = lp->stable && lp->valid_as_double;
+        linval["inst"] = key.first;
+        linval["bare inst"] = key.second;
+        linval["validInt"] = lp_int_valid;
+        linval["aInt"] = lp_int_valid ? lp->ia : 0;
+        linval["bInt"] = lp_int_valid ? lp->ib : 0;
+        linval["validDouble"] = lp_double_valid;
+        linval["aDouble"] = lp_double_valid ? lp->da : 0;
+        linval["bDouble"] = lp_double_valid ? lp->db : 0;
+
+        //printLp(key, lp);
+        //of << "\n";
       }
     }
+    outfile["linVal"] = linval;
   }
 
   if (LINEAR_ADDRESS_MODULE) {
+    json linaddr;
     // dump linear_address map
-    of << "linear_address_map:\n";
+    //of << "linear_address_map:\n";
     for (auto &[key, lp] : *lpmap_addr) {
       if (lp->valid_as_int || lp->valid_as_double) {
-        printLp(key, lp);
-        of << "\n";
+        bool lp_int_valid = lp->stable && lp->valid_as_int;
+        bool lp_double_valid = lp->stable && lp->valid_as_double;
+        linaddr["inst"] = key.first;
+        linaddr["bare inst"] = key.second;
+        linaddr["validInt"] = lp_int_valid;
+        linaddr["aInt"] = lp_int_valid ? lp->ia : 0;
+        linaddr["bInt"] = lp_int_valid ? lp->ib : 0;
+        linaddr["validDouble"] = lp_double_valid;
+        linaddr["aDouble"] = lp_double_valid ? lp->da : 0;
+        linaddr["bDouble"] = lp_double_valid ? lp->db : 0;
+
+        //printLp(key, lp);
+        //of << "\n";
       }
     }
+    outfile["linAddr"] = linaddr;
   }
+  jfile << outfile.dump(4);
 }
 
 static void dumpReason() {
@@ -668,7 +716,7 @@ void SLAMP_fini(const char* filename)
   TADD(overhead_init_fini, START);
   slamp_time_dump("slamp_overhead.dump");
 
-  accessModuleDump("slamp_access_module.dump");
+  accessModuleDump("slamp_access_module.dump", "slamp_access_module.json");
 
   // dump 
   dumpReason();
