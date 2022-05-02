@@ -43,6 +43,8 @@
 #define HEAP_BOUND_HIGHER (0xFFFFFFFFFFFFL-BOUND_LOWER+1)
 // 8MB max stack size for a typical host machine `ulimit -s`
 #define SIZE_8M  0x800000
+// #define LOCALWRITE(addr) if (true)
+#define LOCALWRITE(addr) if (((size_t)addr & 0x7F000) == 0x1000)
 
 // debugging tools
 
@@ -817,7 +819,7 @@ bool SLAMP_isBadAlloc(uint64_t addr) {
 }
 
 template <unsigned size>
-void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
+inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
   if (invokedepth > 1)
     instr = context;
   if (SLAMP_isBadAlloc(addr))
@@ -837,19 +839,23 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
 
 
   // Load access
+  // TURN_OFF_CUSTOM_MALLOC;
   for (auto *f: access_callbacks) {
-    TURN_OFF_CUSTOM_MALLOC;
     if (f) {
       f(true, instr, bare_instr, addr, value, size);
     }
-    TURN_ON_CUSTOM_MALLOC;
   }
+  // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
     TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     TS tss[8]; // HACK: avoid using malloc
     for (auto i = 0; i < size; i++) {
-      tss[i] = s[i];
+      LOCALWRITE(s + i){
+        tss[i] = s[i];
+      } else {
+        tss[i] = 0;
+      }
     }
 
     TADD(overhead_shadow_read, START);
@@ -862,7 +868,7 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
         cond = cond && (tss[i] != tss[j]);
       }
 
-      if (cond) {
+      if (cond && tss[i] != 0) {
         uint32_t src_inst = slamp::log(tss[i], instr, s, bare_instr, addr, value, size);
         // FIXME: no dependence, not consider other branches
         if (src_inst != STORE_INST) {
@@ -902,6 +908,7 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (invokedepth > 1)
     instr = context;
 
+  __slamp_load_count++;
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    loadn " << instr << "," << bare_instr << " iteration "
@@ -925,9 +932,14 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
     bool noDep = true;
     for (unsigned i = 0; i < n; i++) {
       TIME(START);
-      TS ts = s[i];
-      TADD(overhead_shadow_read, START);
 
+      TS ts;
+      LOCALWRITE(s + i){
+        ts = s[i];
+      } else {
+        continue;
+      }
+      TADD(overhead_shadow_read, START);
 
       TIME(START);
       if (m.count(ts) == 0) {
@@ -995,7 +1007,7 @@ void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) {
 }
 
 template <unsigned size>
-void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
+inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
   if (SLAMP_isBadAlloc(addr))
     return;
   if (invokedepth > 1)
@@ -1018,14 +1030,14 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
 #endif
 
   // Store access
+  // TURN_OFF_CUSTOM_MALLOC;
   for (auto *f: access_callbacks) {
-    TURN_OFF_CUSTOM_MALLOC;
     if (f) {
       // FIXME: value is empty for now
       f(false, instr, bare_instr, addr, 0, size);
     }
-    TURN_ON_CUSTOM_MALLOC;
   }
+  // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
     uint64_t START;
@@ -1036,7 +1048,9 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
 
     // TODO: handle output dependence. ignore it as of now.
     for (auto i = 0; i < size; i++)
-      s[i] = ts;
+      LOCALWRITE(s + i){
+        s[i] = ts;
+      }
 
     TADD(overhead_shadow_write, START);
     slamp::capturestorecallstack(s);
@@ -1066,6 +1080,7 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   if (invokedepth > 1)
     instr = context;
 
+  __slamp_store_count++;
   updateInstruction(instr, addr);
 #if DEBUG
   if (__slamp_begin_trace)
@@ -1083,15 +1098,19 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
     TIME(START);
 
     TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+
     TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
     // TODO: handle output dependence. ignore it as of now.
 
     for (unsigned i = 0; i < n; i++)
-      s[i] = ts;
+      LOCALWRITE(s + i){
+        s[i] = ts;
+      }
 
     TADD(overhead_shadow_write, START);
     slamp::capturestorecallstack(s);
+
   }
 }
 
