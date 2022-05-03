@@ -80,9 +80,11 @@ function drive {
   
   local CMD1="opt $SLAMP_LIBS $OPTS -o $PRELINK_BC $1"
   #local CMD2="clang -Og -g -c -o $PRELINK_OBJ $PRELINK_BC"
-  local CMD2="clang -c -o $PRELINK_OBJ $PRELINK_BC"
+  local CMD2="clang -flto -c -o $PRELINK_OBJ $PRELINK_BC"
+  # local CMD2="clang -c -o $PRELINK_OBJ $PRELINK_BC"
   #local CMD3="clang++ -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
-  local CMD3="g++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  local CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  # local CMD3="clang++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
   #local CMD3="g++ -Og $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
   local CMD4="./$EXE $PROFILEARGS"
 
@@ -154,7 +156,8 @@ while IFS=$'\n' read -r line_data; do
 done < __targets.txt
 
 let i=0
-while (( ${#lines[@]} > i )); do
+while (( i < 2 )); do
+# while (( ${#lines[@]} > i )); do
   IFS=' ' read -a array <<< ${lines[i++]}
   if [ ${array[0]} == "-" ]; then
     drive $1 ${array[1]} ${array[3]}
