@@ -49,7 +49,7 @@ OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF
   -opt-repl $DBG"
 
 OUT="-disable-output"
-CMD="noelle-load $LIBS $OPTS $1 $OUT"
+CMD="noelle-load $LIBS $OPTS $1 $OUT ${@:2}"
 
 echo $CMD
 $CMD

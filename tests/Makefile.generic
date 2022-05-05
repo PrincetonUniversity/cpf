@@ -52,7 +52,8 @@ OPT?=-O1
 DEBUG?=
 EXTRACHECK?=
 CFLAGS?= -c $(OPT) $(PREPROCESSING_OPTIONS)  $(PREPROCESSOR_OPTIONS) $(PROFILE) $(DEBUG)
-LDFLAGS?= $(PROFILE) $(DEBUG) $(LINK_FLAGS)
+LDFLAGS?=$(PROFILE) $(DEBUG) $(LINK_FLAGS) $(LIBS)
+LINKING_POSTOPTIONS?=$(LDFLAGS)
 LLVM_CFLAGS?=-O1 -g -c -emit-llvm $(PREPROCESSOR_OPTIONS) $(PREPROCESSING_OPTIONS) $(DEBUG) -Xclang -disable-llvm-passes $(FINAL_CFLAGS) $(FINAL_CXXFLAGS) -fno-builtin ### !!! FIXME: temp change
 TRANSFORMATIONS_BEFORE_PARALLELIZATION=-mem2reg -simplifycfg -simplifycfg-sink-common=false -instcombine -tailcallelim -loop-simplify -lcssa -licm -loop-unswitch -globalopt -instcombine -ipsccp -gvn -dse -adce -loop-simplify -lcssa -indvars -loop-deletion -instcombine -indvars
 LLVM_LINK_FLAGS?=
@@ -245,7 +246,8 @@ $(CANON).loopProf_OG.out : $(CANON).loopProf_OG.exe
 	$(CLEANUP)
 	date
 
-$(CANON).loopProf_OG.exe : $(HACK2).bc $(LOOPPROFLIBS)
+# $(CANON).loopProf_OG.exe : $(HACK2).bc $(LOOPPROFLIBS)
+$(CANON).loopProf_OG.exe : export LINKING_OPTS = $(LINKING_POSTOPTIONS)
 $(CANON).loopProf_OG.exe : $(CANON).pgo.bc $(LOOPPROFLIBS)
 	date
 	rm -f loopProf_OG.time $(CANON).loopProf_OG.out $(CANON).loopProf_OG.exe
@@ -283,7 +285,8 @@ $(CANON).lamp_OG.out : $(CANON).lamp_OG.exe
 	$(CLEANUP)
 	date
 
-$(CANON).lamp_OG.exe : $(HACK2).bc $(LAMPLIBS)
+# $(CANON).lamp_OG.exe : $(HACK2).bc $(LAMPLIBS)
+$(CANON).lamp_OG.exe : export LINKING_OPTS=$(LINKING_POSTOPTIONS)
 $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	date
 	rm -f lamp_OG.time $(CANON).lamp_OG.out $(CANON).lamp_OG.exe
@@ -306,6 +309,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 # SLAMP profile
 #
 
+%.result.slamp.profile: export LINKING_OPTS = $(LINKING_POSTOPTIONS)
 %.result.slamp.profile: %.loopProf.out
 	date
 	$(SETUP)
