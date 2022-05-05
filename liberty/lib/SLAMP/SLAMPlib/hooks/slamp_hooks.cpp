@@ -4,6 +4,7 @@
 #include <clocale>
 #include <cstdint>
 #include <tuple>
+#include <unistd.h>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,6 +24,7 @@
 
 #include <set>
 #include <map>
+#include <list>
 #include <utility>
 
 #define UNW_LOCAL_ONLY
@@ -93,19 +95,19 @@ using AccessCallbackTy = void (*)(bool, uint32_t, uint32_t, uint64_t, uint64_t, 
 
 // Callback functions
 void slamp_access_callback_constant_value(bool, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
-void slamp_access_callback_constant_addr(bool, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
+void slamp_access_callback_constant_address(bool, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
 void slamp_access_callback_linear_value(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
-void slamp_access_callback_linear_addr(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
+void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
 
 // Callback function pointers
-AccessCallbackTy access_callbacks[8] = {
+std::list<AccessCallbackTy> access_callbacks;
   // &slamp_access_callback_constant_addr,
   // &slamp_access_callback_linear_address,
   // &slamp_access_callback_constant_value,
   // &slamp_access_callback_linear_value,
   // &slamp_access_callback_reason,
   // &slamp_access_callback_trace
-};
+// };
 
 struct PairHash
 {
@@ -261,7 +263,7 @@ void slamp_access_callback_constant_value(bool isLoad, uint32_t instr, uint32_t 
   }
 }
 
-void slamp_access_callback_constant_addr(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
+void slamp_access_callback_constant_address(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
   if (!isLoad) {
     return;
   }
@@ -307,7 +309,7 @@ void slamp_access_callback_linear_value(bool isLoad, uint32_t instr, uint32_t ba
   }
 }
 
-void slamp_access_callback_linear_addr(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
+void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size) {
   if (!isLoad) {
     return;
   }
@@ -629,19 +631,19 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 
 
   if (CONSTANT_VALUE_MODULE) {
-    access_callbacks[0] = &slamp_access_callback_constant_value;
+    access_callbacks.push_back(&slamp_access_callback_constant_value);
   }
 
   if (CONSTANT_ADDRESS_MODULE) {
-    access_callbacks[1] = &slamp_access_callback_constant_addr;
+    access_callbacks.push_back(&slamp_access_callback_constant_address);
   }
 
   if (LINEAR_VALUE_MODULE) {
-    access_callbacks[2] = &slamp_access_callback_linear_value;
+    access_callbacks.push_back(&slamp_access_callback_linear_value);
   }
 
   if (LINEAR_ADDRESS_MODULE) {
-    access_callbacks[3] = &slamp_access_callback_linear_addr;
+    access_callbacks.push_back(&slamp_access_callback_linear_address);
   }
 
   if (REASON_MODULE) {
@@ -867,6 +869,43 @@ bool SLAMP_isBadAlloc(uint64_t addr) {
 }
 
 template <unsigned size>
+void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr) {
+  uint64_t START;
+  TIME(START);
+
+  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS tss[8]; // HACK: avoid using malloc
+  for (auto i = 0; i < size; i++) {
+    LOCALWRITE(s + i){
+      tss[i] = s[i];
+    } else {
+      tss[i] = 0;
+    }
+  }
+
+  TADD(overhead_shadow_read, START);
+
+  TIME(START);
+
+  for (auto i = 0; i < size; i++) {
+    bool cond = true;
+    for (auto j = 0; j < i; j++) {
+      cond = cond && (tss[i] != tss[j]);
+    }
+
+    if (cond && tss[i] != 0) {
+      uint32_t src_inst = slamp::log(tss[i], instr, s, bare_instr, addr, value, size);
+      // FIXME: no dependence, not consider other branches
+      if (src_inst != STORE_INST) {
+        updateReasonMap(instr, bare_instr, addr, value, size);
+      }
+    }
+  }
+
+  TADD(overhead_log_total, START);
+}
+
+template <unsigned size>
 inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
   if (invokedepth > 1)
     instr = context;
@@ -882,50 +921,15 @@ inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_
   }
 #endif
 
-  uint64_t START;
-  TIME(START);
-
-
   // Load access
   // TURN_OFF_CUSTOM_MALLOC;
   for (auto *f: access_callbacks) {
-    if (f) {
-      f(true, instr, bare_instr, addr, value, size);
-    }
+    f(true, instr, bare_instr, addr, value, size);
   }
   // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
-    TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-    TS tss[8]; // HACK: avoid using malloc
-    for (auto i = 0; i < size; i++) {
-      LOCALWRITE(s + i){
-        tss[i] = s[i];
-      } else {
-        tss[i] = 0;
-      }
-    }
-
-    TADD(overhead_shadow_read, START);
-
-    TIME(START);
-
-    for (auto i = 0; i < size; i++) {
-      bool cond = true;
-      for (auto j = 0; j < i; j++) {
-        cond = cond && (tss[i] != tss[j]);
-      }
-
-      if (cond && tss[i] != 0) {
-        uint32_t src_inst = slamp::log(tss[i], instr, s, bare_instr, addr, value, size);
-        // FIXME: no dependence, not consider other branches
-        if (src_inst != STORE_INST) {
-          updateReasonMap(instr, bare_instr, addr, value, size);
-        }
-      }
-    }
-
-    TADD(overhead_log_total, START);
+    SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
   }
 }
 
@@ -948,6 +952,7 @@ void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 {
   SLAMP_load<8>(instr, addr, bare_instr, value);
 }
+
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
                  size_t n) {
@@ -1055,6 +1060,24 @@ void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) {
 }
 
 template <unsigned size>
+void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr) {
+  uint64_t START;
+  TIME(START);
+
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+
+  // TODO: handle output dependence. ignore it as of now.
+  for (auto i = 0; i < size; i++)
+    LOCALWRITE(s + i){
+      s[i] = ts;
+    }
+
+  TADD(overhead_shadow_write, START);
+  slamp::capturestorecallstack(s);
+}
+
+template <unsigned size>
 inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
   if (SLAMP_isBadAlloc(addr))
     return;
@@ -1080,28 +1103,13 @@ inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr
   // Store access
   // TURN_OFF_CUSTOM_MALLOC;
   for (auto *f: access_callbacks) {
-    if (f) {
-      // FIXME: value is empty for now
-      f(false, instr, bare_instr, addr, 0, size);
-    }
+    // FIXME: value is empty for now
+    f(false, instr, bare_instr, addr, 0, size);
   }
   // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
-    uint64_t START;
-    TIME(START);
-
-    TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-    TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
-
-    // TODO: handle output dependence. ignore it as of now.
-    for (auto i = 0; i < size; i++)
-      LOCALWRITE(s + i){
-        s[i] = ts;
-      }
-
-    TADD(overhead_shadow_write, START);
-    slamp::capturestorecallstack(s);
+    SLAMP_dependence_module_store_log<size>(instr, addr);
   }
 }
 
