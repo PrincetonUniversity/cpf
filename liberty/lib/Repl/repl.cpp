@@ -359,6 +359,37 @@ bool OptRepl::runOnModule(Module &M) {
       selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
     };
 
+    // remove all dependence from a instruction node
+    auto removeAllFromInstFn = [&parser, &instIdMap, &selectedPDG, &selectedSCCDAG]() {
+      int instId = parser.getActionId();
+      if (instId == -1) {
+        outs() << "No number specified\n";
+        return;
+      }
+
+      if (instIdMap->find(instId) == instIdMap->end()) {
+        outs() << "InstId" << instId << " not found\n";
+        return;
+      }
+
+      auto node = instIdMap->at(instId);
+      list<llvm::noelle::DGEdge<Value>*> edgesToRemove;
+      for (auto &edge : node->getOutgoingEdges()) {
+        edgesToRemove.push_back(edge);
+      }
+
+      for (auto &edge : node->getIncomingEdges()) {
+        edgesToRemove.push_back(edge);
+      }
+
+      for (auto edge : edgesToRemove) {
+        selectedPDG->removeEdge(edge);
+      }
+      // update SCCDAG
+      selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
+    };
+
+
     // try to parallelize
     auto parallelizeFn = [&parser, this, &selectedPDG, &selectedLoop]() {
       int threadBudget = parser.getActionId();
@@ -453,6 +484,9 @@ bool OptRepl::runOnModule(Module &M) {
       break;
     case ReplAction::Remove:
       removeFn();
+      break;
+    case ReplAction::RemoveAll:
+      removeAllFromInstFn();
       break;
     case ReplAction::Parallelize:
       parallelizeFn();
