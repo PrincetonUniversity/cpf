@@ -56,29 +56,29 @@ void SLAMP_loop_exit();
 void SLAMP_push(const uint32_t instr);
 void SLAMP_pop();
 
-void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n);
+void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
+void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
+void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
+void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
+void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n)__attribute__((always_inline));;
 
-void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value);
-void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n);
+void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
+void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
+void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
+void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
+void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n)__attribute__((always_inline));;
 
-void SLAMP_store1(uint32_t instr, const uint64_t addr);
-void SLAMP_store2(uint32_t instr, const uint64_t addr);
-void SLAMP_store4(uint32_t instr, const uint64_t addr);
-void SLAMP_store8(uint32_t instr, const uint64_t addr);
-void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n);
+void SLAMP_store1(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
+void SLAMP_store2(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
+void SLAMP_store4(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
+void SLAMP_store8(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
+void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n)__attribute__((always_inline));;
 
-void SLAMP_store1_ext(const uint64_t addr, const uint64_t bare_inst);
-void SLAMP_store2_ext(const uint64_t addr, const uint64_t bare_inst);
-void SLAMP_store4_ext(const uint64_t addr, const uint64_t bare_inst);
-void SLAMP_store8_ext(const uint64_t addr, const uint64_t bare_inst);
-void SLAMP_storen_ext(const uint64_t addr, const uint64_t bare_inst, size_t n);
+void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
+void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
+void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
+void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
+void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n)__attribute__((always_inline));;
 
 /* wrappers */
 static void* SLAMP_malloc_hook(size_t size, const void *caller);
@@ -108,8 +108,8 @@ void SLAMP_llvm_memmove_p0i8_p0i8_i64(const uint8_t* dstAddr, const uint8_t* src
 void SLAMP_llvm_memset_p0i8_i32(const uint8_t* dstAddr, const uint32_t len);
 void SLAMP_llvm_memset_p0i8_i64(const uint8_t* dstAddr, const uint64_t len);
 
-void SLAMP_llvm_lifetime_start_p0i8(uint64_t size, uint8_t* ptr);
-void SLAMP_llvm_lifetime_end_p0i8(uint64_t size, uint8_t* ptr);
+// void SLAMP_llvm_lifetime_start_p0i8(uint64_t size, uint8_t* ptr);
+// void SLAMP_llvm_lifetime_end_p0i8(uint64_t size, uint8_t* ptr);
 
 /* String functions */
 size_t SLAMP_strlen(const char *str);

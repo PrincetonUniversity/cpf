@@ -60,6 +60,12 @@ static cl::list<uint32_t> ExplicitInsts("slamp-explicit-insts",
                   cl::desc("Explicitly instrumented instructions"),
                   cl::value_desc("inst_id"));
 
+
+static cl::opt<bool> ProfileGlobals("slamp-profile-globals",
+                                     cl::init(true),
+                                     cl::NotHidden,
+                                     cl::desc("Profile globals"));
+
 static cl::opt<bool> IgnoreCall("slamp-ignore-call", cl::init(false),
                                        cl::NotHidden,
                                        cl::desc("Ignore dependences from call"));
@@ -67,6 +73,28 @@ static cl::opt<bool> IgnoreCall("slamp-ignore-call", cl::init(false),
 static cl::opt<bool> IsDOALL("slamp-doall", cl::init(false),
                                        cl::NotHidden,
                                        cl::desc("Doall"));
+
+// whether to turn on dependence module
+static cl::opt<bool> UseDependenceModule("slamp-dependence-module", cl::init(true), cl::NotHidden, cl::desc("Use dependence module"));
+
+// constant value module
+static cl::opt<bool> UseConstantValueModule("slamp-constant-value-module", cl::init(false), cl::NotHidden, cl::desc("Use constant value module"));
+
+// linear value module
+static cl::opt<bool> UseLinearValueModule("slamp-linear-value-module", cl::init(false), cl::NotHidden, cl::desc("Use linear value module"));
+
+// constant address module
+static cl::opt<bool> UseConstantAddressModule("slamp-constant-address-module", cl::init(false), cl::NotHidden, cl::desc("Use address module"));
+
+// linear address module
+static cl::opt<bool> UseLinearAddressModule("slamp-linear-address-module", cl::init(false), cl::NotHidden, cl::desc("Use linear address module"));
+
+// trace module
+static cl::opt<bool> UseTraceModule("slamp-trace-module", cl::init(false), cl::NotHidden, cl::desc("Use trace module"));
+
+// reason module
+static cl::opt<bool> UseReasonModule("slamp-reason-module", cl::init(false), cl::NotHidden, cl::desc("Use reason module"));
+
 
 static cl::opt<bool> UsePruning("slamp-pruning", cl::init(false),
                                        cl::NotHidden,
@@ -332,10 +360,30 @@ bool SLAMP::runOnModule(Module &m) {
   // replace external function calls to wrapper function calls
   replaceExternalFunctionCalls(m);
 
+
+  auto setGlobalModule = [&m](string name, bool value) {
+    m.getOrInsertGlobal(name, Type::getInt1Ty(m.getContext()));
+    GlobalVariable *module_var = m.getGlobalVariable(name);
+    module_var->setInitializer(ConstantInt::get(Type::getInt1Ty(m.getContext()), value));
+    module_var->setConstant(true);
+  };
+
+  // add a constant variable "DEPENDENCE_MODULE" and set to false
+  setGlobalModule("DEPENDENCE_MODULE", UseDependenceModule);
+  setGlobalModule("CONSTANT_VALUE_MODULE", UseConstantValueModule);
+  setGlobalModule("LINEAR_VALUE_MODULE", UseLinearValueModule);
+  setGlobalModule("CONSTANT_ADDRESS_MODULE", UseConstantAddressModule);
+  setGlobalModule("LINEAR_ADDRESS_MODULE", UseLinearAddressModule);
+  setGlobalModule("TRACE_MODULE", UseTraceModule);
+  setGlobalModule("REASON_MODULE", UseReasonModule);
+
+
   Function *ctor = instrumentConstructor(m);
   instrumentDestructor(m);
 
-  instrumentGlobalVars(m, ctor);
+  if (ProfileGlobals) {
+    instrumentGlobalVars(m, ctor);
+  }
 
   instrumentMainFunction(m);
 
@@ -831,13 +879,14 @@ void SLAMP::instrumentInstructions(Module &m, Loop *loop) {
       continue;
 
     for (auto &&inst : instructions(f)) {
-      if (const auto Intrinsic = dyn_cast<IntrinsicInst>(&inst)) {
-        const auto Id = Intrinsic->getIntrinsicID();
-        if (Id == Intrinsic::lifetime_start || Id == Intrinsic::lifetime_end) {
-          instrumentLifetimeIntrinsics(m, &inst);
-          continue;
-        }
-      }
+      //// FIXME: ignore lifetime_start/end instrumentation
+      // if (const auto Intrinsic = dyn_cast<IntrinsicInst>(&inst)) {
+      //   const auto Id = Intrinsic->getIntrinsicID();
+      //   if (Id == Intrinsic::lifetime_start || Id == Intrinsic::lifetime_end) {
+      //     instrumentLifetimeIntrinsics(m, &inst);
+      //     continue;
+      //   }
+      // }
 
       if (auto *mi = dyn_cast<MemIntrinsic>(&inst)) {
         instrumentMemIntrinsics(m, mi);
@@ -1015,6 +1064,7 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
   if (id == 0) // instrumented instructions
     return;
 
+  // FIXME: need to handle 16 bytes naturally
   // --- loads
   string lf_name[] = {"SLAMP_load1", "SLAMP_load2", "SLAMP_load4",
                       "SLAMP_load8", "SLAMP_loadn"};
@@ -1048,6 +1098,14 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
       cast<Function>(m.getOrInsertFunction("SLAMP_pop", Void).getCallee());
 
   if (auto *li = dyn_cast<LoadInst>(inst)) {
+    // if the loaded pointer is a global
+    if (isa<GlobalVariable>(li->getPointerOperand())) {
+      if (!ProfileGlobals) {
+        LLVM_DEBUG(errs() << "SLAMP: ignore global load " << *li << "\n");
+        return;
+      }
+    }
+
     InstInsertPt pt = InstInsertPt::After(li);
 
     Value *ptr = li->getPointerOperand();
@@ -1061,14 +1119,22 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
 
     if (index == 4) {
       args.push_back(ConstantInt::get(I32, id));
-      args.push_back(ConstantInt::get(I64, size));
+      args.push_back(ConstantInt::get(I64, size)); // size
     } else {
       args.push_back(ConstantInt::get(I32, id));
-      args.push_back(castToInt64Ty(li, pt));
+      args.push_back(castToInt64Ty(li, pt)); // value
     }
 
     pt << CallInst::Create(lf[index], args);
   } else if (auto *si = dyn_cast<StoreInst>(inst)) {
+    // if the stored pointer is a global
+    if (isa<GlobalVariable>(si->getPointerOperand())) {
+      if (!ProfileGlobals) {
+        LLVM_DEBUG(errs() << "SLAMP: ignore global store " << *si << "\n");
+        return;
+      }
+    }
+
     InstInsertPt pt = InstInsertPt::After(si);
 
     Value *ptr = si->getPointerOperand();
@@ -1154,6 +1220,14 @@ void SLAMP::instrumentExtInst(Module &m, Instruction *inst, uint32_t id) {
       m.getOrInsertFunction(sf_name[4], Void, I64, I32, I64).getCallee());
 
   if (auto *li = dyn_cast<LoadInst>(inst)) {
+    // if the loaded pointer is a global
+    if (isa<GlobalVariable>(li->getPointerOperand())) {
+      if (!ProfileGlobals) {
+        LLVM_DEBUG(errs() << "SLAMP: ignore global load " << *li << "\n");
+        return;
+      }
+    }
+
     InstInsertPt pt = InstInsertPt::After(li);
 
     Value *ptr = li->getPointerOperand();
@@ -1174,6 +1248,13 @@ void SLAMP::instrumentExtInst(Module &m, Instruction *inst, uint32_t id) {
 
     pt << CallInst::Create(lf[index], args);
   } else if (auto *si = dyn_cast<StoreInst>(inst)) {
+    // if the stored pointer is a global
+    if (isa<GlobalVariable>(si->getPointerOperand())) {
+      if (!ProfileGlobals) {
+        LLVM_DEBUG(errs() << "SLAMP: ignore global store " << *si << "\n");
+        return;
+      }
+    }
     InstInsertPt pt = InstInsertPt::After(si);
 
     Value *ptr = si->getPointerOperand();

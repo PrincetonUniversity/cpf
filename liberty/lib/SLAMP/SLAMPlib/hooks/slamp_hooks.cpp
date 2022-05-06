@@ -70,14 +70,14 @@ void SLAMP_dbggvstr(char* str) {
 uint8_t __slamp_begin_trace = 0;
 #endif
 
-bool DEPENDENCE_MODULE = true;
+extern const bool DEPENDENCE_MODULE; // = true;
 bool DISTANCE_MODULE = false;
-bool CONSTANT_ADDRESS_MODULE = false;
-bool LINEAR_ADDRESS_MODULE = false;
-bool CONSTANT_VALUE_MODULE = false;
-bool LINEAR_VALUE_MODULE = false;
-bool REASON_MODULE = false;
-bool TRACE_MODULE = false;
+extern bool CONSTANT_ADDRESS_MODULE; // = false;
+extern bool LINEAR_ADDRESS_MODULE; // = false;
+extern bool CONSTANT_VALUE_MODULE; // = false;
+extern bool LINEAR_VALUE_MODULE; // = false;
+extern bool REASON_MODULE; // = false;
+extern bool TRACE_MODULE; // = false;
 
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
@@ -339,11 +339,7 @@ struct InstructionRecord {
 
 std::unordered_map<uint32_t, InstructionRecord*> instructionMap;
 
-static void updateInstruction(uint32_t instr, uint64_t addr) {
-  if (!REASON_MODULE) {
-    return;
-  }
-
+void updateInstruction(uint32_t instr, uint64_t addr) {
   if (instructionMap.find(instr) != instructionMap.end()) {
     auto &record = instructionMap[instr];
     record->last_addr = addr;
@@ -621,13 +617,13 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 
   // check if the modules are turned on in the environment variable
   setModule(DISTANCE_MODULE, "DISTANCE_MODULE");
-  setModule(CONSTANT_VALUE_MODULE, "CONSTANT_VALUE_MODULE");
-  setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
-  setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
-  setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
-  setModule(REASON_MODULE, "REASON_MODULE");
-  setModule(TRACE_MODULE, "TRACE_MODULE");
-  setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
+  // setModule(CONSTANT_VALUE_MODULE, "CONSTANT_VALUE_MODULE");
+  // setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
+  // setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
+  // setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
+  // setModule(REASON_MODULE, "REASON_MODULE");
+  // setModule(TRACE_MODULE, "TRACE_MODULE");
+  // setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
 
 
   if (CONSTANT_VALUE_MODULE) {
@@ -869,7 +865,7 @@ bool SLAMP_isBadAlloc(uint64_t addr) {
 }
 
 template <unsigned size>
-void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr) {
+void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr) __attribute__((noinline)) {
   uint64_t START;
   TIME(START);
 
@@ -905,6 +901,46 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
   TADD(overhead_log_total, START);
 }
 
+// FIXME: duplication with SLAMP_dependence_module_load_log template
+void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr, unsigned size) __attribute__((noinline)) {
+  TURN_OFF_CUSTOM_MALLOC;
+
+  uint64_t START;
+
+  // FIXME: beware of the malloc hook being changed at this point, any
+  // allocation is super costly
+  std::unordered_set<TS> m;
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+
+  bool noDep = true;
+  for (unsigned i = 0; i < size; i++) {
+    TIME(START);
+
+    TS ts;
+    LOCALWRITE(s + i) { ts = s[i]; }
+    else {
+      continue;
+    }
+    TADD(overhead_shadow_read, START);
+
+    TIME(START);
+    if (m.count(ts) == 0) {
+      uint32_t src_inst = slamp::log(ts, instr, s + i, 0, addr + i, 0, 0);
+      if (src_inst != STORE_INST) {
+        noDep = false;
+      }
+      m.insert(ts);
+    }
+    TADD(overhead_log_total, START);
+  }
+
+  if (noDep) {
+    updateReasonMap(instr, bare_instr, addr, 0, size);
+  }
+
+  TURN_ON_CUSTOM_MALLOC;
+}
+
 template <unsigned size>
 inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
   if (invokedepth > 1)
@@ -912,7 +948,9 @@ inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_
   if (SLAMP_isBadAlloc(addr))
     return;
 
-  __slamp_load_count++;
+  if (TRACE_MODULE) {
+    __slamp_load_count++;
+  }
 #if DEBUG
   if (__slamp_begin_trace) std::cout << "    load"<< size << " " << instr << "," << bare_instr << " iteration " << __slamp_iteration << " addr " << std::hex << addr << " value " << value << std::dec << "\n" << std::flush;
   if (!smmap->is_allocated(reinterpret_cast<void*>(addr))) {
@@ -961,7 +999,9 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (invokedepth > 1)
     instr = context;
 
-  __slamp_load_count++;
+  if (TRACE_MODULE) {
+    __slamp_load_count++;
+  }
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    loadn " << instr << "," << bare_instr << " iteration "
@@ -975,44 +1015,12 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 #endif
 
   if (DEPENDENCE_MODULE) {
-    uint64_t START;
-
-    TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-
-    // FIXME: beware of the malloc hook being changed at this point, any allocation is super costly
-    std::unordered_set<TS> m;
-
-    bool noDep = true;
-    for (unsigned i = 0; i < n; i++) {
-      TIME(START);
-
-      TS ts;
-      LOCALWRITE(s + i){
-        ts = s[i];
-      } else {
-        continue;
-      }
-      TADD(overhead_shadow_read, START);
-
-      TIME(START);
-      if (m.count(ts) == 0) {
-        uint32_t src_inst = slamp::log(ts, instr, s + i, 0, addr + i, 0, 0);
-        if (src_inst != STORE_INST) {
-          noDep = false;
-        }
-        m.insert(ts);
-      }
-      TADD(overhead_log_total, START);
-    }
-
-    if (noDep) {
-      updateReasonMap(instr, bare_instr, addr, 0, n);
-    }
+    SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
   }
 }
 
 template <unsigned size>
-void SLAMP_load_ext(const uint64_t addr, const uint32_t bare_instr,
+inline void SLAMP_load_ext(const uint64_t addr, const uint32_t bare_instr,
                      uint64_t value) {
 #if DEBUG
   if (__slamp_begin_trace)
@@ -1060,7 +1068,25 @@ void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) {
 }
 
 template <unsigned size>
-void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr) {
+void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr) __attribute__((noinline)){
+  uint64_t START;
+  TIME(START);
+
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+
+  // TODO: handle output dependence. ignore it as of now.
+  for (auto i = 0; i < size; i++)
+    LOCALWRITE(s + i){
+      s[i] = ts;
+    }
+
+  TADD(overhead_shadow_write, START);
+  slamp::capturestorecallstack(s);
+}
+
+// FIXME: duplication with SLAMP_dependence_module_store_log template
+void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr, unsigned size) __attribute__((noinline)){
   uint64_t START;
   TIME(START);
 
@@ -1078,15 +1104,20 @@ void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr
 }
 
 template <unsigned size>
-inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
+inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) __attribute__((always_inline)) {
   if (SLAMP_isBadAlloc(addr))
     return;
+
+  // TODO: do we care about recursive calls?
   if (invokedepth > 1)
     instr = context;
+  
+  if (TRACE_MODULE) {
+    __slamp_store_count++;
+  }
 
-  __slamp_store_count++;
-
-  updateInstruction(instr, addr);
+  if (REASON_MODULE)
+    updateInstruction(instr, addr);
 #if DEBUG
   uint64_t *ptr = (uint64_t *)addr;
   if (__slamp_begin_trace)
@@ -1136,8 +1167,12 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   if (invokedepth > 1)
     instr = context;
 
-  __slamp_store_count++;
-  updateInstruction(instr, addr);
+  if (TRACE_MODULE) {
+    __slamp_store_count++;
+  }
+
+  if (REASON_MODULE)
+    updateInstruction(instr, addr);
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    storen " << instr << " iteration " << __slamp_iteration
@@ -1150,28 +1185,12 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
 #endif
 
   if (DEPENDENCE_MODULE) {
-    uint64_t START;
-    TIME(START);
-
-    TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-
-    TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
-
-    // TODO: handle output dependence. ignore it as of now.
-
-    for (unsigned i = 0; i < n; i++)
-      LOCALWRITE(s + i){
-        s[i] = ts;
-      }
-
-    TADD(overhead_shadow_write, START);
-    slamp::capturestorecallstack(s);
-
+    SLAMP_dependence_module_store_log(instr, addr, n);
   }
 }
 
 template <unsigned size>
-void SLAMP_store_ext(const uint64_t addr, const uint64_t bare_inst) {
+inline void SLAMP_store_ext(const uint64_t addr, const uint32_t bare_inst) {
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    store" << size << "_ext " << context << "," << bare_inst
@@ -1185,23 +1204,23 @@ void SLAMP_store_ext(const uint64_t addr, const uint64_t bare_inst) {
 }
 
 
-void SLAMP_store1_ext(const uint64_t addr, const uint64_t bare_inst) {
+void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst) {
   SLAMP_store_ext<1>(addr, bare_inst);
 }
 
-void SLAMP_store2_ext(const uint64_t addr, const uint64_t bare_inst) {
+void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst) {
   SLAMP_store_ext<2>(addr, bare_inst);
 }
 
-void SLAMP_store4_ext(const uint64_t addr, const uint64_t bare_inst) {
+void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst) {
   SLAMP_store_ext<4>(addr, bare_inst);
 }
 
-void SLAMP_store8_ext(const uint64_t addr, const uint64_t bare_inst) {
+void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst) {
   SLAMP_store_ext<8>(addr, bare_inst);
 }
 
-void SLAMP_storen_ext(const uint64_t addr, const uint64_t bare_inst, size_t n) {
+void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n) {
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    storen_ext " << context << "," << bare_inst
