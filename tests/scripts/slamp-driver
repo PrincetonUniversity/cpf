@@ -110,7 +110,8 @@ function drive {
   fi
 
   cat $SLAMP_OUTFILE >> result.slamp.profile
-  rm -f $SLAMP_OUTFILE $PRELINK_BC $PRELINK_OBJ $EXE
+  rm -f $SLAMP_OUTFILE
+  # rm -f $SLAMP_OUTFILE $PRELINK_BC $PRELINK_OBJ $EXE
 }
 
 # Determine if the user specified a function
