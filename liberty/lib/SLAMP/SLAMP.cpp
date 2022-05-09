@@ -95,6 +95,15 @@ static cl::opt<bool> UseTraceModule("slamp-trace-module", cl::init(false), cl::N
 // reason module
 static cl::opt<bool> UseReasonModule("slamp-reason-module", cl::init(false), cl::NotHidden, cl::desc("Use reason module"));
 
+// localwrite module
+static cl::opt<bool> UseLocalWriteModule("slamp-localwrite-module", cl::init(false), cl::NotHidden, cl::desc("Use localwrite module"));
+
+// localwrite mask (size_t)
+static cl::opt<size_t> LocalWriteMask("slamp-localwrite-mask", cl::init(0), cl::NotHidden, cl::desc("Localwrite mask"));
+
+// localwrite pattern (size_t)
+static cl::opt<size_t> LocalWritePattern("slamp-localwrite-pattern", cl::init(0), cl::NotHidden, cl::desc("Localwrite pattern"));
+
 
 static cl::opt<bool> UsePruning("slamp-pruning", cl::init(false),
                                        cl::NotHidden,
@@ -368,6 +377,13 @@ bool SLAMP::runOnModule(Module &m) {
     module_var->setConstant(true);
   };
 
+  auto setLocalWriteValue = [&m](string name, size_t value) {
+    m.getOrInsertGlobal(name, Type::getInt64Ty(m.getContext()));
+    GlobalVariable *module_var = m.getGlobalVariable(name);
+    module_var->setInitializer(ConstantInt::get(Type::getInt64Ty(m.getContext()), value));
+    module_var->setConstant(true);
+  };
+
   // add a constant variable "DEPENDENCE_MODULE" and set to false
   setGlobalModule("DEPENDENCE_MODULE", UseDependenceModule);
   setGlobalModule("CONSTANT_VALUE_MODULE", UseConstantValueModule);
@@ -376,6 +392,11 @@ bool SLAMP::runOnModule(Module &m) {
   setGlobalModule("LINEAR_ADDRESS_MODULE", UseLinearAddressModule);
   setGlobalModule("TRACE_MODULE", UseTraceModule);
   setGlobalModule("REASON_MODULE", UseReasonModule);
+  setGlobalModule("LOCALWRITE_MODULE", UseLocalWriteModule);
+
+  // set local write config
+  setLocalWriteValue("LOCALWRITE_MASK", LocalWriteMask);
+  setLocalWriteValue("LOCALWRITE_PATTERN", LocalWritePattern);
 
 
   Function *ctor = instrumentConstructor(m);

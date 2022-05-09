@@ -47,7 +47,6 @@
 // 8MB max stack size for a typical host machine `ulimit -s`
 #define SIZE_8M  0x800000
 // #define LOCALWRITE(addr) if (true)
-#define LOCALWRITE(addr) if (((size_t)addr & 0x7F000) == 0x1000)
 
 // debugging tools
 
@@ -78,6 +77,10 @@ extern bool CONSTANT_VALUE_MODULE; // = false;
 extern bool LINEAR_VALUE_MODULE; // = false;
 extern bool REASON_MODULE; // = false;
 extern bool TRACE_MODULE; // = false;
+extern bool LOCALWRITE_MODULE;
+extern size_t LOCALWRITE_MASK;
+extern size_t LOCALWRITE_PATTERN;
+#define LOCALWRITE(addr) if (!LOCALWRITE_MODULE || ((size_t)addr & LOCALWRITE_MASK) == LOCALWRITE_PATTERN)
 
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
