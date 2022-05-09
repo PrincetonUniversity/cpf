@@ -1,0 +1,7 @@
+PROFILESETUP=
+PROFILEARGS=10 1000000 100
+PREPROCESSOR_OPTIONS=-lpthread
+LIBS=-lpthread
+
+NOINLINE=1
+include ../../../Makefile.generic
