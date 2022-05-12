@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# $1: number of threads
+# $2-: arguments
+
+# Check if $NUM_THREAD is set, otherwise exit
+NUM_THREAD=$1
+PROFILEARGS=${@:2}
+
+if [ -z "$NUM_THREAD" ]; then
+    echo "NUM_THREAD is not set"
+    exit 1
+fi
+
+# Check if num thread is power of 2
+if [ $(($NUM_THREAD)) -ne $(($NUM_THREAD & (~$NUM_THREAD + 1))) ]; then
+    echo "Number of threads must be power of 2"
+    exit 1
+fi
+
+# Convert NUM_THREAD to the mask and shift left by 8
+MASK=$((($NUM_THREAD - 1) << 8))
+
+# convert MASK to a hex string
+MASK_HEX=$(printf "0x%x" $MASK)
+
+# Traverse all threads and set pattern to each thread
+for i in `seq 0 $(($NUM_THREAD - 1))`; do
+    PATTERN=$(($i << 8))
+    # convert pattern to a hex string
+    PATTERN_HEX=$(printf "0x%x" $PATTERN)
+    EXE="LOCALWRITE_MASK=$MASK_HEX LOCALWRITE_PATTERN=$PATTERN_HEX ./benchmark.slamp.exe $PROFILEARGS"
+    echo $EXE
+    LOCALWRITE_MASK=$MASK_HEX LOCALWRITE_PATTERN=$PATTERN_HEX ./benchmark.slamp.exe $PROFILEARGS > rabbit6_$i &
+done
+
+# Wait for all threads to finish
+wait
+

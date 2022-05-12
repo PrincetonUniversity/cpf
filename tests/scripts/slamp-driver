@@ -5,18 +5,7 @@ function drive {
   # $2: target fcn
   # $3: target loop
 
-    #-load $LIBERTY_LIBS_DIR/libExclusions.so 
-    #-load /u/sa8/CAT/lib/libSvf.so
-    #-load /u/sa8/CAT/lib/libCudd.so
-    #-load $LIBERTY_LIBS_DIR/libAnalysis.so 
-    #-load $LIBERTY_LIBS_DIR/libExclusions.so 
-    #-load $LIBERTY_LIBS_DIR/libUtil.so 
-    #-load $LIBERTY_LIBS_DIR/libAnalysis.so
-    #-load $LIBERTY_LIBS_DIR/libLoopProf.so
-    #-load $LIBERTY_LIBS_DIR/libLAMPLoad.so 
-    #-load $LIBERTY_LIBS_DIR/libLoopProf.so
-    #-load $LIBERTY_LIBS_DIR/libLAMP.so 
-    EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
+  EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
   local SLAMP_LIBS="
      -load $NOELLE_LIBS_DIR/CallGraph.so 
      -load $NOELLE_LIBS_DIR/libSvf.so 
@@ -49,26 +38,16 @@ function drive {
      -load $SCAF_LIBS_DIR/libSpeculationModules.so 
      -load $LIBERTY_LIBS_DIR/libSLAMP.so
      -basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa -global-malloc-aa -pure-fun-aa -semi-local-fun-aa -phi-maze-aa -no-capture-global-aa -no-capture-src-aa -type-aa -no-escape-fields-aa -acyclic-aa -disjoint-fields-aa -field-malloc-aa -loop-variant-allocation-aa -std-in-out-err-aa -array-of-structures-aa -kill-flow-aa -callsite-depth-combinator-aa -unique-access-paths-aa $EXTRA -llvm-aa-results  -pdgbuilder "
-  # local SLAMP_LIBS="
-    # -load $SCAF_LIBS_DIR/libSCAFUtilities.so 
-    # -load $LIBERTY_LIBS_DIR/libUtil.so 
-    # -load $LIBERTY_LIBS_DIR/libSLAMP.so"
-
-#commented out libs
-# -load $LIBERTY_LIBS_DIR/libClangAnnotationExtractor.so 
-# -load $LIBERTY_LIBS_DIR/libPDG.so 
-# -load $LIBERTY_LIBS_DIR/libNego.so 
-# -load $LIBERTY_LIBS_DIR/libSMTAA.so 
-# -load $LIBERTY_LIBS_DIR/libDependenceRemover.so 
-# -load $LIBERTY_LIBS_DIR/libMTCG.so 
-# -load $LIBERTY_LIBS_DIR/libPartition.so 
-# -load $LIBERTY_LIBS_DIR/libSimpleProfReader.so
-# -load $LIBERTY_LIBS_DIR/libTarget.so 
 
   local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks.a"
   local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
 
-  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
+ local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
+
+  if [[ x$LOCALWRITE_THREADS != x ]]; then
+    OPTS="$OPTS -slamp-localwrite-module=1"
+  fi
+  
   #local OPTS="-slamp-insts --print-load-static-id=true -slamp-target-fn=$2 -slamp-target-loop=$3 -slamp-outfile=$SLAMP_OUTFILE"
   local PRELINK_BC="`basename $1 .bc`.slamp.prelink.bc"
   local PRELINK_OBJ="`basename $1 .bc`.slamp.prelink.o"
@@ -86,7 +65,12 @@ function drive {
   local CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil" 
   # local CMD3="clang++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
   #local CMD3="g++ -Og $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+
   local CMD4="./$EXE $PROFILEARGS"
+  # if use localwrite
+  if [[ x$LOCALWRITE_THREADS != x ]]; then
+      CMD4="localwrite $LOCALWRITE_THREADS $PROFILEARGS"
+  fi
 
   red='\e[0;31m'
   nc='\e[0m'
@@ -109,8 +93,13 @@ function drive {
     exit 1
   fi
 
+  if [[ x$LOCALWRITE_THREADS != x ]]; then
+      # combine files
+      combine_localwrite.py $2 $3
+  fi
+
   cat $SLAMP_OUTFILE >> result.slamp.profile
-  rm -f $SLAMP_OUTFILE
+  rm -f $SLAMP_OUTFILE ${SLAMP_OUTFILE}_*
   # rm -f $SLAMP_OUTFILE $PRELINK_BC $PRELINK_OBJ $EXE
 }
 

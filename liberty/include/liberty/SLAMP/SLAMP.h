@@ -48,6 +48,7 @@ private:
   Function* instrumentConstructor(Module& m);
   void instrumentDestructor(Module& m);
   void instrumentGlobalVars(Module& m, Function* ctor);
+  void instrumentAllocas(Module& m);
 
   void instrumentNonStandards(Module& m, Function* ctor);
   void allocErrnoLocation(Module& m, Function* ctor);

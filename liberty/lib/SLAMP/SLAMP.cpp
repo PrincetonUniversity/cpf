@@ -145,6 +145,13 @@ static size_t elidedHash(std::vector<uint32_t> const& vec) {
   return seed;
 }
 
+Value * getGlobalName(GlobalVariable *gv)
+{
+  Module *mod = gv->getParent();
+  std::string name = "global " + gv->getName().str();
+  return getStringLiteralExpression( *mod, name);
+}
+
 bool SLAMP::runOnModule(Module &m) {
   LLVMContext &ctxt = m.getContext();
 
@@ -394,17 +401,14 @@ bool SLAMP::runOnModule(Module &m) {
   setGlobalModule("REASON_MODULE", UseReasonModule);
   setGlobalModule("LOCALWRITE_MODULE", UseLocalWriteModule);
 
-  // set local write config
-  setLocalWriteValue("LOCALWRITE_MASK", LocalWriteMask);
-  setLocalWriteValue("LOCALWRITE_PATTERN", LocalWritePattern);
-
-
   Function *ctor = instrumentConstructor(m);
   instrumentDestructor(m);
 
   if (ProfileGlobals) {
     instrumentGlobalVars(m, ctor);
   }
+
+  instrumentAllocas(m);
 
   instrumentMainFunction(m);
 
@@ -680,7 +684,7 @@ void SLAMP::instrumentGlobalVars(Module &m, Function *ctor) {
   // call SLAMP_init_global_vars function to initialize shadow memory for
   // global variables
   auto *init_gvars = cast<Function>(
-      m.getOrInsertFunction("SLAMP_init_global_vars", Void, I64, I64)
+      m.getOrInsertFunction("SLAMP_init_global_vars", Void, I8Ptr, I64, I64)
           .getCallee());
 
   for (GlobalVariable &gvr : m.globals()) {
@@ -695,8 +699,12 @@ void SLAMP::instrumentGlobalVars(Module &m, Function *ctor) {
     assert(ty);
 
     InstInsertPt pt = InstInsertPt::Before(entry->getTerminator());
+    // get name of the global
+
+    // Value *name = getGlobalName(gv);
+    Value *name = getStringLiteralExpression(m, "hello");
     uint64_t size = td.getTypeStoreSize(ty->getElementType());
-    Value *args[] = {castToInt64Ty(gv, pt), ConstantInt::get(I64, size)};
+    Value *args[] = {name, castToInt64Ty(gv, pt), ConstantInt::get(I64, size)};
     pt << CallInst::Create(init_gvars, args);
   }
 
@@ -708,10 +716,20 @@ void SLAMP::instrumentGlobalVars(Module &m, Function *ctor) {
 
     uint64_t size = td.getTypeStoreSize(func->getType());
 
+    Value *name = getStringLiteralExpression(m, "hello");
     InstInsertPt pt = InstInsertPt::Before(entry->getTerminator());
-    Value *args[] = {castToInt64Ty(func, pt), ConstantInt::get(I64, size)};
+    Value *args[] = {name, castToInt64Ty(func, pt), ConstantInt::get(I64, size)};
     pt << CallInst::Create(init_gvars, args);
   }
+}
+
+// For each alloca, find the lifetime starts and ends
+// and insert calls to `SLAMP_callback_stack_alloca` and
+// `SLAMP_callback_stack_free`
+void SLAMP::instrumentAllocas(Module &m) {
+
+
+
 }
 
 // /// FIXME: not called anywhere

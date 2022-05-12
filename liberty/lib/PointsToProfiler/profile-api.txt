@@ -12,7 +12,7 @@ void __prof_free(const char *name, void *ptr)
 void __prof_report_global(const char *name, void *base, uint64_t size)
   - called at program startup; reports base and size of a static allocation unit.
 
-void __prof_report_global(const char *name, void *base, uint64_t size)
+void __prof_report_constant(const char *name, void *base, uint64_t size)
   - called at program startup; reports base and size of a symbol in constant memory.
     constants may have overlapping addresses with one another.
 

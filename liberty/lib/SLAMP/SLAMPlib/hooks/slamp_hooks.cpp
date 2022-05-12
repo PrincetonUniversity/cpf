@@ -78,8 +78,8 @@ extern bool LINEAR_VALUE_MODULE; // = false;
 extern bool REASON_MODULE; // = false;
 extern bool TRACE_MODULE; // = false;
 extern bool LOCALWRITE_MODULE;
-extern size_t LOCALWRITE_MASK;
-extern size_t LOCALWRITE_PATTERN;
+size_t LOCALWRITE_MASK = 0;
+size_t LOCALWRITE_PATTERN = 0;
 #define LOCALWRITE(addr) if (!LOCALWRITE_MODULE || ((size_t)addr & LOCALWRITE_MASK) == LOCALWRITE_PATTERN)
 
 uint64_t __slamp_iteration = 0;
@@ -101,6 +101,9 @@ void slamp_access_callback_constant_value(bool, uint32_t instr, uint32_t bare_in
 void slamp_access_callback_constant_address(bool, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
 void slamp_access_callback_linear_value(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
 void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t bare_instr, uint64_t addr, uint64_t value, uint8_t size);
+
+// FIXME: implement the callback
+void slamp_global_callback(const char* name, uint64_t addr, uint64_t size) {}
 
 // Callback function pointers
 std::list<AccessCallbackTy> access_callbacks;
@@ -612,9 +615,17 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 
 
   auto setModule = [](bool &var, const char *name, bool setV=true) {
-    auto *module = getenv(name);
-    if (module && strcmp(module, "1") == 0) {
+    auto *mod = getenv(name);
+    if (mod && strcmp(mod, "1") == 0) {
       var= setV;
+    }
+  };
+
+  auto setLocalWriteValue = [](size_t &var, const char *name) {
+    auto *env = getenv(name);
+    if (env) {
+      // from hex to size_t
+      var = strtoul(env, NULL, 16);
     }
   };
 
@@ -628,6 +639,11 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   // setModule(TRACE_MODULE, "TRACE_MODULE");
   // setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
 
+  setLocalWriteValue(LOCALWRITE_MASK, "LOCALWRITE_MASK");
+  setLocalWriteValue(LOCALWRITE_PATTERN, "LOCALWRITE_PATTERN");
+  // print localwrite mask and pattern
+  fprintf(stderr, "LOCALWRITE_MASK: %zx\n", LOCALWRITE_MASK);
+  fprintf(stderr, "LOCALWRITE_PATTERN: %zx\n", LOCALWRITE_PATTERN);
 
   if (CONSTANT_VALUE_MODULE) {
     access_callbacks.push_back(&slamp_access_callback_constant_value);
@@ -709,8 +725,15 @@ void SLAMP_fini(const char* filename)
   TIME(START);
   delete alloc_in_the_loop;
 
-  slamp::fini_logger(filename);
+  // append the filename with localwrite pattern
+  if (LOCALWRITE_MODULE) {
+    // convert the LOCALWRITE_PATTERN into a string
+    std::stringstream ss;
+    ss << filename << "_" << LOCALWRITE_PATTERN;
+    filename = ss.str().c_str();
+  }
 
+  slamp::fini_logger(filename);
   // delete smmap;
 
   // slamp::fini_bound_malloc();
@@ -729,8 +752,10 @@ void SLAMP_allocated(uint64_t addr)
 }
 
 /// Allocate the shadow memory on the "heap" for global variables
-void SLAMP_init_global_vars(uint64_t addr, size_t size)
+void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size)
 {
+  // report a global 
+  slamp_global_callback(name, addr, size);
   smmap->allocate((void*)addr, size);
 }
 
@@ -875,11 +900,7 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS tss[8]; // HACK: avoid using malloc
   for (auto i = 0; i < size; i++) {
-    LOCALWRITE(s + i){
-      tss[i] = s[i];
-    } else {
-      tss[i] = 0;
-    }
+    tss[i] = s[i];
   }
 
   TADD(overhead_shadow_read, START);
@@ -920,10 +941,7 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
     TIME(START);
 
     TS ts;
-    LOCALWRITE(s + i) { ts = s[i]; }
-    else {
-      continue;
-    }
+    ts = s[i];
     TADD(overhead_shadow_read, START);
 
     TIME(START);
@@ -970,7 +988,10 @@ inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_
   // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
-    SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
+    }
   }
 }
 
@@ -1018,7 +1039,10 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 #endif
 
   if (DEPENDENCE_MODULE) {
-    SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
+    }
   }
 }
 
@@ -1080,9 +1104,7 @@ void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr
 
   // TODO: handle output dependence. ignore it as of now.
   for (auto i = 0; i < size; i++)
-    LOCALWRITE(s + i){
-      s[i] = ts;
-    }
+    s[i] = ts;
 
   TADD(overhead_shadow_write, START);
   slamp::capturestorecallstack(s);
@@ -1098,9 +1120,7 @@ void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr
 
   // TODO: handle output dependence. ignore it as of now.
   for (auto i = 0; i < size; i++)
-    LOCALWRITE(s + i){
-      s[i] = ts;
-    }
+    s[i] = ts;
 
   TADD(overhead_shadow_write, START);
   slamp::capturestorecallstack(s);
@@ -1143,7 +1163,10 @@ inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr
   // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
-    SLAMP_dependence_module_store_log<size>(instr, addr);
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_dependence_module_store_log<size>(instr, addr);
+    }
   }
 }
 
@@ -1188,7 +1211,10 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
 #endif
 
   if (DEPENDENCE_MODULE) {
-    SLAMP_dependence_module_store_log(instr, addr, n);
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_dependence_module_store_log(instr, addr, n);
+    }
   }
 }
 
