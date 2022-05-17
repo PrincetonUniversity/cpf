@@ -106,7 +106,7 @@ void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t 
 void slamp_global_callback(const char* name, uint64_t addr, uint64_t size) {}
 
 // Callback function pointers
-std::list<AccessCallbackTy> access_callbacks;
+std::list<AccessCallbackTy> *access_callbacks;
   // &slamp_access_callback_constant_addr,
   // &slamp_access_callback_linear_address,
   // &slamp_access_callback_constant_value,
@@ -645,20 +645,22 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   fprintf(stderr, "LOCALWRITE_MASK: %zx\n", LOCALWRITE_MASK);
   fprintf(stderr, "LOCALWRITE_PATTERN: %zx\n", LOCALWRITE_PATTERN);
 
+  access_callbacks = new std::list<AccessCallbackTy> ();
+
   if (CONSTANT_VALUE_MODULE) {
-    access_callbacks.push_back(&slamp_access_callback_constant_value);
+    access_callbacks->push_back(&slamp_access_callback_constant_value);
   }
 
   if (CONSTANT_ADDRESS_MODULE) {
-    access_callbacks.push_back(&slamp_access_callback_constant_address);
+    access_callbacks->push_back(&slamp_access_callback_constant_address);
   }
 
   if (LINEAR_VALUE_MODULE) {
-    access_callbacks.push_back(&slamp_access_callback_linear_value);
+    access_callbacks->push_back(&slamp_access_callback_linear_value);
   }
 
   if (LINEAR_ADDRESS_MODULE) {
-    access_callbacks.push_back(&slamp_access_callback_linear_address);
+    access_callbacks->push_back(&slamp_access_callback_linear_address);
   }
 
   if (REASON_MODULE) {
@@ -982,7 +984,7 @@ inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_
 
   // Load access
   // TURN_OFF_CUSTOM_MALLOC;
-  for (auto *f: access_callbacks) {
+  for (auto *f: *access_callbacks) {
     f(true, instr, bare_instr, addr, value, size);
   }
   // TURN_ON_CUSTOM_MALLOC;
@@ -1156,7 +1158,7 @@ inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr
 
   // Store access
   // TURN_OFF_CUSTOM_MALLOC;
-  for (auto *f: access_callbacks) {
+  for (auto *f: *access_callbacks) {
     // FIXME: value is empty for now
     f(false, instr, bare_instr, addr, 0, size);
   }

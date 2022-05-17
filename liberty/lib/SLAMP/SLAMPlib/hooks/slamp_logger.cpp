@@ -18,10 +18,6 @@
 
 // defined in slamp_hooks.cpp
 extern bool DISTANCE_MODULE;
-extern bool CONSTANT_ADDRESS_MODULE;
-extern bool LINEAR_ADDRESS_MODULE;
-extern bool CONSTANT_VALUE_MODULE;
-extern bool LINEAR_VALUE_MODULE;
 extern bool TRACE_MODULE;
 
 /*
