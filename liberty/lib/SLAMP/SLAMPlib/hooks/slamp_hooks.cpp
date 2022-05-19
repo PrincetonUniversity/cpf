@@ -70,6 +70,7 @@ uint8_t __slamp_begin_trace = 0;
 #endif
 
 extern const bool DEPENDENCE_MODULE; // = true;
+extern const bool POINTS_TO_MODULE; // = false;
 bool DISTANCE_MODULE = false;
 extern bool CONSTANT_ADDRESS_MODULE; // = false;
 extern bool LINEAR_ADDRESS_MODULE; // = false;
@@ -89,8 +90,6 @@ uint64_t __slamp_load_count = 0;
 uint64_t __slamp_store_count = 0;
 uint64_t __slamp_malloc_count = 0;
 uint64_t __slamp_free_count = 0;
-
-std::map<void*, size_t>* alloc_in_the_loop;
 
 // Type of the access callback function
 // instr, bare_instr, address, value, size
@@ -356,6 +355,31 @@ void updateInstruction(uint32_t instr, uint64_t addr) {
   }
 }
 
+// Allocation Unit: the instruction, the invocation and the iteration
+using SlampAllocationUnit = TS;
+
+// map from load/store instruction to the allocation unit
+std::unordered_map<uint32_t, std::unordered_set<SlampAllocationUnit>> *pointsToMap;
+
+void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
+  TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  TS tss[8]; // HACK: avoid using malloc
+  for (auto i = 0; i < size; i++) {
+    tss[i] = s[i];
+  }
+
+  for (auto i = 0; i < size; i++) {
+    bool cond = true;
+    for (auto j = 0; j < i; j++) {
+      cond = cond && (tss[i] != tss[j]);
+    }
+
+    if (cond && tss[i] != 0) {
+      (*pointsToMap)[instr].insert(tss[i]);
+    }
+  }
+}
+
 // -1->inconclusive
 // 0->killed
 // 1->no-alias
@@ -592,7 +616,7 @@ static void *(*old_malloc_hook)(unsigned long, const void *);
 static void (*old_free_hook)(void *, const void *);
 
 static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
-  auto ptr = SLAMP_malloc(size);
+  auto ptr = SLAMP_malloc(size, context);
 
   __slamp_malloc_count++;
   return ptr;
@@ -638,6 +662,15 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   // setModule(REASON_MODULE, "REASON_MODULE");
   // setModule(TRACE_MODULE, "TRACE_MODULE");
   // setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
+
+  // dependence module and points to module cannot be turned on at the same time
+  if (DEPENDENCE_MODULE && POINTS_TO_MODULE) {
+    fprintf(stderr, "Dependence module and points-to module cannot be turned on at the same time\n");
+    exit(1);
+  }
+
+  // initialize pointsToMap
+  pointsToMap = new std::unordered_map<uint32_t, std::unordered_set<SlampAllocationUnit>>();
 
   setLocalWriteValue(LOCALWRITE_MASK, "LOCALWRITE_MASK");
   setLocalWriteValue(LOCALWRITE_PATTERN, "LOCALWRITE_PATTERN");
@@ -705,7 +738,6 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
     smmap->allocate((void*)itype_ptr, 384 * sizeof(*itype_ptr));
   }
 
-  alloc_in_the_loop = new std::map<void*, size_t>();
   TADD(overhead_shadow_allocate, START);
 
   TIME(START);
@@ -725,7 +757,6 @@ void SLAMP_fini(const char* filename)
 {
   uint64_t START;
   TIME(START);
-  delete alloc_in_the_loop;
 
   // append the filename with localwrite pattern
   if (LOCALWRITE_MODULE) {
@@ -735,8 +766,26 @@ void SLAMP_fini(const char* filename)
     filename = ss.str().c_str();
   }
 
-  slamp::fini_logger(filename);
-  // delete smmap;
+  if (POINTS_TO_MODULE) {
+    // dump out the points-to map
+    std::ofstream ofs(filename);
+    if (ofs.is_open()) {
+      ofs << "Points-to map\n";
+      for (auto &it : *pointsToMap) {
+        ofs << it.first << ": "; // instruction ID
+        for (auto &it2 : it.second) { // the set of allocation units
+          ofs << it2 << " ";
+        }
+        ofs << "\n";
+      }
+      ofs.close();
+    }
+  }
+
+  if (DEPENDENCE_MODULE) {
+    slamp::fini_logger(filename);
+    // delete smmap;
+  }
 
   // slamp::fini_bound_malloc();
   TADD(overhead_init_fini, START);
@@ -995,6 +1044,13 @@ inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_
       SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
     }
   }
+
+  if (POINTS_TO_MODULE) {
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_points_to_module_use(instr, addr, size);
+    }
+  }
 }
 
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -1044,6 +1100,13 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
     // only need to check once
     LOCALWRITE(addr) {
       SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
+    }
+  }
+
+  if (POINTS_TO_MODULE) {
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_points_to_module_use(instr, addr, n);
     }
   }
 }
@@ -1170,6 +1233,13 @@ inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr
       SLAMP_dependence_module_store_log<size>(instr, addr);
     }
   }
+
+  if (POINTS_TO_MODULE) {
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_points_to_module_use(instr, addr, size);
+    }
+  }
 }
 
 
@@ -1216,6 +1286,13 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
     // only need to check once
     LOCALWRITE(addr) {
       SLAMP_dependence_module_store_log(instr, addr, n);
+    }
+  }
+
+  if (POINTS_TO_MODULE) {
+    // only need to check once
+    LOCALWRITE(addr) {
+      SLAMP_points_to_module_use(instr, addr, n);
     }
   }
 }
@@ -1268,52 +1345,61 @@ void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n) {
  * External library wrappers
  */
 
-void* SLAMP_malloc(size_t size)
+void* SLAMP_malloc(size_t size, uint32_t instr)
 {
-  __malloc_hook = old_malloc_hook;
-  __free_hook = old_free_hook;
+  TURN_OFF_CUSTOM_MALLOC;
 
   uint64_t START;
   TIME(START);
   //fprintf(stderr, "SLAMP_malloc, size: %lu\n", size);
   void* result = (void*)slamp::bound_malloc(size);
   unsigned count = 0;
+
   while( true )
   {
     if ( !result ) {
 
       TADD(overhead_shadow_allocate, START);
-      __malloc_hook = SLAMP_malloc_hook;
-      __free_hook = SLAMP_free_hook;
+      TURN_ON_CUSTOM_MALLOC;
       return nullptr;
     }
 
-    void* shadow = smmap->allocate(result, size);
-    if (shadow)
-    {
-      if (context)
+    // if dependence modules is turned on
+    if (DEPENDENCE_MODULE || POINTS_TO_MODULE) {
+      void* shadow = smmap->allocate(result, size);
+      if (shadow)
       {
-        (*alloc_in_the_loop)[result] = size;
+        //std::cout << "SLAMP_malloc result is " << std::hex << result << "\n";
+        TADD(overhead_shadow_allocate, START);
+
+        if (POINTS_TO_MODULE) {
+          // initialize all shadow memory to context
+          TS *s = (TS *)shadow;
+          TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+          for (auto i = 0; i < size; i++)
+            s[i] = ts;
+        }
+        TURN_ON_CUSTOM_MALLOC;
+        return result;
       }
-      //std::cout << "SLAMP_malloc result is " << std::hex << result << "\n";
-      TADD(overhead_shadow_allocate, START);
-      __malloc_hook = SLAMP_malloc_hook;
-      __free_hook = SLAMP_free_hook;
-      return result;
+      else
+      {
+        slamp::bound_free(result);
+        count++;
+
+        if (count == 1024)
+        {
+          perror("Error: shadow_alloc failed\n");
+          exit(0);
+        }
+
+        slamp::bound_discard_page();
+        result = (void*)slamp::bound_malloc(size);
+      }
     }
-    else
-    {
-      slamp::bound_free(result);
-      count++;
-
-      if (count == 1024)
-      {
-        perror("Error: shadow_alloc failed\n");
-        exit(0);
-      }
-
-      slamp::bound_discard_page();
-      result = (void*)slamp::bound_malloc(size);
+    else {
+      TURN_ON_CUSTOM_MALLOC;
+      return result;
     }
   }
 }

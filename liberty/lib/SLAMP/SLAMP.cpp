@@ -77,6 +77,9 @@ static cl::opt<bool> IsDOALL("slamp-doall", cl::init(false),
 // whether to turn on dependence module
 static cl::opt<bool> UseDependenceModule("slamp-dependence-module", cl::init(true), cl::NotHidden, cl::desc("Use dependence module"));
 
+// whether to turn on points-to module
+static cl::opt<bool> UsePointsToModule("slamp-points-to-module", cl::init(false), cl::NotHidden, cl::desc("Use points-to module"));
+
 // constant value module
 static cl::opt<bool> UseConstantValueModule("slamp-constant-value-module", cl::init(false), cl::NotHidden, cl::desc("Use constant value module"));
 
@@ -392,6 +395,7 @@ bool SLAMP::runOnModule(Module &m) {
   };
 
   // add a constant variable "DEPENDENCE_MODULE" and set to false
+  setGlobalModule("POINTS_TO_MODULE", UsePointsToModule);
   setGlobalModule("DEPENDENCE_MODULE", UseDependenceModule);
   setGlobalModule("CONSTANT_VALUE_MODULE", UseConstantValueModule);
   setGlobalModule("LINEAR_VALUE_MODULE", UseLinearValueModule);

@@ -1,6 +1,7 @@
 #ifndef SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 #define SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 
+#include <bits/stdint-uintn.h>
 #include <clocale>
 #include <dirent.h>
 #include <stdint.h>
@@ -83,9 +84,8 @@ void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n)__
 /* wrappers */
 static void* SLAMP_malloc_hook(size_t size, const void *caller);
 static void SLAMP_free_hook(void *ptr, const void *caller);
-void* SLAMP_malloc(size_t size);
+void* SLAMP_malloc(size_t size, uint32_t instr=0);
 
-void* SLAMP_malloc(size_t size);
 void* SLAMP_calloc(size_t nelem, size_t elsize);
 void* SLAMP_realloc(void* ptr, size_t size);
 void* SLAMP__Znam(size_t size);

@@ -32,8 +32,6 @@
 extern uint8_t __slamp_begin_trace = 0;
 #endif
 
-extern std::map<void*, size_t>* alloc_in_the_loop;
-
 extern slamp::MemoryMap* smmap;
 static const char* percent_c = "%c";
 static const char* percent_s = "%s";

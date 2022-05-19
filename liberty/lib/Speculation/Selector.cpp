@@ -509,6 +509,7 @@ bool Selector::callsFun(const Loop *l, const Function *tgtF,
       if (!call)
         continue;
       Function *cFun = call->getCalledFunction();
+      // FIXME: what about indirect calls?
       if (!cFun || cFun->isDeclaration())
         continue;
       auto *cgNode = callGraph.getFunctionNode(cFun);

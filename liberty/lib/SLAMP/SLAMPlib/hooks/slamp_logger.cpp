@@ -35,8 +35,6 @@ extern uint64_t __slamp_load_count;
 extern uint64_t __slamp_store_count;
 extern uint64_t __slamp_malloc_count;
 extern uint64_t __slamp_free_count;
-extern std::map<void *, size_t> *alloc_in_the_loop;
-
 
 #if DEBUG
 #include <set>
