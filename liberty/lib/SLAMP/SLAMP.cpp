@@ -778,8 +778,8 @@ void SLAMP::instrumentAllocas(Module &m) {
   Type *stack_alloca_params[] = {};
   Type *stack_free_params[] = {};
 
-  m.getOrInsertFunction("SLAMP_callback_stack_alloca", stack_alloca_params)
-  m.getOrInsertFunction("SLAMP_callback_stack_free", stack_free_params)
+  m.getOrInsertFunction("SLAMP_callback_stack_alloca", stack_alloca_params);
+  m.getOrInsertFunction("SLAMP_callback_stack_free", stack_free_params);
 
   for (auto &f : *m) {
     Function *F = &f;
@@ -792,8 +792,8 @@ void SLAMP::instrumentAllocas(Module &m) {
     }
   }
   
-  Fucntion *stack_alloca_fcn = m.getFunction("SLAMP_callback_stack_alloca");
-  Fucntion *stack_free_fcn = m.getFunction("SLAMP_callback_stack_free");
+  Function *stack_alloca_fcn = m.getFunction("SLAMP_callback_stack_alloca");
+  Function *stack_free_fcn = m.getFunction("SLAMP_callback_stack_free");
 
   for (auto i : allocas) {
     // Find explicit lifetime markers
