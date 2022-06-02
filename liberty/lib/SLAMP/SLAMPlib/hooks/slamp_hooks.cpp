@@ -69,8 +69,20 @@ void SLAMP_dbggvstr(char* str) {
 uint8_t __slamp_begin_trace = 0;
 #endif
 
-extern const bool DEPENDENCE_MODULE; // = true;
-extern const bool POINTS_TO_MODULE; // = false;
+#ifndef ITO_ENABLE
+bool DEPENDENCE_MODULE; // = true;
+bool POINTS_TO_MODULE; // = false;
+bool DISTANCE_MODULE = false;
+bool CONSTANT_ADDRESS_MODULE; // = false;
+bool LINEAR_ADDRESS_MODULE; // = false;
+bool CONSTANT_VALUE_MODULE; // = false;
+bool LINEAR_VALUE_MODULE; // = false;
+bool REASON_MODULE; // = false;
+bool TRACE_MODULE; // = false;
+bool LOCALWRITE_MODULE;
+#else
+extern bool DEPENDENCE_MODULE; // = true;
+extern bool POINTS_TO_MODULE; // = false;
 bool DISTANCE_MODULE = false;
 extern bool CONSTANT_ADDRESS_MODULE; // = false;
 extern bool LINEAR_ADDRESS_MODULE; // = false;
@@ -79,8 +91,11 @@ extern bool LINEAR_VALUE_MODULE; // = false;
 extern bool REASON_MODULE; // = false;
 extern bool TRACE_MODULE; // = false;
 extern bool LOCALWRITE_MODULE;
+#endif
+
 size_t LOCALWRITE_MASK = 0;
 size_t LOCALWRITE_PATTERN = 0;
+
 #define LOCALWRITE(addr) if (!LOCALWRITE_MODULE || ((size_t)addr & LOCALWRITE_MASK) == LOCALWRITE_PATTERN)
 
 uint64_t __slamp_iteration = 0;
@@ -641,7 +656,9 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   auto setModule = [](bool &var, const char *name, bool setV=true) {
     auto *mod = getenv(name);
     if (mod && strcmp(mod, "1") == 0) {
-      var= setV;
+      var = setV;
+    } else {
+      var = !setV;
     }
   };
 
@@ -655,13 +672,20 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 
   // check if the modules are turned on in the environment variable
   setModule(DISTANCE_MODULE, "DISTANCE_MODULE");
-  // setModule(CONSTANT_VALUE_MODULE, "CONSTANT_VALUE_MODULE");
-  // setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
-  // setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
-  // setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
-  // setModule(REASON_MODULE, "REASON_MODULE");
-  // setModule(TRACE_MODULE, "TRACE_MODULE");
-  // setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
+
+#ifndef ITO_ENABLE
+  setModule(CONSTANT_ADDRESS_MODULE, "CONSTANT_ADDRESS_MODULE");
+  setModule(CONSTANT_VALUE_MODULE, "CONSTANT_VALUE_MODULE");
+  setModule(LINEAR_ADDRESS_MODULE, "LINEAR_ADDRESS_MODULE");
+  setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
+  setModule(REASON_MODULE, "REASON_MODULE");
+  setModule(TRACE_MODULE, "TRACE_MODULE");
+  setModule(LOCALWRITE_MODULE, "LOCALWRITE_MODULE");
+
+  setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
+  setModule(POINTS_TO_MODULE, "POINTS_TO_MODULE");
+#endif
+
 
   // dependence module and points to module cannot be turned on at the same time
   if (DEPENDENCE_MODULE && POINTS_TO_MODULE) {
@@ -672,8 +696,12 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   // initialize pointsToMap
   pointsToMap = new std::unordered_map<uint32_t, std::unordered_set<SlampAllocationUnit>>();
 
+// #ifndef ITO_ENABLE
+// FIXME: LOCALWRITE stuff should also be converted to constant if possible
   setLocalWriteValue(LOCALWRITE_MASK, "LOCALWRITE_MASK");
   setLocalWriteValue(LOCALWRITE_PATTERN, "LOCALWRITE_PATTERN");
+// #endif
+
   // print localwrite mask and pattern
   fprintf(stderr, "LOCALWRITE_MASK: %zx\n", LOCALWRITE_MASK);
   fprintf(stderr, "LOCALWRITE_PATTERN: %zx\n", LOCALWRITE_PATTERN);
@@ -944,7 +972,7 @@ bool SLAMP_isBadAlloc(uint64_t addr) {
 }
 
 template <unsigned size>
-void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr) __attribute__((noinline)) {
+void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr) ATTRIBUTE(noinline) {
   uint64_t START;
   TIME(START);
 
@@ -977,7 +1005,7 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
 }
 
 // FIXME: duplication with SLAMP_dependence_module_load_log template
-void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr, unsigned size) __attribute__((noinline)) {
+void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr, unsigned size) ATTRIBUTE(noinline) {
   TURN_OFF_CUSTOM_MALLOC;
 
   uint64_t START;
@@ -1014,7 +1042,7 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
 }
 
 template <unsigned size>
-inline void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
+void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline) {
   if (invokedepth > 1)
     instr = context;
   if (SLAMP_isBadAlloc(addr))
@@ -1112,8 +1140,7 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 }
 
 template <unsigned size>
-inline void SLAMP_load_ext(const uint64_t addr, const uint32_t bare_instr,
-                     uint64_t value) {
+void SLAMP_load_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline) {
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    load" << size << "_ext " << context << "," << bare_instr
@@ -1160,7 +1187,7 @@ void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) {
 }
 
 template <unsigned size>
-void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr) __attribute__((noinline)){
+void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr) ATTRIBUTE(noinline){
   uint64_t START;
   TIME(START);
 
@@ -1176,7 +1203,7 @@ void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr
 }
 
 // FIXME: duplication with SLAMP_dependence_module_store_log template
-void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr, unsigned size) __attribute__((noinline)){
+void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr, unsigned size) ATTRIBUTE(noinline){
   uint64_t START;
   TIME(START);
 
@@ -1192,7 +1219,7 @@ void SLAMP_dependence_module_store_log(const uint32_t instr, const uint64_t addr
 }
 
 template <unsigned size>
-inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) __attribute__((always_inline)) {
+void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRIBUTE(always_inline) {
   if (SLAMP_isBadAlloc(addr))
     return;
 
@@ -1206,6 +1233,7 @@ inline void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr
 
   if (REASON_MODULE)
     updateInstruction(instr, addr);
+
 #if DEBUG
   uint64_t *ptr = (uint64_t *)addr;
   if (__slamp_begin_trace)
@@ -1298,7 +1326,7 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
 }
 
 template <unsigned size>
-inline void SLAMP_store_ext(const uint64_t addr, const uint32_t bare_inst) {
+void SLAMP_store_ext(const uint64_t addr, const uint32_t bare_inst) ATTRIBUTE(always_inline) {
 #if DEBUG
   if (__slamp_begin_trace)
     std::cout << "    store" << size << "_ext " << context << "," << bare_inst

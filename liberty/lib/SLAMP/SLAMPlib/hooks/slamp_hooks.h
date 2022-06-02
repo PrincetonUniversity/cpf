@@ -1,6 +1,13 @@
 #ifndef SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 #define SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 
+#ifdef ITO_ENABLE
+#define ATTRIBUTE(x) __attribute__((x))
+#else
+#define ATTRIBUTE(x)
+#endif
+
+
 #include <bits/stdint-uintn.h>
 #include <clocale>
 #include <dirent.h>
@@ -57,29 +64,29 @@ void SLAMP_loop_exit();
 void SLAMP_push(const uint32_t instr);
 void SLAMP_pop();
 
-void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
-void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
-void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
-void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) __attribute__((always_inline));
-void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n)__attribute__((always_inline));;
+void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n) ATTRIBUTE(always_inline);;
 
-void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
-void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
-void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
-void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value)__attribute__((always_inline));
-void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n)__attribute__((always_inline));;
+void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline);
+void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n) ATTRIBUTE(always_inline);;
 
-void SLAMP_store1(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
-void SLAMP_store2(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
-void SLAMP_store4(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
-void SLAMP_store8(uint32_t instr, const uint64_t addr) __attribute__((always_inline));
-void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n)__attribute__((always_inline));;
+void SLAMP_store1(uint32_t instr, const uint64_t addr) ATTRIBUTE(always_inline);
+void SLAMP_store2(uint32_t instr, const uint64_t addr) ATTRIBUTE(always_inline);
+void SLAMP_store4(uint32_t instr, const uint64_t addr) ATTRIBUTE(always_inline);
+void SLAMP_store8(uint32_t instr, const uint64_t addr) ATTRIBUTE(always_inline);
+void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) ATTRIBUTE(always_inline);;
 
-void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
-void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
-void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
-void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst)__attribute__((always_inline));
-void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n)__attribute__((always_inline));;
+void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst) ATTRIBUTE(always_inline);
+void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst) ATTRIBUTE(always_inline);
+void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst) ATTRIBUTE(always_inline);
+void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst) ATTRIBUTE(always_inline);
+void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n) ATTRIBUTE(always_inline);;
 
 /* wrappers */
 static void* SLAMP_malloc_hook(size_t size, const void *caller);
