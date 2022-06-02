@@ -3,6 +3,7 @@
 // Single Loop Aware Memory Profiler.
 //
 
+#include <bits/stdint-uintn.h>
 #define DEBUG_TYPE "SLAMP"
 
 #define USE_PDG
@@ -727,14 +728,95 @@ void SLAMP::instrumentGlobalVars(Module &m, Function *ctor) {
   }
 }
 
+void SLAMP::findLifetimeMarkers(Value *i, set<const Value *> &already, std::vector<Instruction *> &starts, std::vector<Instruction *> &ends) {
+  if (already.counter(i))
+    return;
+  already.insert(i);
+
+  for (auto inst : i->materialized_use_begin()) {
+    User *user = &**inst;
+
+    if (BitCastInst *cast = dyn_cast<BitCastInst>(user))
+      findLifetimeMarkers(cast, already, starts, ends);
+
+    else if (IntrinsicInst *intrin = dyn_cast<IntrinsicInst>(user)) {
+      if(intrin->getIntrinsicID() == Intrinsic::lifetime_start)
+        starts.push_back(intrin);
+      else if(intrin->getIntrinsicID() == Intrinsic::lifetime_end)
+        ends.push_back(intrin);
+    }
+  }
+}
+
+void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Function *fcn) {
+
+  IRBuilder<> Builder(start);
+  Value *params[] = {};
+  CallInst *alloca_start_call = Builder.CreateCall(fcn, params);
+
+  return;
+}
+
+void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, Function *fcn) {
+
+  IRBuilder<> Builder(end);
+  Value *params[] = {};
+  CallInst *alloca_end_call = Builder.CreateCall(fcn, params);
+
+  return;
+}
+
 // For each alloca, find the lifetime starts and ends
 // and insert calls to `SLAMP_callback_stack_alloca` and
 // `SLAMP_callback_stack_free`
 void SLAMP::instrumentAllocas(Module &m) {
+  typedef std::vector<Instruction *> IList;
+  typedef std::set<const Value *> ValSet;
+  // List of instructions with allocas
+  IList allocas;
 
+  Type *stack_alloca_params[] = {};
+  Type *stack_free_params[] = {};
 
+  m.getOrInsertFunction("SLAMP_callback_stack_alloca", stack_alloca_params)
+  m.getOrInsertFunction("SLAMP_callback_stack_free", stack_free_params)
 
+  for (auto &f : *m) {
+    Function *F = &f;
+    for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; i++) {
+      Instruction *inst = &*i;
+      if (isa<AllocaInst>(inst)) {
+        AllocaInst *alloca_inst = cast<AllocaInst>(*inst);
+        allocas.push_back(alloca_inst);
+      }
+    }
+  }
+  
+  Fucntion *stack_alloca_fcn = m.getFunction("SLAMP_callback_stack_alloca");
+  Fucntion *stack_free_fcn = m.getFunction("SLAMP_callback_stack_free");
+
+  for (auto i : allocas) {
+    // Find explicit lifetime markers
+    IList starts, ends;
+    ValSet avoidInfiniteRecursion;
+    findLifetimeMarkers(i, avoidInfiniteRecursion, starts, ends);
+
+    if (starts.empty())
+      starts.push_back(i);
+    // Add start 
+    for (unsigned k = 0, N = starts.size(); k < N; k++) {
+      reportStartOfAllocaLifetime(i, starts[k], stack_alloca_fcn);
+    }
+    
+    // TODO: add end of function
+    if (ends.empty())
+    for (unsigned k = 0, N = ends.size(); k < N; k++) {
+      reportEndOfAllocaLifetime(i, ends[k], stack_free_fcn);
+    }
+  }
 }
+
+
 
 // /// FIXME: not called anywhere
 // void SLAMP::instrumentNonStandards(Module &m, Function *ctor) {
@@ -785,7 +867,7 @@ void SLAMP::instrumentAllocas(Module &m) {
 
 /// Add SLAMP_main_entry as the first thing in main
 void SLAMP::instrumentMainFunction(Module &m) {
-  for (Module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
+  for (module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
     Function *func = &*fi;
     if (func->getName() != "main")
       continue;
