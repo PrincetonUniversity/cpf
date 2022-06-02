@@ -54,11 +54,6 @@ public:
 
   unsigned get_ratio() { return ratio; }
 
-  size_t get_size(void *ptr) {
-    assert(size_map.find(ptr) != size_map.end());
-    return size_map[ptr];
-  }
-
   bool is_allocated(void *addr) {
     auto a = reinterpret_cast<uint64_t>(addr);
     uint64_t page = a & pagemask;
@@ -103,7 +98,8 @@ public:
     if (success) {
       for (uint64_t page = pagebegin; page <= pageend; page += pagesize)
         pages.insert(page);
-      size_map[addr] = size;
+      uint64_t pagebegin = a & pagemask;
+      uint64_t pageend = (a + size - 1) & pagemask;
 
       // return shadow_mem
       auto *shadow_addr = (uint64_t *)GET_SHADOW(a, ratio_shift);
@@ -114,6 +110,17 @@ public:
         munmap(shadow_page, pagesize * ratio);
       return nullptr;
     }
+  }
+
+  // free the shadow pages
+  void deallocate_pages(uint64_t page, unsigned cnt) {
+    munmap(reinterpret_cast<void *>(GET_SHADOW(page, ratio_shift)),
+           pagesize * ratio * cnt);
+
+    // fprintf(stderr, "deallocate_pages: %lx %d\n", GET_SHADOW(page, ratio_shift), cnt);
+
+    for (auto i = 0; i < cnt; i++, page += pagesize)
+      pages.erase(page);
   }
 
   /// for realloc; the dependence carries over
@@ -171,7 +178,6 @@ public:
 
 private:
   std::set<uint64_t> pages; // page table
-  std::unordered_map<void *, size_t> size_map;
 
   unsigned ratio; // (size of metadata) / (size of real data)
   unsigned ratio_shift;

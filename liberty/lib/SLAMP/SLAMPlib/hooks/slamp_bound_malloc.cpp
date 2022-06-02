@@ -7,6 +7,7 @@
 #include <cstring>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <unordered_map>
 
 // Round-up/-down to a power of two
 #define ROUND_DOWN(n, k) ((~((k)-1)) & (uint64_t)(n))
@@ -21,6 +22,9 @@
 #define RESET_SIZE(ptr, sz)                                                    \
   (*((size_t *)((uint64_t)(ptr) - sizeof(size_t))) = (sz))
 
+#define OBJ_BEGIN(ptr) ((uint64_t)(ptr) - 2 * sizeof(size_t))
+#define OBJ_END(ptr, size) ((uint64_t)(ptr) + size - 1)
+
 namespace slamp {
 
 const static size_t unit_sz = 0x100000000L;
@@ -30,6 +34,8 @@ static uint64_t heap_end;
 static uint64_t heap_next;
 static size_t pagesize;
 static size_t pagemask;
+
+std::unordered_map<uint64_t, unsigned> *page_alive_ptr_count;
 
 /* make bound_malloc to return the address from the next page */
 
@@ -64,12 +70,15 @@ void init_bound_malloc(void *heap_bound) {
   pagesize = getpagesize();
   pagemask = ~(pagesize - 1);
 
+  page_alive_ptr_count = new std::unordered_map<uint64_t, unsigned>();
+
   // fprintf(stderr, "init_bound_malloc %lx to %lx\n", heap_begin, heap_end);
 }
 
 void fini_bound_malloc() {
   for (uint64_t addr = heap_begin; addr < heap_end; addr += unit_sz)
     munmap((void *)addr, unit_sz);
+  delete page_alive_ptr_count;
 }
 
 size_t get_object_size(void *ptr) { return GET_SIZE(ptr); }
@@ -93,11 +102,68 @@ void *bound_malloc(size_t size) {
     exit(0);
   }
 
+  auto a = reinterpret_cast<uint64_t>(ret);
+  uint64_t pagebegin = OBJ_BEGIN(a) & pagemask;
+  uint64_t pageend = OBJ_END(a, size) & pagemask;
+
+  // increate the page alive count
+  for (auto page = pagebegin; page <= pageend; page += pagesize) {
+    auto it = page_alive_ptr_count->find(page);
+    if (it == page_alive_ptr_count->end()) {
+      page_alive_ptr_count->insert(std::make_pair(page, 1));
+    } else {
+      it->second++;
+    }
+  }
+
   return ret;
 }
 
-void bound_free(void *ptr) {
-  // do nothing for now
+bool bound_free(void *ptr, uint64_t &starting_page, unsigned &purge_cnt) {
+  
+  // free nullptr has no effect
+  if (ptr == nullptr)
+    return false;
+
+  // if not within heap bound, ignore it
+  auto a = reinterpret_cast<uint64_t>(ptr);
+  if (a < heap_begin || a >= heap_end)
+    return false;
+
+  bool purge = false;
+  purge_cnt = 0;
+
+  auto size = GET_SIZE(ptr);
+  uint64_t pagebegin = OBJ_BEGIN(a) & pagemask;
+  uint64_t pageend = OBJ_END(a, size) & pagemask;
+
+  // unmap the page if no pointer is alive
+  for (auto page = pagebegin; page <= pageend; page += pagesize) {
+
+    // update the map
+    auto it = page_alive_ptr_count->find(page);
+    if (it == page_alive_ptr_count->end()) {
+      continue;
+    }
+    it->second--;
+
+    // no alive pointer left
+    if (it->second == 0) {
+      // we can unmap if the heap_next has passed the page end
+      if (heap_next >= page + pagesize) {
+        munmap((void *)page, pagesize);
+        purge_cnt++;
+
+        // fprintf(stderr, "bound_free: unmap %lx\n", page);
+        if (!purge) {
+          purge = true;
+          starting_page = page;
+        }
+      }
+    }
+  }
+
+  return purge;
 }
 
 void *bound_calloc(size_t num, size_t size) {
@@ -122,7 +188,11 @@ void *bound_realloc(void *ptr, size_t size) {
        implementation (it may or may not be a null pointer), but the returned
        pointer shall not be used to dereference an object in any case.
      */
-    bound_free(ptr);
+
+    // FIXME: free the memory
+    uint64_t starting_page;
+    unsigned purge_cnt;
+    bound_free(ptr, starting_page, purge_cnt);
     return nullptr;
   }
 
