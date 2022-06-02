@@ -1006,8 +1006,6 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
 
 // FIXME: duplication with SLAMP_dependence_module_load_log template
 void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_instr, const uint64_t value, const uint64_t addr, unsigned size) ATTRIBUTE(noinline) {
-  TURN_OFF_CUSTOM_MALLOC;
-
   uint64_t START;
 
   // FIXME: beware of the malloc hook being changed at this point, any
@@ -1037,8 +1035,6 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
   if (noDep) {
     updateReasonMap(instr, bare_instr, addr, 0, size);
   }
-
-  TURN_ON_CUSTOM_MALLOC;
 }
 
 template <unsigned size>
@@ -1127,7 +1123,9 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (DEPENDENCE_MODULE) {
     // only need to check once
     LOCALWRITE(addr) {
+      TURN_OFF_CUSTOM_MALLOC;
       SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
+      TURN_ON_CUSTOM_MALLOC;
     }
   }
 
