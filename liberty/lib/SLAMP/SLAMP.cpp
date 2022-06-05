@@ -729,11 +729,12 @@ void SLAMP::instrumentGlobalVars(Module &m, Function *ctor) {
 }
 
 void SLAMP::findLifetimeMarkers(Value *i, set<const Value *> &already, std::vector<Instruction *> &starts, std::vector<Instruction *> &ends) {
-  if (already.counter(i))
+  if (already.count(i))
     return;
   already.insert(i);
 
-  for (auto inst : i->materialized_use_begin()) {
+  //for (auto inst : i->materialized_use_begin()) {
+  for (Value::user_iterator inst=i->user_begin(), end=i->user_end(); inst != end; ++inst) {
     User *user = &**inst;
 
     if (BitCastInst *cast = dyn_cast<BitCastInst>(user))
