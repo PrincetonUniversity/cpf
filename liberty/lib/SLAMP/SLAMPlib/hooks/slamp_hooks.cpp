@@ -104,6 +104,10 @@ void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t 
 // FIXME: implement the callback
 void slamp_global_callback(const char* name, uint64_t addr, uint64_t size) {}
 
+//FIXME: implement alloca callback functions
+void SLAMP_callback_stack_alloca(uint64_t size) {};
+void SLAMP_callback_stack_freea(void) {};
+
 // Callback function pointers
 std::list<AccessCallbackTy> *access_callbacks;
   // &slamp_access_callback_constant_addr,

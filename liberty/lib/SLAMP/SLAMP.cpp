@@ -751,8 +751,13 @@ void SLAMP::findLifetimeMarkers(Value *i, set<const Value *> &already, std::vect
 void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Function *fcn) {
 
   IRBuilder<> Builder(start);
-  Value *params[] = {};
-  CallInst *alloca_start_call = Builder.CreateCall(fcn, params);
+  Value *array_sz = inst->getArraySize();
+
+  Value *params[1] = {array_sz};
+
+  FunctionType *fty = FunctionType::get(Void, I64, false);
+  
+  CallInst *alloca_start_call = Builder.CreateCall(fty, fcn, params);
 
   return;
 }
@@ -760,8 +765,12 @@ void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Fu
 void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, Function *fcn) {
 
   IRBuilder<> Builder(end);
-  Value *params[] = {};
-  CallInst *alloca_end_call = Builder.CreateCall(fcn, params);
+  //Value *params[] = {};
+  //Type *params_type[] = {};
+
+  FunctionType *fty = FunctionType::get(Void, false);
+  
+  CallInst *alloca_end_call = Builder.CreateCall(fty, fcn);
 
   return;
 }
@@ -773,20 +782,17 @@ void SLAMP::instrumentAllocas(Module &m) {
   typedef std::vector<Instruction *> IList;
   typedef std::set<const Value *> ValSet;
   // List of instructions with allocas
-  IList allocas;
+  std::vector<AllocaInst*> allocas;
 
-  Type *stack_alloca_params[] = {};
-  Type *stack_free_params[] = {};
+  m.getOrInsertFunction("SLAMP_callback_stack_alloca", Void, I64);
+  m.getOrInsertFunction("SLAMP_callback_stack_free", Void);
 
-  m.getOrInsertFunction("SLAMP_callback_stack_alloca", stack_alloca_params);
-  m.getOrInsertFunction("SLAMP_callback_stack_free", stack_free_params);
-
-  for (auto &f : *m) {
+  for (auto &f : m) {
     Function *F = &f;
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; i++) {
       Instruction *inst = &*i;
       if (isa<AllocaInst>(inst)) {
-        AllocaInst *alloca_inst = cast<AllocaInst>(*inst);
+        AllocaInst *alloca_inst = cast<AllocaInst>(inst);
         allocas.push_back(alloca_inst);
       }
     }
@@ -867,8 +873,9 @@ void SLAMP::instrumentAllocas(Module &m) {
 
 /// Add SLAMP_main_entry as the first thing in main
 void SLAMP::instrumentMainFunction(Module &m) {
-  for (module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
-    Function *func = &*fi;
+//  for (module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
+  for(auto &fi : m) {
+    Function *func = &fi;
     if (func->getName() != "main")
       continue;
 
