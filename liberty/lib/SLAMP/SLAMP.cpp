@@ -762,16 +762,19 @@ void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Fu
   return;
 }
 
-void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, Function *fcn) {
+void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, bool empty, Function *fcn) {
+    //Value *params[] = {};
+    //Type *params_type[] = {};
+    FunctionType *fty = FunctionType::get(Void, false);
 
-  IRBuilder<> Builder(end);
-  //Value *params[] = {};
-  //Type *params_type[] = {};
-
-  FunctionType *fty = FunctionType::get(Void, false);
-  
-  CallInst *alloca_end_call = Builder.CreateCall(fty, fcn);
-
+  if(!empty) {
+    IRBuilder<> Builder(end);
+    CallInst *alloca_end_call = Builder.CreateCall(fty, fcn);
+  }
+  else {
+    auto *F = inst->getFunction();
+    //IRBuilder<> Builder();
+  }
   return;
 }
 
@@ -787,6 +790,7 @@ void SLAMP::instrumentAllocas(Module &m) {
   m.getOrInsertFunction("SLAMP_callback_stack_alloca", Void, I64);
   m.getOrInsertFunction("SLAMP_callback_stack_free", Void);
 
+  // Collect all alloca instructions
   for (auto &f : m) {
     Function *F = &f;
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; i++) {
@@ -805,20 +809,21 @@ void SLAMP::instrumentAllocas(Module &m) {
     // Find explicit lifetime markers
     IList starts, ends;
     ValSet avoidInfiniteRecursion;
+    bool ends_empty = 0;
     findLifetimeMarkers(i, avoidInfiniteRecursion, starts, ends);
 
     if (starts.empty())
       starts.push_back(i);
-    // Add start 
-    for (unsigned k = 0, N = starts.size(); k < N; k++) {
+    // Report start of lifetime
+    for (unsigned k = 0, N = starts.size(); k < N; k++) 
       reportStartOfAllocaLifetime(i, starts[k], stack_alloca_fcn);
-    }
     
-    // TODO: add end of function
+    // TODO: how do we define end-of-fucntion?
     if (ends.empty())
-    for (unsigned k = 0, N = ends.size(); k < N; k++) {
-      reportEndOfAllocaLifetime(i, ends[k], stack_free_fcn);
-    }
+      reportEndOfAllocaLifetime(i, NULL, 1, stack_free_fcn);
+    // Report end of lifetime
+    for (unsigned k = 0, N = ends.size(); k < N; k++) 
+      reportEndOfAllocaLifetime(i, ends[k], 0, stack_free_fcn);
   }
 }
 
