@@ -931,8 +931,7 @@ void SLAMP::instrumentLoopStartStop(Module &m, Loop *loop) {
     else
       pt2 = InstInsertPt::Before(exits[i]->getFirstNonPHI());
 
-    ci->copyMetadata(*pt2.getPosition());
-    pt2 << ci;
+    pt2 << updateDebugInfo(ci, pt2.getPosition(), m);
 
     s.insert(exits[i]);
   }
@@ -1071,7 +1070,7 @@ void SLAMP::instrumentMemIntrinsics(Module &m, MemIntrinsic *mi) {
     args.push_back(cs.getArgument(2));
   }
 
-  CallInst::Create(fcn, args, "", mi);
+  updateDebugInfo(CallInst::Create(fcn, args, "", mi), mi, m);
 }
 
 /// handle `llvm.lifetime.start/end.p0i8`
