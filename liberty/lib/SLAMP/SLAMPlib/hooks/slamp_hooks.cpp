@@ -1441,7 +1441,7 @@ void  SLAMP_free(void* ptr)
   unsigned purge_cnt;
   bool purge = slamp::bound_free(ptr, starting_page, purge_cnt);
 
-  if (purge_cnt)
+  if (purge)
     smmap->deallocate_pages(starting_page, purge_cnt);
 
   __malloc_hook = SLAMP_malloc_hook;

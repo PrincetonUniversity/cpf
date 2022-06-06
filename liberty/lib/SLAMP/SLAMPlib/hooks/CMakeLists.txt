@@ -7,8 +7,8 @@ set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_LINKER "ld.gold")
 
 # Compilation flags
-set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-Wl,-save-temps -std=c++17 -Wno-inline -O3 -fexceptions")# -emit-llvm")
-# set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-flto -Wl,-save-temps -std=c++17 -Wno-inline -O3 -fexceptions")# -emit-llvm")
+# set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-Wl,-save-temps -std=c++17 -Wno-inline -O3 -fexceptions")# -emit-llvm")
+set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-flto -Wl,-save-temps -std=c++17 -Wno-inline -O3 -fexceptions")# -emit-llvm")
 set(PassName "slamp_hooks")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
