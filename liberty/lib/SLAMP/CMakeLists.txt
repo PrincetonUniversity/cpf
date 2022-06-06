@@ -4,6 +4,8 @@ file(GLOB SRCS
 )
 
 # Compilation flags
+add_compile_options(-DITO_ENABLE)
+
 set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-std=c++17 -fPIC -g -Wall")
 set(PassName "SLAMP")
 

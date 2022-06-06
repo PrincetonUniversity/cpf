@@ -3,6 +3,7 @@
 // Single Loop Aware Memory Profiler.
 //
 
+#include "llvm/IR/LLVMContext.h"
 #define DEBUG_TYPE "SLAMP"
 
 #define USE_PDG
@@ -18,6 +19,7 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 
@@ -159,6 +161,26 @@ Value * getGlobalName(GlobalVariable *gv)
   Module *mod = gv->getParent();
   std::string name = "global " + gv->getName().str();
   return getStringLiteralExpression( *mod, name);
+}
+
+// copy debug information or create a bogus one
+Instruction* updateDebugInfo(Instruction *inserted, Instruction *location, Module &m) {
+  if (location->getMetadata(LLVMContext::MD_dbg)) {
+    inserted->copyMetadata(*location, ArrayRef<unsigned>{LLVMContext::MD_dbg});
+    // inserted->setDebugLoc(location->getDebugLoc());
+  } else {
+    auto scope = location->getParent()->getParent()->getSubprogram();
+    // if scope is empty, create a bogus one
+    if (scope == nullptr) {
+      errs() << "Warning: no scope for " << *location << ":"<<location->getParent()->getParent()->getName() << "\n";
+      scope = m.getFunction("main")->getSubprogram();
+    }
+    DILocation *loc = DILocation::get(m.getContext(), 0, 0, scope);
+
+    inserted->setMetadata(LLVMContext::MD_dbg, loc);
+  }
+
+  return inserted;
 }
 
 bool SLAMP::runOnModule(Module &m) {
@@ -843,7 +865,8 @@ void SLAMP::instrumentMainFunction(Module &m) {
 
     // CallInst *rsp = CallInst::Create(get_rsp, "");
 
-    pt << CallInst::Create(f_main_entry, main_args, "");
+    
+    pt << updateDebugInfo(CallInst::Create(f_main_entry, main_args, ""), pt.getPosition(), m);
   }
 }
 
@@ -907,6 +930,8 @@ void SLAMP::instrumentLoopStartStop(Module &m, Loop *loop) {
       pt2 = InstInsertPt::After(exits[i]->getFirstNonPHI());
     else
       pt2 = InstInsertPt::Before(exits[i]->getFirstNonPHI());
+
+    ci->copyMetadata(*pt2.getPosition());
     pt2 << ci;
 
     s.insert(exits[i]);
@@ -1177,7 +1202,7 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
       args.push_back(castToInt64Ty(li, pt)); // value
     }
 
-    pt << CallInst::Create(lf[index], args);
+    pt << updateDebugInfo(CallInst::Create(lf[index], args), li, m);
   } else if (auto *si = dyn_cast<StoreInst>(inst)) {
     // if the stored pointer is a global
     if (isa<GlobalVariable>(si->getPointerOperand())) {
@@ -1201,8 +1226,7 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
     if (index == 4) {
       args.push_back(ConstantInt::get(I64, size));
     }
-
-    pt << CallInst::Create(sf[index], args);
+    pt << updateDebugInfo(CallInst::Create(sf[index], args), si, m);
   } else if (auto *ci = dyn_cast<CallBase>(inst)) {
     // need to handle call and invoke
     vector<Value *> args;
@@ -1210,20 +1234,21 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
     args.push_back(ConstantInt::get(I32, id));
 
     InstInsertPt pt = InstInsertPt::Before(ci);
-    pt << CallInst::Create(push, args);
+    pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
 
     if (isa<CallInst>(inst)) {
       pt = InstInsertPt::After(ci);
-      pt << CallInst::Create(pop);
+      pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
     } else if (auto *invokeI = dyn_cast<InvokeInst>(inst)) {
       // for invoke, need to find the two paths and add pop
-      auto insertPop = [&pop](BasicBlock* entry){
+      auto insertPop = [&pop, &m](BasicBlock* entry){
         InstInsertPt pt;
         if (isa<LandingPadInst>(entry->getFirstNonPHI()))
           pt = InstInsertPt::After(entry->getFirstNonPHI());
         else
           pt = InstInsertPt::Before(entry->getFirstNonPHI());
-        pt << CallInst::Create(pop);
+
+        pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
       };
 
       insertPop(invokeI->getNormalDest());
@@ -1298,7 +1323,8 @@ void SLAMP::instrumentExtInst(Module &m, Instruction *inst, uint32_t id) {
       args.push_back(castToInt64Ty(li, pt));
     }
 
-    pt << CallInst::Create(lf[index], args);
+    pt << updateDebugInfo(CallInst::Create(lf[index], args), li, m);
+
   } else if (auto *si = dyn_cast<StoreInst>(inst)) {
     // if the stored pointer is a global
     if (isa<GlobalVariable>(si->getPointerOperand())) {
@@ -1323,7 +1349,7 @@ void SLAMP::instrumentExtInst(Module &m, Instruction *inst, uint32_t id) {
       args.push_back(ConstantInt::get(I64, size));
     }
 
-    pt << CallInst::Create(sf[index], args);
+    pt << updateDebugInfo(CallInst::Create(sf[index], args), si, m);
   }
 }
 
@@ -1342,9 +1368,9 @@ void SLAMP::addWrapperImplementations(Module &m) {
       m.getOrInsertFunction("__errno_location", I32->getPointerTo())
           .getCallee());
   InstInsertPt pt = InstInsertPt::Beginning(entry);
-  CallInst *ci = CallInst::Create(c0, "");
+  auto ci = updateDebugInfo(CallInst::Create(c0, ""), pt.getPosition(), m);
   pt << ci;
-  pt << ReturnInst::Create(c, ci);
+  pt << updateDebugInfo(ReturnInst::Create(c, ci), pt.getPosition(), m);
 }
 
 } // namespace liberty::slamp
