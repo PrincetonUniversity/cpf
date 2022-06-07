@@ -27,6 +27,17 @@
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 
+extern bool DEPENDENCE_MODULE; // = true;
+extern bool POINTS_TO_MODULE; // = false;
+extern bool DISTANCE_MODULE; // = false;
+extern bool CONSTANT_ADDRESS_MODULE; // = false;
+extern bool LINEAR_ADDRESS_MODULE; // = false;
+extern bool CONSTANT_VALUE_MODULE; // = false;
+extern bool LINEAR_VALUE_MODULE; // = false;
+extern bool REASON_MODULE; // = false;
+extern bool TRACE_MODULE; // = false;
+extern bool LOCALWRITE_MODULE;
+
 // debugging tools
 #if DEBUG
 extern uint8_t __slamp_begin_trace = 0;
@@ -155,7 +166,10 @@ void* SLAMP_realloc(void* ptr, size_t size)
   size_t copy_size = (orig_size < size) ? orig_size : size;
   SLAMP_memcpy(result, ptr, copy_size);
   //memcpy(result, ptr, copy_size);
-  smmap->copy(result, ptr, copy_size);
+
+  if (DEPENDENCE_MODULE || POINTS_TO_MODULE) {
+    smmap->copy(result, ptr, copy_size);
+  }
 
   // free original allocation
   SLAMP_free(ptr);
