@@ -910,7 +910,7 @@ void SLAMP::instrumentLoopStartStop(Module &m, Loop *loop) {
       funcphi->addIncoming(f_loop_invoke, pred);
   }
 
-  CallInst::Create(funcphi, "", header->getFirstNonPHI());
+  updateDebugInfo(CallInst::Create(funcphi, "", header->getFirstNonPHI()), header->getFirstNonPHI(), m);
 
   // Add `SLAMP_loop_exit` to all loop exits
   SmallVector<BasicBlock *, 8> exits;
@@ -967,10 +967,16 @@ void SLAMP::instrumentInstructions(Module &m, Loop *loop) {
       if (auto *mi = dyn_cast<MemIntrinsic>(&inst)) {
         instrumentMemIntrinsics(m, mi);
       } else if (loopinsts.find(&inst) != loopinsts.end()) {
-        instrumentLoopInst(m, &inst, Namer::getInstrId(&inst));
+        auto id = Namer::getInstrId(&inst);
+        if (id == -1)
+          continue; // it's an instrumented instruction, skip
+        instrumentLoopInst(m, &inst, id);
       } else {
         // instrumentExtInst(m, &inst, sid.getFuncLocalIDWithInst(&*fi, &inst));
-        instrumentExtInst(m, &inst, Namer::getInstrId(&inst));
+        auto id = Namer::getInstrId(&inst);
+        if (id == -1)
+          continue; // it's an instrumented instruction, skip
+        instrumentExtInst(m, &inst, id);
       }
     }
   }
