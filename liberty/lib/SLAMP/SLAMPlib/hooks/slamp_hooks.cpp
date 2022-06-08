@@ -33,11 +33,13 @@
 #define TURN_OFF_CUSTOM_MALLOC do {\
   __malloc_hook = old_malloc_hook; \
   __free_hook = old_free_hook; \
+  __memalign_hook = old_memalign_hook; \
 } while (false);
 
 #define TURN_ON_CUSTOM_MALLOC do { \
   __malloc_hook = SLAMP_malloc_hook; \
   __free_hook = SLAMP_free_hook; \
+  __memalign_hook = SLAMP_memalign_hook; \
 } while (false);
 
 // shadow memory parameters
@@ -627,11 +629,12 @@ static void __slamp_sigsegv_handler(int sig, siginfo_t *siginfo, void *dummy)
 }
 
 
-static void *(*old_malloc_hook)(unsigned long, const void *);
+static void *(*old_malloc_hook)(size_t, const void *);
 static void (*old_free_hook)(void *, const void *);
+static void *(*old_memalign_hook)(size_t, size_t, const void *);
 
 static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
-  auto ptr = SLAMP_malloc(size, context);
+  auto ptr = SLAMP_malloc(size, context, 16);
 
   __slamp_malloc_count++;
   return ptr;
@@ -640,6 +643,12 @@ static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
 static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
   SLAMP_free(ptr);
   __slamp_free_count++;
+}
+
+static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller) {
+  auto ptr = SLAMP_malloc(size, context, alignment);
+  __slamp_malloc_count++;
+  return ptr;
 }
 
 
@@ -882,8 +891,9 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
   // replace hooks
   old_malloc_hook = __malloc_hook;
   old_free_hook = __free_hook;
-  __malloc_hook = SLAMP_malloc_hook;
-  __free_hook = SLAMP_free_hook;
+  old_memalign_hook = __memalign_hook;
+
+  TURN_ON_CUSTOM_MALLOC;
 }
 
 /// update the invocation count
@@ -1371,14 +1381,14 @@ void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n) {
  * External library wrappers
  */
 
-void* SLAMP_malloc(size_t size, uint32_t instr)
+void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
 {
   TURN_OFF_CUSTOM_MALLOC;
 
   uint64_t START;
   TIME(START);
   //fprintf(stderr, "SLAMP_malloc, size: %lu\n", size);
-  void* result = (void*)slamp::bound_malloc(size);
+  void* result = (void*)slamp::bound_malloc(size, alignment);
   unsigned count = 0;
 
   while( true )

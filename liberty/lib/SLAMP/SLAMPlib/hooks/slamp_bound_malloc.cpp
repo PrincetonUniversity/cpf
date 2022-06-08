@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <unordered_map>
+#include <slamp_bound_malloc.h>
 
 // Round-up/-down to a power of two
 #define ROUND_DOWN(n, k) ((~((k)-1)) & (uint64_t)(n))
@@ -83,23 +84,28 @@ void fini_bound_malloc() {
 
 size_t get_object_size(void *ptr) { return GET_SIZE(ptr); }
 
-void *bound_malloc(size_t size) {
+void *bound_malloc(size_t size, size_t alignment) {
   // allocation unit size
-  size_t sz = ROUND_UP(size, ALIGNMENT);
+  size_t sz = ROUND_UP(size, alignment);
 
-  // FIXME: offset 8 so the return address can be 16 byte aligned
-  heap_next += sizeof(size_t);
+  // if alignment is not power of two, error and exit
+  if (alignment & (alignment - 1)) {
+    fprintf(stderr, "alignment must be power of two\n");
+    exit(-1);
+  }
+
+  size_t ret = ROUND_UP(heap_next + sizeof(size_t), alignment);
+
+  heap_next = ret - sizeof(size_t);
   // store size of the unit
   auto *sz_ptr = (size_t *)(heap_next);
   *sz_ptr = sz;
-  heap_next += sizeof(size_t);
 
-  void *ret = (size_t *)(heap_next);
-  heap_next += sz;
+  heap_next += sizeof(size_t) + sz;
 
   if (heap_next >= heap_end) {
     perror("Error: bound_malloc, not enough memory\n");
-    exit(0);
+    exit(-1);
   }
 
   auto a = reinterpret_cast<uint64_t>(ret);
@@ -116,7 +122,7 @@ void *bound_malloc(size_t size) {
     }
   }
 
-  return ret;
+  return (void *)ret;
 }
 
 bool bound_free(void *ptr, uint64_t &starting_page, unsigned &purge_cnt) {

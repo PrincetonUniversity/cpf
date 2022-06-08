@@ -11,7 +11,7 @@ void fini_bound_malloc();
 
 size_t get_object_size(void* ptr);
 
-void* bound_malloc(size_t size);
+void* bound_malloc(size_t size, size_t alignment=16);
 bool bound_free(void *ptr, uint64_t &starting_page, unsigned &purge_cnt);
 void* bound_calloc(size_t num, size_t size);
 void* bound_realloc(void* ptr, size_t size);
