@@ -752,11 +752,18 @@ void SLAMP::findLifetimeMarkers(Value *i, set<const Value *> &already, std::vect
 void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Function *fcn) {
 
   IRBuilder<> Builder(start);
+  // input of callback function
   Value *array_sz = inst->getArraySize();
+  // get address of allocaa
+  Value *addr = (Value*)inst->getType()->getAddressSpace();
+  // get instruction ID of lifetime start
+  Value *start_value = (Value*)Namer::getInstrId(start);
 
-  Value *params[1] = {array_sz};
+  Type* ptype[3] = { I64, I32, I64 };
 
-  FunctionType *fty = FunctionType::get(Void, I64, false);
+  Value *params[3] = {array_sz, start_value, addr};
+
+  FunctionType *fty = FunctionType::get(Void, ptype, false);
   
   CallInst *alloca_start_call = Builder.CreateCall(fty, fcn, params);
 
@@ -773,6 +780,7 @@ void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, bool e
     CallInst *alloca_end_call = Builder.CreateCall(fty, fcn);
   }
   else {
+    //TODO:search for terminator block 
     auto *F = inst->getFunction();
     //IRBuilder<> Builder();
   }
