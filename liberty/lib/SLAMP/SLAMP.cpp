@@ -71,9 +71,15 @@ static cl::opt<bool> IgnoreCall("slamp-ignore-call", cl::init(false),
                                        cl::NotHidden,
                                        cl::desc("Ignore dependences from call"));
 
+// targeting DOALL
 static cl::opt<bool> IsDOALL("slamp-doall", cl::init(false),
                                        cl::NotHidden,
                                        cl::desc("Doall"));
+
+// targeting DSWP
+static cl::opt<bool> IsDSWP("slamp-dswp", cl::init(false),
+                                       cl::NotHidden,
+                                       cl::desc("DSWP"));
 
 // whether to turn on dependence module
 static cl::opt<bool> UseDependenceModule("slamp-dependence-module", cl::init(true), cl::NotHidden, cl::desc("Use dependence module"));
@@ -396,15 +402,18 @@ bool SLAMP::runOnModule(Module &m) {
   };
 
   // add a constant variable "DEPENDENCE_MODULE" and set to false
-  setGlobalModule("POINTS_TO_MODULE", UsePointsToModule);
-  setGlobalModule("DEPENDENCE_MODULE", UseDependenceModule);
-  setGlobalModule("CONSTANT_VALUE_MODULE", UseConstantValueModule);
-  setGlobalModule("LINEAR_VALUE_MODULE", UseLinearValueModule);
+#ifdef ITO_ENABLE
   setGlobalModule("CONSTANT_ADDRESS_MODULE", UseConstantAddressModule);
+  setGlobalModule("CONSTANT_VALUE_MODULE", UseConstantValueModule);
   setGlobalModule("LINEAR_ADDRESS_MODULE", UseLinearAddressModule);
-  setGlobalModule("TRACE_MODULE", UseTraceModule);
-  setGlobalModule("REASON_MODULE", UseReasonModule);
+  setGlobalModule("LINEAR_VALUE_MODULE", UseLinearValueModule);
   setGlobalModule("LOCALWRITE_MODULE", UseLocalWriteModule);
+  setGlobalModule("REASON_MODULE", UseReasonModule);
+  setGlobalModule("TRACE_MODULE", UseTraceModule);
+
+  setGlobalModule("DEPENDENCE_MODULE", UseDependenceModule);
+  setGlobalModule("POINTS_TO_MODULE", UsePointsToModule);
+#endif
 
   Function *ctor = instrumentConstructor(m);
   instrumentDestructor(m);
