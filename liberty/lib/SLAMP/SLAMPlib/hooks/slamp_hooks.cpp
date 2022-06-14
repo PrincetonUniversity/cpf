@@ -105,7 +105,8 @@ void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t 
 void slamp_global_callback(const char* name, uint64_t addr, uint64_t size) {}
 
 // TODO: activate shadow memory (SLAMP_malloc)
-void SLAMP_callback_stack_alloca(uint64_t size, uint32_t instr, uint64_t addr) {
+void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32_t instr, uint64_t addr) {
+  uint64_t size = array_size*type_size;
 
   if (DEPENDENCE_MODULE || POINTS_TO_MODULE) {
     // Get pre-allocated shadow memory
