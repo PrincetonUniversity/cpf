@@ -121,6 +121,26 @@ void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t 
 // FIXME: implement the callback
 void slamp_global_callback(const char* name, uint64_t addr, uint64_t size) {}
 
+// TODO: activate shadow memory (SLAMP_malloc)
+void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32_t instr, uint64_t addr) {
+  uint64_t size = array_size*type_size;
+
+  if (DEPENDENCE_MODULE || POINTS_TO_MODULE) {
+    // Get pre-allocated shadow memory
+    void* shadow = (void*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+    if (shadow && POINTS_TO_MODULE) {
+      TS *s = (TS *)shadow;
+      TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+      for (auto i = 0; i < size; i++)
+        s[i] = ts;
+    }
+  }
+    return;
+}
+
+
+void SLAMP_callback_stack_free(void) {}
+
 // Callback function pointers
 std::list<AccessCallbackTy> *access_callbacks;
   // &slamp_access_callback_constant_addr,
@@ -392,6 +412,7 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
     }
 
     if (cond && tss[i] != 0) {
+      //create set of objects for each load/store
       (*pointsToMap)[instr].insert(tss[i]);
     }
   }
@@ -811,7 +832,7 @@ void SLAMP_fini(const char* filename)
       for (auto &it : *pointsToMap) {
         ofs << it.first << ": "; // instruction ID
         for (auto &it2 : it.second) { // the set of allocation units
-          ofs << it2 << " ";
+          ofs << "instr - "<< GET_INSTR(it2) << " iter - " << GET_ITER(it2) << " invoc - " << GET_INVOC(it2) << "\n";
         }
         ofs << "\n";
       }
@@ -1388,7 +1409,12 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
   uint64_t START;
   TIME(START);
   //fprintf(stderr, "SLAMP_malloc, size: %lu\n", size);
+<<<<<<< HEAD
   void* result = (void*)slamp::bound_malloc(size, alignment);
+=======
+  // main functionality of malloc
+  void* result = (void*)slamp::bound_malloc(size);
+>>>>>>> yebin_stack
   unsigned count = 0;
 
   while( true )
@@ -1402,6 +1428,7 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
 
     // if dependence modules is turned on
     if (DEPENDENCE_MODULE || POINTS_TO_MODULE) {
+      //create shadoow mem space
       void* shadow = smmap->allocate(result, size);
       if (shadow)
       {
@@ -1410,8 +1437,11 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
 
         if (POINTS_TO_MODULE) {
           // initialize all shadow memory to context
+          // cast as timestamp
           TS *s = (TS *)shadow;
+          // log all data into sigle TS
           TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+          //8 bytes per byte TODO: can we reduce this?
           for (auto i = 0; i < size; i++)
             s[i] = ts;
         }

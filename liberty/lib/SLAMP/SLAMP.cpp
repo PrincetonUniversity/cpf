@@ -758,14 +758,133 @@ void SLAMP::instrumentGlobalVars(Module &m, Function *ctor) {
   }
 }
 
+void SLAMP::findLifetimeMarkers(Value *i, set<const Value *> &already, std::vector<Instruction *> &starts, std::vector<Instruction *> &ends) {
+  if (already.count(i))
+    return;
+  already.insert(i);
+
+  for (Value::user_iterator inst=i->user_begin(), end=i->user_end(); inst != end; ++inst) {
+    User *user = &**inst;
+
+    if (BitCastInst *cast = dyn_cast<BitCastInst>(user))
+      findLifetimeMarkers(cast, already, starts, ends);
+
+    else if (IntrinsicInst *intrin = dyn_cast<IntrinsicInst>(user)) {
+      if(intrin->getIntrinsicID() == Intrinsic::lifetime_start)
+        starts.push_back(intrin);
+      else if(intrin->getIntrinsicID() == Intrinsic::lifetime_end)
+        ends.push_back(intrin);
+    }
+  }
+}
+
+void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Function *fcn, const DataLayout &dl) {
+
+  IRBuilder<> Builder(start->getNextNode());
+  // input of callback function
+  // TODO: get alloca size: current function gets number of allocation items
+  Value *array_sz = inst->getArraySize();
+  if(array_sz->getType() != I64)
+    array_sz = Builder.CreateIntCast(array_sz, I64, false); 
+
+  auto type_sz = dl.getTypeStoreSize(inst->getAllocatedType());
+  // get address of allocaa by executina allocainst
+  Value *addr = static_cast<Value*>(inst);
+  //Instruction *ptrcast = CastInst::CreatePointerCast(addr, I64);
+  //Value* return_addr = Builder.CreatePointerCast(addr, I64);
+  Value* ptrcast = Builder.CreatePointerCast(addr, I64);
+
+  // get instruction ID of lifetime start
+  //Value *start_value = Namer::getInstrId(start);
+
+  Type* ptype[4] = { I64, I64, I32, I64 };
+
+  vector<Value*> args;
+  args.push_back(array_sz);
+  args.push_back(ConstantInt::get(I64, type_sz));
+  args.push_back(ConstantInt::get(I32, Namer::getInstrId(start)));
+  args.push_back(ptrcast);
+  //Value *params[3] = {array_sz, start_value, return_addr};
+
+  FunctionType *fty = FunctionType::get(Void, ptype, false);
+  
+  CallInst *alloca_start_call = Builder.CreateCall(fty, fcn, args);
+
+  return;
+}
+
+void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, bool empty, Function *fcn) {
+    //Value *params[] = {};
+    //Type *params_type[] = {};
+    FunctionType *fty = FunctionType::get(Void, false);
+
+  if(!empty) {
+    IRBuilder<> Builder(end);
+    CallInst *alloca_end_call = Builder.CreateCall(fty, fcn);
+  }
+  else {
+    //TODO:search for terminator block 
+    auto *F = inst->getFunction();
+    //IRBuilder<> Builder();
+  }
+  return;
+}
+
 // For each alloca, find the lifetime starts and ends
 // and insert calls to `SLAMP_callback_stack_alloca` and
 // `SLAMP_callback_stack_free`
 void SLAMP::instrumentAllocas(Module &m) {
+  const DataLayout &dl = m.getDataLayout();
 
+  typedef std::vector<Instruction *> IList;
+  typedef std::set<const Value *> ValSet;
+  // List of instructions with allocas
+  std::vector<AllocaInst*> allocas;
 
+  auto *stack_alloca_fcn = cast<Function>(
+      m.getOrInsertFunction("SLAMP_callback_stack_alloca", Void, I64, I64, I32, I64)
+      .getCallee());
+  auto *stack_free_fcn = cast<Function>(
+      m.getOrInsertFunction("SLAMP_callback_stack_free", Void)
+      .getCallee());
 
+  // Collect all alloca instructions
+  for (auto &f : m) {
+    Function *F = &f;
+    for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; i++) {
+      Instruction *inst = &*i;
+      if (isa<AllocaInst>(inst)) {
+        AllocaInst *alloca_inst = cast<AllocaInst>(inst);
+        allocas.push_back(alloca_inst);
+      }
+    }
+  }
+  Type* ptype[4] = { I64, I64, I32, I64 };
+  FunctionType *fty = FunctionType::get(Void, ptype, false);
+  
+  for (auto i : allocas) {
+    // Find explicit lifetime markers
+    IList starts, ends;
+    ValSet avoidInfiniteRecursion;
+    bool ends_empty = 0;
+    findLifetimeMarkers(i, avoidInfiniteRecursion, starts, ends);
+
+    if (starts.empty())
+      starts.push_back(i);
+    // Report start of lifetime
+    for (unsigned k = 0, N = starts.size(); k < N; k++) 
+      reportStartOfAllocaLifetime(i, starts[k], stack_alloca_fcn, dl);
+    
+    // TODO: how do we define end-of-fucntion?
+    if (ends.empty())
+      reportEndOfAllocaLifetime(i, NULL, 1, stack_free_fcn);
+    // Report end of lifetime
+    for (unsigned k = 0, N = ends.size(); k < N; k++) 
+      reportEndOfAllocaLifetime(i, ends[k], 0, stack_free_fcn);
+  }
 }
+
+
 
 // /// FIXME: not called anywhere
 // void SLAMP::instrumentNonStandards(Module &m, Function *ctor) {
@@ -816,8 +935,9 @@ void SLAMP::instrumentAllocas(Module &m) {
 
 /// Add SLAMP_main_entry as the first thing in main
 void SLAMP::instrumentMainFunction(Module &m) {
-  for (Module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
-    Function *func = &*fi;
+//  for (module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
+  for(auto &fi : m) {
+    Function *func = &fi;
     if (func->getName() != "main")
       continue;
 
