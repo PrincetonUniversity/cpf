@@ -823,7 +823,7 @@ void SLAMP_fini(const char* filename)
       for (auto &it : *pointsToMap) {
         ofs << it.first << ": "; // instruction ID
         for (auto &it2 : it.second) { // the set of allocation units
-          ofs << it2 << " ";
+          ofs << "instr - "<< GET_INSTR(it2) << " iter - " << GET_ITER(it2) << " invoc - " << GET_INVOC(it2) << "\n";
         }
         ofs << "\n";
       }
