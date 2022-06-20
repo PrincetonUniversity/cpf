@@ -1409,12 +1409,7 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
   uint64_t START;
   TIME(START);
   //fprintf(stderr, "SLAMP_malloc, size: %lu\n", size);
-<<<<<<< HEAD
   void* result = (void*)slamp::bound_malloc(size, alignment);
-=======
-  // main functionality of malloc
-  void* result = (void*)slamp::bound_malloc(size);
->>>>>>> yebin_stack
   unsigned count = 0;
 
   while( true )
