@@ -451,7 +451,9 @@ bool SLAMP::runOnModule(Module &m) {
     instrumentGlobalVars(m, ctor);
   }
 
-  instrumentAllocas(m);
+  if (UsePointsToModule){
+    instrumentAllocas(m);
+  }
 
   instrumentMainFunction(m);
 
@@ -943,7 +945,6 @@ void SLAMP::instrumentAllocas(Module &m) {
 
 /// Add SLAMP_main_entry as the first thing in main
 void SLAMP::instrumentMainFunction(Module &m) {
-//  for (module::iterator fi = m.begin(), fe = m.end(); fi != fe; fi++) {
   for(auto &fi : m) {
     Function *func = &fi;
     if (func->getName() != "main")
