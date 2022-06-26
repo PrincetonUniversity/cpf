@@ -61,6 +61,9 @@ void SLAMP_loop_invocation();
 void SLAMP_loop_iteration();
 void SLAMP_loop_exit();
 
+void SLAMP_callback_stack_alloca(uint64_t, uint64_t, uint32_t, uint64_t);
+void SLAMP_callback_stack_free(void);
+
 void SLAMP_push(const uint32_t instr);
 void SLAMP_pop();
 
