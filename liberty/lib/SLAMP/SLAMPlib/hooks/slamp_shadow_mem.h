@@ -131,6 +131,10 @@ public:
     memcpy(shadow_dst, shadow_src, shadow_size);
   }
 
+  void init_heap(void *addr) {
+    heapStart = reinterpret_cast<uint64_t>(addr);
+  }
+
   // init stack size to be fixed 8MB
   // the stack in /proc/$pid/maps changes in runtime, use it to find the end
   void init_stack(uint64_t stack_size) {

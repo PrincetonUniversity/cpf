@@ -106,14 +106,17 @@ static cl::opt<bool> UseTraceModule("slamp-trace-module", cl::init(false), cl::N
 // reason module
 static cl::opt<bool> UseReasonModule("slamp-reason-module", cl::init(false), cl::NotHidden, cl::desc("Use reason module"));
 
-// localwrite module
-static cl::opt<bool> UseLocalWriteModule("slamp-localwrite-module", cl::init(false), cl::NotHidden, cl::desc("Use localwrite module"));
+// // localwrite module
+// static cl::opt<bool> UseLocalWriteModule("slamp-localwrite-module", cl::init(false), cl::NotHidden, cl::desc("Use localwrite module"));
 
-// localwrite mask (size_t)
-static cl::opt<size_t> LocalWriteMask("slamp-localwrite-mask", cl::init(0), cl::NotHidden, cl::desc("Localwrite mask"));
+// // localwrite mask (size_t)
+// static cl::opt<size_t> LocalWriteMask("slamp-localwrite-mask", cl::init(0), cl::NotHidden, cl::desc("Localwrite mask"));
 
-// localwrite pattern (size_t)
-static cl::opt<size_t> LocalWritePattern("slamp-localwrite-pattern", cl::init(0), cl::NotHidden, cl::desc("Localwrite pattern"));
+// // localwrite pattern (size_t)
+// static cl::opt<size_t> LocalWritePattern("slamp-localwrite-pattern", cl::init(0), cl::NotHidden, cl::desc("Localwrite pattern"));
+
+// ASSUME ONE ADDR
+static cl::opt<bool> AssumeOneAddr("slamp-assume-one-addr", cl::init(false), cl::NotHidden, cl::desc("Assume one addr"));
 
 
 static cl::opt<bool> UsePruning("slamp-pruning", cl::init(false),
@@ -173,10 +176,15 @@ Instruction* updateDebugInfo(Instruction *inserted, Instruction *location, Modul
     // if scope is empty, create a bogus one
     if (scope == nullptr) {
       errs() << "Warning: no scope for " << *location << ":"<<location->getParent()->getParent()->getName() << "\n";
+      // find main function
       scope = m.getFunction("main")->getSubprogram();
     }
-    DILocation *loc = DILocation::get(m.getContext(), 0, 0, scope);
+    // if there's no scope for main, then do not add new debug info
+    if (scope == nullptr) {
+      return inserted;
+    }
 
+    DILocation *loc = DILocation::get(m.getContext(), 0, 0, scope);
     inserted->setMetadata(LLVMContext::MD_dbg, loc);
   }
 
@@ -323,9 +331,6 @@ bool SLAMP::runOnModule(Module &m) {
           if (!inst->mayReadOrWriteMemory()) {
             continue;
           }
-          if (IgnoreCall && isa<CallBase>(inst)) {
-            continue;
-          }
         } else {
           continue;
         }
@@ -341,7 +346,7 @@ bool SLAMP::runOnModule(Module &m) {
               }
               if (IgnoreCall) {
                 // ignore dep to call
-                if (isa<CallBase>(edge->getIncomingT())) {
+                if (isa<CallBase>(edge->getIncomingT()) || isa<CallBase>(edge->getOutgoingT())) {
                   continue;
                 }
               }
@@ -360,7 +365,7 @@ bool SLAMP::runOnModule(Module &m) {
               }
               if (IgnoreCall) {
                 // ignore dep to call
-                if (isa<CallBase>(edge->getOutgoingT())) {
+                if (isa<CallBase>(edge->getOutgoingT()) || isa<CallBase>(edge->getIncomingT())) {
                   continue;
                 }
               }
@@ -428,12 +433,15 @@ bool SLAMP::runOnModule(Module &m) {
   setGlobalModule("CONSTANT_VALUE_MODULE", UseConstantValueModule);
   setGlobalModule("LINEAR_ADDRESS_MODULE", UseLinearAddressModule);
   setGlobalModule("LINEAR_VALUE_MODULE", UseLinearValueModule);
-  setGlobalModule("LOCALWRITE_MODULE", UseLocalWriteModule);
   setGlobalModule("REASON_MODULE", UseReasonModule);
   setGlobalModule("TRACE_MODULE", UseTraceModule);
 
+  // FIXME:
+  // setGlobalModule("LOCALWRITE_MODULE", UseLocalWriteModule);
   setGlobalModule("DEPENDENCE_MODULE", UseDependenceModule);
   setGlobalModule("POINTS_TO_MODULE", UsePointsToModule);
+
+  setGlobalModule("ASSUME_ONE_ADDR", AssumeOneAddr);
 #endif
 
   Function *ctor = instrumentConstructor(m);

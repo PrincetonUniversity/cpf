@@ -5,7 +5,7 @@
 
 # Check if $NUM_THREAD is set, otherwise exit
 NUM_THREAD=$1
-PROFILEARGS=${@:2}
+COMPILE_CMD=${@:2}
 
 if [ -z "$NUM_THREAD" ]; then
     echo "NUM_THREAD is not set"
@@ -24,19 +24,26 @@ MASK=$((($NUM_THREAD - 1) << 8))
 # convert MASK to a hex string
 MASK_HEX=$(printf "0x%x" $MASK)
 
-# Traverse all threads and set pattern to each thread
+# generate constants
 for i in `seq 0 $(($NUM_THREAD - 1))`; do
     # if i is not 11 then continue
     PATTERN=$(($i << 8))
     # convert pattern to a hex string
     PATTERN_HEX=$(printf "0x%x" $PATTERN)
-    # EXE="LOCALWRITE_MASK=$MASK_HEX LOCALWRITE_PATTERN=$PATTERN_HEX ./benchmark.slamp.exe $PROFILEARGS"
-    EXE="./benchmark.slamp_$i.exe $PROFILEARGS"
+    echo -e "#include <stdio.h>\nconst char LOCALWRITE_MODULE=1; const size_t LOCALWRITE_MASK=$MASK_HEX; const size_t LOCALWRITE_PATTERN=$PATTERN_HEX;" | clang -x c -flto -c -o constants_$i.o - &
+done
+wait
+
+# compile into binarys
+for i in `seq 0 $(($NUM_THREAD - 1))`; do
+    # if i is not 11 then continue
+    PATTERN=$(($i << 8))
+    # convert pattern to a hex string
+    PATTERN_HEX=$(printf "0x%x" $PATTERN)
+    EXE="$COMPILE_CMD constants_$i.o -o benchmark.slamp_$i.exe"
     echo $EXE
-    stdbuf -i0 -o0 -e0 ./benchmark.slamp_$i.exe $PROFILEARGS > rabbit6_$i 2>&1 &
-    # LOCALWRITE_MASK=$MASK_HEX LOCALWRITE_PATTERN=$PATTERN_HEX stdbuf -i0 -o0 -e0 ./benchmark.slamp.exe $PROFILEARGS > rabbit6_$i 2>&1 &
+    $EXE &
 done
 
 # Wait for all threads to finish
 wait
-

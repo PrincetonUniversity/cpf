@@ -217,6 +217,7 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
 
 // #if 0
   // update log
+  // Found a dependence
   if (ts) {
     uint32_t src_inst = GET_INSTR(ts);
     uint64_t src_iter = GET_ITER(ts);

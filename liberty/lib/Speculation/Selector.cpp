@@ -86,7 +86,7 @@ HeapAssignment &Selector::getAssignment()
 void Selector::analysisUsage(AnalysisUsage &au)
 {
   // au.addRequired< Noelle >();
-  au.addRequired< PDGAnalysis >();
+  // au.addRequired< PDGAnalysis >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   //au.addRequired< BlockFrequencyInfoWrapperPass >();
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
@@ -972,7 +972,8 @@ bool Selector::doSelection(
       return false;
 
     // Identify compatibilities among the loops as edges
-    computeEdges(vertices, edges);
+    // FIXME: temporarily disable edges
+    // computeEdges(vertices, edges);
 
     auto printCompatibleMap = [](Edges edges) {
       errs() << "Compatible Map:\n";
