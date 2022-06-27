@@ -1062,6 +1062,7 @@ void SLAMP_dependence_module_load_log(const uint32_t instr, const uint32_t bare_
   std::unordered_set<TS> m;
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
 
+  // FIXME: ASSUME_ONE_ADDR should be considered here, however, memcpy and stuff might rely on this
   bool noDep = true;
   for (unsigned i = 0; i < size; i++) {
     TIME(START);
