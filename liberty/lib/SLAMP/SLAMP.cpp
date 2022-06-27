@@ -1362,6 +1362,17 @@ void SLAMP::instrumentLoopInst(Module &m, Instruction *inst, uint32_t id) {
     }
     pt << updateDebugInfo(CallInst::Create(sf[index], args), si, m);
   } else if (auto *ci = dyn_cast<CallBase>(inst)) {
+    // if is LLVM intrinsics
+    if (ci->getCalledFunction()->isIntrinsic()) {
+      LLVM_DEBUG(errs() << "SLAMP: ignore intrinsic " << *ci << "\n");
+      return;
+    }
+    // if is declaration, cannot do anything
+    if (ci->getCalledFunction()->isDeclaration()) {
+      LLVM_DEBUG(errs() << "SLAMP: ignore declaration " << *ci << "\n");
+      return;
+    }
+
     // need to handle call and invoke
     vector<Value *> args;
 
