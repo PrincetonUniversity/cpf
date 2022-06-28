@@ -81,7 +81,7 @@ bool CONSTANT_VALUE_MODULE; // = false;
 bool LINEAR_VALUE_MODULE; // = false;
 bool REASON_MODULE; // = false;
 bool TRACE_MODULE; // = false;
-bool LOCALWRITE_MODULE;
+bool LOCALWRITE_MODULE=false;
 bool ASSUME_ONE_ADDR = false;
 #else
 extern bool LOCALWRITE_MODULE;
@@ -97,8 +97,13 @@ extern bool TRACE_MODULE; // = false;
 extern bool ASSUME_ONE_ADDR;
 #endif
 
+#ifdef ITO_ENABLE
 extern size_t LOCALWRITE_MASK;
 extern size_t LOCALWRITE_PATTERN;
+#else
+size_t LOCALWRITE_MASK = 0;
+size_t LOCALWRITE_PATTERN = 0;
+#endif
 
 #define LOCALWRITE(addr)  ((!LOCALWRITE_MODULE || ((size_t)addr & LOCALWRITE_MASK) == LOCALWRITE_PATTERN))
 
@@ -1108,11 +1113,12 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
 #endif
 
   // Load access
-  // TURN_OFF_CUSTOM_MALLOC;
+#ifndef ITO_ENABLE
+  TURN_OFF_CUSTOM_MALLOC;
+#endif
   for (auto *f: *access_callbacks) {
     f(true, instr, bare_instr, addr, value, size);
   }
-  // TURN_ON_CUSTOM_MALLOC;
 
   if (DEPENDENCE_MODULE) {
     // only need to check once
@@ -1122,6 +1128,9 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
       // TURN_ON_CUSTOM_MALLOC;
     }
   }
+#ifndef ITO_ENABLE
+  TURN_ON_CUSTOM_MALLOC;
+#endif
 
   if (POINTS_TO_MODULE) {
     // only need to check once
@@ -1304,12 +1313,16 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRI
 #endif
 
   // Store access
-  // TURN_OFF_CUSTOM_MALLOC;
+#ifndef ITO_ENABLE
+  TURN_OFF_CUSTOM_MALLOC;
+#endif
   for (auto *f: *access_callbacks) {
     // FIXME: value is empty for now
     f(false, instr, bare_instr, addr, 0, size);
   }
-  // TURN_ON_CUSTOM_MALLOC;
+#ifndef ITO_ENABLE
+  TURN_ON_CUSTOM_MALLOC;
+#endif
 
   if (DEPENDENCE_MODULE) {
     // only need to check once

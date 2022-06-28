@@ -1,5 +1,7 @@
 #!/bin/bash
 
+LTO=1
+
 function drive {
   # $1: .bc file
   # $2: target fcn
@@ -58,8 +60,7 @@ function drive {
   fi
   
   local CMD1="opt $SLAMP_LIBS $OPTS -o $PRELINK_BC $1"
-  local CMD2="clang -flto -c -o $PRELINK_OBJ $PRELINK_BC"
-  # local CMD2="clang -c -o $PRELINK_OBJ $PRELINK_BC"
+  local CMD2="clang -c -o $PRELINK_OBJ $PRELINK_BC"
   local CMD3="" 
   # local CMD3="clang++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
   #local CMD3="g++ -Og $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
@@ -70,7 +71,13 @@ function drive {
       CMD3="localwrite-compile $LOCALWRITE_THREADS $RAW_CMD3"
   else
       echo -e "#include <stdio.h>\nconst char LOCALWRITE_MODULE=0;const size_t LOCALWRITE_MASK=0; const size_t LOCALWRITE_PATTERN=0;" | clang -x c -flto -c -o constants.o -
-      CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS constants.o -o $EXE -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil"
+      # CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS constants.o -o $EXE -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil"
+      CMD3="clang++  -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil"
+  fi
+
+  if [[ x$LTO != x ]]; then
+      CMD2+=" -flto"
+      CMD3+=" -flto constants.o"
   fi
 
   local CMD4="stdbuf -o0 -e0 ./$EXE $PROFILEARGS"

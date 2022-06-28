@@ -144,7 +144,7 @@ struct Value {
   // LinearPredictor *lp_addr{nullptr};
   DistanceDistribution *d; 
   // char pad[64 - sizeof(void *) - sizeof(void *) - sizeof(void *)];
-  char pad[64 - sizeof(uint64_t) - sizeof(void *)];
+  // char pad[64 - sizeof(uint64_t) - sizeof(void *)];
 
   // Value() : count(0), c(NULL), lp(NULL) { assert(false); }
   Value() = default;
@@ -273,6 +273,7 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
       // Value v(lp, lp_addr);
       Value v;
       v.count = 1;
+      v.d = nullptr;
       if (DISTANCE_MODULE) {
         v.d = new DistanceDistribution(distance);
       }
