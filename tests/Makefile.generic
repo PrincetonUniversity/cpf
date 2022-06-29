@@ -10,6 +10,12 @@ else
 OBJFILES_BC?= $(shell find . -name \*.c | sed -e "s/\.c/.bc/" ) $(shell find . -name \*.C | sed -e "s/\.C/.bc/" ) $(shell find . -name \*.cpp | sed -e "s/\.cpp/.bc/" )  $(shell find . -name \*.cc | sed -e "s/\.cc/.bc/" )
 endif
 
+ifdef TARGET_FCN
+TARGET_CMD=-target-fcn=$(TARGET_FCN) -target-loop=$(TARGET_LOOP)
+else
+TARGET_CMD=
+endif
+
 BENCH_NAME?=$(shell cd .. && basename `pwd`)
 BENCH_DIR?= ../../$(BENCH_NAME)
 RESULT_FILE?=$(BENCH_NAME).result
@@ -505,7 +511,7 @@ $(AINLINE).bc : $(HACK2).bc
 INLINED=$(BINARY).inlined
 $(INLINED).bc : $(HACK2).bc $(CANON).loopProf_OG.out
 	cp $(CANON).loopProf_OG.out loopProf.out
-	regressions-watchdog $(TRANSFORM_TIMEOUT) inline.time $(LLVM_OPT) $(INLINER_LIB) -always-inline -aggr-inliner $< -o benchmark.inlined.noopt.bc
+	regressions-watchdog $(TRANSFORM_TIMEOUT) inline.time $(LLVM_OPT) $(INLINER_LIB) -always-inline -aggr-inliner $(TARGET_CMD) $< -o benchmark.inlined.noopt.bc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) simplify.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) benchmark.inlined.noopt.bc -o $@
 	rm -f loopProf.out
 

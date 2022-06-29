@@ -788,7 +788,7 @@ void SLAMP::findLifetimeMarkers(Value *i, set<const Value *> &already, std::vect
   }
 }
 
-void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Function *fcn, const DataLayout &dl) {
+void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Function *fcn, const DataLayout &dl, Module &m) {
 
   IRBuilder<> Builder(start->getNextNode());
   // input of callback function
@@ -819,6 +819,8 @@ void SLAMP::reportStartOfAllocaLifetime(AllocaInst *inst, Instruction *start, Fu
   FunctionType *fty = FunctionType::get(Void, ptype, false);
   
   CallInst *alloca_start_call = Builder.CreateCall(fty, fcn, args);
+
+  updateDebugInfo(alloca_start_call, start, m);
 
   return;
 }
@@ -883,7 +885,7 @@ void SLAMP::instrumentAllocas(Module &m) {
       starts.push_back(i);
     // Report start of lifetime
     for (unsigned k = 0, N = starts.size(); k < N; k++) 
-      reportStartOfAllocaLifetime(i, starts[k], stack_alloca_fcn, dl);
+      reportStartOfAllocaLifetime(i, starts[k], stack_alloca_fcn, dl, m);
     
     // TODO: how do we define end-of-fucntion?
     if (ends.empty())

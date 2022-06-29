@@ -52,7 +52,7 @@ private:
 
   // functions used in instrumentAllocas
   void findLifetimeMarkers(Value* i, set<const Value*>& already, std::vector<Instruction*>& starts, std::vector<Instruction*>& ends);
-  void reportStartOfAllocaLifetime(AllocaInst* inst, Instruction* start, Function* fcn, const DataLayout &dl);
+  void reportStartOfAllocaLifetime(AllocaInst* inst, Instruction* start, Function* fcn, const DataLayout &dl, Module &m);
   void reportEndOfAllocaLifetime(AllocaInst* inst, Instruction* end, bool empty, Function* fcn);
 
 

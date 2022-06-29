@@ -7,7 +7,8 @@ function drive {
   # $2: target fcn
   # $3: target loop
 
-  EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
+  # EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
+  EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -objc-arc-aa -scoped-noalias -veto -nander"
   local SLAMP_LIBS="
      -load $NOELLE_LIBS_DIR/CallGraph.so 
      -load $NOELLE_LIBS_DIR/libSvf.so 

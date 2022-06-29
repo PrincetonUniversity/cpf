@@ -405,7 +405,8 @@ using SlampAllocationUnit = TS;
 // map from load/store instruction to the allocation unit
 std::unordered_map<uint32_t, std::unordered_set<SlampAllocationUnit>> *pointsToMap;
 
-void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
+template <unsigned size>
+void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr) {
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS tss[8]; // HACK: avoid using malloc
   for (auto i = 0; i < size; i++) {
@@ -421,6 +422,25 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
     if (cond && tss[i] != 0) {
       //create set of objects for each load/store
       (*pointsToMap)[instr].insert(tss[i]);
+    }
+  }
+}
+
+void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
+
+  std::unordered_set<TS> m;
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+
+  // FIXME: ASSUME_ONE_ADDR should be considered here, however, memcpy and stuff might rely on this
+  bool noDep = true;
+  for (unsigned i = 0; i < size; i++) {
+
+    TS ts;
+    ts = s[i];
+
+    if (m.count(ts) == 0) {
+      (*pointsToMap)[instr].insert(ts);
+      m.insert(ts);
     }
   }
 }
@@ -781,6 +801,8 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   smmap = new slamp::MemoryMap(TIMESTAMP_SIZE_IN_BYTES);
   // smmap->init_heap(heapStart);
 
+  smmap->init_stack(SIZE_8M);
+
   slamp::init_logger(fn_id, loop_id);
   TADD(overhead_init_fini, START);
 
@@ -887,8 +909,6 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
   std::cout << "[main_entry] begin: " << std::hex << begin << std::dec << std::endl;
 #endif
 
-  // preallocate the stack
-  smmap->init_stack(SIZE_8M);
 
   if (argc != 0)
   {
@@ -1135,7 +1155,7 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
   if (POINTS_TO_MODULE) {
     // only need to check once
     if (LOCALWRITE(addr)) {
-      SLAMP_points_to_module_use(instr, addr, size);
+      SLAMP_points_to_module_use<size>(instr, addr);
     }
   }
 }
@@ -1195,7 +1215,9 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   if (POINTS_TO_MODULE) {
     // only need to check once
     if (LOCALWRITE(addr)) {
+      TURN_OFF_CUSTOM_MALLOC;
       SLAMP_points_to_module_use(instr, addr, n);
+      TURN_ON_CUSTOM_MALLOC;
     }
   }
 }
@@ -1334,7 +1356,7 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRI
   if (POINTS_TO_MODULE) {
     // only need to check once
     if (LOCALWRITE(addr)) {
-      SLAMP_points_to_module_use(instr, addr, size);
+      SLAMP_points_to_module_use<size>(instr, addr);
     }
   }
 }
@@ -1389,7 +1411,9 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   if (POINTS_TO_MODULE) {
     // only need to check once
     if (LOCALWRITE(addr)) {
+      TURN_OFF_CUSTOM_MALLOC;
       SLAMP_points_to_module_use(instr, addr, n);
+      TURN_ON_CUSTOM_MALLOC;
     }
   }
 }

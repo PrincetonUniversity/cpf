@@ -166,8 +166,11 @@ public:
         heapStart = start;
       }
 
+
       if (!strcmp(name, "[stack]")) {
         // stack grow from end (big address) backwards
+        // print the stack start and end
+        printf("stack: %lx %lx\n", end - stack_size, end);
         allocate(reinterpret_cast<void *>(end - stack_size), stack_size);
         allocated = true;
         break;
