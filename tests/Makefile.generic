@@ -325,7 +325,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	# DISTANCE_MODULE=1 CONSTANT_VALUE_MODULE=1 CONSTANT_ADDRESS_MODULE=1 LINEAR_VALUE_MODULE=1 LINEAR_ADDRESS_MODULE=1
 	DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" \
 	regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
-	# LOCALWRITE_THREADS=32 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
+	# LOCALWRITE_THREADS=16 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	#NO_DEPENDENCE_MODULE=1 TRACE_MODULE=1 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6-no-module 2>&1
 	#DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	mv result.slamp.profile $@

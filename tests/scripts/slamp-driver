@@ -78,7 +78,12 @@ function drive {
 
   if [[ x$LTO != x ]]; then
       CMD2+=" -flto"
-      CMD3+=" -flto constants.o"
+      CMD3+=" -flto"
+  fi
+
+  # if LTO is set and LOCALWRITE_THREADS is not set, add constant
+  if [[ x$LTO != x ]] && [[ x$LOCALWRITE_THREADS == x ]]; then
+      CMD3+=" constants.o"
   fi
 
   local CMD4="stdbuf -o0 -e0 ./$EXE $PROFILEARGS"
