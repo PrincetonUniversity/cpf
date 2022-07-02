@@ -66,11 +66,11 @@ private:
   typedef Value::user_iterator UseIt;
 
   // keep track of valid for inlining, already processed, call insts
-  std::unordered_set<CallInst *> validCallInsts;
+  std::unordered_set<CallBase *> validCallInsts;
 
   // keep all the call insts that need to be inlined, ordered based on call
   // graph depth
-  std::queue<CallInst *> inlineCallInsts;
+  std::queue<CallBase *> inlineCallInsts;
 
   // keep list of already processed functions
   std::unordered_set<Function*> processedFunctions;
@@ -78,7 +78,7 @@ private:
   bool isRecursiveFnFast(Function *F) {
     for (BasicBlock &BB : *F) {
       for (Instruction &I : BB) {
-        if (CallInst *call = dyn_cast<CallInst>(&I)) {
+        if (CallBase *call = dyn_cast<CallBase>(&I)) {
           Function *calledFun = call->getCalledFunction();
           if (calledFun && !calledFun->isDeclaration()) {
             if (calledFun == F)
@@ -103,7 +103,7 @@ private:
   }
 
   // check if call sources or sinks any LC flow dependences
-  bool noFlowDep(CallInst *call, LoopAA *aa, Loop *loop) {
+  bool noFlowDep(CallBase *call, LoopAA *aa, Loop *loop) {
 
     if (queryMemoryFlowDep(call, call, LoopAA::Before, LoopAA::After, loop, aa))
       return false;
@@ -136,7 +136,7 @@ private:
 
     for (Instruction &I : BB) {
       //FIXME: CallBase instead of CallInst
-      if (CallInst *call = dyn_cast<CallInst>(&I)) {
+      if (CallBase *call = dyn_cast<CallBase>(&I)) {
         Function *calledFun = call->getCalledFunction();
         if (calledFun && !calledFun->isDeclaration()) {
           if (validCallInsts.count(call))
@@ -194,7 +194,7 @@ private:
       processBB(*BB, curPathVisited, aa, loop, 0);
   }
 
-  void inlineCall(CallInst *call) {
+  void inlineCall(CallBase *call) {
     Function *calledFun = call->getCalledFunction();
     if (calledFun && !calledFun->isDeclaration()) {
       if (validCallInsts.count(call))
@@ -213,13 +213,13 @@ private:
     Type *type = global.getType()->getElementType();
     if (type->isPointerTy()) {
       for (UseIt use = global.user_begin(); use != global.user_end(); ++use) {
-        if (CallInst *call = dyn_cast<CallInst>(*use)) {
+        if (CallBase *call = dyn_cast<CallBase>(*use)) {
           inlineCall(call);
         } else if (BitCastOperator *bcOp =
                        dyn_cast<BitCastOperator>(*use)) {
           for (UseIt bUse = bcOp->user_begin(); bUse != bcOp->user_end();
                ++bUse) {
-            if (CallInst *bCall = dyn_cast<CallInst>(*bUse)) {
+            if (CallBase *bCall = dyn_cast<CallBase>(*bUse)) {
               inlineCall(bCall);
             }
           }
