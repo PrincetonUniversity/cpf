@@ -1,4 +1,5 @@
 #include "slamp_logger.h"
+#define ONLY_SET
 
 #include <bits/stdint-uintn.h>
 #include <cassert>
@@ -10,6 +11,8 @@
 
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
+#include <set>
 
 #include "slamp_debug.h"
 #include "slamp_timestamp.h"
@@ -153,7 +156,12 @@ struct Value {
   // Value(Constant *c, LinearPredictor *lp, Constant *c_addr, LinearPredictor *lp_addr) : c_value(c), lp_value(lp), c_addr(c_addr), lp_addr(lp_addr) {}
 };
 
+#ifdef ONLY_SET
+static std::unordered_set<KEY, KEYHash, KEYEqual> *deplog_set;
+#else
 static std::unordered_map<KEY, Value, KEYHash, KEYEqual> *deplog;
+#endif
+
 #if DEBUG
 static std::set<std::string> *depset;
 #endif
@@ -162,7 +170,12 @@ static uint32_t target_fn_id;
 static uint32_t target_loop_id;
 
 void init_logger(uint32_t fn_id, uint32_t loop_id) {
+
+#ifdef ONLY_SET
+  deplog_set = new std::unordered_set<KEY, KEYHash, KEYEqual>();
+#else
   deplog = new std::unordered_map<KEY, Value, KEYHash, KEYEqual>();
+#endif
   // constmap = new std::unordered_map<uint32_t, VALUE>();
 
 #if DEBUG
@@ -197,7 +210,11 @@ void fini_logger(const char *filename) {
    *   delete lpmap;
    *   delete constmap;
    */
+#ifdef ONLY_SET
+  delete deplog_set;
+#else
   delete deplog;
+#endif
 }
 
 uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
@@ -249,6 +266,10 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
 #endif
 
     auto distance = __slamp_iteration - src_iter;
+
+#ifdef ONLY_SET
+    deplog_set->insert(key);
+#else
     if (deplog->count(key)) {
       Value &v = (*deplog)[key];
       v.count += 1;
@@ -279,6 +300,7 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
       }
       deplog->insert(std::make_pair(key, v));
     }
+#endif
 
 #if CTXTDEBUG
     dumpdependencecallstack(pts, key);
@@ -304,11 +326,22 @@ void print_log(const char *filename) {
   // of << target_fn_id << "\n";
   // of << target_loop_id << "\n";
 
-  std::map<KEY, Value, KEYComp> ordered(deplog->begin(), deplog->end());
-
   // Add a fake dependence so the loop is recognized
   of << target_loop_id << " " << 0 << " " << 0 << " "
        << 0 << " " << 0 << " " << 0 << "\n";
+
+#ifdef ONLY_SET
+  std::set<KEY, KEYComp> ordered(deplog_set->begin(), deplog_set->end());
+  for (auto &k: ordered) {
+    of << k.src << " " << k.dst << " " << k.dst_bare << " "
+       << (k.cross ? 1 : 0) << " " << 1 << " ";
+    of << 0 << " ";
+    of << "\n";
+  }
+
+#else
+  std::map<KEY, Value, KEYComp> ordered(deplog->begin(), deplog->end());
+
 
   for (auto &&mi : ordered) {
     KEY key = mi.first;
@@ -333,6 +366,7 @@ void print_log(const char *filename) {
 
     of << "\n";
   }
+#endif
 
   of.close();
 
