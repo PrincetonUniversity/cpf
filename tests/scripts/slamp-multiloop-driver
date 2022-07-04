@@ -9,6 +9,14 @@ function drive {
   # $1: .bc file
   # $2: target fcn
   # $3: target loop
+  # $4: running directory
+
+  cd $4
+  # if $(SETUP) is not empty or just space
+    if [ -n "$(echo $SETUP | sed 's/^[[:space:]]*//')" ]; then
+        echo "setup: $SETUP"
+        eval $SETUP
+    fi
 
   # EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
   EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -objc-arc-aa -scoped-noalias -veto -nander"
@@ -48,7 +56,7 @@ function drive {
   local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks.a"
   local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
 
- local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
+ local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS $5 -slamp-outfile=$SLAMP_OUTFILE"
 
   # if [[ x$LOCALWRITE_THREADS != x ]]; then
     # OPTS="$OPTS -slamp-localwrite-module=1"
@@ -122,10 +130,12 @@ function drive {
       combine_localwrite.py $2 $3
   fi
 
-  cat $SLAMP_OUTFILE >> result.slamp.profile
-  rm -f $SLAMP_OUTFILE # ${SLAMP_OUTFILE}_*
+  mv $SLAMP_OUTFILE result.slamp.profile
+  # rm -f $SLAMP_OUTFILE # ${SLAMP_OUTFILE}_*
   # rm -f $SLAMP_OUTFILE $PRELINK_BC $PRELINK_OBJ $EXE
 }
+
+export -f drive
 
 # Determine if the user specified a function
 FCN=
@@ -169,13 +179,32 @@ while IFS=$'\n' read -r line_data; do
   ((++i))
 done < __targets.txt
 
+BASE_DIR=`pwd`
 let i=0
-while (( i < 2 )); do
-# while (( ${#lines[@]} > i )); do
+# while (( i < 2 )); do
+while (( ${#lines[@]} > i )); do
   IFS=' ' read -a array <<< ${lines[i++]}
   if [ ${array[0]} == "-" ]; then
-    drive $1 ${array[1]} ${array[3]}
+      cd ${BASE_DIR}
+      mkdir -p run.$i.dep
+      mkdir -p run.$i.pt
+      mkdir -p run.$i.vp
+      drive ../$1 ${array[1]} ${array[3]} run.$i.dep "" &
+      drive ../$1 ${array[1]} ${array[3]} run.$i.pt "-slamp-points-to-module=1 -slamp-dependence-module=0" &
+      drive ../$1 ${array[1]} ${array[3]} run.$i.vp "-slamp-constant-value-module=1 -slamp-dependence-module=0" &
   fi
 done
 
+wait
+
+# combine them into one result file
+let i=0
+cd ${BASE_DIR}
+while (( ${#lines[@]} > i )); do
+  IFS=' ' read -a array <<< ${lines[i++]}
+  if [ ${array[0]} == "-" ]; then
+      cat run.$i.dep/result.slamp.profile >> result.slamp.profile
+      rm run.$i.dep/result.slamp.profile 
+  fi
+done
 #rm -f __targets.txt

@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# $1: number of threads
-# $2-: arguments
+# $1: LTO
+# $2: number of threads
+# $3-: arguments
 
 # Check if $NUM_THREAD is set, otherwise exit
-NUM_THREAD=$1
-COMPILE_CMD=${@:2}
+LTO=$1
+NUM_THREAD=$2
+COMPILE_CMD=${@:3}
 
 if [ -z "$NUM_THREAD" ]; then
     echo "NUM_THREAD is not set"
@@ -24,15 +26,17 @@ MASK=$((($NUM_THREAD - 1) << 8))
 # convert MASK to a hex string
 MASK_HEX=$(printf "0x%x" $MASK)
 
-# generate constants
-for i in `seq 0 $(($NUM_THREAD - 1))`; do
-    # if i is not 11 then continue
-    PATTERN=$(($i << 8))
-    # convert pattern to a hex string
-    PATTERN_HEX=$(printf "0x%x" $PATTERN)
-    echo -e "#include <stdio.h>\nconst char LOCALWRITE_MODULE=1; const size_t LOCALWRITE_MASK=$MASK_HEX; const size_t LOCALWRITE_PATTERN=$PATTERN_HEX;" | clang -x c -flto -c -o constants_$i.o - &
-done
-wait
+# generate constants if LTO is not 0
+# if [ $LTO -ne 0 ]; then
+    for i in `seq 0 $(($NUM_THREAD - 1))`; do
+        # if i is not 11 then continue
+        PATTERN=$(($i << 8))
+        # convert pattern to a hex string
+        PATTERN_HEX=$(printf "0x%x" $PATTERN)
+        echo -e "#include <stdio.h>\nconst char LOCALWRITE_MODULE=1; const size_t LOCALWRITE_MASK=$MASK_HEX; const size_t LOCALWRITE_PATTERN=$PATTERN_HEX;" | clang -x c -flto -c -o constants_$i.o - &
+    done
+    wait
+# fi
 
 # compile into binarys
 for i in `seq 0 $(($NUM_THREAD - 1))`; do
@@ -40,7 +44,12 @@ for i in `seq 0 $(($NUM_THREAD - 1))`; do
     PATTERN=$(($i << 8))
     # convert pattern to a hex string
     PATTERN_HEX=$(printf "0x%x" $PATTERN)
-    EXE="$COMPILE_CMD constants_$i.o -o benchmark.slamp_$i.exe"
+    # if LTO == 0 then do not use constants
+    # if [ $LTO == 0 ]; then
+        # EXE="$COMPILE_CMD -o benchmark.slamp_$i.exe"
+    # else
+        EXE="$COMPILE_CMD constants_$i.o -o benchmark.slamp_$i.exe"
+    # fi
     echo $EXE
     $EXE &
 done
