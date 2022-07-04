@@ -2,7 +2,9 @@
 #define SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 
 #ifdef ITO_ENABLE
-#define ATTRIBUTE(x) __attribute__((x))
+#define ATTRIBUTE(x) 
+// FIXME: inline tweak actually make things worse
+// #define ATTRIBUTE(x) __attribute__((x))
 #else
 #define ATTRIBUTE(x)
 #endif
