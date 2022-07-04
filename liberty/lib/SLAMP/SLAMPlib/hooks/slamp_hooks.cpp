@@ -71,6 +71,8 @@ void SLAMP_dbggvstr(char* str) {
 uint8_t __slamp_begin_trace = 0;
 #endif
 
+extern bool LOCALWRITE_MODULE;
+
 #ifndef ITO_ENABLE
 bool DEPENDENCE_MODULE; // = true;
 bool POINTS_TO_MODULE; // = false;
@@ -81,10 +83,9 @@ bool CONSTANT_VALUE_MODULE; // = false;
 bool LINEAR_VALUE_MODULE; // = false;
 bool REASON_MODULE; // = false;
 bool TRACE_MODULE; // = false;
-bool LOCALWRITE_MODULE=false;
+// bool LOCALWRITE_MODULE=false;
 bool ASSUME_ONE_ADDR = false;
 #else
-extern bool LOCALWRITE_MODULE;
 extern bool DEPENDENCE_MODULE; // = true;
 extern bool POINTS_TO_MODULE; // = false;
 bool DISTANCE_MODULE = false;
@@ -97,13 +98,13 @@ extern bool TRACE_MODULE; // = false;
 extern bool ASSUME_ONE_ADDR;
 #endif
 
-#ifdef ITO_ENABLE
+// #ifdef ITO_ENABLE
 extern size_t LOCALWRITE_MASK;
 extern size_t LOCALWRITE_PATTERN;
-#else
-size_t LOCALWRITE_MASK = 0;
-size_t LOCALWRITE_PATTERN = 0;
-#endif
+// #else
+// size_t LOCALWRITE_MASK = 0;
+// size_t LOCALWRITE_PATTERN = 0;
+// #endif
 
 #define LOCALWRITE(addr)  ((!LOCALWRITE_MODULE || ((size_t)addr & LOCALWRITE_MASK) == LOCALWRITE_PATTERN))
 
@@ -502,7 +503,7 @@ static void updateReasonMap(uint32_t inst, uint32_t bare_instr, uint64_t addr, u
 }
 
 // dump all access event modules
-static void accessModuleDump(std::string fname, std::string jname) {
+static void accessModuleDump(std::string jname) {
   using json = nlohmann::json;
   std::ofstream jfile(jname, std::ios::app);
   //std::ofstream of(fname, std::ios::app);
@@ -740,7 +741,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   setModule(LINEAR_VALUE_MODULE, "LINEAR_VALUE_MODULE");
   setModule(REASON_MODULE, "REASON_MODULE");
   setModule(TRACE_MODULE, "TRACE_MODULE");
-  setModule(LOCALWRITE_MODULE, "LOCALWRITE_MODULE");
+  // setModule(LOCALWRITE_MODULE, "LOCALWRITE_MODULE");
 
   setModule(DEPENDENCE_MODULE, "NO_DEPENDENCE_MODULE", false);
   setModule(POINTS_TO_MODULE, "POINTS_TO_MODULE");
@@ -756,11 +757,11 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
   // initialize pointsToMap
   pointsToMap = new std::unordered_map<uint32_t, std::unordered_set<SlampAllocationUnit>>();
 
-#ifndef ITO_ENABLE
-// FIXME: LOCALWRITE stuff should also be converted to constant if possible
-  setLocalWriteValue(LOCALWRITE_MASK, "LOCALWRITE_MASK");
-  setLocalWriteValue(LOCALWRITE_PATTERN, "LOCALWRITE_PATTERN");
-#endif
+// #ifndef ITO_ENABLE
+// // FIXME: LOCALWRITE stuff should also be converted to constant if possible
+  // setLocalWriteValue(LOCALWRITE_MASK, "LOCALWRITE_MASK");
+  // setLocalWriteValue(LOCALWRITE_PATTERN, "LOCALWRITE_PATTERN");
+// #endif
 
   // print localwrite mask and pattern
   fprintf(stderr, "LOCALWRITE_MASK: %zx\n", LOCALWRITE_MASK);
@@ -849,17 +850,22 @@ void SLAMP_fini(const char* filename)
   uint64_t START;
   TIME(START);
 
+  std::string pt_fname = "points_to.profile";
   // append the filename with localwrite pattern
   if (LOCALWRITE_MODULE) {
     // convert the LOCALWRITE_PATTERN into a string
     std::stringstream ss;
     ss << filename << "_" << LOCALWRITE_PATTERN;
     filename = ss.str().c_str();
+
+    std::stringstream ss2;
+    ss2 << pt_fname << "_" << LOCALWRITE_PATTERN;
+    pt_fname = ss2.str().c_str();
   }
 
   if (POINTS_TO_MODULE) {
     // dump out the points-to map
-    std::ofstream ofs(filename);
+    std::ofstream ofs(pt_fname);
     if (ofs.is_open()) {
       ofs << "Points-to map\n";
       for (auto &it : *pointsToMap) {
@@ -882,7 +888,16 @@ void SLAMP_fini(const char* filename)
   TADD(overhead_init_fini, START);
   slamp_time_dump("slamp_overhead.dump");
 
-  accessModuleDump("slamp_access_module.dump", "slamp_access_module.json");
+  // create str= "slamp_access_module_" + LOCALWRITE_PATTERN + ".dump"
+  std::string fname = "slamp_access_module.json";
+
+  if (LOCALWRITE_MODULE) {
+    std::stringstream ss;
+    ss << "slamp_access_module_" << LOCALWRITE_PATTERN << ".json";
+    fname = ss.str();
+  } 
+
+  accessModuleDump(fname);
 
   // dump 
   dumpReason();
@@ -1132,32 +1147,27 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
   }
 #endif
 
-  // Load access
 #ifndef ITO_ENABLE
-  TURN_OFF_CUSTOM_MALLOC;
+    TURN_OFF_CUSTOM_MALLOC;
 #endif
-  for (auto *f: *access_callbacks) {
-    f(true, instr, bare_instr, addr, value, size);
-  }
-
-  if (DEPENDENCE_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
-      // TURN_OFF_CUSTOM_MALLOC;
-      SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
-      // TURN_ON_CUSTOM_MALLOC;
+  // only need to check once
+  if (LOCALWRITE(addr)) {
+    for (auto *f : *access_callbacks) {
+      f(true, instr, bare_instr, addr, value, size);
     }
-  }
-#ifndef ITO_ENABLE
-  TURN_ON_CUSTOM_MALLOC;
-#endif
 
-  if (POINTS_TO_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
+    if (DEPENDENCE_MODULE) {
+      SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
+    }
+
+    if (POINTS_TO_MODULE) {
       SLAMP_points_to_module_use<size>(instr, addr);
     }
   }
+#ifndef ITO_ENABLE
+    TURN_ON_CUSTOM_MALLOC;
+#endif
+
 }
 
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value)
@@ -1203,22 +1213,19 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
   }
 #endif
 
-  if (DEPENDENCE_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
-      TURN_OFF_CUSTOM_MALLOC;
+  // only need to check once
+  if (LOCALWRITE(addr)) {
+    TURN_OFF_CUSTOM_MALLOC;
+    if (DEPENDENCE_MODULE) {
       SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
-      TURN_ON_CUSTOM_MALLOC;
     }
-  }
 
-  if (POINTS_TO_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
-      TURN_OFF_CUSTOM_MALLOC;
+    if (POINTS_TO_MODULE) {
+      // only need to check once
       SLAMP_points_to_module_use(instr, addr, n);
-      TURN_ON_CUSTOM_MALLOC;
     }
+
+    TURN_ON_CUSTOM_MALLOC;
   }
 }
 
@@ -1338,29 +1345,25 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRI
 #ifndef ITO_ENABLE
   TURN_OFF_CUSTOM_MALLOC;
 #endif
-  for (auto *f: *access_callbacks) {
-    // FIXME: value is empty for now
-    f(false, instr, bare_instr, addr, 0, size);
+  // only need to check once
+  if (LOCALWRITE(addr)) {
+    for (auto *f : *access_callbacks) {
+      // FIXME: value is empty for now
+      f(false, instr, bare_instr, addr, 0, size);
+    }
+
+    if (DEPENDENCE_MODULE) {
+      SLAMP_dependence_module_store_log<size>(instr, addr);
+    }
+
+    if (POINTS_TO_MODULE) {
+      SLAMP_points_to_module_use<size>(instr, addr);
+    }
   }
 #ifndef ITO_ENABLE
   TURN_ON_CUSTOM_MALLOC;
 #endif
-
-  if (DEPENDENCE_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
-      SLAMP_dependence_module_store_log<size>(instr, addr);
-    }
-  }
-
-  if (POINTS_TO_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
-      SLAMP_points_to_module_use<size>(instr, addr);
-    }
-  }
 }
-
 
 void SLAMP_store1(uint32_t instr, const uint64_t addr) {
   SLAMP_store<1>(instr, instr, addr);
@@ -1401,20 +1404,18 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
   }
 #endif
 
-  if (DEPENDENCE_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
+  if (LOCALWRITE(addr)) {
+    TURN_OFF_CUSTOM_MALLOC;
+    if (DEPENDENCE_MODULE) {
+      // only need to check once
       SLAMP_dependence_module_store_log(instr, addr, n);
     }
-  }
 
-  if (POINTS_TO_MODULE) {
-    // only need to check once
-    if (LOCALWRITE(addr)) {
-      TURN_OFF_CUSTOM_MALLOC;
+    if (POINTS_TO_MODULE) {
+      // only need to check once
       SLAMP_points_to_module_use(instr, addr, n);
-      TURN_ON_CUSTOM_MALLOC;
     }
+    TURN_ON_CUSTOM_MALLOC;
   }
 }
 
