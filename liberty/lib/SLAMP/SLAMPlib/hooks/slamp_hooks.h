@@ -1,13 +1,15 @@
 #ifndef SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 #define SLAMPLIB_HOOKS_SLAMP_HOOKS_H
 
-#ifdef ITO_ENABLE
-#define ATTRIBUTE(x) 
-// FIXME: inline tweak actually make things worse
+// FIXME: inline tweak actually make things worse in sequential and better with
+// 16x, so turn it on at all time before understanding why
+#define ATTRIBUTE(x) __attribute__((x))
+// #ifdef ITO_ENABLE
+// // #define ATTRIBUTE(x) 
 // #define ATTRIBUTE(x) __attribute__((x))
-#else
-#define ATTRIBUTE(x)
-#endif
+// #else
+// #define ATTRIBUTE(x)
+// #endif
 
 
 #include <bits/stdint-uintn.h>

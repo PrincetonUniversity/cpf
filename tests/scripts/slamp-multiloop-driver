@@ -77,10 +77,16 @@ function drive {
   # local CMD3="clang++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
   #local CMD3="g++ -Og $PRELINK_OBJ $SLAMP_HOOKS -o $EXE -g $DEFAULT_LDFLAGS -lunwind $DEFAULT_LIBS -ldl -lutil" 
 
-  if [[ x$LOCALWRITE_THREADS != x ]]; then
-      RAW_CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  RAW_CMD3="clang++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+  if [[ x$LTO != x ]]; then
+      RAW_CMD3+=" -flto"
+  fi
 
-      CMD3="localwrite-compile $LTO $LOCALWRITE_THREADS $RAW_CMD3"
+  if [[ x$LOCALWRITE_THREADS != x ]]; then
+      RAW_CMD3="clang++ -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+      #RAW_CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil" 
+
+      CMD3="localwrite-compile $LOCALWRITE_THREADS $RAW_CMD3"
   else
       echo -e "#include <stdio.h>\nconst char LOCALWRITE_MODULE=0;const size_t LOCALWRITE_MASK=0; const size_t LOCALWRITE_PATTERN=0;" | clang -x c -flto -c -o constants.o -
       # CMD3="clang++ -flto -no-pie  -O2 $PRELINK_OBJ $SLAMP_HOOKS constants.o -o $EXE -g $LINKING_OPTS -lunwind $DEFAULT_LIBS -ldl -lutil"
@@ -115,6 +121,7 @@ function drive {
   echo $CMD3
   $CMD3
   echo $CMD3
+
   echo -e "${red}    --- Run Simulator...${nc}"
   echo $CMD4
   #time $CMD4 > /dev/null 2>&1

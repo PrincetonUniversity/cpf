@@ -1147,11 +1147,11 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
   }
 #endif
 
+  // only need to check once
+  if (LOCALWRITE(addr)) {
 #ifndef ITO_ENABLE
     TURN_OFF_CUSTOM_MALLOC;
 #endif
-  // only need to check once
-  if (LOCALWRITE(addr)) {
     for (auto *f : *access_callbacks) {
       f(true, instr, bare_instr, addr, value, size);
     }
@@ -1163,10 +1163,10 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
     if (POINTS_TO_MODULE) {
       SLAMP_points_to_module_use<size>(instr, addr);
     }
-  }
 #ifndef ITO_ENABLE
     TURN_ON_CUSTOM_MALLOC;
 #endif
+  }
 
 }
 
@@ -1342,11 +1342,11 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRI
 #endif
 
   // Store access
+  // only need to check once
+  if (LOCALWRITE(addr)) {
 #ifndef ITO_ENABLE
   TURN_OFF_CUSTOM_MALLOC;
 #endif
-  // only need to check once
-  if (LOCALWRITE(addr)) {
     for (auto *f : *access_callbacks) {
       // FIXME: value is empty for now
       f(false, instr, bare_instr, addr, 0, size);
@@ -1359,10 +1359,10 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRI
     if (POINTS_TO_MODULE) {
       SLAMP_points_to_module_use<size>(instr, addr);
     }
-  }
 #ifndef ITO_ENABLE
   TURN_ON_CUSTOM_MALLOC;
 #endif
+  }
 }
 
 void SLAMP_store1(uint32_t instr, const uint64_t addr) {
