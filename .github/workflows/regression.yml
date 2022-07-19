@@ -40,11 +40,24 @@ jobs:
     # - name: Build CPF
     #   run: make -C bootstrap -f Makefile.github all
 
+    - name: Git Clone Action
+      # You may pin to the exact commit or the version.
+      # uses: sudosubin/git-clone-action@8a93ce24d47782e30077508cccacf8a05a891bae
+      uses: sudosubin/git-clone-action@v1.0.1
+      with:
+        # Repository owner and name. Ex: sudosubin/git-clone-action
+        repository: vgene/AutoParExperimentDriver # optional, default is ${{ github.repository }}
+        # Git host platform. Ex: github, gitlab, bitbucket, gitee, or else (git.suckless.org, ...)
+        platform: github # optional, default is github
+        # Git branch or tag to checkout.
+        ref: master # optional
+        path: Driver
+
     - name: Run regression
       run: |
           source /scratch/ziyangx/ve_py3/bin/activate
           source /tmp/github-cpf-test/cpf-env-release.rc
-          python ${GITHUB_WORKSPACE}/tests/scripts/GetResults.py -p ${GITHUB_WORKSPACE}/tests/regression -b ${GITHUB_WORKSPACE}/tests/regression/bmark_list_reg.json -r 1 -n 7 -s ${{ env.REG_SUITE }} -f
+          python ${GITHUB_WORKSPACE}/Driver/GetResults.py -b ${GITHUB_WORKSPACE}/tests/regression/bmark_list_reg.json  -p ${GITHUB_WORKSPACE}/tests/regression -s ${{ env.REG_SUITE }} -n 7 -q Edge Loop LAMP SLAMP SpecPriv Experiment -r 0 -f
     - name: Archive partifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
