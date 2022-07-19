@@ -76,7 +76,7 @@ BENCHMARK="benchmark.bc"
 ENABLES=""
 #ENABLES="$ENABLE_EDGE $ENABLE_LAMP $ENABLE_SPECPRIV"
 
-CMD="noelle-load $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
+CMD="noelle-load -noelle-disable-pdg-svf $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
 #CMD="opt $SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
 echo $CMD
 $CMD > $1 2>&1

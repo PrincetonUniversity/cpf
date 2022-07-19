@@ -381,6 +381,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       auto loopStructures = noelle.getLoopStructures(fA);
 
+      // FIXME: is there a best way to get the LDI?
       for (auto &loopStructure : *loopStructures) {
         if (loopStructure->getHeader() == hA) {
           auto ldi = noelle.getLoop(loopStructure);
