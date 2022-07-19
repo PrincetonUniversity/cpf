@@ -390,22 +390,22 @@ result.specpriv.profile.txt: $(CANON).specpriv-profile.out
 
 setup_codegen: llvmprof.out loopProf.out result.lamp.profile
 
-no-spec.dump:
+no-spec.dump: loopProf.out 
 	regressions-watchdog $(RUN_TIMEOUT) no-spec-dump.time genDumps $@
 
-cheap-spec.dump:
+cheap-spec.dump: loopProf.out
 	regressions-watchdog $(RUN_TIMEOUT) cheap-spec-dump.time genDumps $@ -enable-specpriv -enable-edgeprof
 	
-all-spec.dump: llvmprof.out loopProf.out result.lamp.profile result.specpriv.profile.txt
+all-spec.dump: loopProf.out result.lamp.profile result.specpriv.profile.txt
 	regressions-watchdog $(RUN_TIMEOUT) all-spec-dump.time genDumps $@ -enable-specpriv -enable-edgeprof -lamp-map-loop -enable-lamp
 
-no-specpriv.dump: llvmprof.out loopProf.out result.lamp.profile
+no-specpriv.dump: loopProf.out result.lamp.profile
 	regressions-watchdog $(RUN_TIMEOUT) no-specpriv-dump.time genDumps $@ -enable-edgeprof -lamp-map-loop -enable-lamp
 
-slamp.dump: llvmprof.out loopProf.out result.slamp.profile
+slamp.dump: loopProf.out result.slamp.profile
 	regressions-watchdog $(RUN_TIMEOUT) slamp-dump.time genDumps $@ -enable-edgeprof -enable-slamp
 
-ignorefn.dump: llvmprof.out loopProf.out
+ignorefn.dump: loopProf.out
 	regressions-watchdog $(RUN_TIMEOUT) ignorefn-dump.time genDumps $@ -enable-edgeprof -pdg-ignore-callsite
 
 $(CANON).collaborative-pipeline.dump : | setup_codegen $(CANON).specpriv-profile.out $(CANON).bc

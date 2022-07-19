@@ -85,8 +85,8 @@ HeapAssignment &Selector::getAssignment()
 
 void Selector::analysisUsage(AnalysisUsage &au)
 {
-  // au.addRequired< Noelle >();
-  // au.addRequired< PDGAnalysis >();
+  au.addRequired< Noelle >();
+  au.addRequired< PDGAnalysis >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   //au.addRequired< BlockFrequencyInfoWrapperPass >();
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
@@ -344,12 +344,11 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
              "----------------------=\nCompute weight for loop "
           << fA->getName() << " :: " << hA->getName() << "...\n");
 
-    LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
-    DominatorTree &dt = mloops.getAnalysis_DominatorTree(fA);
-    PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
-    std::unique_ptr<DominatorSummary> ds =
-        std::make_unique<DominatorSummary>(dt, pdt);
-    ScalarEvolution &se = mloops.getAnalysis_ScalarEvolution(fA);
+    // LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
+    // DominatorTree &dt = mloops.getAnalysis_DominatorTree(fA);
+    // PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
+    // std::unique_ptr<DominatorSummary> ds =
+        // std::make_unique<DominatorSummary>(dt, pdt);
 
 
     const unsigned long loopTime = perf->estimate_loop_weight(A);
@@ -367,10 +366,37 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       // Dump PDG
       //std::unique_ptr<llvm::noelle::PDG> pdg = pdgBuilder.getLoopPDG(A);
-      llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
+      llvm::noelle::PDG *pdg =  nullptr;// pdgBuilder.getLoopPDG(A).release();
 
-      std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-      writeGraph<PDG>(pdgDotName, pdg);
+      /*
+       * // old way of getting PDG
+       * llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
+       * std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+       * writeGraph<PDG>(pdgDotName, pdg);
+       */
+
+      // get PDG from NOELLE
+      auto& noelle = proxy.getAnalysis<Noelle>();
+      noelle.getProfiles();
+
+      auto loopStructures = noelle.getLoopStructures(fA);
+
+      for (auto &loopStructure : *loopStructures) {
+        if (loopStructure->getHeader() == hA) {
+          auto ldi = noelle.getLoop(loopStructure);
+          std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+          pdg = ldi->getLoopDG();
+          writeGraph<PDG>(pdgDotName, pdg);
+          break;
+        }
+      }
+
+      if (pdg == nullptr) {
+        errs() << "No PDG found for loop " << fA->getName() << " :: " << hA->getName() << "\n";
+        continue;
+      }
+      
+
 
       // FIXME: just bypass
       // continue;
@@ -972,8 +998,7 @@ bool Selector::doSelection(
       return false;
 
     // Identify compatibilities among the loops as edges
-    // FIXME: temporarily disable edges
-    // computeEdges(vertices, edges);
+    computeEdges(vertices, edges);
 
     auto printCompatibleMap = [](Edges edges) {
       errs() << "Compatible Map:\n";
