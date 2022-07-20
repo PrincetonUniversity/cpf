@@ -377,7 +377,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       // get PDG from NOELLE
       auto& noelle = proxy.getAnalysis<Noelle>();
-      noelle.getProfiles();
+      // noelle.getProfiles();
 
       auto loopStructures = noelle.getLoopStructures(fA);
 
