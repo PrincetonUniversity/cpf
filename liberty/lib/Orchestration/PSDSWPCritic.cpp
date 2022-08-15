@@ -5,6 +5,7 @@
 #include "liberty/Orchestration/PSDSWPCritic.h"
 #include "scaf/SpeculationModules/TXIOAA.h"
 #include "scaf/Utilities/ReportDump.h"
+#include "noelle/core/SCCDAG.hpp"
 
 #include <unordered_set>
 #include <climits>
@@ -620,6 +621,9 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
     loopInternals.push_back(internalNode.first);
   }
   optimisticPDG = pdg->createSubgraphFromValues(loopInternals, false);
+  
+  // use the sccdag manager from NOELLE
+
 
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
@@ -1579,6 +1583,7 @@ void PSDSWPCritic::populateCriticisms(PipelineStrategy &ps,
   }
 }
 
+// FIXME: need to pass LoopDependenceInfo in, so we can get NOELLE's SCC Manger
 CriticRes PSDSWPCritic::getCriticisms(PDG &pdg, Loop *loop) {
   REPORT_DUMP(errs() << "Begin criticisms generation for PS-DSWP critic\n");
 

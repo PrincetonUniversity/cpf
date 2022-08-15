@@ -1,52 +1,52 @@
-#include "noelle/core/FunctionsManager.hpp"
-#include "noelle/core/PDGAnalysis.hpp"
-#include "scaf/Utilities/PrintDebugInfo.h"
-#include <iomanip>
 #define DEBUG_TYPE "selector"
 
-#include "liberty/Orchestration/Orchestrator.h"
+#include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/BlockFrequencyInfo.h"
+#include "llvm/Analysis/BranchProbabilityInfo.h"
+#include "llvm/Analysis/DOTGraphTraitsPass.h"
+#include "llvm/Analysis/DomPrinter.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/Support/DOTGraphTraits.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "llvm/ADT/GraphTraits.h"
-#include "llvm/Analysis/DOTGraphTraitsPass.h"
-#include "llvm/Analysis/DomPrinter.h"
-#include "llvm/Support/GraphWriter.h"
-#include "llvm/Support/DOTGraphTraits.h"
+#include "liberty/Speculation/Selector.h"
+#include "liberty/GraphAlgorithms/Ebk.h"
+#include "liberty/LAMP/LAMPLoadProfile.h"
+#include "liberty/LoopProf/Targets.h"
+#include "liberty/Orchestration/Orchestrator.h"
+#include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/ControlSpeculator.h"
+#include "liberty/Speculation/PredictionSpeculator.h"
+#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
+#include "liberty/Strategy/PipelineStrategy.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
-#include "liberty/LAMP/LAMPLoadProfile.h"
-#include "liberty/LoopProf/Targets.h"
+#include "scaf/SpeculationModules/LocalityAA.h"
 #include "scaf/SpeculationModules/PDGBuilder.hpp"
-#include "liberty/Speculation/ControlSpeculator.h"
-#include "liberty/Speculation/PredictionSpeculator.h"
-#include "liberty/Speculation/Selector.h"
-#include "liberty/Strategy/PipelineStrategy.h"
-#include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "scaf/Utilities/CallSiteFactory.h"
 #include "scaf/Utilities/ModuleLoops.h"
+#include "scaf/Utilities/PrintDebugInfo.h"
 #include "scaf/Utilities/ReportDump.h"
-#include "llvm/Analysis/BlockFrequencyInfo.h"
-#include "llvm/Analysis/BranchProbabilityInfo.h"
 
-#include "liberty/GraphAlgorithms/Ebk.h"
-#include "liberty/Speculation/Classify.h"
-#include "liberty/Speculation/UpdateOnCloneAdaptors.h"
-#include "scaf/SpeculationModules/LocalityAA.h"
-
-#include "noelle/core/PDG.hpp"
-#include "noelle/core/LoopDependenceInfo.hpp"
 #include "noelle/core/DGGraphTraits.hpp"
 #include "noelle/core/DominatorSummary.hpp"
+#include "noelle/core/FunctionsManager.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
 #include "noelle/core/Noelle.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/PDGAnalysis.hpp"
+
 #include <algorithm>
+#include <iomanip>
 
 using namespace llvm;
 using namespace llvm::noelle;
@@ -200,7 +200,7 @@ public:
     return ss.str();
   }
 
-  CoverageStats(Loop *loop, PDG &pdg, PerformanceEstimator *perf, LAMPLoadProfile *lamp) {
+  CoverageStats(LoopDependenceInfo *ldi, PDG &pdg, PerformanceEstimator *perf, LAMPLoadProfile *lamp) {
     std::vector<Value *> loopInternals;
     for (auto internalNode : pdg.internalNodePairs()) {
       loopInternals.push_back(internalNode.first);
@@ -267,7 +267,11 @@ public:
  *
  */
 
-    auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
+    // get sccdag from noelle
+    auto sccManager = ldi->getSCCManager();
+    auto sccdag = sccManager->getSCCDAG();
+
+    // auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
     TotalWeight = 0;
     LargestSeqWeight = 0;
@@ -275,7 +279,7 @@ public:
     SequentialWeight = 0;
 
     // get total weight
-    for (auto *scc : optimisticSCCDAG->getSCCs()) {
+    for (auto *scc : sccdag->getSCCs()) {
       auto curWeight = getWeight(scc, perf);
       TotalWeight += curWeight;
       if (isParallel(*scc)) {
@@ -381,12 +385,15 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       auto loopStructures = noelle.getLoopStructures(fA);
 
+
+      llvm::noelle::LoopDependenceInfo *ldi = nullptr;
       // FIXME: is there a best way to get the LDI?
       for (auto &loopStructure : *loopStructures) {
         if (loopStructure->getHeader() == hA) {
-          auto ldi = noelle.getLoop(loopStructure);
-          std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+          ldi = noelle.getLoop(loopStructure);
           pdg = ldi->getLoopDG();
+
+          std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
           writeGraph<PDG>(pdgDotName, pdg);
           break;
         }
@@ -396,17 +403,8 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
         errs() << "No PDG found for loop " << fA->getName() << " :: " << hA->getName() << "\n";
         continue;
       }
-      
-
-
-      // FIXME: just bypass
-      // continue;
-
-      //std::unique_ptr<LoopDependenceInfo> ldi =
-      //    std::make_unique<LoopDependenceInfo>(pdg, A, *ds, se, 32);
 
       // trying to find the best parallelization strategy for this loop
-
       REPORT_DUMP(
           errs() << "Run Orchestrator:: find best parallelization strategy for "
                  << fA->getName() << " :: " << hA->getName() << "...\n");
@@ -435,7 +433,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       // the pdg is updated over here
       // CoverageStats stats(A, *pdg, perf, &lamp);
-      CoverageStats stats(A, *pdg, perf, nullptr);
+      CoverageStats stats(ldi, *pdg, perf, nullptr);
 
       REPORT_DUMP(
           errs() << stats.dumpPercentage());
