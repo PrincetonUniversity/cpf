@@ -155,12 +155,12 @@ protected:
 
   // --------------- Subclasses should overload these ------------------------
 
-  // particular pipelining options?
-  virtual bool pipelineOption_ignoreAntiOutput() const { return false; }
-  virtual bool pipelineOption_constrainSubLoops() const { return false;  }
-  virtual bool pipelineOption_includeReplicableStages() const { return true; }
-  virtual bool pipelineOption_abortIfNoParallelStage() const { return true; }
-  virtual bool pipelineOption_includeParallelStages() const { return true;  }
+  // // particular pipelining options?
+  // virtual bool pipelineOption_ignoreAntiOutput() const { return false; }
+  // virtual bool pipelineOption_constrainSubLoops() const { return false;  }
+  // virtual bool pipelineOption_includeReplicableStages() const { return true; }
+  // virtual bool pipelineOption_abortIfNoParallelStage() const { return true; }
+  // virtual bool pipelineOption_includeParallelStages() const { return true;  }
 
   // What kind of speculation to use?
   // speculation on control deps:

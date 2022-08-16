@@ -54,7 +54,6 @@ std::vector<Remediator_ptr> Orchestrator::getAvailableRemediators(Loop *A, PDG *
   // disable IV remediator for PS-DSWP for now, handle it via replicable stage
   //remeds.push_back(std::make_unique<CountedIVRemediator>(&ldi));
 
-
   if (EnableSpecPriv && EnableLamp && EnableEdgeProf) {
     // full speculative analysis stack combining lamp, ctrl spec, value prediction,
     // points-to spec, separation logic spec, txio, commlibsaa, ptr-residue and
@@ -82,6 +81,8 @@ std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
 
   // PS-DSWP critic
   critics.push_back(std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl));
+
+  // DSWP critic
   critics.push_back(std::make_shared<DSWPCritic>(perf, threadBudget, lpl));
 
   // DOALL critic (covered by PS-DSWP critic)
@@ -238,20 +239,9 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
 
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::noelle::PDG &pdg,
-    // //LoopDependenceInfo &ldi,
-    // PerformanceEstimator &perf,
-    // ControlSpeculation *ctrlspec,
-    // PredictionSpeculation *loadedValuePred, ModuleLoops &mloops,
-    // TargetLibraryInfo *tli,
-    // SmtxSpeculationManager &smtxLampMan,
-    // PtrResidueSpeculationManager &ptrResMan, LAMPLoadProfile &lamp,
-    // const Read &rd, const HeapAssignment &asgn, Pass &proxy, LoopAA *loopAA,
-    // KillFlow &kill, KillFlow_CtrlSpecAware *killflowA,
-    // CallsiteDepthCombinator_CtrlSpecAware *callsiteA, LoopProfLoad &lpl,
     std::unique_ptr<PipelineStrategy> &strat,
     std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
-    unsigned threadBudget, bool ignoreAntiOutput, bool includeReplicableStages,
-    bool constrainSubLoops, bool abortIfNoParallelStage) {
+    unsigned threadBudget) {
   BasicBlock *header = loop->getHeader();
   Function *fcn = header->getParent();
 
@@ -263,35 +253,39 @@ bool Orchestrator::findBestStrategy(
 
   unsigned long maxSavings = 0;
 
-  // get all possible criticisms
-  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
-
-  // address all possible criticisms
-  std::vector<Remediator_ptr> remeds =
+  std::vector<Remediator_ptr> remediators =
     getAvailableRemediators(loop, &pdg);
 
-      /*
-       *getRemediators(loop, &pdg, ctrlspec, loadedValuePred, mloops, tli, //ldi,
-       *               smtxLampMan, ptrResMan, lamp, rd, asgn, proxy,
-       *               loopAA, kill, killflowA, callsiteA, &perf);
-       */
-
-  for (auto remediatorIt = remeds.begin(); remediatorIt != remeds.end();
-       ++remediatorIt) {
-    Remedies remedies = (*remediatorIt)->satisfy(pdg, loop, allCriticisms);
+  // get all possible criticisms
+  // FIXME: a very inefficient way to do this, essentially
+  // create a new Criticism for each edge
+  Criticisms allCriticisms = Critic::getAllCriticisms(pdg);
+  for (auto &remediator : remediators) {
+    Remedies remedies = remediator->satisfy(pdg, loop, allCriticisms);
+    // for each remedy
     for (Remedy_ptr r : remedies) {
-      for (Criticism *c : r->resolvedC) {
-        long tcost = 0;
-        Remedies_ptr remedSet = std::make_shared<Remedies>();
+      long tcost = 0;
+      Remedies_ptr remedSet = std::make_shared<Remedies>();
+
+      // expand remedy if there's subremedies
+      std::function<void(Remedy_ptr)> expandSubRemedies = [remedSet, &tcost, &expandSubRemedies](Remedy_ptr r) {
         if (r->hasSubRemedies()) {
-          for (Remedy_ptr subr : *(r->getSubRemedies())) {
-            remedSet->insert(subr);
-            tcost += subr->cost;
+          for (Remedy_ptr subR : *r->getSubRemedies()) {
+            remedSet->insert(subR);
+            tcost += subR->cost;
+            expandSubRemedies(subR);
           }
         } else {
           remedSet->insert(r);
-          tcost = r->cost;
+          tcost += r->cost;
         }
+      };
+
+      expandSubRemedies(r);
+
+      // for each criticism that is satisfied by the remedy
+      // might be multiple ones because one remedy can solve multiple criticisms
+      for (Criticism *c : r->resolvedC) {
         // remedies are added to the edges.
         c->setRemovable(true);
         c->addRemedies(remedSet);
@@ -300,16 +294,18 @@ bool Orchestrator::findBestStrategy(
   }
 
   // receive actual criticisms from critics given the enhanced pdg
-  std::vector<Critic_ptr> critics = getCritics(perf, threadBudget, lpl); //get PSDSWP critics
+  // get critics
+  std::vector<Critic_ptr> critics = getCritics(perf, threadBudget, lpl);
 
-  for (auto criticIt = critics.begin(); criticIt != critics.end(); ++criticIt) {
-    REPORT_DUMP(errs() << "\nCritic " << (*criticIt)->getCriticName() << "\n");
-    CriticRes res = (*criticIt)->getCriticisms(pdg, loop);
+  // for each critic, check if all criticisms are satisfied by the remedies
+  for (auto &critic : critics) {
+    REPORT_DUMP(errs() << "\nCritic " << critic->getCriticName() << "\n");
+    CriticRes res = critic->getCriticisms(pdg, loop);
     Criticisms &criticisms = res.criticisms;
     unsigned long expSpeedup = res.expSpeedup;
 
     if (!expSpeedup) {
-      REPORT_DUMP(errs() << (*criticIt)->getCriticName()
+      REPORT_DUMP(errs() << critic->getCriticName()
                    << " not applicable/profitable to " << fcn->getName()
                    << "::" << header->getName()
                    << ": not all criticisms are addressable\n");
@@ -336,7 +332,7 @@ bool Orchestrator::findBestStrategy(
     unsigned long savings = expSpeedup - adjRemedCosts;
 
     REPORT_DUMP(errs() << "Expected Savings from critic "
-                 << (*criticIt)->getCriticName()
+                 << critic->getCriticName()
                  << " (no remedies): " << expSpeedup
                  << "  and selected remedies cost: " << adjRemedCosts << "\n");
 
@@ -349,7 +345,7 @@ bool Orchestrator::findBestStrategy(
       maxSavings = savings;
       strat = std::move(res.ps);
       sRemeds = std::move(selectedRemedies);
-      sCritic = *criticIt;
+      sCritic = critic;
     }
   }
 

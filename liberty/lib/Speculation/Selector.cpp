@@ -292,22 +292,23 @@ public:
   }
 };
 
+/*
+ * Go through each loop (vertice) and compute the best parallelized weights
+ */
 unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
                          VertexWeights &weights, VertexWeights &scaledweights,
                          LateInliningOpportunities &opportunities) {
   unsigned numApplicable = 0;
 
+  // have to have a concrete LLVM pass
   Pass &proxy = getPass();
-  ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
 
+  ModuleLoops &mloops = proxy.getAnalysis< ModuleLoops >();
 
   // LoopProf should always be alive
   LoopProfLoad &lpl = proxy.getAnalysis< LoopProfLoad >();
 
   PDGBuilder &pdgBuilder = proxy.getAnalysis< PDGBuilder >();
-
-  //TargetLibraryInfo *tli =
-      //&proxy.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
   // create Orchestrator
   std::unique_ptr<Orchestrator> orch = std::unique_ptr<Orchestrator>(new Orchestrator(proxy));
@@ -337,6 +338,8 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
   const unsigned N = vertices.size();
   weights.resize(N);
   scaledweights.resize(N);
+
+  // go through each loop
   for(unsigned i=0; i<N; ++i)
   {
     Loop *A = vertices[i];
@@ -348,18 +351,14 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
              "----------------------=\nCompute weight for loop "
           << fA->getName() << " :: " << hA->getName() << "...\n");
 
-    // LoopInfo &li = mloops.getAnalysis_LoopInfo(fA);
-    // DominatorTree &dt = mloops.getAnalysis_DominatorTree(fA);
-    // PostDominatorTree &pdt = mloops.getAnalysis_PostDominatorTree(fA);
-    // std::unique_ptr<DominatorSummary> ds =
-        // std::make_unique<DominatorSummary>(dt, pdt);
-
-
-    const unsigned long loopTime = perf->estimate_loop_weight(A);
+    // estimate the weight of a loop
+    double loopTime = perf->estimate_loop_weight(A);
     const unsigned long scaledLoopTime = FixedPoint*loopTime;
-    assert(A->getLoopDepth() > 0 && "Target loop is not inside a loop???");
-    const unsigned depthPenalty = PenalizeLoopNest*(A->getLoopDepth()-1); // break ties with nested loops
 
+    // adjust the loop weight by deducting the depth penalty
+    // FIXME: ugly code
+    assert(A->getLoopDepth() > 0 && "Target loop is not a loop???");
+    const unsigned long depthPenalty = PenalizeLoopNest*(A->getLoopDepth()-1); // break ties with nested loops
     unsigned long adjLoopTime = scaledLoopTime;
     if( scaledLoopTime > depthPenalty )
       adjLoopTime = scaledLoopTime - depthPenalty;
@@ -367,7 +366,6 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       adjLoopTime = scaledLoopTime - depthPenalty / 10;
 
     {
-
       // Dump PDG
       //std::unique_ptr<llvm::noelle::PDG> pdg = pdgBuilder.getLoopPDG(A);
       llvm::noelle::PDG *pdg =  nullptr;// pdgBuilder.getLoopPDG(A).release();
@@ -381,10 +379,7 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       // get PDG from NOELLE
       auto& noelle = proxy.getAnalysis<Noelle>();
-      // noelle.getProfiles();
-
       auto loopStructures = noelle.getLoopStructures(fA);
-
 
       llvm::noelle::LoopDependenceInfo *ldi = nullptr;
       // FIXME: is there a best way to get the LDI?
@@ -414,22 +409,12 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       std::unique_ptr<SelectedRemedies> sr;
       Critic_ptr sc;
 
-      /*
-       *bool applicable = orch->findBestStrategy(
-       *    A, *pdg, //ldi,
-       *    *perf, ctrlspec, loadedValuePred, mloops, tli,
-       *    smtxLampMan, ptrResMan, lamp, rd, asgn, proxy, loopAA, kill,
-       *    killflowA, callsiteA, lpl, ps, sr, sc, NumThreads,
-       *    pipelineOption_ignoreAntiOutput(),
-       *    pipelineOption_includeReplicableStages(),
-       *    pipelineOption_constrainSubLoops(),
-       *    pipelineOption_abortIfNoParallelStage());
-       */
-      bool applicable = orch->findBestStrategy(A, *pdg, ps, sr, sc, NumThreads,
-          pipelineOption_ignoreAntiOutput(),
-          pipelineOption_includeReplicableStages(),
-          pipelineOption_constrainSubLoops(),
-          pipelineOption_abortIfNoParallelStage());
+      // try multiple critics, find the best one for the loop by estimation with number of threads
+      bool applicable = orch->findBestStrategy(A, *pdg, ps, sr, sc, NumThreads);
+          // pipelineOption_ignoreAntiOutput(),
+          // pipelineOption_includeReplicableStages(),
+          // pipelineOption_constrainSubLoops(),
+          // pipelineOption_abortIfNoParallelStage());
 
       // the pdg is updated over here
       // CoverageStats stats(A, *pdg, perf, &lamp);
@@ -437,17 +422,6 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       REPORT_DUMP(
           errs() << stats.dumpPercentage());
-      /*
-       *bool applicable = orch->findBestStrategyGivenBestPDG(A,
-       *    *pdg, *perf, ctrlspec, mloops,
-       *    lpl, loopAA,
-       *    rd, asgn, proxy,
-       *    ps, sr, sc, NumThreads,
-       *    pipelineOption_ignoreAntiOutput(),
-       *    pipelineOption_includeReplicableStages(),
-       *    pipelineOption_constrainSubLoops(),
-       *    pipelineOption_abortIfNoParallelStage());
-       */
 
       if( applicable )
       {
@@ -1010,6 +984,8 @@ bool Selector::doSelection(
 
     // Identify edge weights.  Bigger weight is better.
     LateInliningOpportunities opportunities;
+
+    // actually try to parallelize
     numApplicable = computeWeights(vertices, edges, weights, scaledweights, opportunities);
 
     REPORT_DUMP(summarizeParallelizableLoops(vertices,scaledweights,numApplicable));

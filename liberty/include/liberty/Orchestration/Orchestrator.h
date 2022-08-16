@@ -103,9 +103,7 @@ public:
       std::unique_ptr<PipelineStrategy> &strat,
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
       // Optional inputs
-      unsigned threadBudget = 25, bool ignoreAntiOutput = false,
-      bool includeReplicableStages = true, bool constrainSubLoops = false,
-      bool abortIfNoParallelStage = true);
+      unsigned threadBudget = 25);
 
 /*
  *  bool findBestStrategy(
