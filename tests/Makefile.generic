@@ -527,7 +527,6 @@ $(CANON).bc : $(CANON).pre_pgo.bc $(CANON).edgeProf.out $(NAMEDLIBS)
 	cp $(CANON).edgeProf.out llvmprof.out
 	regressions-watchdog $(TRANSFORM_TIMEOUT) insert-edge-prof.time $(LLVM_OPT) -block-freq -pgo-instr-use -pgo-test-profile-file=./llvmprof.out $< -o $@
 	regressions-watchdog $(TRANSFORM_TIMEOUT) simplify.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) -loop-simplify -indvars $@ -o $@
-	#regressions-watchdog $(TRANSFORM_TIMEOUT) $<.dbgCl.time opt $@ -o $@ -load $(LIBERTY_LIBS_DIR)/libDbgClean.so -dbg-clean
 	regressions-watchdog $(TRANSFORM_TIMEOUT) break-constgeps.time opt -load ${NOELLE_LIBS_DIR}/libSvf.so -load ${NOELLE_LIBS_DIR}/libCudd.so -stat=false -break-constgeps $@ -o $@
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.namer.time opt $@ -o $@ -load $(SCAF_LIBS_DIR)/libSCAFUtilities.so -metadata-namer
 
