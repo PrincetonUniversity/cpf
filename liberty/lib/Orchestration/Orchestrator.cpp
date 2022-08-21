@@ -21,6 +21,7 @@
 #include "scaf/Utilities/ReportDump.h"
 
 #include <iterator>
+#include <memory>
 
 namespace liberty {
 
@@ -32,6 +33,7 @@ namespace SpecPriv {
 using namespace llvm;
 using namespace llvm::noelle;
 
+// FIXME: to be removed
 std::vector<Remediator_ptr> Orchestrator::getAvailableRemediators(Loop *A, PDG *pdg) {
   std::vector<Remediator_ptr> remeds;
 
@@ -74,6 +76,7 @@ std::vector<Remediator_ptr> Orchestrator::getAvailableRemediators(Loop *A, PDG *
   return remeds;
 }
 
+// FIXME: to be removed
 std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
                                                  unsigned threadBudget,
                                                  LoopProfLoad *lpl) {
@@ -91,12 +94,14 @@ std::vector<Critic_ptr> Orchestrator::getCritics(PerformanceEstimator *perf,
   return critics;
 }
 
+
 void Orchestrator::printRemediatorSelectionCnt() {
   REPORT_DUMP(errs() << "Selected Remediators:\n\n");
   for (auto const &it : remediatorSelectionCnt) {
     REPORT_DUMP(errs() << it.first << " was selected " << it.second << " times\n");
   }
 }
+
 
 void Orchestrator::printRemedies(Remedies &rs, bool selected) {
   REPORT_DUMP(errs() << "( ");
@@ -237,6 +242,7 @@ void Orchestrator::addressCriticisms(SelectedRemedies &selectedRemedies,
   REPORT_DUMP(errs() << "\n-====================================================-\n\n");
 }
 
+// FIXME: to be removed
 bool Orchestrator::findBestStrategy(
     Loop *loop, llvm::noelle::PDG &pdg,
     std::unique_ptr<PipelineStrategy> &strat,
@@ -354,6 +360,80 @@ bool Orchestrator::findBestStrategy(
 
   // no profitable parallelization strategy was found for this loop
   return false;
+}
+
+
+
+Orchestrator::Strategy *Orchestrator::findBestStrategy(
+    Loop *loop, llvm::noelle::PDG &pdg, vector<Critic_ptr> &critics) {
+  BasicBlock *header = loop->getHeader();
+  Function *fcn = header->getParent();
+
+  REPORT_DUMP(errs() << "Start of findBestStrategy for loop " << fcn->getName()
+               << "::" << header->getName();
+        Instruction *term = header->getTerminator();
+        if (term) liberty::printInstDebugInfo(term);
+        errs() << "\n";);
+
+  unsigned long maxSavings = 0;
+  Strategy *strategy = nullptr;
+
+  // for each critic, check if all criticisms are satisfied by the remedies
+  for (auto &critic : critics) {
+    REPORT_DUMP(errs() << "\nCritic " << critic->getCriticName() << "\n");
+    CriticRes res = critic->getCriticisms(pdg, loop);
+    Criticisms &criticisms = res.criticisms;
+    unsigned long expSpeedup = res.expSpeedup;
+
+    if (!expSpeedup) {
+      REPORT_DUMP(errs() << critic->getCriticName()
+                   << " not applicable/profitable to " << fcn->getName()
+                   << "::" << header->getName()
+                   << ": not all criticisms are addressable\n");
+      continue;
+    }
+
+    std::unique_ptr<SelectedRemedies> selectedRemedies =
+        std::make_unique<SelectedRemedies>();
+    unsigned long selectedRemediesCost = 0;
+    if (!criticisms.size()) {
+      REPORT_DUMP(errs() << "\nNo criticisms generated!\n\n");
+    } else {
+      REPORT_DUMP(errs() << "Addressible criticisms\n");
+      // orchestrator selects set of remedies to address the given criticisms,
+      // computes remedies' total cost
+      addressCriticisms(*selectedRemedies, selectedRemediesCost, criticisms);
+    }
+
+    unsigned long adjRemedCosts =
+        (long)Critic::FixedPoint * selectedRemediesCost;
+
+    if (IgnoreCost)
+      adjRemedCosts = 0;
+
+    if (expSpeedup > adjRemedCosts) {
+      unsigned long savings = expSpeedup - adjRemedCosts;
+
+      REPORT_DUMP(errs() << "Expected Savings from critic "
+          << critic->getCriticName()
+          << " (no remedies): " << expSpeedup
+          << "  and selected remedies cost: " << adjRemedCosts << "\n");
+
+      // for coverage purposes, given that the cost model is not complete and not
+      // consistent among speedups and remedies cost, assume that it is always
+      // profitable to parallelize if loop is DOALL-able.
+      if (maxSavings < savings) {
+        maxSavings = savings;
+        auto strat = *res.ps.get();
+        auto sRemeds = *selectedRemedies.get();
+        auto Critic = critic;
+
+        strategy = new Strategy(strat, expSpeedup, maxSavings, sRemeds, Critic);
+      }
+    }
+  }
+
+  return strategy;
 }
 
 } // namespace SpecPriv

@@ -1,43 +1,45 @@
 #ifndef LLVM_LIBERTY_ORCHESTRATOR_H
 #define LLVM_LIBERTY_ORCHESTRATOR_H
 
-#include "noelle/core/LoopDependenceInfo.hpp"
-#include "noelle/core/PDG.hpp"
-#include "noelle/core/SCCDAG.hpp"
-#include "scaf/SpeculationModules/PredictionSpeculation.h"
-#include "liberty/Speculation/Classify.h"
-#include "liberty/Speculation/PtrResidueManager.h"
-#include "liberty/Strategy/ProfilePerformanceEstimator.h"
-#include "scaf/MemoryAnalysisModules/KillFlow.h"
-#include "scaf/MemoryAnalysisModules/LoopAA.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
+#include "liberty/Orchestration/Critic.h"
+#include "liberty/Orchestration/DSWPCritic.h"
+#include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
+#include "liberty/Speculation/Classify.h"
+#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
+#include "liberty/Speculation/PtrResidueManager.h"
+#include "liberty/Speculation/Read.h"
+#include "liberty/Strategy/PipelineStrategy.h"
+#include "liberty/Strategy/ProfilePerformanceEstimator.h"
+
+#include "scaf/MemoryAnalysisModules/KillFlow.h"
+#include "scaf/MemoryAnalysisModules/LoopAA.h"
 #include "scaf/SpeculationModules/CommutativeLibsAA.h"
 #include "scaf/SpeculationModules/ControlSpecRemed.h"
 #include "scaf/SpeculationModules/CountedIVRemed.h"
-#include "liberty/Orchestration/Critic.h"
 #include "scaf/SpeculationModules/LocalityAA.h"
 #include "scaf/SpeculationModules/MemVerRemed.h"
-#include "liberty/Orchestration/PSDSWPCritic.h"
-#include "liberty/Orchestration/DSWPCritic.h"
+#include "scaf/SpeculationModules/PredictionSpeculation.h"
 #include "scaf/SpeculationModules/ReduxRemed.h"
 #include "scaf/SpeculationModules/Remediator.h"
 #include "scaf/SpeculationModules/SmtxAA.h"
-#include "liberty/Speculation/CallsiteDepthCombinator_CtrlSpecAware.h"
-#include "liberty/Speculation/KillFlow_CtrlSpecAware.h"
-#include "liberty/Speculation/Read.h"
-#include "liberty/Strategy/PipelineStrategy.h"
 
 #include "scaf/SpeculationModules/MemSpecAARemed.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
 #include "scaf/Utilities/ControlSpeculation.h"
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/PrintDebugInfo.h"
-#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/SCCDAG.hpp"
 
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace liberty {
@@ -53,6 +55,20 @@ typedef std::shared_ptr<Critic> Critic_ptr;
 
 class Orchestrator {
 public:
+  struct Strategy {
+    PipelineStrategy pipelineStrategy;
+    unsigned long expSpeedup;
+    unsigned long maxSavings;
+    SelectedRemedies selectedRemedies;
+    Critic_ptr critic;
+
+    Strategy(PipelineStrategy pipelineStrategy, unsigned long expSpeedup,
+             unsigned long maxSavings, SelectedRemedies selectedRemedies,
+             Critic_ptr critic)
+        : pipelineStrategy(std::move(pipelineStrategy)), expSpeedup(expSpeedup),
+          maxSavings(maxSavings), selectedRemedies(selectedRemedies),
+          critic(critic) {}
+  };
   Orchestrator(Pass &proxy_): proxy(proxy_) {
       loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
       lpl = &proxy.getAnalysis< LoopProfLoad >();
@@ -104,6 +120,9 @@ public:
       std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
       // Optional inputs
       unsigned threadBudget = 25);
+
+  Strategy *findBestStrategy(
+      Loop *loop, llvm::noelle::PDG &pdg, vector<Critic_ptr> &critics);
 
 /*
  *  bool findBestStrategy(
