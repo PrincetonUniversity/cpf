@@ -1,5 +1,7 @@
 #include <memory>
 
+#include "liberty/LAMP/LAMPLoadProfile.h"
+#include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Planner/Planner.h"
 #include "liberty/Orchestration/Orchestrator.h"
@@ -14,6 +16,8 @@ namespace liberty {
   using namespace liberty::slamp;
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
+    au.addRequired<LoopProfLoad>();
+    au.addRequired<Noelle>();
     au.addRequired<TargetLibraryInfoWrapperPass>();
     au.addRequired<LoopInfoWrapperPass>();
     au.addRequired< LoopAA >();
@@ -22,11 +26,12 @@ namespace liberty {
 
     if (EnableEdgeProf) {
       au.addRequired<ProfileGuidedControlSpeculator>();
-      //au.addRequired<KillFlow_CtrlSpecAware>();
-      //au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+      // au.addRequired<KillFlow_CtrlSpecAware>();
+      // au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
     }
 
     if (EnableLamp) {
+      au.addRequired<LAMPLoadProfile>();
       au.addRequired<SmtxSpeculationManager>();
     }
 
@@ -125,8 +130,8 @@ namespace liberty {
       edgeaa->InitializeLoopAA(this, *DL);
       specAAs.push_back(edgeaa);
 
-      // killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>(); // KillFlow
-      // callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+      // auto killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>(); // KillFlow
+      // auto callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
       // // CallsiteDepth
 
       // Setup
@@ -220,7 +225,7 @@ namespace liberty {
     noelle::PDG *pdg = nullptr;
     noelle::PDG *spec_pdg = nullptr;
 
-    auto aa = &getAnalysis<LoopAA>();
+    auto aa = getAnalysis<LoopAA>().getTopAA();
 
     // Get NOELLE's PDG (conservative)
     REPORT_DUMP(aa->dump());
@@ -246,6 +251,9 @@ namespace liberty {
     auto loopAAs = addAndSetupSpecModulesToLoopAA(M, loop);
     REPORT_DUMP(aa->dump());
     spec_pdg = ldi->getLoopDG();
+    for (auto &loopAA : loopAAs) {
+      delete loopAA;
+    }
 
     // Set up additional remediators (controlspec, redux, memver)
     std::vector<Remediator_ptr> remediators =
@@ -319,5 +327,8 @@ namespace liberty {
 
     return false;
   }
+
+  char Planner::ID = 0;
+  static RegisterPass< Planner > rp("planner", "Parallelization Planner");
 
 } // namespace liberty

@@ -47,10 +47,14 @@ NOELLE_LIBS="-load $NOELLE_LIBS_DIR/CallGraph.so\
     -load $NOELLE_LIBS_DIR/LoopTransformer.so \
     -load $NOELLE_LIBS_DIR/Noelle.so"
 
-CPF_LIBS="-load $LIBERTY_LIBS_DIR/libSpeculation.so\
-    -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so\
+# CPF_LIBS="-load $LIBERTY_LIBS_DIR/libSpeculation.so\
+    # -load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so\
+    # -load $LIBERTY_LIBS_DIR/libRedux.so\
+    # -load $LIBERTY_LIBS_DIR/libOrchestration.so"
+CPF_LIBS="-load $LIBERTY_LIBS_DIR/libGraphAlgorithms.so\
     -load $LIBERTY_LIBS_DIR/libRedux.so\
-    -load $LIBERTY_LIBS_DIR/libOrchestration.so"
+    -load $LIBERTY_LIBS_DIR/libOrchestration.so\
+    -load $LIBERTY_LIBS_DIR/libPlanner.so"
 
 AA_PASSES="-basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa \
     -global-malloc-aa -pure-fun-aa -semi-local-fun-aa -phi-maze-aa \
@@ -76,7 +80,8 @@ BENCHMARK="benchmark.bc"
 ENABLES=""
 #ENABLES="$ENABLE_EDGE $ENABLE_LAMP $ENABLE_SPECPRIV"
 
-CMD="noelle-load -noelle-disable-pdg-svf $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
+CMD="noelle-load -noelle-disable-pdg-svf $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES  -planner -disable-output -ignore-cost" 
+#CMD="noelle-load -noelle-disable-pdg-svf $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
 #CMD="opt $SCAF_BASE_LIBS $NOELLE_LIBS $SCAF_SPEC_LIBS $CPF_LIBS $ENABLES $DEBUG_PASSES $BENCHMARK ${@:2} $AA_PASSES -pdgbuilder  -remed-selector  -disable-output -ignore-cost" 
 echo $CMD
 $CMD > $1 2>&1
