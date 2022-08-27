@@ -6,6 +6,11 @@
 #include "liberty/Planner/Planner.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "noelle/core/Noelle.hpp"
+#include "scaf/MemoryAnalysisModules/PureFunAA.h"
+#include "scaf/MemoryAnalysisModules/SemiLocalFunAA.h"
+#include "scaf/MemoryAnalysisModules/KillFlow.h"
+#include "scaf/MemoryAnalysisModules/NoEscapeFieldsAA.h"
+#include "scaf/SpeculationModules/GlobalConfig.h"
 #include "scaf/Utilities/ReportDump.h"
 #include "scaf/SpeculationModules/SLAMPLoad.h"
 #include "scaf/SpeculationModules/SlampOracleAA.h"
@@ -16,8 +21,8 @@ namespace liberty {
   using namespace liberty::slamp;
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
+    au.addRequired<Noelle>(); // NOELLE is needed to drive the analysis
     au.addRequired<LoopProfLoad>();
-    au.addRequired<Noelle>();
     au.addRequired<TargetLibraryInfoWrapperPass>();
     au.addRequired<LoopInfoWrapperPass>();
     au.addRequired< LoopAA >();
@@ -40,6 +45,7 @@ namespace liberty {
       au.addRequired<SlampOracleAA>();
     }
 
+    // FIXME: lets ignore SpecPriv for now
     if (EnableSpecPriv) {
       au.addRequired<ProfileGuidedPredictionSpeculator>();
       au.addRequired<PtrResidueSpeculationManager>();
@@ -59,6 +65,12 @@ namespace liberty {
   std::vector<Remediator_ptr> Planner::getAvailableRemediators(Loop *A, PDG *pdg) {
     std::vector<Remediator_ptr> remeds;
 
+    if (EnableSlamp) {
+      auto slamp = &getAnalysis<SLAMPLoadProfile>();
+      auto slampaa = std::make_unique<SlampOracleAA>(slamp);
+      remeds.push_back(std::move(slampaa));
+    }
+
     /* produce remedies for control deps */
     if (EnableEdgeProf) {
       auto ctrlspec =
@@ -72,8 +84,9 @@ namespace liberty {
     /* produce remedies for register deps */
     // reduction remediator
     auto mloops = &getAnalysis<ModuleLoops>();
-    auto aa = &getAnalysis<LoopAA>();
 
+    // FIXME: this loopAA might be empty unless we add aa passes to required
+    auto aa = &getAnalysis<LoopAA>();
     auto reduxRemed = std::make_unique<ReduxRemediator>(mloops, aa, pdg);
     reduxRemed->setLoopOfInterest(A);
     remeds.push_back(std::move(reduxRemed));
@@ -99,6 +112,9 @@ namespace liberty {
     // collaborate with analysis modules. It cannot answer modref or alias
     // queries. Only addresses dependence queries about false deps)
     remeds.push_back(std::make_unique<MemVerRemediator>());
+
+    remeds.push_back(std::make_unique<TXIOAA>());
+    // remeds.push_back(std::make_unique<CommutativeLibsAA>());
 
     return remeds;
   }
@@ -187,18 +203,10 @@ namespace liberty {
       specAAs.push_back(localaa);
     }
 
-    // FIXME: try to add txio and commlib back to PDG Building
-    auto txioaa = new TXIOAA();
-    txioaa->InitializeLoopAA(this, *DL);
-    specAAs.push_back(txioaa);
-
-    auto commlibsaa = new CommutativeLibsAA();
-    commlibsaa->InitializeLoopAA(this, *DL);
-    specAAs.push_back(commlibsaa);
-
-    auto simpleaa = new SimpleAA();
-    simpleaa->InitializeLoopAA(this, *DL);
-    specAAs.push_back(simpleaa);
+    // // FIXME: seems to be useless
+    // auto simpleaa = new SimpleAA();
+    // simpleaa->InitializeLoopAA(this, *DL);
+    // specAAs.push_back(simpleaa);
 
     return specAAs;
   }
@@ -227,7 +235,8 @@ namespace liberty {
 
     auto aa = getAnalysis<LoopAA>().getTopAA();
 
-    // Get NOELLE's PDG (conservative)
+    // Get NOELLE's PDG
+    // It can be conservative or optimistic based on the loopaa passed to NOELLE
     REPORT_DUMP(aa->dump());
 
     auto& noelle = getAnalysis<Noelle>();
@@ -244,15 +253,6 @@ namespace liberty {
         // writeGraph<PDG>(pdgDotName, pdg);
         break;
       }
-    }
-
-    // Set up the speculative analyses (for memory analysis)
-    // Get the specutive memory dependence graph
-    auto loopAAs = addAndSetupSpecModulesToLoopAA(M, loop);
-    REPORT_DUMP(aa->dump());
-    spec_pdg = ldi->getLoopDG();
-    for (auto &loopAA : loopAAs) {
-      delete loopAA;
     }
 
     // Set up additional remediators (controlspec, redux, memver)

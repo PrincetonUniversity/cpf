@@ -86,7 +86,7 @@ HeapAssignment &Selector::getAssignment()
 void Selector::analysisUsage(AnalysisUsage &au)
 {
   au.addRequired< Noelle >();
-  au.addRequired< PDGAnalysis >();
+  // au.addRequired< PDGAnalysis >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   //au.addRequired< BlockFrequencyInfoWrapperPass >();
   //au.addRequired< BranchProbabilityInfoWrapperPass >();
@@ -370,12 +370,10 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       //std::unique_ptr<llvm::noelle::PDG> pdg = pdgBuilder.getLoopPDG(A);
       llvm::noelle::PDG *pdg =  nullptr;// pdgBuilder.getLoopPDG(A).release();
 
-      /*
-       * // old way of getting PDG
-       * llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
-       * std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-       * writeGraph<PDG>(pdgDotName, pdg);
-       */
+      // // old way of getting PDG
+      // llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
+      // std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+      // writeGraph<PDG>(pdgDotName, pdg);
 
       // get PDG from NOELLE
       auto& noelle = proxy.getAnalysis<Noelle>();
@@ -418,10 +416,10 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
 
       // the pdg is updated over here
       // CoverageStats stats(A, *pdg, perf, &lamp);
-      CoverageStats stats(ldi, *pdg, perf, nullptr);
+      // CoverageStats stats(ldi, *pdg, perf, nullptr);
 
-      REPORT_DUMP(
-          errs() << stats.dumpPercentage());
+      // REPORT_DUMP(
+          // errs() << stats.dumpPercentage());
 
       if( applicable )
       {
@@ -971,7 +969,7 @@ bool Selector::doSelection(
       return false;
 
     // Identify compatibilities among the loops as edges
-    computeEdges(vertices, edges);
+    // computeEdges(vertices, edges);
 
     auto printCompatibleMap = [](Edges edges) {
       errs() << "Compatible Map:\n";
