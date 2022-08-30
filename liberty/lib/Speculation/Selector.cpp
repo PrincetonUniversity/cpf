@@ -85,7 +85,7 @@ HeapAssignment &Selector::getAssignment()
 
 void Selector::analysisUsage(AnalysisUsage &au)
 {
-  au.addRequired< Noelle >();
+  // au.addRequired< Noelle >();
   // au.addRequired< PDGAnalysis >();
   au.addRequired< TargetLibraryInfoWrapperPass >();
   //au.addRequired< BlockFrequencyInfoWrapperPass >();
@@ -368,29 +368,29 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
     {
       // Dump PDG
       //std::unique_ptr<llvm::noelle::PDG> pdg = pdgBuilder.getLoopPDG(A);
-      llvm::noelle::PDG *pdg =  nullptr;// pdgBuilder.getLoopPDG(A).release();
+      // llvm::noelle::PDG *pdg =  nullptr;// pdgBuilder.getLoopPDG(A).release();
 
-      // // old way of getting PDG
-      // llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
-      // std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-      // writeGraph<PDG>(pdgDotName, pdg);
+      // old way of getting PDG
+      llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
+      std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+      writeGraph<PDG>(pdgDotName, pdg);
 
-      // get PDG from NOELLE
-      auto& noelle = proxy.getAnalysis<Noelle>();
-      auto loopStructures = noelle.getLoopStructures(fA);
+      // // get PDG from NOELLE
+      // auto& noelle = proxy.getAnalysis<Noelle>();
+      // auto loopStructures = noelle.getLoopStructures(fA);
 
-      llvm::noelle::LoopDependenceInfo *ldi = nullptr;
-      // FIXME: is there a best way to get the LDI?
-      for (auto &loopStructure : *loopStructures) {
-        if (loopStructure->getHeader() == hA) {
-          ldi = noelle.getLoop(loopStructure);
-          pdg = ldi->getLoopDG();
+      // llvm::noelle::LoopDependenceInfo *ldi = nullptr;
+      // // FIXME: is there a best way to get the LDI?
+      // for (auto &loopStructure : *loopStructures) {
+      //   if (loopStructure->getHeader() == hA) {
+      //     ldi = noelle.getLoop(loopStructure);
+      //     pdg = ldi->getLoopDG();
 
-          std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-          writeGraph<PDG>(pdgDotName, pdg);
-          break;
-        }
-      }
+      //     std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+      //     writeGraph<PDG>(pdgDotName, pdg);
+      //     break;
+      //   }
+      // }
 
       if (pdg == nullptr) {
         errs() << "No PDG found for loop " << fA->getName() << " :: " << hA->getName() << "\n";
@@ -521,6 +521,7 @@ bool Selector::mustBeSimultaneouslyActive(
     const Loop *A, const Loop *B, LoopToTransCalledFuncs &loopTransCallGraph,
     llvm::noelle::CallGraph &callGraph) {
 
+  // if A and B are in the same loop nest, they must be simultaneously active
   if (A->contains(B->getHeader()) || B->contains(A->getHeader()))
     return true;
 

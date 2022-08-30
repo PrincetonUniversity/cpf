@@ -428,7 +428,7 @@ Orchestrator::Strategy *Orchestrator::findBestStrategy(
         auto sRemeds = *selectedRemedies.get();
         auto Critic = critic;
 
-        strategy = new Strategy(strat, expSpeedup, maxSavings, sRemeds, Critic);
+        strategy = new Strategy(strat, expSpeedup, savings, sRemeds, Critic);
       }
     }
   }

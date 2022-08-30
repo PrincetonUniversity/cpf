@@ -42,32 +42,31 @@
 #include <utility>
 #include <vector>
 
-namespace liberty {
-namespace SpecPriv {
+namespace liberty::SpecPriv {
 using namespace llvm;
 using namespace llvm::noelle;
 
 struct PerformanceEstimator;
 
-typedef std::set<Remedy_ptr, RemedyCompare> SelectedRemedies;
-typedef std::unique_ptr<Remediator> Remediator_ptr;
-typedef std::shared_ptr<Critic> Critic_ptr;
+using SelectedRemedies = std::set<Remedy_ptr, RemedyCompare>;
+using Remediator_ptr = std::unique_ptr<Remediator>;
+using Critic_ptr = std::shared_ptr<Critic>;
 
 class Orchestrator {
 public:
   struct Strategy {
     PipelineStrategy pipelineStrategy;
     unsigned long expSpeedup;
-    unsigned long maxSavings;
+    unsigned long savings;
     SelectedRemedies selectedRemedies;
     Critic_ptr critic;
 
     Strategy(PipelineStrategy pipelineStrategy, unsigned long expSpeedup,
-             unsigned long maxSavings, SelectedRemedies selectedRemedies,
+             unsigned long savings, SelectedRemedies selectedRemedies,
              Critic_ptr critic)
         : pipelineStrategy(std::move(pipelineStrategy)), expSpeedup(expSpeedup),
-          maxSavings(maxSavings), selectedRemedies(selectedRemedies),
-          critic(critic) {}
+          savings(savings), selectedRemedies(std::move(selectedRemedies)),
+          critic(std::move(critic)) {}
   };
   Orchestrator(Pass &proxy_): proxy(proxy_) {
       loopAA = proxy.getAnalysis<LoopAA>().getTopAA();
@@ -145,7 +144,7 @@ public:
  *
  *  bool findBestStrategyGivenBestPDG(
  *      Loop *loop, llvm::noelle::PDG &pdg, PerformanceEstimator &perf, ControlSpeculation *ctrlspec, ModuleLoops &mloops,
- *      LoopProfLoad &lpl, LoopAA *loopAA, 
+ *      LoopProfLoad &lpl, LoopAA *loopAA,
  *      const Read &rd, const HeapAssignment &asgn, Pass &proxy,
  *      std::unique_ptr<PipelineStrategy> &strat,
  *      std::unique_ptr<SelectedRemedies> &sRemeds, Critic_ptr &sCritic,
@@ -176,13 +175,13 @@ private:
   ControlSpeculation *ctrlspec;
   KillFlow_CtrlSpecAware *killflowA;
   CallsiteDepthCombinator_CtrlSpecAware *callsiteA;
-  
+
   // SpecPriv
   Read *rd;
   Classify *classify;
   PtrResidueSpeculationManager *ptrResMan;
   PredictionSpeculation *loadedValuePred;
-  
+
   // LAMP
   LAMPLoadProfile *lamp;
   SmtxSpeculationManager *smtxLampMan;
@@ -219,7 +218,6 @@ private:
   unordered_map<std::string, unsigned> remediatorSelectionCnt;
 };
 
-} // namespace SpecPriv
 } // namespace liberty
 
 #endif

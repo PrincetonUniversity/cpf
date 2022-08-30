@@ -1,5 +1,6 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
+#include "liberty/Orchestration/Orchestrator.h"
 #include "scaf/SpeculationModules/Remediator.h"
 
 namespace liberty {
@@ -14,7 +15,7 @@ namespace liberty {
       return "Planner";
     }
 
-    bool parallelizeLoop(Module &M, Loop *loop);
+    Orchestrator::Strategy *parallelizeLoop(Module &M, Loop *loop, Noelle &noelle);
 
     using Remediator_ptr = std::unique_ptr<Remediator>;
 

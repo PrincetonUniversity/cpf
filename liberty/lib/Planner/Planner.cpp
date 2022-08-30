@@ -1,24 +1,33 @@
 #include <memory>
 
+#include "liberty/GraphAlgorithms/Ebk.h"
 #include "liberty/LAMP/LAMPLoadProfile.h"
 #include "liberty/LoopProf/LoopProfLoad.h"
 #include "liberty/LoopProf/Targets.h"
-#include "liberty/Planner/Planner.h"
 #include "liberty/Orchestration/Orchestrator.h"
+#include "liberty/Planner/Planner.h"
 #include "noelle/core/Noelle.hpp"
-#include "scaf/MemoryAnalysisModules/PureFunAA.h"
-#include "scaf/MemoryAnalysisModules/SemiLocalFunAA.h"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/MemoryAnalysisModules/NoEscapeFieldsAA.h"
+#include "scaf/MemoryAnalysisModules/PureFunAA.h"
+#include "scaf/MemoryAnalysisModules/SemiLocalFunAA.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
-#include "scaf/Utilities/ReportDump.h"
 #include "scaf/SpeculationModules/SLAMPLoad.h"
 #include "scaf/SpeculationModules/SlampOracleAA.h"
+#include "scaf/Utilities/ReportDump.h"
+
+#define ThreadBudget 22
+#define FixedPoint 1000
 
 namespace liberty {
   using namespace llvm::noelle;
   using namespace llvm;
   using namespace liberty::slamp;
+
+
+  using Vertices = std::vector<Loop *>;
+  using Strategies = std::vector<Orchestrator::Strategy *>;
+  using LoopToTransCalledFuncs = std::unordered_map<const Loop *, std::unordered_set<const Function *>>;
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
     au.addRequired<Noelle>(); // NOELLE is needed to drive the analysis
@@ -226,34 +235,40 @@ namespace liberty {
     return critics;
   }
 
-  bool Planner::parallelizeLoop(Module &M, Loop *loop) {
+  Orchestrator::Strategy *Planner::parallelizeLoop(Module &M, Loop *loop, Noelle &noelle) {
 
     BasicBlock *hA = loop->getHeader();
     Function *fA = hA->getParent();
     noelle::PDG *pdg = nullptr;
     noelle::PDG *spec_pdg = nullptr;
 
-    auto aa = getAnalysis<LoopAA>().getTopAA();
-
     // Get NOELLE's PDG
     // It can be conservative or optimistic based on the loopaa passed to NOELLE
-    REPORT_DUMP(aa->dump());
-
-    auto& noelle = getAnalysis<Noelle>();
     auto loopStructures = noelle.getLoopStructures(fA);
     llvm::noelle::LoopDependenceInfo *ldi = nullptr;
-    // FIXME: is there a best way to get the LDI?
-    for (auto &loopStructure : *loopStructures) {
-      if (loopStructure->getHeader() == hA) {
-        ldi = noelle.getLoop(loopStructure);
-        pdg = ldi->getLoopDG();
-        // FIXME: do we need to make a copy to persist the PDG?
 
-        // std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-        // writeGraph<PDG>(pdgDotName, pdg);
-        break;
-      }
+    LoopStructure loopStructure(loop);
+    ldi = noelle.getLoop(&loopStructure);
+    // // FIXME: is there a best way to get the LDI?
+    // for (auto &loopStructure : *loopStructures) {
+    //   if (loopStructure->getHeader() == hA) {
+    //     ldi = noelle.getLoop(loopStructure);
+    //     // FIXME: do we need to make a copy to persist the PDG?
+
+    //     // std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+    //     // writeGraph<PDG>(pdgDotName, pdg);
+    //     break;
+    //   }
+    // }
+
+    if (ldi == nullptr) {
+      errs() << "No loop dependence info for loop " << hA->getName() << "\n";
+      return nullptr;
+    } else {
+      pdg = ldi->getLoopDG();
     }
+
+    assert(pdg != nullptr && "PDG is null?");
 
     // Set up additional remediators (controlspec, redux, memver)
     std::vector<Remediator_ptr> remediators =
@@ -274,18 +289,22 @@ namespace liberty {
         Remedies_ptr remedSet = std::make_shared<Remedies>();
 
         // expand remedy if there's subremedies
-        std::function<void(Remedy_ptr)> expandSubRemedies = [remedSet, &tcost, &expandSubRemedies](Remedy_ptr r) {
-          if (r->hasSubRemedies()) {
-            for (Remedy_ptr subR : *r->getSubRemedies()) {
-              remedSet->insert(subR);
-              tcost += subR->cost;
-              expandSubRemedies(subR);
-            }
-          } else {
-            remedSet->insert(r);
-            tcost += r->cost;
-          }
-        };
+        // TODO: is this even necessary? MemSpecAARemed uses subRemedies, but if
+        // no other ones are using it, shound we remove this concept to reduce
+        // the complexity
+        std::function<void(Remedy_ptr)> expandSubRemedies =
+            [remedSet, &tcost, &expandSubRemedies](Remedy_ptr r) {
+              if (r->hasSubRemedies()) {
+                for (Remedy_ptr subR : *r->getSubRemedies()) {
+                  remedSet->insert(subR);
+                  tcost += subR->cost;
+                  expandSubRemedies(subR);
+                }
+              } else {
+                remedSet->insert(r);
+                tcost += r->cost;
+              }
+            };
 
         expandSubRemedies(r);
 
@@ -306,23 +325,161 @@ namespace liberty {
     auto lpl = &getAnalysis<LoopProfLoad>();
     auto perf = &getAnalysis<ProfilePerformanceEstimator>();
     // FIXME: make this variable
-    auto threadBudget = 22;
-    auto critics = getCritics(perf, threadBudget, lpl);
+    auto critics = getCritics(perf, ThreadBudget, lpl);
 
     // Initialize the Orchestrator
     std::unique_ptr<Orchestrator> orch = std::make_unique<Orchestrator>(*this);
 
     auto strategy = orch->findBestStrategy(loop, *pdg, critics);
 
-    return false;
+    return strategy;
+  }
+
+  void getCalledFuns(llvm::noelle::CallGraphFunctionNode *cgNode,
+      unordered_set<const Function *> &calledFuns) {
+    for (auto callEdge : cgNode->getOutgoingEdges()) {
+      auto *succ = callEdge->getCallee();
+      auto *F = succ->getFunction();
+      if (!F || calledFuns.count(F) || F->isDeclaration())
+        continue;
+      calledFuns.insert(F);
+      getCalledFuns(succ, calledFuns);
+    }
+  }
+
+  bool callsFun(const Loop *l, const Function *tgtF,
+                          LoopToTransCalledFuncs &loopTransCallGraph,
+                          llvm::noelle::CallGraph &callGraph) {
+    if (loopTransCallGraph.count(l))
+      return loopTransCallGraph[l].count(tgtF);
+
+    for (const BasicBlock *BB : l->getBlocks()) {
+      for (const Instruction &I : *BB) {
+        const auto *call = dyn_cast<CallBase>(&I);
+        if (!call)
+          continue;
+        Function *cFun = call->getCalledFunction();
+        // FIXME: what about indirect calls?
+        if (!cFun || cFun->isDeclaration())
+          continue;
+        auto *cgNode = callGraph.getFunctionNode(cFun);
+        loopTransCallGraph[l].insert(cFun);
+        getCalledFuns(cgNode, loopTransCallGraph[l]);
+      }
+    }
+    return loopTransCallGraph[l].count(tgtF);
+  }
+
+  bool mustBeSimultaneouslyActive(const Loop *A, const Loop *B,
+                                  LoopToTransCalledFuncs &loopTransCallGraph,
+                                  llvm::noelle::CallGraph &callGraph) {
+
+    // if A and B are in the same loop nest, they must be simultaneously active
+    if (A->contains(B->getHeader()) || B->contains(A->getHeader()))
+      return true;
+
+    Function *fA = A->getHeader()->getParent();
+    Function *fB = B->getHeader()->getParent();
+
+    return callsFun(A, fB, loopTransCallGraph, callGraph) ||
+      callsFun(B, fA, loopTransCallGraph, callGraph);
+  }
+
+  Edges computeEdges(const Vertices &vertices, noelle::CallGraph callGraph) {
+    Edges edges;
+    auto N = vertices.size();
+    LoopToTransCalledFuncs loopTransCallGraph;
+
+    for (unsigned i = 0; i < N; ++i) {
+      Loop *A = vertices[i];
+
+      BasicBlock *hA = A->getHeader();
+      Function *fA = hA->getParent();
+
+      for (unsigned j = i + 1; j < N; ++j) {
+        Loop *B = vertices[j];
+
+        BasicBlock *hB = B->getHeader();
+        Function *fB = hB->getParent();
+
+        /* If we can prove simultaneous activation,
+         * exclude one of the loops */
+        if (mustBeSimultaneouslyActive(A, B, loopTransCallGraph, callGraph)) {
+          REPORT_DUMP(errs() << "Loop " << fA->getName() << " :: "
+                             << hA->getName() << " is incompatible with loop "
+                             << fB->getName() << " :: " << hB->getName()
+                             << " because of simultaneous activation.\n");
+          continue;
+        }
+
+        REPORT_DUMP(errs() << "Loop " << fA->getName()
+                           << " :: " << hA->getName()
+                           << " is COMPATIBLE with loop " << fB->getName()
+                           << " :: " << hB->getName() << ".\n");
+        edges.insert(Edge(i, j));
+        edges.insert(Edge(j, i));
+      }
+    }
+    return edges;
   }
 
   bool Planner::runOnModule(Module &m) {
 
     auto &targets = getAnalysis< Targets >();
     auto &mloops = getAnalysis< ModuleLoops >();
-    for(Targets::iterator i=targets.begin(mloops), e=targets.end(mloops); i!=e; ++i) {
-      parallelizeLoop(m, *i);
+
+    Vertices vertices;
+    VertexWeights scaledweights;
+    Strategies strategies;
+
+    auto& noelle = getAnalysis<Noelle>();
+    // per hot loop
+    for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
+         i != e; ++i) {
+      auto strategy = parallelizeLoop(m, *i, noelle);
+
+      // if there's a strategy
+      if (strategy != nullptr) {
+        vertices.push_back(*i);
+        scaledweights.push_back(strategy->savings);
+        strategies.push_back(strategy);
+      }
+      // calculate the weight for the loop
+    }
+
+    // see if the loops are compatibile with each other
+
+    auto fm = noelle.getFunctionsManager();
+    auto &callGraph = *fm->getProgramCallGraph();
+    auto edges = computeEdges(vertices, callGraph);
+
+    VertexSet maxClique;
+    const int wt = ebk(edges, scaledweights, maxClique);
+
+    auto &lpl = getAnalysis<LoopProfLoad>();
+    auto tt = lpl.getTotTime();
+    auto speedup = tt / (tt - wt / (double)FixedPoint);
+
+    REPORT_DUMP(errs() << "  Total expected speedup: "
+                       << format("%.2f", speedup) << "x using " << ThreadBudget
+                       << " workers.\n";);
+
+    for (unsigned int v : maxClique) {
+      auto *loop = vertices[v];
+      auto *strat = strategies[v];
+
+      auto header = loop->getHeader();
+      auto fcn = loop->getHeader()->getParent();
+      auto frac = lpl.getLoopFraction(loop);
+      auto time = lpl.getLoopTime(loop);
+      auto speedup = time / (time - strat->savings / (double)FixedPoint);
+      REPORT_DUMP(errs() << " - " << format("%.2f", ((double)(100 * frac)))
+                         << "% "
+                         // << "depth " << loop->getLoopDepth() << "    "
+                         << fcn->getName() << ":" << header->getName() << " "
+                         << strat->pipelineStrategy 
+                         << "(Loop speedup:" << format("%.2f", speedup) 
+                         << " savings/loop time: " << strat->savings  << "/" << time << ")\n";);
     }
 
     return false;
