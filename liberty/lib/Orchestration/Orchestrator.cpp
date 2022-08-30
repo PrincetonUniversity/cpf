@@ -1,6 +1,6 @@
-#include "liberty/Speculation/Classify.h"
 #define DEBUG_TYPE "orchestrator"
 
+#include "liberty/Speculation/Classify.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Support/Debug.h"

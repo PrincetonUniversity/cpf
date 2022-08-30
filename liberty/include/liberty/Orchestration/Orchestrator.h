@@ -81,6 +81,8 @@ public:
         // callsiteA = &proxy.getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
         // killflowA = &proxy.getAnalysis<KillFlow_CtrlSpecAware>();
         // killflowA->setLoopOfInterest(nullptr, nullptr);
+        callsiteA = nullptr;
+        killflowA = nullptr;
       }
       else {
         ctrlspec = nullptr;

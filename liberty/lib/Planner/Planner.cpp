@@ -236,37 +236,17 @@ namespace liberty {
   }
 
   Orchestrator::Strategy *Planner::parallelizeLoop(Module &M, Loop *loop, Noelle &noelle) {
-
-    BasicBlock *hA = loop->getHeader();
-    Function *fA = hA->getParent();
-    noelle::PDG *pdg = nullptr;
-    noelle::PDG *spec_pdg = nullptr;
-
     // Get NOELLE's PDG
     // It can be conservative or optimistic based on the loopaa passed to NOELLE
+    BasicBlock *hA = loop->getHeader();
+    Function *fA = hA->getParent();
+    errs() << "Parallelizing loop: " << fA->getName() << ":" << hA->getName() << '\n';
+
     auto loopStructures = noelle.getLoopStructures(fA);
-    llvm::noelle::LoopDependenceInfo *ldi = nullptr;
-
     LoopStructure loopStructure(loop);
-    ldi = noelle.getLoop(&loopStructure);
-    // // FIXME: is there a best way to get the LDI?
-    // for (auto &loopStructure : *loopStructures) {
-    //   if (loopStructure->getHeader() == hA) {
-    //     ldi = noelle.getLoop(loopStructure);
-    //     // FIXME: do we need to make a copy to persist the PDG?
+    auto ldi = noelle.getLoop(&loopStructure);
 
-    //     // std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-    //     // writeGraph<PDG>(pdgDotName, pdg);
-    //     break;
-    //   }
-    // }
-
-    if (ldi == nullptr) {
-      errs() << "No loop dependence info for loop " << hA->getName() << "\n";
-      return nullptr;
-    } else {
-      pdg = ldi->getLoopDG();
-    }
+    auto pdg = ldi->getLoopDG();
 
     assert(pdg != nullptr && "PDG is null?");
 
@@ -433,6 +413,7 @@ namespace liberty {
     Strategies strategies;
 
     auto& noelle = getAnalysis<Noelle>();
+
     // per hot loop
     for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
          i != e; ++i) {
