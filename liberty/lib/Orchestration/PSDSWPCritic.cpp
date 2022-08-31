@@ -751,7 +751,13 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
                << "%\n\n");
 
   std::string pdgDotName = "optimistic_pdg_" + header->getName().str() + "_" +
-                           fcn->getName().str() + ".dot";
+                           fcn->getName().str();
+
+  // limit the string to 200 characters (256 bytes limit for Linux)
+  if (pdgDotName.length() > 200) {
+    pdgDotName = pdgDotName.substr(0, 200);
+  }
+  pdgDotName += ".dot";
   writeGraph<PDG, Value>(pdgDotName, optimisticPDG);
 
   optimisticSCCDAG = new SCCDAG(optimisticPDG);

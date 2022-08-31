@@ -373,6 +373,11 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       // old way of getting PDG
       llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
+      // limit the string to 200 characters (256 bytes limit for Linux)
+      if (pdgDotName.length() > 200) {
+        pdgDotName = pdgDotName.substr(0, 200);
+      }
+      pdgDotName += ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
 
       // // get PDG from NOELLE
