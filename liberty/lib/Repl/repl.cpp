@@ -464,11 +464,11 @@ bool OptRepl::runOnModule(Module &M) {
       }
       else {
         auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
-        outs() << *fromInst << "->" << *toInst << ": (Same)" << ret << "\n";
+        outs() << *fromInst << "->" << *toInst << ": (Same)" << ret << " with " << remeds.size() <<  " remedies\n";
         ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
-        outs() << *fromInst << "->" << *toInst << ": (Before)" << ret << "\n";
+        outs() << *fromInst << "->" << *toInst << ": (Before)" << ret << " with " << remeds.size() <<  " remedies\n";
         ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
-        outs() << *fromInst << "->" << *toInst << ": (After)" << ret << "\n";
+        outs() << *fromInst << "->" << *toInst << ": (After)" << ret << " with " << remeds.size() <<  " remedies\n";
       }
     };
 
