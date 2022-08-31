@@ -1,3 +1,16 @@
+/*
+ * Parallelization Planner Pass
+ * ===========================
+ * This pass is designed to drive the parallelization planning of CPF.
+ * It queries NOELLE to get PDG, then use additional remediators
+ * to remove dependences in the form of remedies.
+ * It then sends the PDG with removable edges to the critics that
+ * generates a parallelization plan while trying to balance the
+ * parallelization gain and the remedy costs.
+ * The planner then studies the compatibility of the parallelizable
+ * loops and choose the set to calculate the final estimated speedup.
+ *
+ */
 #include <memory>
 
 #include "liberty/GraphAlgorithms/Ebk.h"
@@ -429,7 +442,6 @@ namespace liberty {
     }
 
     // see if the loops are compatibile with each other
-
     auto fm = noelle.getFunctionsManager();
     auto &callGraph = *fm->getProgramCallGraph();
     auto edges = computeEdges(vertices, callGraph);
