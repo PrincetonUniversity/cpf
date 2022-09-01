@@ -333,9 +333,8 @@ void print_log(const char *filename) {
 #ifdef ONLY_SET
   std::set<KEY, KEYComp> ordered(deplog_set->begin(), deplog_set->end());
   for (auto &k: ordered) {
-    of << k.src << " " << k.dst << " " << k.dst_bare << " "
+    of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
        << (k.cross ? 1 : 0) << " " << 1 << " ";
-    of << 0 << " ";
     of << "\n";
   }
 
