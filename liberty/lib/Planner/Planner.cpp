@@ -19,6 +19,7 @@
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Planner/Planner.h"
+#include "liberty/Utilities/WriteGraph.h"
 #include "noelle/core/Noelle.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/MemoryAnalysisModules/NoEscapeFieldsAA.h"
@@ -260,8 +261,10 @@ namespace liberty {
     auto ldi = noelle.getLoop(&loopStructure);
 
     auto pdg = ldi->getLoopDG();
+    std::string pdgName = fA->getName().str() + "." + hA->getName().str() + ".dot";
 
     assert(pdg != nullptr && "PDG is null?");
+    writeGraph<PDG>(pdgName, pdg);
 
     // Set up additional remediators (controlspec, redux, memver)
     std::vector<Remediator_ptr> remediators =

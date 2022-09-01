@@ -736,18 +736,14 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
                << "%\n\n");
 
   std::string pdgDotName = "optimistic_pdg_" + header->getName().str() + "_" +
-                           fcn->getName().str();
+                           fcn->getName().str() + ".dot";
 
   writeGraph<PDG, Value>(pdgDotName, optimisticPDG);
 
   optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
   std::string sccdagDotName = "optimistic_sccdag_" + header->getName().str() +
-                              "_" + fcn->getName().str();
-  if (sccdagDotName.length() > 200) {
-    sccdagDotName = sccdagDotName.substr(0, 200);
-  }
-  sccdagDotName+= ".dot";
+                              "_" + fcn->getName().str() + ".dot";
 
   // go through all the nodes and see if they still have potential dependences
   auto numAllNode = 0;
