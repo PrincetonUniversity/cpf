@@ -27,6 +27,7 @@
 #include "liberty/Speculation/UpdateOnCloneAdaptors.h"
 #include "liberty/Strategy/PipelineStrategy.h"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
+#include "liberty/Utilities/WriteGraph.h"
 
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
@@ -113,22 +114,6 @@ PredictionSpeculation *Selector::getPredictionSpeculation() const
 {
   static NoPredictionSpeculation none;
   return &none;
-}
-
-template <class GT>
-void writeGraph(const std::string &filename, GT *graph) {
-  std::error_code EC;
-  raw_fd_ostream File(filename, EC, sys::fs::F_Text);
-  std::string Title = DOTGraphTraits<GT *>::getGraphName(graph);
-
-  DGGraphWrapper<GT, Value> graphWrapper(graph);
-
-  if (!EC) {
-    WriteGraph(File, &graphWrapper, false, Title);
-  } else {
-    REPORT_DUMP(errs() << "Error opening file for writing!\n");
-    abort();
-  }
 }
 
 void Selector::computeVertices(Vertices &vertices)
@@ -256,7 +241,7 @@ public:
  *        }
  *      }
  *    }
- *    
+ *
  *    REPORT_DUMP(
  *        errs() << "prob_dist: [";
  *        for (auto prob : distributionVec) {
@@ -373,11 +358,6 @@ unsigned Selector::computeWeights(const Vertices &vertices, Edges &edges,
       // old way of getting PDG
       llvm::noelle::PDG *pdg = pdgBuilder.getLoopPDG(A).release();
       std::string pdgDotName = "pdg_" + hA->getName().str() + "_" + fA->getName().str() + ".dot";
-      // limit the string to 200 characters (256 bytes limit for Linux)
-      if (pdgDotName.length() > 200) {
-        pdgDotName = pdgDotName.substr(0, 200);
-      }
-      pdgDotName += ".dot";
       writeGraph<PDG>(pdgDotName, pdg);
 
       // // get PDG from NOELLE
@@ -543,7 +523,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
   LoopToTransCalledFuncs loopTransCallGraph;
   Pass &proxy = getPass();
   // auto &callGraph = proxy.getAnalysis<CallGraphWrapperPass>().getCallGraph();
-  
+
   auto& pdgAnalysis = proxy.getAnalysis<PDGAnalysis>();
   // auto& noelle = proxy.getAnalysis<Noelle>();
 

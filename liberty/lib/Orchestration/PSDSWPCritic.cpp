@@ -1,11 +1,11 @@
-#include "llvm/Support/Casting.h"
 #define DEBUG_TYPE "ps-dswp-critic"
 //#define AVOID_DSWP
 
 #include "liberty/Orchestration/PSDSWPCritic.h"
+#include "liberty/Utilities/WriteGraph.h"
+#include "noelle/core/SCCDAG.hpp"
 #include "scaf/SpeculationModules/TXIOAA.h"
 #include "scaf/Utilities/ReportDump.h"
-#include "noelle/core/SCCDAG.hpp"
 
 #include <unordered_set>
 #include <climits>
@@ -600,21 +600,6 @@ bool PSDSWPCritic::doallAndPipeline(const PDG &pdg, const SCCDAG &sccdag,
   return res;
 }
 
-template <class GT, class T> void writeGraph(const std::string &filename, GT *graph) {
-  std::error_code EC;
-  raw_fd_ostream File(filename, EC, sys::fs::F_Text);
-  std::string Title = DOTGraphTraits<GT *>::getGraphName(graph);
-
-  DGGraphWrapper<GT, T> graphWrapper(graph);
-
-  if (!EC) {
-    WriteGraph(File, &graphWrapper, false, Title);
-  } else {
-    REPORT_DUMP(errs() << "Error opening file for writing!\n");
-    abort();
-  }
-}
-
 void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   std::vector<Value *> loopInternals;
   for (auto internalNode : pdg->internalNodePairs()) {
@@ -753,17 +738,16 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   std::string pdgDotName = "optimistic_pdg_" + header->getName().str() + "_" +
                            fcn->getName().str();
 
-  // limit the string to 200 characters (256 bytes limit for Linux)
-  if (pdgDotName.length() > 200) {
-    pdgDotName = pdgDotName.substr(0, 200);
-  }
-  pdgDotName += ".dot";
   writeGraph<PDG, Value>(pdgDotName, optimisticPDG);
 
   optimisticSCCDAG = new SCCDAG(optimisticPDG);
 
   std::string sccdagDotName = "optimistic_sccdag_" + header->getName().str() +
-                              "_" + fcn->getName().str() + ".dot";
+                              "_" + fcn->getName().str();
+  if (sccdagDotName.length() > 200) {
+    sccdagDotName = sccdagDotName.substr(0, 200);
+  }
+  sccdagDotName+= ".dot";
 
   // go through all the nodes and see if they still have potential dependences
   auto numAllNode = 0;
