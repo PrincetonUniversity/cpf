@@ -486,11 +486,6 @@ $(CANON).compare.out : seq.out parallel.out
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $*.loopsimplify.time $(LLVM_OPT) -O3 -loop-simplify -indvars $*.bc -o $*.loopsimplified.bc
 	date
 
-%.named.bc : %.bc $(NAMEDLIBS)
-	date
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.namer.time opt $< -o $@ -load $(SCAF_LIBS_DIR)/libSCAFUtilities.so -metadata-namer
-	date
-
 ifdef NODEVIRT
 $(HACK).bc : $(PLAIN).opt.internalized.bc
 	cp $< $@
@@ -499,7 +494,7 @@ $(HACK).bc : $(PLAIN).opt.internalized.devirt.bc
 	cp $< $@
 endif
 
-$(HACK2).bc : $(HACK).opt.named.bc
+$(HACK2).bc : $(HACK).opt.bc
 	cp $< $@
 	noelle-norm $@ -o $@ # add noelle norm
 
