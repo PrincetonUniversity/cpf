@@ -119,6 +119,19 @@ void loop_exit(int loop)
 
   if ( loopStack->back() != loop )
   {
+    std::cerr << "Warning: expected " << loopStack->back() << " but got " << loop << "\n";
+    dumpLoopStack();
+
+    // FIXME: hack
+    while (!loopStack->empty() && loopStack->back() != loop ) {
+      loopStack->pop_back();
+    }
+    if (loopStack->empty()) {
+      std::cerr << "Warning: force stack cleaning causing empty stack\n";
+    } else {
+      loopStack->pop_back();
+    }
+
     withinRuntime = false;
     return;
   }
@@ -170,11 +183,9 @@ void timer_handler(int sig, siginfo_t *siginfo, void *dummy)
   */
 
   // within each timer interrupt, add 1 to loops that are in the loop/call stack
-  for(unsigned i=0, N=loopStack->size(); i<N; ++i)
+  for(int loop : *loopStack)
   {
-    int loop = (*loopStack)[i];
-
-    if(! (*loopAccounted) [ loop ])
+     if(! (*loopAccounted) [ loop ])
     {
       loopCounts[ loop ]++;
       (*loopAccounted) [ loop ] = true;

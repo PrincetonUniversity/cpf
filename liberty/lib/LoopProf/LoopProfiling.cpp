@@ -261,11 +261,15 @@ bool LoopProf::runOnModule(Module& M)
 
       ++numLoops;
 
-      // Ziyang: need to ignore all llvm.* instrinsics
-
       Function *fcn = dyn_cast<CallBase>(inst)->getCalledFunction();
+
       if (fcn){ // the other case is indirect call
+        // Ziyang: need to ignore all llvm.* instrinsics
         if (fcn->getName().startswith("llvm."))
+          continue;
+        // Ziyang: need to ignore all exception call
+        // FIXME: more proper way is to see if a function call followed by unreachable
+        if (fcn->getName().equals("__cxa_throw"))
           continue;
       }
 
