@@ -13,7 +13,7 @@ namespace SpecPriv
 {
 using namespace llvm;
 
-const EdgeWeight Infinity(~0U);
+const EdgeWeight Infinity(~0UL);
 
 const Vertex Source(0);
 const Vertex Sink(1);
