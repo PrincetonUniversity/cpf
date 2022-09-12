@@ -271,6 +271,10 @@ bool LoopProf::runOnModule(Module& M)
         // FIXME: more proper way is to see if a function call followed by unreachable
         if (fcn->getName().equals("__cxa_throw"))
           continue;
+
+        // FIXME: handle this properly
+        if (fcn->getName().equals("_setjmp") || fcn->getName().equals("setjmp") || fcn->getName().equals("longjmp") || fcn->getName().equals("_longjmp"))
+          continue;
       }
 
       Args[0] = ConstantInt::get(Type::getInt32Ty(M.getContext()), numLoops );
