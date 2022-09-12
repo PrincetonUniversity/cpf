@@ -745,65 +745,6 @@ void PSDSWPCritic::simplifyPDG(PDG *pdg) {
   std::string sccdagDotName = "optimistic_sccdag_" + header->getName().str() +
                               "_" + fcn->getName().str() + ".dot";
 
-  // go through all the nodes and see if they still have potential dependences
-  // This is for SLAMP profiling, to estimate how many nodes can be ignored
-/*
- *   auto numAllNode = 0;
- *   auto numElidedNode = 0;
- *   for (auto node : optimisticPDG->getNodes()) {
- *     bool canBeElided = true;
- *     
- *     DGEdge<Value> *blockingEdge;
- *     if (dyn_cast<Instruction>(node->getT())->mayReadOrWriteMemory()) {
- *       numAllNode++;
- *     } else {
- *       continue;
- *     }
- * 
- *     if (dyn_cast<Instruction>(node->getT())->mayWriteToMemory()) {
- *       for (auto &edge : node->getOutgoingEdges()) {
- *         if (edge->isRAWDependence()) {
- *           canBeElided = false;
- *           blockingEdge = edge;
- *           break;
- *         }
- *       }
- *     }
- * 
- *     if (dyn_cast<Instruction>(node->getT())->mayReadFromMemory()) {
- *       for (auto &edge : node->getIncomingEdges()) {
- *         if (edge->isRAWDependence()) {
- *           canBeElided = false;
- *           blockingEdge = edge;
- *           break;
- *         }
- *       }
- *     }
- * 
- *     if (canBeElided) {
- *       REPORT_DUMP(
- *           errs() << "Node can be ignored for memory profiling" << *node->getT();
- *           liberty::printInstDebugInfo(dyn_cast<Instruction>(node->getT()));
- *           errs() << '\n';);
- *       numElidedNode++;
- *     }
- *     else {
- * 
- *       REPORT_DUMP(errs() << "Blocking edge: " << *blockingEdge->getOutgoingT();
- *                   if (Instruction *outgoingI =
- *                           dyn_cast<Instruction>(blockingEdge->getOutgoingT()))
- *                       liberty::printInstDebugInfo(outgoingI);
- * 
- *                   errs() << "\n    to " << *blockingEdge->getIncomingT();
- *                   if (Instruction *incomingI =
- *                           dyn_cast<Instruction>(blockingEdge->getIncomingT()))
- *                       liberty::printInstDebugInfo(incomingI);
- *                   errs() << "\n";);
- *     }
- *   }
- *   REPORT_DUMP(errs() << "Elided Node: " << numElidedNode << "/" << numAllNode
- *                      << "\n";);
- */
   writeGraph<SCCDAG, SCC>(sccdagDotName, optimisticSCCDAG);
 }
 
