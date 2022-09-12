@@ -13,7 +13,8 @@ on:
               default: 0
               type: number
   push:
-      branches: [ master ]
+    # all branches
+      branches: '**'
 #   pull_request:
 #     branches: [ master ]
 

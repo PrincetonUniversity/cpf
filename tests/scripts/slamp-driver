@@ -188,8 +188,8 @@ while IFS=$'\n' read -r line_data; do
 done < __targets.txt
 
 let i=0
-while (( i < 2 )); do
-# while (( ${#lines[@]} > i )); do
+# while (( i < 2 )); do
+while (( ${#lines[@]} > i )); do
   IFS=' ' read -a array <<< ${lines[i++]}
   if [ ${array[0]} == "-" ]; then
     drive $1 ${array[1]} ${array[3]}

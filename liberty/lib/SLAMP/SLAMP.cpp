@@ -606,6 +606,11 @@ void SLAMP::getFunctionsWithSign(CallInst *ci, set<Function *> matched) {
 // The list of SLAMP functions are given in `externs.h`
 void SLAMP::replaceExternalFunctionCalls(Module &m) {
   // initialize a set of external function names
+  auto *push = cast<Function>(
+      m.getOrInsertFunction("SLAMP_push", Void, I32).getCallee());
+  auto *pop =
+      cast<Function>(m.getOrInsertFunction("SLAMP_pop", Void).getCallee());
+
   set<string> externs;
   for (unsigned i = 0, e = sizeof(externs_str) / sizeof(externs_str[0]); i < e;
        i++)
@@ -652,9 +657,58 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
       if (func->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
         continue;
       }
+      // start with SLAMP_, ignore it
+      if (name.find("SLAMP_") == 0) {
+        continue;
+      }
+
       errs() << "WARNING: Wrapper for external function " << name
                         << " not implemented.\n";
       hasUnrecognizedFunction = true;
+
+      // find all usage of the function
+      // add a slamp_push and slamp_pop around it
+      for (auto user : func->users()) {
+        // get instruction
+        auto *inst = dyn_cast<Instruction>(user);
+        if (inst == nullptr)
+          continue;
+
+        // FIXME: duplicated code as instrumentLoopInst
+        auto id = Namer:: getInstrId(inst);
+        if (id == -1) {
+          continue;
+        }
+        vector<Value *> args;
+        args.push_back(ConstantInt::get(I32, id));
+        InstInsertPt pt = InstInsertPt::Before(inst);
+        pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
+
+        if (isa<CallInst>(inst)) {
+          pt = InstInsertPt::After(inst);
+          pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
+        } else if (auto *invokeI = dyn_cast<InvokeInst>(inst)) {
+          // for invoke, need to find the two paths and add pop
+          auto insertPop = [&pop, &m](BasicBlock* entry){
+            InstInsertPt pt;
+            if (isa<LandingPadInst>(entry->getFirstNonPHI()))
+              pt = InstInsertPt::After(entry->getFirstNonPHI());
+            else
+              pt = InstInsertPt::Before(entry->getFirstNonPHI());
+
+            pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
+          };
+
+          insertPop(invokeI->getNormalDest());
+          // FIXME: will generate mulitiple `slamp_pop` after the landing pad
+          //        Fine for now because `slamp_pop` only set the context to 0
+          insertPop(invokeI->getUnwindDest());
+
+        } else {
+          assert(false && "Call but not CallInst nor InvokeInst");
+        }
+      }
+
     } else {
       string wrapper_name = "SLAMP_" + name;
       /* Function* wrapper = cast<Function>( m.getOrInsertFunction(wrapper_name,

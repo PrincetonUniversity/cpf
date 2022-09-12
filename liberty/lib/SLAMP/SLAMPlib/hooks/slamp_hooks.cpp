@@ -1534,8 +1534,7 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
 
 void  SLAMP_free(void* ptr)
 {
-  __malloc_hook = old_malloc_hook;
-  __free_hook = old_free_hook;
+  TURN_OFF_CUSTOM_MALLOC;
   
   uint64_t starting_page;
   unsigned purge_cnt;
@@ -1546,6 +1545,5 @@ void  SLAMP_free(void* ptr)
       smmap->deallocate_pages(starting_page, purge_cnt);
   }
 
-  __malloc_hook = SLAMP_malloc_hook;
-  __free_hook = SLAMP_free_hook;
+  TURN_ON_CUSTOM_MALLOC;
 }
