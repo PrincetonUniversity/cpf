@@ -48,6 +48,8 @@ namespace liberty {
   static cl::opt<bool> SlampCheck("slamp-check", cl::init(false),
                                      cl::NotHidden,
                                      cl::desc("Check if SLAMP output matches LAMP"));
+  static cl::opt<bool> AnalysisCheck("analysis-check", cl::init(false),
+                                    cl::desc("Check for any deps that SLAMP removes but analysis does not"));
 
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
@@ -296,18 +298,19 @@ namespace liberty {
         assert(src && dst && "src/dst not instructions in PDG?");
         bool loopCarried = false;
         edgeCount++;
-        DataDepType dataDepTy;
+
+        // LAMP is unable to reason about function calls,
+        // and SLAMP only considers RAW deps. 
         if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst))
           continue;
-        if(edge->isRAWDependence())
-          dataDepTy = DataDepType::RAW;
-        else
+        if(!edge->isRAWDependence())
           continue;
+
         if(edge->isLoopCarriedDependence())
           loopCarried = true;
         
-        auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried, dataDepTy, loop);
-        auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried, dataDepTy, loop);
+        auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
+        auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
 
         if(slamp_remedy.depRes != lamp_remedy.depRes) {
           diffCount++;
@@ -317,26 +320,44 @@ namespace liberty {
       errs() << "Total number of edges: " << edgeCount << ", number of diff edges: " << diffCount << "\n";
     }
 
+    // Make sure SLAMP is not more conservative than analysis
+    // Since SLAMP only checks for RAW memory deps,
+    // make sure such an edge does not exist according to anlysis.
+    // If it exists according to SLAMP, there is a bug
     if(ValidityCheck) {
       auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
       auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
 
-      for(auto nodeI : make_range(pdg->begin_nodes(), pdg->end_nodes())) {
-        for(auto nodeJ : make_range(pdg->begin_nodes(), pdg->end_nodes())) {
+      for(auto nodeI : pdg->getNodes()) {
+        for(auto nodeJ : pdg->getNodes()) {
            Instruction* src = dyn_cast<Instruction>(nodeI->getT());
            Instruction* dst = dyn_cast<Instruction>(nodeJ->getT());
 
            auto deps = pdg->getDependences(src, dst);
-           bool relevantDepExists = false;
+           bool relevantIntraDepExists = false;
+           bool relevantInterDepExists = false;
+           // Check intra and iter iteration deps separately
            for(auto dep : deps) {
-             if(dep->isMemoryDependence() && dep->isRAWDependence())
-               relevantDepExists = true;
+             if(dep->isMemoryDependence() && dep->isRAWDependence()) {
+               if(dep->isLoopCarriedDependence())
+                 relevantInterDepExists = true;
+               else
+                 relevantIntraDepExists = true;
+             }
            }
-           if(!relevantDepExists) {
-             auto slamp_dep = remed_slamp_aa->memdep(src, dst, false, DataDepType::RAW, loop);
-             auto slamp_dep1 = remed_slamp_aa->memdep(src, dst, true, DataDepType::RAW, loop);
-             if(slamp_dep.depRes == Dep || slamp_dep1.depRes == Dep)
-               errs() << "SLAMP is more conservative than analysis!\n";
+           if(!relevantInterDepExists) {
+             auto slamp_dep_inter = remed_slamp_aa->memdep(src, dst, true, DataDepType::RAW, loop);
+             if(slamp_dep_inter.depRes == Dep) {
+              errs() << "SLAMP is more conservative than analysis!\n";
+              errs() << src << " " << dst << "\n";
+             }
+           }
+           if(!relevantIntraDepExists) {
+             auto slamp_dep_intra = remed_slamp_aa->memdep(src, dst, false, DataDepType::RAW, loop);
+             if(slamp_dep_intra.depRes == Dep) {
+             errs() << "SLAMP is more conservative than analysis!\n";
+             errs() << src << " " << dst << "\n";
+             }
            }
         }
       }
@@ -386,6 +407,8 @@ namespace liberty {
           // remedies are added to the edges.
           c->setRemovable(true);
           c->addRemedies(remedSet);
+          if(AnalysisCheck && remediator->getRemediatorName() == "slamp-oracle-remed")
+            errs() << "Removed dep from " << *(c->getOutgoingT()) << " to " << *(c->getIncomingT()) << "\n";
         }
       }
     }
