@@ -607,9 +607,9 @@ void SLAMP::getFunctionsWithSign(CallInst *ci, set<Function *> matched) {
 void SLAMP::replaceExternalFunctionCalls(Module &m) {
   // initialize a set of external function names
   auto *push = cast<Function>(
-      m.getOrInsertFunction("SLAMP_push", Void, I32).getCallee());
+      m.getOrInsertFunction("SLAMP_ext_push", Void, I32).getCallee());
   auto *pop =
-      cast<Function>(m.getOrInsertFunction("SLAMP_pop", Void).getCallee());
+      cast<Function>(m.getOrInsertFunction("SLAMP_ext_pop", Void).getCallee());
 
   set<string> externs;
   for (unsigned i = 0, e = sizeof(externs_str) / sizeof(externs_str[0]); i < e;
