@@ -48,7 +48,7 @@ compile-scaf=1
 ## If compile-scaf=1, use this url to clone and build SCAF from scratch
 ## Don't use quotes
 scaf-remote-url=https://github.com/PrincetonUniversity/SCAF.git
-scaf-branch=origin/planner
+scaf-branch=origin/master
 
 #######
 # CPF #
