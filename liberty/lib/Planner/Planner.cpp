@@ -38,10 +38,17 @@ namespace liberty {
   using namespace llvm;
   using namespace liberty::slamp;
 
-
   using Vertices = std::vector<Loop *>;
   using Strategies = std::vector<Orchestrator::Strategy *>;
   using LoopToTransCalledFuncs = std::unordered_map<const Loop *, std::unordered_set<const Function *>>;
+
+  static cl::opt<bool> ValidityCheck("validity-check", cl::init(false),
+                                     cl::NotHidden,
+                                     cl::desc("Check if SLAMP output is more optimistic than analysis"));
+  static cl::opt<bool> SlampCheck("slamp-check", cl::init(false),
+                                     cl::NotHidden,
+                                     cl::desc("Check if SLAMP output matches LAMP"));
+
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
     au.addRequired<Noelle>(); // NOELLE is needed to drive the analysis
@@ -92,6 +99,12 @@ namespace liberty {
       auto slamp = &getAnalysis<SLAMPLoadProfile>();
       auto slampaa = std::make_unique<SlampOracleAA>(slamp);
       remeds.push_back(std::move(slampaa));
+    }
+
+    if (EnableLamp) {
+      auto lamp = &getAnalysis<LAMPLoadProfile>();
+      auto lampaa = std::make_unique<LampOracle>(lamp);
+      remeds.push_back(std::move(lampaa));
     }
 
     /* produce remedies for control deps */
@@ -265,6 +278,69 @@ namespace liberty {
 
     assert(pdg != nullptr && "PDG is null?");
     writeGraph<PDG>(pdgName, pdg);
+
+    if(SlampCheck) {
+      uint32_t edgeCount = 0;
+      uint32_t diffCount = 0;
+      auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
+      auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
+      auto remed_lamp = &getAnalysis<LAMPLoadProfile>(); 
+      auto remed_lamp_aa = std::make_unique<LampOracle>(remed_lamp); 
+
+      for(auto &edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
+        if(!pdg->isInternal(edge->getIncomingT()) || !pdg->isInternal(edge->getOutgoingT()))
+          continue;
+
+        Instruction* src = dyn_cast<Instruction>(edge->getOutgoingT());
+        Instruction* dst = dyn_cast<Instruction>(edge->getIncomingT());
+        assert(src && dst && "src/dst not instructions in PDG?");
+        bool loopCarried = false;
+        edgeCount++;
+        DataDepType dataDepTy;
+        if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst))
+          continue;
+        if(edge->isRAWDependence())
+          dataDepTy = DataDepType::RAW;
+        else
+          continue;
+        if(edge->isLoopCarriedDependence())
+          loopCarried = true;
+        
+        auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried, dataDepTy, loop);
+        auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried, dataDepTy, loop);
+
+        if(slamp_remedy.depRes != lamp_remedy.depRes) {
+          diffCount++;
+          errs() << "SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes << "\n";
+        }
+      }
+      errs() << "Total number of edges: " << edgeCount << ", number of diff edges: " << diffCount << "\n";
+    }
+
+    if(ValidityCheck) {
+      auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
+      auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
+
+      for(auto nodeI : make_range(pdg->begin_nodes(), pdg->end_nodes())) {
+        for(auto nodeJ : make_range(pdg->begin_nodes(), pdg->end_nodes())) {
+           Instruction* src = dyn_cast<Instruction>(nodeI->getT());
+           Instruction* dst = dyn_cast<Instruction>(nodeJ->getT());
+
+           auto deps = pdg->getDependences(src, dst);
+           bool relevantDepExists = false;
+           for(auto dep : deps) {
+             if(dep->isMemoryDependence() && dep->isRAWDependence())
+               relevantDepExists = true;
+           }
+           if(!relevantDepExists) {
+             auto slamp_dep = remed_slamp_aa->memdep(src, dst, false, DataDepType::RAW, loop);
+             auto slamp_dep1 = remed_slamp_aa->memdep(src, dst, true, DataDepType::RAW, loop);
+             if(slamp_dep.depRes == Dep || slamp_dep1.depRes == Dep)
+               errs() << "SLAMP is more conservative than analysis!\n";
+           }
+        }
+      }
+    }
 
     // Set up additional remediators (controlspec, redux, memver)
     std::vector<Remediator_ptr> remediators =
