@@ -140,6 +140,10 @@ function drive {
       combine_localwrite.py $2 $3
   fi
 
+  # if there's file called points_to.profile, prefix it with $2-$3
+  if [[ -f points_to.profile ]]; then
+      mv points_to.profile $2-$3.points_to.profile
+  fi
   cat $SLAMP_OUTFILE >> result.slamp.profile
   rm -f $SLAMP_OUTFILE # ${SLAMP_OUTFILE}_*
   # rm -f $SLAMP_OUTFILE $PRELINK_BC $PRELINK_OBJ $EXE
