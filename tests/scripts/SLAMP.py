@@ -13,17 +13,19 @@ def set_SLAMP_enviorn(modules=None, extra_flags=None):
   extra_flag_list = ["slamp-target-fn=", "slamp-target-loop=", "slamp-target-inst="]
 
   SLAMP_env = os.environ.copy()
-  for module in module_list:
-    if module in modules:
-      SLAMP_env[module+"_MODULE"] = "1"
-    else:
-      SLAMP_env[module+"_MODULE"] = "0"
+  if modules:
+    for module in module_list:
+      if module in modules:
+        SLAMP_env[module+"_MODULE"] = "1"
+      else:
+        SLAMP_env[module+"_MODULE"] = "0"
 
   extra_flag_env = "" 
-  for flag in extra_flag_list:
-    for eflag in extra_flags:
-      if(re.match(flag, eflag)):
-        extra_flag_env += "-"+eflag+" "
+  if extra_flags:
+    for flag in extra_flag_list:
+      for eflag in extra_flags:
+        if(re.match(flag, eflag)):
+          extra_flag_env += "-"+eflag+" "
 
   SLAMP_env["EXTRA_FLAGS"] = extra_flag_env
   return SLAMP_env
@@ -55,11 +57,12 @@ def parse_SLAMP_output(root_path, bmark, result_path, modules):
   outfiles = ["benchmark.result.slamp.profile", "slamp_access_module.json"]
   is_trace = False
   is_distance = False
-  if("TRACE" in modules):
-    outfiles += ["trace.txt"]
-    is_trace = True
-  if("DISTANCE" in modules):
-    is_distance = True
+  if modules:
+    if("TRACE" in modules):
+      outfiles += ["trace.txt"]
+      is_trace = True
+    if("DISTANCE" in modules):
+      is_distance = True
 
   for outfile in outfiles:
     shutil.move(os.path.join(source, outfile), os.path.join(result_path, outfile))
