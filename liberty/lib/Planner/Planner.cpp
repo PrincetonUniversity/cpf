@@ -314,7 +314,7 @@ namespace liberty {
 
         if(slamp_remedy.depRes != lamp_remedy.depRes) {
           diffCount++;
-          errs() << "SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes << "\n";
+          errs() << "ERROR: SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes << "\n";
         }
       }
       errs() << "Total number of edges: " << edgeCount << ", number of diff edges: " << diffCount << "\n";
@@ -348,14 +348,14 @@ namespace liberty {
            if(!relevantInterDepExists) {
              auto slamp_dep_inter = remed_slamp_aa->memdep(src, dst, true, DataDepType::RAW, loop);
              if(slamp_dep_inter.depRes == Dep) {
-              errs() << "SLAMP is more conservative than analysis!\n";
+              errs() << "ERROR: SLAMP is more conservative than analysis!\n";
               errs() << src << " " << dst << "\n";
              }
            }
            if(!relevantIntraDepExists) {
              auto slamp_dep_intra = remed_slamp_aa->memdep(src, dst, false, DataDepType::RAW, loop);
              if(slamp_dep_intra.depRes == Dep) {
-             errs() << "SLAMP is more conservative than analysis!\n";
+             errs() << "ERROR: SLAMP is more conservative than analysis!\n";
              errs() << src << " " << dst << "\n";
              }
            }
@@ -407,8 +407,22 @@ namespace liberty {
           // remedies are added to the edges.
           c->setRemovable(true);
           c->addRemedies(remedSet);
-          if(AnalysisCheck && remediator->getRemediatorName() == "slamp-oracle-remed")
-            errs() << "Removed dep from " << *(c->getOutgoingT()) << " to " << *(c->getIncomingT()) << "\n";
+          if(AnalysisCheck && remediator->getRemediatorName() == "slamp-oracle-remed") {
+            Instruction* src = dyn_cast<Instruction>(c->getOutgoingT());
+            Instruction* dst = dyn_cast<Instruction>(c->getIncomingT());
+            if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst)) {
+              errs() << "This is a function call\n";
+              continue;
+            }
+            
+            errs() << "SLAMP removed ";
+            if(c->isLoopCarriedDependence())
+              errs() << "loop-carried ";
+            else
+              errs() << "intra-iteration ";
+            errs() << "dep from " 
+              << *(c->getOutgoingT()) << " to " << *(c->getIncomingT()) << "\n";
+          }
         }
       }
     }
