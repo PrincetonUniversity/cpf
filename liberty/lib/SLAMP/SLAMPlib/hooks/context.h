@@ -16,12 +16,15 @@
  *
  */
 
+#include <iostream>
 #include <stack>
 #include <utility>
 #include "llvm/IR/Instruction.h"
 #include "scaf/Utilities/Metadata.h"
 
 namespace SLAMPLib {
+
+using ContextHash = size_t;
 
 /// The context is stack of the ContextId
 template <typename ContextId> struct Context {
@@ -33,10 +36,15 @@ template <typename ContextId> struct Context {
   /// Add a new context to the stack
   Context *chain(ContextId id) { return new Context(id, this); }
 
-  size_t hash() {
-    size_t h = id.hash();
+  static Context* getTopContext() {
+    return new Context(ContextId::getTopContextId(), nullptr);
+  }
+
+  ContextHash hash() {
+    ContextHash h = id.hash();
     if (parent)
       h ^= parent->hash();
+    return h;
   }
 
   /// Remove the top context from the stack
@@ -47,6 +55,7 @@ template <typename ContextId> struct Context {
     return parent;
   }
   using FlattenContext = std::vector<ContextId>;
+  using ContextIdType = ContextId;
 
   /// make the context into a vector of only the context id
   FlattenContext flatten() {
@@ -58,16 +67,85 @@ template <typename ContextId> struct Context {
     }
     return result;
   };
+
+  /// print context
+  void print(std::ostream &os) {
+    os << "Context:\n";
+    Context *cur = this;
+    while (cur) {
+      cur->id.print(os);
+      cur = cur->parent;
+    }
+  }
 };
 
+/// Note that we do no need to keep track of
+/// all the objects that are alive
 template <class Context>
 struct ContextManager {
   Context *activeContext;
 
-  ContextManager() : activeContext(nullptr) {}
-  std::unordered_map <size_t, typename Context::FlattenContext> contextMap;
+  ContextManager() {
+    activeContext = Context::getTopContext();
+  }
 
-  void addContext(size_t hash, Context context) {
+  std::unordered_map <ContextHash, typename Context::FlattenContext> contextMap;
+
+  ContextHash activeHash() {
+    if (activeContext)
+      return activeContext->hash();
+    else
+      return 0;
+  }
+
+  void updateContext(typename Context::ContextIdType contextId) {
+    assert(activeContext && "active context is null");
+    /// maybe this is not a great idea, expose the semantics of the context to the manager
+    activeContext = activeContext->chain(contextId);
+    addContext(activeContext->hash(), *activeContext);
+  }
+
+  void popContext(typename Context::ContextIdType contextId) {
+    assert(activeContext && "active context is null");
+
+    if (activeContext->id == contextId) {
+      activeContext = activeContext->pop();
+    } else {
+      // The context is not matching, could be due to the longjmp/setjmp etc or
+      // exception handling in C++
+      std::cerr << "Context mismatch! Current context: ";
+      auto tmp = activeContext;
+      while (tmp->parent) {
+        std::cerr << "(" << tmp->id.type << "," << tmp->id.metaId << ")->";
+        tmp = tmp->parent;
+      }
+      std::cerr << "(" << tmp->id.type << "," << tmp->id.metaId << ")->";
+      std::cerr << "Exiting context: (" << contextId.type << ","
+                << contextId.metaId << ")" << std::endl;
+
+      // Let's try to find the correct context
+      bool foundInStack = false;
+      while (activeContext->parent) {
+        activeContext = activeContext->pop();
+        if (activeContext->id == contextId) {
+          foundInStack = true;
+          break;
+        }
+      }
+
+      assert(foundInStack && "Could not find the exiting context in the stack");
+    }
+  }
+
+  void addContext(ContextHash hash, Context &context) {
+
+    // if exist one but not the same, then we have a problem
+    if (contextMap.count(hash) && contextMap[hash] != context.flatten()) {
+      // FIXME: need to turn this back on
+      // assert(false && "Context hash collision");
+    }
+
+    // insert the context
     contextMap[hash] = context.flatten();
   }
 };
@@ -85,13 +163,18 @@ struct ContextId {
   ContextId(SpecPrivContextType type, int32_t id) : type(type), metaId(id) {}
   ContextId(std::pair<SpecPrivContextType, int32_t> p)
       : type(p.first), metaId(p.second) {}
+  static ContextId getTopContextId() { return {TopContext, 0}; }
   // id left shift 2 bits and or with type
-  size_t hash() {
-    return (static_cast<size_t>(metaId) << 2) | static_cast<size_t>(type);
+  ContextHash hash() {
+    return (static_cast<ContextHash>(metaId) << 2) | static_cast<ContextHash>(type);
   }
 
   bool operator==(const ContextId &other) const {
     return type == other.type && metaId == other.metaId;
+  }
+
+  void print(std::ostream &os) {
+    os << "ContextId: " << type << " " << metaId << "\n";
   }
 };
 using Context = Context<ContextId>;

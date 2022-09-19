@@ -118,7 +118,8 @@ uint64_t __slamp_load_count = 0;
 uint64_t __slamp_store_count = 0;
 uint64_t __slamp_malloc_count = 0;
 uint64_t __slamp_free_count = 0;
-static SpecPrivLib::Context *currentContext = nullptr;
+static ContextManager<SpecPrivLib::Context> contextManager;
+std::unordered_set<unsigned long> *shortLivedObjects, *longLivedObjects;
 
 // Type of the access callback function
 // instr, bare_instr, address, value, size
@@ -142,7 +143,7 @@ void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32
     void* shadow = (void*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     if (shadow && POINTS_TO_MODULE) {
       TS *s = (TS *)shadow;
-      auto hash = currentContext->hash();
+      auto hash = contextManager.activeHash();
       TS ts = CREATE_TS(instr, hash, __slamp_invocation);
       for (auto i = 0; i < size; i++)
         s[i] = ts;
@@ -152,7 +153,33 @@ void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32
 }
 
 
-void SLAMP_callback_stack_free(void) {}
+void SLAMP_callback_stack_free(void) {
+  // do not need to free memory or shadow memory, it gets reused implicitly
+
+  // // Need to record short-lived objects
+  // // need to check if the object is short-lived
+  // if (POINTS_TO_MODULE) {
+  //   // if we are still in the loop and the iteration is the same, mark it as local
+  //   // otherwise mark it as not local
+  //   TS* s = (TS*)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  //   auto instr = GET_INSTR(s[0]);
+  //   auto iteration  = GET_ITER(s[0]);
+  //   auto invocation = GET_INVOC(s[0]);
+
+  //   // if invokedepth is 0, it means we are not in a loop
+  //   if (iteration == (0xffffffffff & __slamp_iteration) 
+  //       && invocation == (0xf & __slamp_invocation)
+  //       && invokedepth > 0) {
+  //     // is short-lived, put in the set
+  //     shortLivedObjects.insert(instr);
+  //   }
+  //   else {
+  //     // is not short-lived
+  //     longLivedObjects.insert(instr);
+  //   }
+
+  // }
+}
 
 // Callback function pointers
 std::list<AccessCallbackTy> *access_callbacks;
@@ -429,7 +456,8 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr) {
     if (cond && tss[i] != 0) {
       // mask off the iteration count
       TS ts = tss[i];
-      ts = ts & 0xfffffffffffffff0;
+      ts = ts & 0xfffff00000000000;
+      // ts = ts & 0xfffffffffffffff0;
       // ts = ts & 0xfffff0000000000f;
       //create set of objects for each load/store
       (*pointsToMap)[instr].insert(ts);
@@ -450,7 +478,8 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
     ts = s[i];
 
     // mask off the iteration count
-    ts = ts & 0xfffffffffffffff0;
+      ts = ts & 0xfffff00000000000;
+    // ts = ts & 0xfffffffffffffff0;
     // ts = ts & 0xfffff0000000000f;
     if (m.count(ts) == 0) {
       (*pointsToMap)[instr].insert(ts);
@@ -716,8 +745,11 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
-  // update the current context
-  currentContext = new SpecPrivLib::Context(std::make_pair(SpecPrivLib::TopContext, 0), nullptr);
+
+  if (POINTS_TO_MODULE) {
+    shortLivedObjects = new std::unordered_set<uint64_t>();
+    longLivedObjects = new std::unordered_set<uint64_t>();
+  }
   // auto heapStart = sbrk(0);
   // fprintf(stderr, "heap start: %lx\n", (unsigned long)heapStart);
 
@@ -890,6 +922,18 @@ void SLAMP_fini(const char* filename)
         }
         ofs << "\n";
       }
+      ofs << "Short-lived object:\n";
+      ofs << shortLivedObjects->size() << " " << longLivedObjects->size() << "\n";
+      for (auto &obj: *shortLivedObjects) {
+        // if not long lived
+        ofs << obj << "\n";
+      }
+
+      for (auto &obj: *longLivedObjects) {
+        // if not long lived
+        ofs << obj << "\n";
+      }
+
       ofs.close();
     }
   }
@@ -983,42 +1027,15 @@ void SLAMP_enter_fcn(uint32_t fcnId) {
   auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
   
   // update the current context
-  assert(currentContext && "currentContext is null");
-  currentContext = currentContext->chain(contextId);
+  contextManager.updateContext(contextId);
 }
 
 /// Keep track of the context of the function
 void SLAMP_exit_fcn(uint32_t fcnId) {
   auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
 
-  assert(currentContext && "currentContext is null");
   // update the current context
-  if (currentContext->id == contextId) {
-    currentContext = currentContext->pop();
-  } else {
-    // The context is not matching, could be due to the longjmp/setjmp etc or exception handling in C++
-    std::cerr << "Context mismatch! Current context: ";
-    auto tmp = currentContext;
-    while (tmp->parent) {
-      std::cerr << "(" << tmp->id.type << "," << tmp->id.metaId << ")->";
-      tmp = tmp->parent;
-    }
-    std::cerr << "(" << tmp->id.type << "," << tmp->id.metaId << ")->";
-    std::cerr << "Exiting context: (" << contextId.type << "," << contextId.metaId << ")" << std::endl;
-
-    // Let's try to find the correct context
-    bool foundInStack = false;
-    while (currentContext) {
-      if (currentContext->id == contextId) {
-        foundInStack = true;
-        currentContext = currentContext->pop();
-        break;
-      }
-      currentContext = currentContext->pop();
-    }
-
-    assert(foundInStack && "Could not find the exiting context in the stack");
-  }
+  contextManager.popContext(contextId);
 }
 
 /// update the invocation count
@@ -1571,8 +1588,13 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
           // log all data into sigle TS
           // FIXME: static instruction and the dynamic context?
           // context: static instr + function + loop
-          auto hash = currentContext->hash();
-          TS ts = CREATE_TS(instr, hash, __slamp_invocation);
+          auto hash = contextManager.activeHash();
+
+          // currentContext->print(std::cerr);
+          // std::cerr << "hash: " << hash << "\n";
+
+          // TS ts = CREATE_TS(instr, hash, __slamp_invocation);
+          TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
 
           //8 bytes per byte TODO: can we reduce this?
           for (auto i = 0; i < size; i++)
@@ -1607,6 +1629,12 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
 
 void  SLAMP_free(void* ptr)
 {
+  if (ptr == nullptr)
+    return;
+
+  if (SLAMP_isBadAlloc((uint64_t)ptr))
+    return;
+
   TURN_OFF_CUSTOM_MALLOC;
   
   uint64_t starting_page;
@@ -1615,6 +1643,24 @@ void  SLAMP_free(void* ptr)
 
   // need to check if the object is short-lived
   if (POINTS_TO_MODULE) {
+    // if we are still in the loop and the iteration is the same, mark it as local
+    // otherwise mark it as not local
+    TS* s = (TS*)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+    auto instr = GET_INSTR(s[0]);
+    auto iteration  = GET_ITER(s[0]);
+    auto invocation = GET_INVOC(s[0]);
+
+    // if invokedepth is 0, it means we are not in a loop
+    if (iteration == (0xffffffffff & __slamp_iteration) 
+        && invocation == (0xf & __slamp_invocation)
+        && invokedepth > 0) {
+      // is short-lived, put in the set
+      shortLivedObjects->insert(instr);
+    }
+    else {
+      // is not short-lived
+      longLivedObjects->insert(instr);
+    }
 
   }
 

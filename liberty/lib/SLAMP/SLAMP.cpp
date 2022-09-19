@@ -457,6 +457,7 @@ bool SLAMP::runOnModule(Module &m) {
 
   instrumentMainFunction(m);
 
+  instrumentFunctionStartStop(m);
   instrumentLoopStartStop(m, this->target_loop);
 
   instrumentInstructions(m, this->target_loop);
@@ -891,6 +892,8 @@ void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, bool e
   else {
     //TODO:search for terminator block 
     auto *F = inst->getFunction();
+
+    // find all return instructions
     //IRBuilder<> Builder();
   }
   return;
@@ -1052,6 +1055,67 @@ void SLAMP::instrumentMainFunction(Module &m) {
 
     
     pt << updateDebugInfo(CallInst::Create(f_main_entry, main_args, ""), pt.getPosition(), m);
+  }
+}
+
+
+/// Instrumnent each function entry and exit with SLAMP function entry and exit calls
+void SLAMP::instrumentFunctionStartStop(Module &m) {
+  // for each function body
+  for (auto &fi : m) {
+    Function *func = &fi;
+    if (func->isDeclaration())
+      continue;
+
+    // ignore all SLAMP calls
+    if (func->getName().startswith("SLAMP_"))
+      continue;
+
+
+    // find function ID
+    auto fcnID = Namer::getFuncId(func);
+    if (fcnID == -1) {
+      errs() << "Cannot find function ID for " << func->getName() << "\n";
+      continue;
+    }
+
+    // set parameters
+    vector<Value *> args;
+    args.push_back(ConstantInt::get(I32, fcnID));
+
+    // find the function entry
+    auto *f_function_entry = cast<Function>(
+      m.getOrInsertFunction("SLAMP_enter_fcn", Void, I32).getCallee());
+    auto *f_function_exit = cast<Function>(
+      m.getOrInsertFunction("SLAMP_exit_fcn", Void, I32).getCallee());
+
+    // insert SLAMP_enter_fcn at the beginning of the function
+    BasicBlock *entry = &(func->getEntryBlock());
+    InstInsertPt pt = InstInsertPt::Before(entry->getFirstNonPHI());
+    pt << updateDebugInfo(CallInst::Create(f_function_entry, args), pt.getPosition(), m);
+
+    // find all exits of the function
+    vector<Instruction *> exits;
+    for (auto &bi : *func) {
+      BasicBlock *bb = &bi;
+      if (isa<ReturnInst>(bb->getTerminator()))
+        exits.push_back(bb->getTerminator());
+      // else if (isa<ResumeInst>(bb->getTerminator()))
+        // exits.push_back(bb->getTerminator());
+        // // FIXME: should be at the beginning of the block
+      // else if (isa<UnreachableInst>(bb->getTerminator()))
+        // exits.push_back(bb->getTerminator());
+      //// FIXME: invoke the exception end
+      // else if (isa<InvokeInst>(bb->getTerminator()))
+        // exits.push_back(bb->getTerminator());
+    }
+
+    // insert SLAMP_exit_fcn at the end of the function
+    for (auto &exit : exits) {
+      InstInsertPt pt = InstInsertPt::Before(exit);
+      pt << updateDebugInfo(CallInst::Create(f_function_exit, args), pt.getPosition(), m);
+    }
+
   }
 }
 
