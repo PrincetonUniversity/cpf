@@ -51,6 +51,9 @@ using namespace SLAMPLib;
 #define HEAP_BOUND_HIGHER (0xFFFFFFFFFFFFL-BOUND_LOWER+1)
 // 8MB max stack size for a typical host machine `ulimit -s`
 #define SIZE_8M  0x800000
+
+#define  FORMAT_INST_ARG(fcnId, argId) (fcnId << 5 | (0x1f & (argId  << 4) | 0x1))
+#define FORMAT_INST_INST(instId) (instId << 1 | 0x0)
 // #define LOCALWRITE(addr) if (true)
 
 // debugging tools
@@ -111,6 +114,10 @@ extern size_t LOCALWRITE_PATTERN;
 
 #define LOCALWRITE(addr)  ((!LOCALWRITE_MODULE || ((size_t)addr & LOCALWRITE_MASK) == LOCALWRITE_PATTERN))
 
+static void *(*old_malloc_hook)(size_t, const void *);
+static void (*old_free_hook)(void *, const void *);
+static void *(*old_memalign_hook)(size_t, size_t, const void *);
+
 uint64_t __slamp_iteration = 0;
 uint64_t __slamp_invocation = 0;
 
@@ -118,7 +125,7 @@ uint64_t __slamp_load_count = 0;
 uint64_t __slamp_store_count = 0;
 uint64_t __slamp_malloc_count = 0;
 uint64_t __slamp_free_count = 0;
-static ContextManager<SpecPrivLib::Context> contextManager;
+ContextManager<SpecPrivLib::Context> *contextManager;
 std::unordered_set<unsigned long> *shortLivedObjects, *longLivedObjects;
 
 // Type of the access callback function
@@ -143,7 +150,7 @@ void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32
     void* shadow = (void*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     if (shadow && POINTS_TO_MODULE) {
       TS *s = (TS *)shadow;
-      auto hash = contextManager.activeHash();
+      auto hash = contextManager->activeHash();
       TS ts = CREATE_TS(instr, hash, __slamp_invocation);
       for (auto i = 0; i < size; i++)
         s[i] = ts;
@@ -340,7 +347,7 @@ void slamp_access_callback_constant_value(bool isLoad, uint32_t instr, uint32_t 
       }
     }
   } else {
-    auto cp = new Constant(1, 1, size, addr, value);
+    auto cp = new Constant(true, true, size, addr, value);
     constmap_value->insert(std::make_pair(key, cp));
   }
 }
@@ -441,6 +448,12 @@ std::unordered_map<uint32_t, std::unordered_set<SlampAllocationUnit>> *pointsToM
 
 template <unsigned size>
 void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr) {
+  TURN_OFF_CUSTOM_MALLOC;
+
+  if (addr == 0) {
+      (*pointsToMap)[instr].insert(0);
+      return;
+  }
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS tss[8]; // HACK: avoid using malloc
   for (auto i = 0; i < size; i++) {
@@ -456,17 +469,22 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr) {
     if (cond && tss[i] != 0) {
       // mask off the iteration count
       TS ts = tss[i];
-      ts = ts & 0xfffff00000000000;
+      ts = ts & 0xfffffffffffffe00;
       // ts = ts & 0xfffffffffffffff0;
       // ts = ts & 0xfffff0000000000f;
       //create set of objects for each load/store
       (*pointsToMap)[instr].insert(ts);
     }
   }
+  TURN_ON_CUSTOM_MALLOC;
 }
 
 void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
 
+  if (addr == 0) {
+      (*pointsToMap)[instr].insert(0);
+      return;
+  }
   std::unordered_set<TS> m;
   TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
 
@@ -478,7 +496,8 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr, unsigned size) {
     ts = s[i];
 
     // mask off the iteration count
-      ts = ts & 0xfffff00000000000;
+      // ts = ts & 0xfffff00000000000;
+      ts = ts & 0xfffffffffffffe00;
     // ts = ts & 0xfffffffffffffff0;
     // ts = ts & 0xfffff0000000000f;
     if (m.count(ts) == 0) {
@@ -720,10 +739,6 @@ static void __slamp_sigsegv_handler(int sig, siginfo_t *siginfo, void *dummy)
 }
 
 
-static void *(*old_malloc_hook)(size_t, const void *);
-static void (*old_free_hook)(void *, const void *);
-static void *(*old_memalign_hook)(size_t, size_t, const void *);
-
 static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
   auto ptr = SLAMP_malloc(size, ext_context, 16);
 
@@ -747,6 +762,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
 
   if (POINTS_TO_MODULE) {
+    contextManager = new ContextManager<SpecPrivLib::Context>();
     shortLivedObjects = new std::unordered_set<uint64_t>();
     longLivedObjects = new std::unordered_set<uint64_t>();
   }
@@ -925,18 +941,75 @@ void SLAMP_fini(const char* filename)
       ofs << "Short-lived object:\n";
       ofs << shortLivedObjects->size() << " " << longLivedObjects->size() << "\n";
       for (auto &obj: *shortLivedObjects) {
-        // if not long lived
+        // if short-lived
         ofs << obj << "\n";
       }
 
       for (auto &obj: *longLivedObjects) {
-        // if not long lived
+        // if long-lived
         ofs << obj << "\n";
       }
 
       ofs.close();
     }
   }
+
+  // Dump compatible one as SpecPriv output
+  std::ofstream specprivfs("specpriv-profile.out");
+  specprivfs << "BEGIN SPEC PRIV PROFILE\n";
+  specprivfs << "COMPLETE ALLOCATION INFO ; \n";
+
+    // local objects
+  if (POINTS_TO_MODULE) {
+    for (auto &obj: *shortLivedObjects) {
+      // LOCAL OBJECT AU HEAP main if.else.i call.i4.i FROM  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  IS LOCAL TO  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  COUNT 300 ;
+      specprivfs << "LOCAL OBJECT " << obj << " ; \n";
+    }
+
+  }
+
+  // predict int and predict ptr (only NULL)
+  // Note that the int prediction is in place, however SpecPriv rematerializes the load to the preheader of the loop
+
+  // PRED INT main enqueue.exit23.i $0 AT  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  AS PREDICTABLE 301 SAMPLES OVER 1 VALUES {  ( INT 0 COUNT 301 )  } ;
+  // PRED PTR main if.then29.i $17 AT  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  AS PREDICTABLE 301 SAMPLES OVER 1 VALUES {  ( OFFSET 0 BASE AU NULL  COUNT 301 )  } ;
+
+  if (CONSTANT_VALUE_MODULE) {
+    for (auto &[key, cp] : *constmap_value) {
+      if (cp->valid) {
+        // instr and value
+        auto instr = key.first;
+        auto value = cp->value;
+        // later, we need to parse the instruction to see if it's a pointer or a regular integer
+        specprivfs << "PRED VAL " << instr << " " << value << " ; \n";
+      }
+    }
+  }
+  // predict OBJ
+  //  PRED OBJ main if.else.i $0 AT  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  AS PREDICTABLE 300 SAMPLES OVER 1 VALUES {  ( OFFSET 0 BASE AU HEAP allocate_matrices for.end call7 FROM  CONTEXT { FUNCTION allocate_matrices WITHIN FUNCTION main WITHIN TOP }  COUNT 300 )  } ;
+  if (POINTS_TO_MODULE) {
+    for (auto &it : *pointsToMap) {
+      specprivfs << "PRED OBJ " << it.first << " "; // instruction ID
+      for (auto &it2 : it.second) { // the set of allocation units
+        auto hash = GET_HASH(it2);
+        auto iter = GET_ITER(it2) & 0xf;
+
+        std::vector<SpecPrivLib::ContextId> context = contextManager->contextMap[hash];
+
+        specprivfs << "instr - "<< GET_INSTR(it2) << " Context: " ;
+        for (auto &ctx : context) {
+          ctx.print(specprivfs);
+        }
+
+        specprivfs << " iter - " << iter << " invoc - " << GET_INVOC(it2) << "\n";
+      }
+      specprivfs << "\n";
+    }
+  }
+
+
+  specprivfs << " END SPEC PRIV PROFILE\n";
+
 
   if (DEPENDENCE_MODULE) {
     slamp::fini_logger(filename);
@@ -1024,18 +1097,23 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
 
 /// Keep track of the context of the function
 void SLAMP_enter_fcn(uint32_t fcnId) {
+
+  TURN_OFF_CUSTOM_MALLOC;
   auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
   
   // update the current context
-  contextManager.updateContext(contextId);
+  contextManager->updateContext(contextId);
+  TURN_ON_CUSTOM_MALLOC;
 }
 
 /// Keep track of the context of the function
 void SLAMP_exit_fcn(uint32_t fcnId) {
+  TURN_OFF_CUSTOM_MALLOC;
   auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
 
   // update the current context
-  contextManager.popContext(contextId);
+  contextManager->popContext(contextId);
+  TURN_ON_CUSTOM_MALLOC;
 }
 
 /// update the invocation count
@@ -1079,6 +1157,33 @@ void SLAMP_loop_exit() {
   invokedepth--;
 }
 
+// FIXME: a temporary patch for out of handling program original heap
+bool SLAMP_isBadAlloc(uint64_t addr) ATTRIBUTE(always_inline) {
+  const uint64_t  lower = 0x100000000L;
+  const uint64_t higher =  0x010000000000L;
+  const uint64_t heapStart = smmap->heapStart;
+
+  if (addr < lower && addr > heapStart) {
+    return true;
+  }
+
+  return false;
+}
+
+void SLAMP_report_base_pointer_arg(uint32_t fcnId, uint32_t argId, void *ptr){
+  if (SLAMP_isBadAlloc((uint64_t)ptr)) {
+    return;
+  }
+  SLAMP_points_to_module_use<1>(FORMAT_INST_ARG(fcnId, argId), (uint64_t)ptr);
+}
+
+void SLAMP_report_base_pointer_inst(uint32_t instId, void *ptr){
+  if (SLAMP_isBadAlloc((uint64_t)ptr)) {
+    return;
+  }
+  SLAMP_points_to_module_use<1>(FORMAT_INST_INST(instId), (uint64_t)ptr);
+}
+
 /// set the context of the call inside a loop
 void SLAMP_ext_push(const uint32_t instr) ATTRIBUTE(always_inline) {
   assert(ext_context == 0);
@@ -1119,19 +1224,6 @@ void SLAMP_pop() {
 #endif
 
   StaticInstIdOfLOI = 0;
-}
-
-// FIXME: a temporary patch for out of handling program original heap
-bool SLAMP_isBadAlloc(uint64_t addr) ATTRIBUTE(always_inline) {
-  const uint64_t  lower = 0x100000000L;
-  const uint64_t higher =  0x010000000000L;
-  const uint64_t heapStart = smmap->heapStart;
-
-  if (addr < lower && addr > heapStart) {
-    return true;
-  }
-
-  return false;
 }
 
 template <unsigned size>
@@ -1246,9 +1338,9 @@ void SLAMP_load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, 
       SLAMP_dependence_module_load_log<size>(instr, bare_instr, value, addr);
     }
 
-    if (POINTS_TO_MODULE) {
-      SLAMP_points_to_module_use<size>(instr, addr);
-    }
+    // if (POINTS_TO_MODULE) {
+    //   SLAMP_points_to_module_use<size>(instr, addr);
+    // }
 #ifndef ITO_ENABLE
     TURN_ON_CUSTOM_MALLOC;
 #endif
@@ -1306,10 +1398,10 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
       SLAMP_dependence_module_load_log(instr, bare_instr, 0, addr, n);
     }
 
-    if (POINTS_TO_MODULE) {
-      // only need to check once
-      SLAMP_points_to_module_use(instr, addr, n);
-    }
+    // if (POINTS_TO_MODULE) {
+    //   // only need to check once
+    //   SLAMP_points_to_module_use(instr, addr, n);
+    // }
 
     TURN_ON_CUSTOM_MALLOC;
   }
@@ -1442,9 +1534,9 @@ void SLAMP_store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) ATTRI
       SLAMP_dependence_module_store_log<size>(instr, addr);
     }
 
-    if (POINTS_TO_MODULE) {
-      SLAMP_points_to_module_use<size>(instr, addr);
-    }
+    // if (POINTS_TO_MODULE) {
+    //   SLAMP_points_to_module_use<size>(instr, addr);
+    // }
 #ifndef ITO_ENABLE
   TURN_ON_CUSTOM_MALLOC;
 #endif
@@ -1497,10 +1589,10 @@ void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n) {
       SLAMP_dependence_module_store_log(instr, addr, n);
     }
 
-    if (POINTS_TO_MODULE) {
-      // only need to check once
-      SLAMP_points_to_module_use(instr, addr, n);
-    }
+    // if (POINTS_TO_MODULE) {
+    //   // only need to check once
+    //   SLAMP_points_to_module_use(instr, addr, n);
+    // }
     TURN_ON_CUSTOM_MALLOC;
   }
 }
@@ -1588,13 +1680,17 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
           // log all data into sigle TS
           // FIXME: static instruction and the dynamic context?
           // context: static instr + function + loop
-          auto hash = contextManager.activeHash();
+          auto hash = contextManager->activeHash();
 
           // currentContext->print(std::cerr);
           // std::cerr << "hash: " << hash << "\n";
 
           // TS ts = CREATE_TS(instr, hash, __slamp_invocation);
-          TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+          TS ts = CREATE_TS_HASH(instr, hash, __slamp_iteration, __slamp_iteration);
+          // TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
+          if (instr == 0) {
+            std::cerr << "Ext context: " << ext_context << "\n";
+          }
 
           //8 bytes per byte TODO: can we reduce this?
           for (auto i = 0; i < size; i++)
@@ -1649,13 +1745,20 @@ void  SLAMP_free(void* ptr)
     auto instr = GET_INSTR(s[0]);
     auto iteration  = GET_ITER(s[0]);
     auto invocation = GET_INVOC(s[0]);
+    
+    if (instr == 0) {
+      std::cerr << "TS: " << s[0] << " ptr: " << ptr << "\n";
+    }
 
     // if invokedepth is 0, it means we are not in a loop
-    if (iteration == (0xffffffffff & __slamp_iteration) 
+    if (iteration == (0xf & __slamp_iteration) 
         && invocation == (0xf & __slamp_invocation)
         && invokedepth > 0) {
       // is short-lived, put in the set
       shortLivedObjects->insert(instr);
+      for (auto &obj: *shortLivedObjects) {
+        std::cerr << "short lived object: " << obj << "\n";
+      }
     }
     else {
       // is not short-lived
@@ -1670,4 +1773,5 @@ void  SLAMP_free(void* ptr)
   }
 
   TURN_ON_CUSTOM_MALLOC;
+
 }

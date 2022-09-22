@@ -67,6 +67,8 @@ void SLAMP_loop_invocation();
 void SLAMP_loop_iteration();
 void SLAMP_loop_exit();
 
+void SLAMP_report_base_pointer_arg(uint32_t, uint32_t, void *ptr);
+void SLAMP_report_base_pointer_inst(uint32_t, void *ptr);
 void SLAMP_callback_stack_alloca(uint64_t, uint64_t, uint32_t, uint64_t);
 void SLAMP_callback_stack_free(void);
 
