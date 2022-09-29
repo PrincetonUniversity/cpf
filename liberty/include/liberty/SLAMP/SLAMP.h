@@ -59,7 +59,7 @@ private:
 
   void instrumentNonStandards(Module& m, Function* ctor);
   void allocErrnoLocation(Module& m, Function* ctor);
-
+  void instrumentLoopStartStopForAll(Module &m);
   void instrumentFunctionStartStop(Module&m);
   void instrumentLoopStartStop(Module&m, Loop* l);
   void instrumentInstructions(Module& m, Loop* l);

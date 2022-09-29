@@ -63,6 +63,9 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env);
 
 void SLAMP_enter_fcn(uint32_t id);
 void SLAMP_exit_fcn(uint32_t id);
+void SLAMP_enter_loop(uint32_t id);
+void SLAMP_exit_loop(uint32_t id);
+void SLAMP_loop_iter_ctx(uint32_t id);
 void SLAMP_loop_invocation();
 void SLAMP_loop_iteration();
 void SLAMP_loop_exit();

@@ -22,7 +22,7 @@ function drive {
      -load $LIBERTY_LIBS_DIR/libStrategy.so
      -load $SCAF_LIBS_DIR/libLoopProf.so
      -load $SCAF_LIBS_DIR/libLAMPLoad.so
-     -load $SCAF_LIBS_DIR/libPointsToProfiler.so
+     -load $LIBERTY_LIBS_DIR/libPointsToProfiler.so
      -load $NOELLE_LIBS_DIR/AllocAA.so
      -load $NOELLE_LIBS_DIR/TalkDown.so 
      -load $NOELLE_LIBS_DIR/CallGraph.so 

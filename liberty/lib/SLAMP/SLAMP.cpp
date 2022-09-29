@@ -4,6 +4,7 @@
 //
 
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/Support/raw_ostream.h"
 #define DEBUG_TYPE "SLAMP"
 
 #define USE_PDG
@@ -144,6 +145,7 @@ SLAMP::~SLAMP() = default;
 void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
   // au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
   au.addRequired<ModuleLoops>();
+  au.addRequired<LoopInfoWrapperPass>();
 #ifdef USE_PDG
   au.addRequired<LoopAA>();
   au.addRequired<PDGBuilder>();
@@ -193,7 +195,25 @@ Instruction* updateDebugInfo(Instruction *inserted, Instruction *location, Modul
   return inserted;
 }
 
+unordered_map<Instruction*, uint32_t> instOffsetMap;
+
+void generateInstOffset(Module &m) {
+  // generate instruction offset
+  for (auto &f : m) {
+    if (f.isDeclaration()) continue;
+    for (auto &bb : f) {
+      unsigned offsetWithinBlock = 0;
+      for (auto &inst : bb) {
+        instOffsetMap[&inst] = offsetWithinBlock++;
+      }
+    }
+  }
+}
+
 bool SLAMP::runOnModule(Module &m) {
+  // generate instruction offset
+  generateInstOffset(m);
+
   LLVMContext &ctxt = m.getContext();
 
   // frequently used types
@@ -459,9 +479,10 @@ bool SLAMP::runOnModule(Module &m) {
     instrumentBasePointer(m, this->target_loop);
   }
 
+  instrumentFunctionStartStop(m);
+  instrumentLoopStartStopForAll(m);
   instrumentMainFunction(m);
 
-  instrumentFunctionStartStop(m);
   instrumentLoopStartStop(m, this->target_loop);
 
   instrumentInstructions(m, this->target_loop);
@@ -607,6 +628,31 @@ void SLAMP::getFunctionsWithSign(CallInst *ci, set<Function *> matched) {
   }
 }
 
+std::string getInstructionName(Instruction *inst) {
+  auto fcn = inst->getParent()->getParent();
+  auto bb = inst->getParent();
+
+  std::stringstream sout;
+  sout << fcn->getName().str() << ' ' << bb->getName().str() << ' ';
+
+  if( inst->hasName() )
+    sout << inst->getName().str();
+  else {
+    // find the offset within the block
+    sout << '$' << instOffsetMap[inst];
+  }
+  
+  return sout.str();
+}
+
+std::string getArgName(Argument *arg) {
+  Function *fcn = arg->getParent();
+
+  std::ostringstream name;
+  name << "argument " << fcn->getName().str() << " %" << arg->getArgNo();
+  return name.str();
+}
+
 // Replace external functions with SLAMP prefixed ones (SLAMP_xxx)
 // The list of SLAMP functions are given in `externs.h`
 void SLAMP::replaceExternalFunctionCalls(Module &m) {
@@ -679,6 +725,9 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
       args.push_back(ConstantInt::get(I32, id));
       InstInsertPt pt = InstInsertPt::Before(inst);
       pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
+
+      errs() << "Malloc ID " << id << " : " 
+        << getInstructionName(inst) << "\n";
 
       if (isa<CallInst>(inst)) {
         pt = InstInsertPt::After(inst);
@@ -951,6 +1000,10 @@ void SLAMP::instrumentBasePointer(Module &m, Loop* l) {
       pt << cast
          << updateDebugInfo(CallInst::Create(find_underlying_arg, args),
                             pt.getPosition(), m);
+
+      // errs() << "UO Arg (" << fcnId << "," << argId <<  ") : "  
+      errs() << "UO Arg " << (fcnId << 5 | ((0x1f & (argId << 4)) | 0x1)) << " : "
+        << getArgName(arg) << "\n";
     }
     else if (const auto *const_inst = dyn_cast<Instruction>(object)) {
       if (already.count(const_inst))
@@ -987,6 +1040,8 @@ void SLAMP::instrumentBasePointer(Module &m, Loop* l) {
       };
       where << cast 
         << updateDebugInfo(CallInst::Create(find_underlying_inst, args), where.getPosition(), m);
+
+      errs() << "UO Inst " << (instId << 1 | 0x0) << " : " << getInstructionName(inst) << "\n";
     }
     else {
       errs() << "What is: " << *object << '\n';
@@ -1154,6 +1209,92 @@ void SLAMP::instrumentMainFunction(Module &m) {
   }
 }
 
+/// Pass in the loop and instrument enter/exit hooks
+void SLAMP::instrumentLoopStartStopForAll(Module &m) {
+
+  // for all functions
+  for (auto &f : m) {
+    if (f.isDeclaration())
+      continue;
+    // get all loops
+    LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(f).getLoopInfo();
+    for (auto &loop : li.getLoopsInPreorder()) {
+
+      // TODO: check setjmp/longjmp
+      BasicBlock *header = loop->getHeader();
+      unsigned loopId = Namer::getBlkId(header);
+      if (loopId == -1) {
+        assert(false && "Loop header has no id");
+      }
+      BasicBlock *latch = loop->getLoopLatch();
+      vector<Value *> args;
+      args.push_back(ConstantInt::get(I32, loopId));
+
+      errs() << "Loop ID " << loopId << " : " << f.getName() << " " << header->getName() << " " << li.getLoopDepth(header) << "\n";
+
+      // check if loop-simplify pass executed
+      assert(loop->getNumBackEdges() == 1 &&
+          "Should be only 1 back edge, loop-simplify?");
+      assert(latch && "Loop latch needs to exist, loop-simplify?");
+
+      // add instrumentation on loop header:
+      // if new invocation, call SLAMP_loop_invocation, else, call
+      // SLAMP_loop_iteration
+      auto *f_loop_invoke = cast<Function>(
+          m.getOrInsertFunction("SLAMP_enter_loop", Void, I32).getCallee());
+      auto *f_loop_iter= cast<Function>(
+          m.getOrInsertFunction("SLAMP_loop_iter_ctx", Void, I32).getCallee());
+      auto *f_loop_exit = cast<Function>(
+          m.getOrInsertFunction("SLAMP_exit_loop", Void, I32).getCallee());
+
+      PHINode *funcphi = PHINode::Create(f_loop_invoke->getType(), 2, "funcphi_loop_context");
+      InstInsertPt pt;
+
+      if (isa<LandingPadInst>(header->getFirstNonPHI()))
+        pt = InstInsertPt::After(header->getFirstNonPHI());
+      else
+        pt = InstInsertPt::Before(header->getFirstNonPHI());
+
+      pt << funcphi;
+
+      // choose which function to execute (iter or invoke)
+      for (auto pred : predecessors(header)) {
+        if (pred == latch)
+          funcphi->addIncoming(f_loop_iter, pred);
+        else
+          funcphi->addIncoming(f_loop_invoke, pred);
+      }
+
+      updateDebugInfo(CallInst::Create(funcphi, args, "", header->getFirstNonPHI()), header->getFirstNonPHI(), m);
+
+      // Add `SLAMP_loop_exit` to all loop exits
+      SmallVector<BasicBlock *, 8> exits;
+      loop->getExitBlocks(exits);
+
+      // one instrumentation per block
+      set<BasicBlock *> s;
+
+      for (unsigned i = 0; i < exits.size(); i++) {
+        if (s.count(exits[i]))
+          continue;
+
+        CallInst *ci = CallInst::Create(f_loop_exit, args);
+
+        InstInsertPt pt2;
+        if (isa<LandingPadInst>(exits[i]->getFirstNonPHI()))
+          pt2 = InstInsertPt::After(exits[i]->getFirstNonPHI());
+        else
+          pt2 = InstInsertPt::Before(exits[i]->getFirstNonPHI());
+
+        pt2 << updateDebugInfo(ci, pt2.getPosition(), m);
+
+        s.insert(exits[i]);
+      }
+    }
+  }
+
+}
+
 
 /// Instrumnent each function entry and exit with SLAMP function entry and exit calls
 void SLAMP::instrumentFunctionStartStop(Module &m) {
@@ -1174,6 +1315,8 @@ void SLAMP::instrumentFunctionStartStop(Module &m) {
       errs() << "Cannot find function ID for " << func->getName() << "\n";
       continue;
     }
+
+    errs() << "Function ID " << fcnID << " : " << func->getName() << "\n";
 
     // set parameters
     vector<Value *> args;

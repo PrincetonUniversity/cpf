@@ -19,6 +19,7 @@
 #include <iostream>
 #include <stack>
 #include <utility>
+#include <map>
 #include "llvm/IR/Instruction.h"
 #include "scaf/Utilities/Metadata.h"
 
@@ -91,7 +92,7 @@ struct ContextManager {
 
   std::unordered_map <ContextHash, typename Context::FlattenContext> contextMap;
 
-  ContextHash activeHash() {
+  ContextHash activeId() {
     if (activeContext)
       return activeContext->hash();
     else
@@ -102,7 +103,7 @@ struct ContextManager {
     assert(activeContext && "active context is null");
     /// maybe this is not a great idea, expose the semantics of the context to the manager
     activeContext = activeContext->chain(contextId);
-    addContext(activeContext->hash(), *activeContext);
+    // addContext(activeContext->hash(), *activeContext);
   }
 
   void popContext(typename Context::ContextIdType contextId) {
@@ -157,6 +158,7 @@ enum SpecPrivContextType {
   LoopContext,
 };
 
+
 struct ContextId {
   SpecPrivContextType type;
   int32_t metaId;
@@ -173,13 +175,50 @@ struct ContextId {
     return type == other.type && metaId == other.metaId;
   }
 
+  bool operator<(const ContextId &other) const {
+    return type < other.type || (type == other.type && metaId < other.metaId);
+  }
+
   void print(std::ostream &os) {
     os << "ContextId: " << type << " " << metaId << "\n";
   }
 };
-using Context = Context<ContextId>;
-}; // namespace SpecPrivLib
+using SpecPrivContext = Context<ContextId>;
 
+struct SpecPrivContextManager : public ContextManager<SpecPrivContext> {
+
+  std::map<std::vector<ContextId>, ContextHash> contextIdHashMap;
+  size_t contextIdHashCounter = 1;
+
+  ContextHash encodeContext(SpecPrivContext context) {
+    std::vector<ContextId> flattenContext = context.flatten();
+    if (contextIdHashMap.count(flattenContext)) {
+      return contextIdHashMap[flattenContext];
+    } else {
+      contextIdHashMap[flattenContext] = contextIdHashCounter;
+      contextMap[contextIdHashCounter] = flattenContext;
+
+      return contextIdHashCounter++;
+    }
+  }
+
+  ContextHash encodeActiveContext() {
+    // std::cerr << "encodeActiveContext: ";
+    // activeContext->print(std::cerr);
+    return encodeContext(*activeContext);
+  }
+
+  std::vector<ContextId> decodeContext(ContextHash hash) {
+    if (contextMap.count(hash)) {
+      return contextMap[hash];
+    } else {
+      assert(false && "Could not find the context");
+      return {};
+    }
+  }
+
+};
+}; // namespace SpecPrivLib
 
 } // namespace SLAMPLib
 #endif // SLAMPLIB_HOOKS_SLAMP_CONTEXT_H

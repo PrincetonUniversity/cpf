@@ -125,7 +125,7 @@ uint64_t __slamp_load_count = 0;
 uint64_t __slamp_store_count = 0;
 uint64_t __slamp_malloc_count = 0;
 uint64_t __slamp_free_count = 0;
-ContextManager<SpecPrivLib::Context> *contextManager;
+SpecPrivLib::SpecPrivContextManager *contextManager;
 std::unordered_set<unsigned long> *shortLivedObjects, *longLivedObjects;
 
 // Type of the access callback function
@@ -143,6 +143,7 @@ void slamp_global_callback(const char* name, uint64_t addr, uint64_t size) {}
 
 // TODO: activate shadow memory (SLAMP_malloc)
 void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32_t instr, uint64_t addr) {
+  TURN_OFF_CUSTOM_MALLOC;
   uint64_t size = array_size*type_size;
 
   if (DEPENDENCE_MODULE || POINTS_TO_MODULE) {
@@ -150,13 +151,15 @@ void SLAMP_callback_stack_alloca(uint64_t array_size, uint64_t type_size, uint32
     void* shadow = (void*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     if (shadow && POINTS_TO_MODULE) {
       TS *s = (TS *)shadow;
-      auto hash = contextManager->activeHash();
+      auto hash = contextManager->encodeActiveContext();
       TS ts = CREATE_TS(instr, hash, __slamp_invocation);
       for (auto i = 0; i < size; i++)
         s[i] = ts;
     }
   }
-    return;
+
+  TURN_ON_CUSTOM_MALLOC;
+  return;
 }
 
 
@@ -469,7 +472,7 @@ void SLAMP_points_to_module_use(uint32_t instr, uint64_t addr) {
     if (cond && tss[i] != 0) {
       // mask off the iteration count
       TS ts = tss[i];
-      ts = ts & 0xfffffffffffffe00;
+      ts = ts & 0xffffffffffffff00;
       // ts = ts & 0xfffffffffffffff0;
       // ts = ts & 0xfffff0000000000f;
       //create set of objects for each load/store
@@ -762,7 +765,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id)
 {
 
   if (POINTS_TO_MODULE) {
-    contextManager = new ContextManager<SpecPrivLib::Context>();
+    contextManager = new SpecPrivLib::SpecPrivContextManager();
     shortLivedObjects = new std::unordered_set<uint64_t>();
     longLivedObjects = new std::unordered_set<uint64_t>();
   }
@@ -959,11 +962,23 @@ void SLAMP_fini(const char* filename)
   specprivfs << "BEGIN SPEC PRIV PROFILE\n";
   specprivfs << "COMPLETE ALLOCATION INFO ; \n";
 
+  auto printContext = [&specprivfs](const std::vector<SpecPrivLib::ContextId> &ctx) {
+    for (auto &c : ctx) {
+      specprivfs << "(" << c.type << "," << c.metaId << ")";
+    }
+  };
+
     // local objects
   if (POINTS_TO_MODULE) {
     for (auto &obj: *shortLivedObjects) {
       // LOCAL OBJECT AU HEAP main if.else.i call.i4.i FROM  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  IS LOCAL TO  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  COUNT 300 ;
-      specprivfs << "LOCAL OBJECT " << obj << " ; \n";
+      auto instr = GET_INSTR(obj);
+      auto hash = GET_HASH(obj);
+      auto context = contextManager->decodeContext(hash);
+      specprivfs << "LOCAL OBJECT " << instr << " at context ";
+      printContext(context);
+      specprivfs << ";\n";
+
     }
 
   }
@@ -989,21 +1004,23 @@ void SLAMP_fini(const char* filename)
   //  PRED OBJ main if.else.i $0 AT  CONTEXT { LOOP main for.cond15 1 WITHIN FUNCTION main WITHIN TOP }  AS PREDICTABLE 300 SAMPLES OVER 1 VALUES {  ( OFFSET 0 BASE AU HEAP allocate_matrices for.end call7 FROM  CONTEXT { FUNCTION allocate_matrices WITHIN FUNCTION main WITHIN TOP }  COUNT 300 )  } ;
   if (POINTS_TO_MODULE) {
     for (auto &it : *pointsToMap) {
-      specprivfs << "PRED OBJ " << it.first << " "; // instruction ID
+      specprivfs << "PRED OBJ " << it.first << ": "; // instruction ID
       for (auto &it2 : it.second) { // the set of allocation units
         auto hash = GET_HASH(it2);
-        auto iter = GET_ITER(it2) & 0xf;
 
-        std::vector<SpecPrivLib::ContextId> context = contextManager->contextMap[hash];
+        std::vector<SpecPrivLib::ContextId> context = contextManager->decodeContext(hash);
 
-        specprivfs << "instr - "<< GET_INSTR(it2) << " Context: " ;
-        for (auto &ctx : context) {
-          ctx.print(specprivfs);
+        specprivfs << "AU "; 
+
+        if (it2 == 0) {
+          specprivfs << " NULL";
+        } else {
+          specprivfs <<GET_INSTR(it2);
+          specprivfs << " FROM CONTEXT " ;
+          printContext(context);
         }
-
-        specprivfs << " iter - " << iter << " invoc - " << GET_INVOC(it2) << "\n";
+        specprivfs << ";\n";
       }
-      specprivfs << "\n";
     }
   }
 
@@ -1099,10 +1116,34 @@ void SLAMP_main_entry(uint32_t argc, char** argv, char** env)
 void SLAMP_enter_fcn(uint32_t fcnId) {
 
   TURN_OFF_CUSTOM_MALLOC;
+
+  // std::cerr << "entering function " << fcnId << std::endl;
   auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
   
   // update the current context
   contextManager->updateContext(contextId);
+  TURN_ON_CUSTOM_MALLOC;
+}
+
+void SLAMP_enter_loop(uint32_t bbId) {
+
+  TURN_OFF_CUSTOM_MALLOC;
+
+  // std::cerr << "entering function " << fcnId << std::endl;
+  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::LoopContext, bbId);
+  
+  // update the current context
+  contextManager->updateContext(contextId);
+  TURN_ON_CUSTOM_MALLOC;
+}
+
+void SLAMP_exit_loop(uint32_t bbId) {
+  TURN_OFF_CUSTOM_MALLOC;
+  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::LoopContext, bbId);
+
+  // std::cerr << "exiting function " << fcnId << std::endl;
+  // update the current context
+  contextManager->popContext(contextId);
   TURN_ON_CUSTOM_MALLOC;
 }
 
@@ -1111,10 +1152,13 @@ void SLAMP_exit_fcn(uint32_t fcnId) {
   TURN_OFF_CUSTOM_MALLOC;
   auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
 
+  // std::cerr << "exiting function " << fcnId << std::endl;
   // update the current context
   contextManager->popContext(contextId);
   TURN_ON_CUSTOM_MALLOC;
 }
+
+void SLAMP_loop_iter_ctx(uint32_t id) {}
 
 /// update the invocation count
 void SLAMP_loop_invocation() {
@@ -1680,13 +1724,16 @@ void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment)
           // log all data into sigle TS
           // FIXME: static instruction and the dynamic context?
           // context: static instr + function + loop
-          auto hash = contextManager->activeHash();
+          auto hash = contextManager->encodeActiveContext();
+          // print active context
+          // contextManager->activeContext->print(std::cerr);
 
           // currentContext->print(std::cerr);
-          // std::cerr << "hash: " << hash << "\n";
+          // std::cerr << "malloc hash: " << hash << "\n";
 
           // TS ts = CREATE_TS(instr, hash, __slamp_invocation);
           TS ts = CREATE_TS_HASH(instr, hash, __slamp_iteration, __slamp_iteration);
+          // std::cerr << "TS: " << std::hex << ts << std::dec << "\n";
           // TS ts = CREATE_TS(instr, __slamp_iteration, __slamp_invocation);
           if (instr == 0) {
             std::cerr << "Ext context: " << ext_context << "\n";
@@ -1743,8 +1790,11 @@ void  SLAMP_free(void* ptr)
     // otherwise mark it as not local
     TS* s = (TS*)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     auto instr = GET_INSTR(s[0]);
-    auto iteration  = GET_ITER(s[0]);
+    auto hash = GET_HASH(s[0]);
+    auto iteration  = GET_ITER(s[0]) & 0xF;
     auto invocation = GET_INVOC(s[0]);
+
+    auto instrAndHash = s[0] & 0xFFFFFFFFFFFFFF00;
     
     if (instr == 0) {
       std::cerr << "TS: " << s[0] << " ptr: " << ptr << "\n";
@@ -1755,14 +1805,14 @@ void  SLAMP_free(void* ptr)
         && invocation == (0xf & __slamp_invocation)
         && invokedepth > 0) {
       // is short-lived, put in the set
-      shortLivedObjects->insert(instr);
+      shortLivedObjects->insert(instrAndHash);
       for (auto &obj: *shortLivedObjects) {
         std::cerr << "short lived object: " << obj << "\n";
       }
     }
     else {
       // is not short-lived
-      longLivedObjects->insert(instr);
+      longLivedObjects->insert(instrAndHash);
     }
 
   }
