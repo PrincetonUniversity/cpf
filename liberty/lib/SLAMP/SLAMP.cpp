@@ -101,7 +101,7 @@ static cl::opt<bool> UseLinearValueModule("slamp-linear-value-module", cl::init(
 static cl::opt<bool> UseConstantAddressModule("slamp-constant-address-module", cl::init(false), cl::NotHidden, cl::desc("Use address module"));
 
 // linear address module
-static cl::opt<bool> UseLinearAddressModule("slamp-linear-address-module", cl::init(false), cl::NotHidden, cl::desc("Use linear address module"));
+ static cl::opt<bool> UseLinearAddressModule("slamp-linear-address-module", cl::init(false), cl::NotHidden, cl::desc("Use linear address module"));
 
 // trace module
 static cl::opt<bool> UseTraceModule("slamp-trace-module", cl::init(false), cl::NotHidden, cl::desc("Use trace module"));
@@ -480,10 +480,10 @@ bool SLAMP::runOnModule(Module &m) {
   }
 
   instrumentFunctionStartStop(m);
-  instrumentLoopStartStopForAll(m);
   instrumentMainFunction(m);
 
   instrumentLoopStartStop(m, this->target_loop);
+  instrumentLoopStartStopForAll(m);
 
   instrumentInstructions(m, this->target_loop);
 
@@ -971,10 +971,17 @@ void SLAMP::instrumentBasePointer(Module &m, Loop* l) {
 
   // collect all pointer use by load, store, function argument in the targeted loop
   std::set<const Value*> indeterminate_pointers, indeterminate_objects, already;
-  for(auto *bb: l->getBlocks())
-  {
-    Indeterminate::findIndeterminateObjects(*bb, indeterminate_pointers, indeterminate_objects);
+
+  for (auto &F : m) {
+    for (auto &BB : F) {
+      Indeterminate::findIndeterminateObjects(BB, indeterminate_pointers, indeterminate_objects);
+    }
   }
+
+  // for(auto *bb: l->getBlocks())
+  // {
+    // Indeterminate::findIndeterminateObjects(*bb, indeterminate_pointers, indeterminate_objects);
+  // }
 
   for (auto &object : indeterminate_objects) {
     if (const auto *const_arg = dyn_cast<Argument>(object)) {

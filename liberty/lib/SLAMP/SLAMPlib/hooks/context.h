@@ -189,6 +189,9 @@ struct SpecPrivContextManager : public ContextManager<SpecPrivContext> {
 
   std::map<std::vector<ContextId>, ContextHash> contextIdHashMap;
   size_t contextIdHashCounter = 1;
+  
+  SpecPrivContext *cachedActiveContext;
+  ContextHash cachedContextHash;
 
   ContextHash encodeContext(SpecPrivContext context) {
     std::vector<ContextId> flattenContext = context.flatten();
@@ -205,7 +208,13 @@ struct SpecPrivContextManager : public ContextManager<SpecPrivContext> {
   ContextHash encodeActiveContext() {
     // std::cerr << "encodeActiveContext: ";
     // activeContext->print(std::cerr);
-    return encodeContext(*activeContext);
+    if (activeContext == cachedActiveContext) {
+      return cachedContextHash;
+    } else {
+      cachedActiveContext = activeContext;
+      cachedContextHash = encodeContext(*activeContext);
+      return cachedContextHash;
+    }
   }
 
   std::vector<ContextId> decodeContext(ContextHash hash) {

@@ -109,6 +109,30 @@ def parse_specpriv(fname, id_maps):
     uo_ids = id_maps['uo']
     func_ids = id_maps['func']
     loop_ids = id_maps['loop']
+    loop_context_name = ""
+
+    # Load loop contexts
+    #  LOOP CONTEXTS: 1
+    #  (1,10)(0,0)
+    curLine = 0
+
+    while curLine < len(lines):
+        line = lines[curLine]
+        if "LOOP CONTEXTS" in line:
+            # Get the number of loop contexts
+            num_loop_contexts = int(line.replace("LOOP CONTEXTS: ", "").strip())
+            # assert num_loop_contexts is an integer
+            if num_loop_contexts == 0 or num_loop_contexts > 1:
+                print("ERROR: num_loop_contexts is not 1")
+                exit(1)
+
+            curLine += 1
+            line = lines[curLine]
+            context_str = generateContextStr(line)
+            loop_context_name = context_str
+
+        curLine += 1
+
 
     # Parse LOCAL OBJECT 279 at context (2,39)(2,35)(2,20)(1,10)(0,0);
     # Get malloc ID
@@ -125,34 +149,52 @@ def parse_specpriv(fname, id_maps):
             malloc_name = malloc_ids[mid]
             context_str = generateContextStr(contexts)
 
-            final_lines.append("LOCAL OBJECT AU HEAP " +  malloc_name + " FROM CONTEXT { " + context_str + "} IS LOCAL TO CONTEXT { } COUNT 1")
+            final_lines.append("LOCAL OBJECT AU HEAP " +  malloc_name + " FROM CONTEXT { " + context_str + "} IS LOCAL TO CONTEXT { " + loop_context_name + " } COUNT 1")
 
-    # Parse PRED OBJ 282: AU 24 FROM CONTEXT (1,0)(1,10)(0,0);
+    # Parse PRED OBJ 282: length of AUs 
+    # AU 24 FROM CONTEXT (1,0)(1,10)(0,0);
     # The first number is UO ID, the second number is malloc ID
-    for line in lines:
+    curLine = 0
+    while curLine < len(lines):
+        line = lines[curLine]
+        curLine += 1
         if "PRED OBJ" in line:
-            line = line.replace("PRED OBJ", "").replace("AU ", "").replace("FROM CONTEXT", "").replace(":", "").replace(";", "").strip()
-            if "NULL" in line:
-                uoid, _ = line.split(" ", 1)
-                # assert uoid is an integer
-                assert uoid.isdigit()
-                # Get the name of the malloc inst
-                uo_name = uo_ids[uoid]
+            line = line.replace("PRED OBJ", "").replace("at ", "").replace(":", "").replace(";", "").strip()
+            uoid, contexts, lenAUs = line.split(" ", 2)
+            lenAUs = int(lenAUs)
 
-                final_lines.append("PRED OBJ " +  uo_name + " OVER 1 VALUES { ( OFFSET 0 BASE AU NULL COUNT 1 ) }")
-            else:
-                uoid, malloc_id, contexts = line.split(" ", 2)
+            context_str = generateContextStr(contexts)
+            uo_name = uo_ids[uoid]
+            uo_str = "PRED OBJ " +  uo_name + " AT CONTEXT { " + context_str + " }  AS PREDICTABLE " + str(lenAUs) + " SAMPLES OVER " + str(lenAUs) + " VALUES { "
 
-                # assert uoid is an integer
-                assert uoid.isdigit()
-                assert malloc_id.isdigit()
+            # Parse the AU
+            for i in range(lenAUs):
+                line = lines[curLine]
+                line = line.replace("AU ", "").replace("FROM CONTEXT", "").replace(":", "").replace(";", "").strip()
 
-                # Get the name of the malloc inst
-                uo_name = uo_ids[uoid]
-                malloc_name = malloc_ids[malloc_id]
-                context_str = generateContextStr(contexts)
 
-                final_lines.append("PRED OBJ " +  uo_name + " OVER 1 VALUES { ( OFFSET 0 BASE AU HEAP " + malloc_id + " FROM CONTEXT { " + context_str + "} COUNT 1 }")
+                if "NULL" in line:
+                    # Get the name of the malloc inst
+                    au_str = "( OFFSET 0 BASE AU NULL COUNT 1 )"
+                elif "UNMANAGED" in line:
+                    au_str = "( OFFSET 0 BASE AU HEAP UNMANAGED fopen FROM  CONTEXT { TOP }  COUNT 1 )"
+                else:
+                    malloc_id, contexts = line.split(" ", 1)
+                    assert malloc_id.isdigit()
+
+                    # Get the name of the malloc inst
+                    malloc_name = malloc_ids[malloc_id]
+                    context_str = generateContextStr(contexts)
+                    au_str = "( OFFSET 0 BASE AU HEAP " + malloc_name + " FROM CONTEXT { " + context_str + "} COUNT 1 )"
+
+                uo_str += au_str
+                if i != lenAUs - 1:
+                    uo_str += " , "
+
+                curLine += 1
+
+            uo_str += " }"
+            final_lines.append(uo_str)
 
     return final_lines
 
@@ -162,6 +204,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Parse the rabbit6 file and the specpriv-profile.out file')
     parser.add_argument('-r', '--rabbit6', help='Rabbit6 file', default="rabbit6", type=str)
     parser.add_argument('-p', '--profile', help='specpriv-profile.out file', default="specpriv-profile.out", type=str)
+    parser.add_argument('-o', '--output', help='Output file', default="specpriv-profile-converted.out", type=str)
+    return parser.parse_args()
+
     return parser.parse_args()
 
 
@@ -177,7 +222,12 @@ if __name__ == "__main__":
 
     # Parse the specpriv-profile.out file
     final_lines = parse_specpriv(profile, id_maps)
-    # print all lines
-    for line in final_lines:
-        print(line + ";")
+    # print all lines to out file
+    with open(args.output, 'w') as f:
+        f.write("BEGIN SPEC PRIV PROFILE\n")
+        f.write("COMPLETE ALLOCATION INFO ;\n")
+
+        for line in final_lines:
+            f.write(line + " ;\n")
+        f.write("END SPEC PRIV PROFILE\n");
 
