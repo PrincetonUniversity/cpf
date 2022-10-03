@@ -41,6 +41,7 @@ char OptRepl::ID = 0;
 static RegisterPass<OptRepl> rp("opt-repl", "Opt Repl");
 
 void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
+  au.addRequired<Noelle>();
   au.addRequired<ModuleLoops>();
   au.addRequired<Targets>();
   au.addRequired<PDGBuilder>();
@@ -131,6 +132,8 @@ char** completer(const char* text, int start, int end) {
 bool OptRepl::runOnModule(Module &M) {
   bool modified = false;
 
+  auto &noelle = getAnalysis<Noelle>();
+  auto loops = noelle.getLoops();
   ModuleLoops &mloops = getAnalysis<ModuleLoops>();
   const Targets &targets = getAnalysis<Targets>();
   PDGBuilder &pdgbuilder = getAnalysis<PDGBuilder>();
@@ -192,7 +195,7 @@ bool OptRepl::runOnModule(Module &M) {
     };
 
     // select one loop
-    auto selectFn = [&loopIdMap, &parser, &selectedLoop, &selectedPDG, &selectedSCCDAG, &pdgbuilder, &instIdMap, &instIdLookupMap]() {
+    auto selectFn = [&loopIdMap, &parser, &selectedLoop, &selectedPDG, &selectedSCCDAG, &pdgbuilder, &instIdMap, &instIdLookupMap, &noelle]() {
       int loopId = parser.getActionId();
       if (loopId == -1) {
         outs() << "No number specified\n";
@@ -210,7 +213,11 @@ bool OptRepl::runOnModule(Module &M) {
              << "::" << loop->getHeader()->getName() << '\n';
       selectedLoop = loop;
 
-      selectedPDG = pdgbuilder.getLoopPDG(loop);
+      //selectedPDG = pdgbuilder.getLoopPDG(loop);
+      LoopStructure loopStructure(loop);
+      auto ldi = noelle.getLoop(&loopStructure);
+
+      selectedPDG = std::make_unique<PDG>(*(ldi->getLoopDG()));
       selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
 
       instIdMap = createInstIdMap(selectedPDG.get());
