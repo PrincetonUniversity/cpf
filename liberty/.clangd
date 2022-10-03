@@ -1,0 +1,5 @@
+CompileFlags:                     # Tweak the parse settings
+  Add: [-Wold-style-cast]                   # treat all files as C++, enable more warnings
+Diagnostics:
+  ClangTidy:
+    Add: bugprone-*
