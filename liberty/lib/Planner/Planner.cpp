@@ -26,9 +26,12 @@
 #include "scaf/MemoryAnalysisModules/PureFunAA.h"
 #include "scaf/MemoryAnalysisModules/SemiLocalFunAA.h"
 #include "scaf/SpeculationModules/GlobalConfig.h"
+#include "scaf/SpeculationModules/Remediator.h"
 #include "scaf/SpeculationModules/SLAMPLoad.h"
 #include "scaf/SpeculationModules/SlampOracleAA.h"
+#include "scaf/SpeculationModules/TXIOAA.h"
 #include "scaf/Utilities/ReportDump.h"
+#include "scaf/Utilities/Metadata.h"
 
 #define ThreadBudget 22
 #define FixedPoint 1000
@@ -269,7 +272,8 @@ namespace liberty {
     // It can be conservative or optimistic based on the loopaa passed to NOELLE
     BasicBlock *hA = loop->getHeader();
     Function *fA = hA->getParent();
-    errs() << "Parallelizing loop: " << fA->getName() << ":" << hA->getName() << '\n';
+    errs() << "Parallelizing loop: " << fA->getName() << ":" << hA->getName() << 
+      " (" << Namer::getBlkId(hA) << ")\n";
 
     auto loopStructures = noelle.getLoopStructures(fA);
     LoopStructure loopStructure(loop);
@@ -303,7 +307,7 @@ namespace liberty {
         // and SLAMP only considers RAW deps. 
         if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst))
           continue;
-        if(!edge->isRAWDependence())
+        if(!edge->isRAWDependence() || !edge->isMemoryDependence())
           continue;
 
         if(edge->isLoopCarriedDependence())
@@ -311,10 +315,23 @@ namespace liberty {
         
         auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
         auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
+        if(slamp_remedy.depRes == Irrel) continue;
 
         if(slamp_remedy.depRes != lamp_remedy.depRes) {
           diffCount++;
-          errs() << "ERROR: SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes << "\n";
+          errs() << "ERROR: SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes;
+          if(loopCarried)
+            errs() << ", loop-carried\n";
+          else
+            errs() << ", intra-iteration\n";
+          //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
+          errs() << Namer::getBlkId(hA) << " (" << Namer::getInstrId(src) << ") to (" << Namer::getInstrId(dst) << ")\n";
+          errs() << "dep from " 
+            << *src << "(";
+          liberty::printInstDebugInfo(src);
+          errs() << ") to " << *dst << "(";
+          liberty::printInstDebugInfo(dst);
+          errs() << ")\n";
         }
       }
       errs() << "Total number of edges: " << edgeCount << ", number of diff edges: " << diffCount << "\n";
@@ -332,6 +349,7 @@ namespace liberty {
         for(auto nodeJ : pdg->getNodes()) {
            Instruction* src = dyn_cast<Instruction>(nodeI->getT());
            Instruction* dst = dyn_cast<Instruction>(nodeJ->getT());
+           if(src == NULL || dst == NULL) continue;
 
            auto deps = pdg->getDependences(src, dst);
            bool relevantIntraDepExists = false;
@@ -348,15 +366,27 @@ namespace liberty {
            if(!relevantInterDepExists) {
              auto slamp_dep_inter = remed_slamp_aa->memdep(src, dst, true, DataDepType::RAW, loop);
              if(slamp_dep_inter.depRes == Dep) {
-              errs() << "ERROR: SLAMP is more conservative than analysis!\n";
-              errs() << src << " " << dst << "\n";
+              errs() << "ERROR: SLAMP is more conservative than analysis for loop-carried!\n";
+              //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
+              errs() << "dep from " 
+                << *(src) << "(";
+              liberty::printInstDebugInfo(src);
+              errs() << ") to " << *(dst) << "(";
+              liberty::printInstDebugInfo(dst);
+              errs() << ")\n";
              }
            }
            if(!relevantIntraDepExists) {
              auto slamp_dep_intra = remed_slamp_aa->memdep(src, dst, false, DataDepType::RAW, loop);
              if(slamp_dep_intra.depRes == Dep) {
-             errs() << "ERROR: SLAMP is more conservative than analysis!\n";
-             errs() << src << " " << dst << "\n";
+             errs() << "ERROR: SLAMP is more conservative than analysis for intra-iteration!\n";
+             //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
+             errs() << "dep from " 
+               << *(src) << "(";
+             liberty::printInstDebugInfo(src);
+             errs() << ") to " << *(dst) << "(";
+             liberty::printInstDebugInfo(dst);
+             errs() << ")\n";
              }
            }
         }
@@ -375,6 +405,7 @@ namespace liberty {
 
     // modify the PDG by annotating the remedies
     for (auto &remediator : remediators) {
+      errs() << remediator->getRemediatorName() << "\n";
       Remedies remedies = remediator->satisfy(*pdg, loop, allCriticisms);
       // for each remedy
       for (Remedy_ptr r : remedies) {
@@ -412,8 +443,9 @@ namespace liberty {
             Instruction* dst = dyn_cast<Instruction>(c->getIncomingT());
             if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst)) {
               errs() << "This is a function call\n";
-              continue;
             }
+            else
+              errs() << "This is not a function call\n";
             
             errs() << "SLAMP removed ";
             if(c->isLoopCarriedDependence())
@@ -421,7 +453,11 @@ namespace liberty {
             else
               errs() << "intra-iteration ";
             errs() << "dep from " 
-              << *(c->getOutgoingT()) << " to " << *(c->getIncomingT()) << "\n";
+              << *(c->getOutgoingT()) << "(";
+            liberty::printInstDebugInfo(src);
+            errs() << ") to " << *(c->getIncomingT()) << "(";
+            liberty::printInstDebugInfo(dst);
+            errs() << ")\n";
           }
         }
       }

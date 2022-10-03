@@ -65,7 +65,8 @@ def parse_SLAMP_output(root_path, bmark, result_path, modules):
       is_distance = True
 
   for outfile in outfiles:
-    shutil.move(os.path.join(source, outfile), os.path.join(result_path, outfile))
+    if(os.path.exists(os.path.join(source, outfile))):
+      shutil.move(os.path.join(source, outfile), os.path.join(result_path, outfile))
 
   os.chdir(result_path)
 
