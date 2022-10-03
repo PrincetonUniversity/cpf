@@ -94,6 +94,7 @@ struct IsParallel {
 
   bool operator()(const SCC &scc) const {
     for (auto edge : make_range(scc.begin_edges(), scc.end_edges())) {
+      // all internal dependences must be intra-iteration
       if (!scc.isInternal(edge->getIncomingT()) ||
           !scc.isInternal(edge->getOutgoingT()))
         continue;
@@ -1170,12 +1171,8 @@ void PSDSWPCritic::adjustForRegLCFromSeqToPar(PipelineStrategy &ps, PDG &pdg,
                                               PipelineStage *firstStage,
                                               PipelineStage *parallelStage) {
   std::vector<Instruction *> moveToSeqInsts;
-  for (PipelineStage::ISet::const_iterator
-           j = parallelStage->instructions.begin(),
-           z = parallelStage->instructions.end();
-       j != z; ++j) {
-    Instruction *inst = *j;
-    auto *pdgNode = pdg.fetchConstNode(inst);
+  for (auto inst : parallelStage->instructions) {
+     auto *pdgNode = pdg.fetchConstNode(inst);
 
     // There should be no loop-carried edge
     for (auto edge : make_range(pdgNode->begin_incoming_edges(),
