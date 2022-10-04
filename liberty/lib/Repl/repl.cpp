@@ -4,6 +4,7 @@
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "scaf/Utilities/ReportDump.h"
+#include "scaf/Utilities/Metadata.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -273,9 +274,24 @@ bool OptRepl::runOnModule(Module &M) {
     };
 
     // show instructions with id
-    auto InstsFn = [&instIdMap]() {
+    auto instsFn = [&parser, &instIdMap]() {
+      auto printDebug = parser.isVerbose();
       for (auto &[instId, node] : *instIdMap) {
-        outs() << instId << "\t" << *node->getT() << "\n";
+        auto *inst = dyn_cast<Instruction>(node->getT());
+        // not an instruction
+        if (!inst) {
+          outs() << instId << "\t" << *node->getT() << "\n";
+          continue;
+        }
+
+        auto instNamerId = Namer::getInstrId(inst);
+        outs() << instId << " (" << instNamerId << ")\t" << *node->getT();
+
+        if (printDebug) {
+          liberty::printInstDebugInfo(inst);
+        }
+
+        outs()<< "\n";
       }
     };
 
@@ -480,7 +496,7 @@ bool OptRepl::runOnModule(Module &M) {
       dumpFn();
       break;
     case ReplAction::Insts:
-      InstsFn();
+      instsFn();
       break;
     case ReplAction::Remove:
       removeFn();
