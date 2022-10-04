@@ -369,9 +369,9 @@ namespace liberty {
               errs() << "ERROR: SLAMP is more conservative than analysis for loop-carried!\n";
               //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
               errs() << "dep from " 
-                << *(src) << "(";
+                << *(src) << "( (" << Namer::getInstrId(src) << ") ";
               liberty::printInstDebugInfo(src);
-              errs() << ") to " << *(dst) << "(";
+              errs() << ") to " << *(dst) << "( (" << Namer::getInstrId(dst) << ") ";
               liberty::printInstDebugInfo(dst);
               errs() << ")\n";
              }
@@ -382,9 +382,9 @@ namespace liberty {
              errs() << "ERROR: SLAMP is more conservative than analysis for intra-iteration!\n";
              //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
              errs() << "dep from " 
-               << *(src) << "(";
+               << *(src) << "( (" << Namer::getInstrId(src) << ") ";
              liberty::printInstDebugInfo(src);
-             errs() << ") to " << *(dst) << "(";
+             errs() << ") to " << *(dst) << "( (" << Namer::getInstrId(dst) << ") ";
              liberty::printInstDebugInfo(dst);
              errs() << ")\n";
              }
