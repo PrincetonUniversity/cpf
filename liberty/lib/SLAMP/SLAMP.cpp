@@ -432,7 +432,7 @@ bool SLAMP::runOnModule(Module &m) {
   errs() << "Elided Hash: " << elidedHash(elidedLoopInstsId) << "\n";
 
   // replace external function calls to wrapper function calls
-  replaceExternalFunctionCalls(m);
+  // replaceExternalFunctionCalls(m);
 
 
   auto setGlobalModule = [&m](string name, bool value) {
