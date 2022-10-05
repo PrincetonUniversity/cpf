@@ -369,9 +369,15 @@ namespace liberty {
               errs() << "ERROR: SLAMP is more conservative than analysis for loop-carried!\n";
               //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
               errs() << "dep from " 
+<<<<<<< HEAD
                 << *(src) << "( (" << Namer::getInstrId(src) << ") ";
               liberty::printInstDebugInfo(src);
               errs() << ") to " << *(dst) << "( (" << Namer::getInstrId(dst) << ") ";
+=======
+                << *(src) << "(";
+              liberty::printInstDebugInfo(src);
+              errs() << ") to " << *(dst) << "(";
+>>>>>>> 5a0569ff333e8efc4779a1852ce1c732065fd372
               liberty::printInstDebugInfo(dst);
               errs() << ")\n";
              }
@@ -382,9 +388,15 @@ namespace liberty {
              errs() << "ERROR: SLAMP is more conservative than analysis for intra-iteration!\n";
              //errs() << *src << " (" << Namer::getInstrId(src) << ") to " << *dst << " (" << Namer::getInstrId(dst) << ")\n";
              errs() << "dep from " 
+<<<<<<< HEAD
                << *(src) << "( (" << Namer::getInstrId(src) << ") ";
              liberty::printInstDebugInfo(src);
              errs() << ") to " << *(dst) << "( (" << Namer::getInstrId(dst) << ") ";
+=======
+               << *(src) << "(";
+             liberty::printInstDebugInfo(src);
+             errs() << ") to " << *(dst) << "(";
+>>>>>>> 5a0569ff333e8efc4779a1852ce1c732065fd372
              liberty::printInstDebugInfo(dst);
              errs() << ")\n";
              }
