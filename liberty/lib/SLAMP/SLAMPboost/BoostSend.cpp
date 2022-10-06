@@ -14,10 +14,8 @@ namespace shm
     typedef bip::allocator<char, bip::managed_shared_memory::segment_manager> char_alloc;
     typedef bip::basic_string<char, std::char_traits<char>, char_alloc >      shared_string;
 
-    typedef boost::lockfree::spsc_queue<
-        shared_string, 
-        boost::lockfree::capacity<65536> 
-    > ring_buffer;
+    // using ring_buffer = boost::lockfree::spsc_queue<shared_string, boost::lockfree::capacity<65536>>;
+    using ring_buffer = boost::lockfree::spsc_queue<unsigned int, boost::lockfree::capacity<65536>>;
 }
 
 #include <unistd.h>
@@ -46,7 +44,8 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   // send a msg with "fn_id, loop_id"
   char msg[100];
   sprintf(msg, "%d,%d", fn_id, loop_id);
-   queue->push(shm::shared_string(msg, *char_alloc));
+   // queue->push(shm::shared_string(msg, *char_alloc));
+  queue->push(fn_id);
 }
 
 void SLAMP_fini(const char* filename){
@@ -86,27 +85,32 @@ void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter4++;
 
-  local_buffer[buffer_counter++] = 4;
-  local_buffer[buffer_counter++] = instr & 0xFF;
+  queue->push(4);
+  queue->push(instr);
 
-  // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    buffer_counter = 0;
-  }
+  // local_buffer[buffer_counter++] = 4;
+  // local_buffer[buffer_counter++] = instr & 0xFF;
+
+  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
+    // queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
+    // buffer_counter = 0;
+  // }
 }
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter8++;
 
-  local_buffer[buffer_counter++] = 8;
-  local_buffer[buffer_counter++] = instr & 0xFF;
+  queue->push(8);
+  queue->push(instr);
+  // local_buffer[buffer_counter++] = 8;
+  // local_buffer[buffer_counter++] = instr & 0xFF;
 
-  // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    buffer_counter = 0;
-  }
+  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
+    // queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
+    // buffer_counter = 0;
+  // }
 }
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n){}
@@ -116,27 +120,31 @@ void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t va
 void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter4_ext++;
 
-  local_buffer[buffer_counter++] = 14;
-  local_buffer[buffer_counter++] = addr & 0xFF;
+  queue->push(14);
+  queue->push(addr & 0xFFFFFFFF);
+  // local_buffer[buffer_counter++] = 14;
+  // local_buffer[buffer_counter++] = addr & 0xFF;
 
-  // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    buffer_counter = 0;
-  }
+  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
+  //   queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
+  //   buffer_counter = 0;
+  // }
 
 }
 void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter8_ext++;
 
-  local_buffer[buffer_counter++] = 18;
-  local_buffer[buffer_counter++] = addr & 0xFF;
+  queue->push(18);
+  queue->push(addr & 0xFFFFFFFF);
+  // local_buffer[buffer_counter++] = 18;
+  // local_buffer[buffer_counter++] = addr & 0xFF;
 
-  // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    buffer_counter = 0;
-  }
+  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
+    // queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
+    // buffer_counter = 0;
+  // }
 }
 void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n){}
 

@@ -11,46 +11,40 @@
 namespace bip = boost::interprocess;
 namespace shm
 {
-    typedef bip::allocator<char, bip::managed_shared_memory::segment_manager> char_alloc;
-    typedef bip::basic_string<char, std::char_traits<char>, char_alloc >      shared_string;
 
-    typedef boost::lockfree::spsc_queue<
-        shared_string, 
-        boost::lockfree::capacity<65536> 
-    > ring_buffer;
+    using Element = char; // Queue element type.
+    using char_alloc = bip::allocator<Element, bip::managed_shared_memory::segment_manager>;
+    Element constexpr NIL = static_cast<Element>(-1); // Atomic elements require a special value that cannot be pushed/popped.
+    // using Queue = atomic_queue::AtomicQueueB<Element, std::allocator<Element>, NIL>; // Use heap-allocated buffer.
+    // using Queue = atomic_queue::AtomicQueueB<Element, char_alloc, NIL>; // Use heap-allocated buffer.
+    using Queue = atomic_queue::AtomicQueueB<Element, std::allocator<Element>, NIL, false, false, true>;
 
 }
 
 #include <unistd.h>
 
-using Element = char; // Queue element type.
-Element constexpr NIL = static_cast<Element>(-1); // Atomic elements require a special value that cannot be pushed/popped.
-using Queue = atomic_queue::AtomicQueueB<Element, shm::char_alloc, NIL>; // Use heap-allocated buffer.
 
 // create segment and corresponding allocator
 bip::managed_shared_memory *segment;
 shm::char_alloc *char_alloc;
 
-// Ringbuffer fully constructed in shared memory. The element strings are
-// also allocated from the same shared memory segment. This vector can be
-// safely accessed from other processes.
-shm::ring_buffer *queue;
-Queue *a_queue;
+shm::Queue *queue;
 unsigned long counter4 = 0;
 unsigned long counter8 = 0;
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   segment = new bip::managed_shared_memory(bip::open_or_create, "MySharedMemory", 65536UL*1600);
-  char_alloc = new shm::char_alloc(segment->get_segment_manager());
-  // queue = segment->find_or_construct<shm::ring_buffer>("queue")();
-  a_queue = new atomic_queue::AtomicQueueB<Element, shm::char_alloc, NIL>(65536);
+  // auto a_queue = new atomic_queue::AtomicQueueB<shm::Element, shm::char_alloc, shm::NIL>(65536);
+  auto q = static_cast<void *>(segment->find_or_construct<char>("atomic_queue")[65536]());
+  queue = new shm::Queue(65536, q);
 
 
+  queue->push((char)fn_id);
   // send a msg with "fn_id, loop_id"
-  char msg[100];
-  sprintf(msg, "%d,%d", fn_id, loop_id);
-  a_queue->push(msg);
-  queue->push(shm::shared_string(msg, *char_alloc));
+  // char msg[100];
+  // sprintf(msg, "%d,%d", fn_id, loop_id);
+  // a_queue->push(msg);
+  // queue->push(shm::shared_string(msg, *char_alloc));
 }
 
 void SLAMP_fini(const char* filename){
@@ -95,9 +89,10 @@ void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter8++;
-  char msg[1] = {8};
-  // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  queue->push(shm::shared_string(msg, *char_alloc));
+  queue->push((char)instr);
+  // char msg[1] = {8};
+  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // queue->push(shm::shared_string(msg, *char_alloc));
 }
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n){}
