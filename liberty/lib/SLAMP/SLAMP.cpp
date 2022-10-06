@@ -431,8 +431,8 @@ bool SLAMP::runOnModule(Module &m) {
   std::sort(elidedLoopInstsId.begin(), elidedLoopInstsId.end());
   errs() << "Elided Hash: " << elidedHash(elidedLoopInstsId) << "\n";
 
-  // replace external function calls to wrapper function calls
-  // replaceExternalFunctionCalls(m);
+  //// replace external function calls to wrapper function calls
+  replaceExternalFunctionCalls(m);
 
 
   auto setGlobalModule = [&m](string name, bool value) {
@@ -473,11 +473,12 @@ bool SLAMP::runOnModule(Module &m) {
     instrumentGlobalVars(m, ctor);
   }
 
-  if (UsePointsToModule){
+  //// FIXME: temporarily instrument alloca and base pointer for all cases 
+  // if (UsePointsToModule){
     instrumentAllocas(m);
     // instrument all base pointer creation
     instrumentBasePointer(m, this->target_loop);
-  }
+  // }
 
   instrumentFunctionStartStop(m);
   instrumentMainFunction(m);
@@ -716,6 +717,15 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
       if (inst == nullptr)
         continue;
 
+      // make sure it's a call to the function
+      if (!isa<CallBase>(inst))
+        continue;
+      auto *cb = dyn_cast<CallBase>(inst);
+      if (cb->getCalledFunction() != func)
+        continue;
+
+
+
       // FIXME: duplicated code as instrumentLoopInst
       auto id = Namer:: getInstrId(inst);
       if (id == -1) {
@@ -725,9 +735,6 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
       args.push_back(ConstantInt::get(I32, id));
       InstInsertPt pt = InstInsertPt::Before(inst);
       pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
-
-      errs() << "Malloc ID " << id << " : " 
-        << getInstructionName(inst) << "\n";
 
       if (isa<CallInst>(inst)) {
         pt = InstInsertPt::After(inst);
@@ -753,26 +760,28 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
         assert(false && "Call but not CallInst nor InvokeInst");
       }
     }
-    if (externs.find(name) == externs.end()) {
-      // check if the function argument is `readnone`, then it's pure
-      if (func->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
-        continue;
-      }
 
-      errs() << "WARNING: Wrapper for external function " << name
-        << " not implemented.\n";
-      hasUnrecognizedFunction = true;
+    //// FIXME: temporarily turn off the replacement
+    // if (externs.find(name) == externs.end()) {
+    //   // check if the function argument is `readnone`, then it's pure
+    //   if (func->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
+    //     continue;
+    //   }
 
-    } else {
-      string wrapper_name = "SLAMP_" + name;
+    //   errs() << "WARNING: Wrapper for external function " << name
+    //     << " not implemented.\n";
+    //   hasUnrecognizedFunction = true;
+
+    // } else {
+    //   string wrapper_name = "SLAMP_" + name;
       /* Function* wrapper = cast<Function>( m.getOrInsertFunction(wrapper_name,
        * func->getFunctionType() ) ); */
-      FunctionCallee wrapper =
-        m.getOrInsertFunction(wrapper_name, func->getFunctionType());
+    //   FunctionCallee wrapper =
+    //     m.getOrInsertFunction(wrapper_name, func->getFunctionType());
 
-      // replace 'func' to 'wrapper' in uses
-      func->replaceAllUsesWith(wrapper.getCallee());
-    }
+    //   // replace 'func' to 'wrapper' in uses
+    //   func->replaceAllUsesWith(wrapper.getCallee());
+    // }
 
 
   }
@@ -1029,10 +1038,29 @@ void SLAMP::instrumentBasePointer(Module &m, Loop* l) {
       InstInsertPt where;
       if (auto *invoke = dyn_cast<InvokeInst>(inst)) {
         auto entry = invoke->getNormalDest();
-        if (isa<LandingPadInst>(entry->getFirstNonPHI()))
+        if (isa<LandingPadInst>(entry->getFirstNonPHI())) {
           where = InstInsertPt::After(entry->getFirstNonPHI());
-        else
+        }
+        else {
+          // iterate all the phi node in the entry block
+          // if inst is one of the incoming value of the phi node
+          // then convert the cast to the phi node
+          for (auto &phi : entry->phis()) {
+            bool found = false;
+            for (auto &incoming : phi.incoming_values()) {
+              if (incoming == inst) {
+                // replace the cast with the phi node
+                cast->deleteValue();
+                cast = new BitCastInst(&phi, I8Ptr);
+                found = true;
+                break;
+              }
+            }
+            if (found)
+              break;
+          }
           where = InstInsertPt::Before(entry->getFirstNonPHI());
+        }
       } else if (auto *phi = dyn_cast<PHINode>(inst)) {
         // Don't accidentally insert instrumentation before
         // later PHIs or landing pad instructions.
@@ -1229,7 +1257,7 @@ void SLAMP::instrumentLoopStartStopForAll(Module &m) {
 
       // TODO: check setjmp/longjmp
       BasicBlock *header = loop->getHeader();
-      unsigned loopId = Namer::getBlkId(header);
+      auto loopId = Namer::getBlkId(header);
       if (loopId == -1) {
         assert(false && "Loop header has no id");
       }
