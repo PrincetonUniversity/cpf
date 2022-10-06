@@ -224,8 +224,9 @@ uint32_t log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
   // create new dependence between two invocations
   if (ts) {
     uint64_t src_invoc = GET_INVOC(ts);
-    if (src_invoc != __slamp_invocation)
+    if (src_invoc != GET_INVOC(__slamp_invocation)) {
       return UINT32_MAX;
+    }
   }
 
   if (ts) {

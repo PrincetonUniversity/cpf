@@ -379,6 +379,7 @@ void slamp_access_callback_linear_address(bool isLoad, uint32_t instr, uint32_t 
 }
 
 static uint32_t          context = 0;
+static uint32_t          ext_context = 0;
 slamp::MemoryMap* smmap = nullptr;
 
 struct InstructionRecord {
@@ -683,7 +684,7 @@ static void (*old_free_hook)(void *, const void *);
 static void *(*old_memalign_hook)(size_t, size_t, const void *);
 
 static void* SLAMP_malloc_hook(size_t size, const void * /*caller*/) {
-  auto ptr = SLAMP_malloc(size, context, 16);
+  auto ptr = SLAMP_malloc(size, ext_context, 16);
 
   __slamp_malloc_count++;
   return ptr;
@@ -695,7 +696,7 @@ static void SLAMP_free_hook(void *ptr, const void * /*caller*/) {
 }
 
 static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller) {
-  auto ptr = SLAMP_malloc(size, context, alignment);
+  auto ptr = SLAMP_malloc(size, ext_context, alignment);
   __slamp_malloc_count++;
   return ptr;
 }
@@ -1002,6 +1003,17 @@ void SLAMP_loop_exit() {
     return;
 
   invokedepth--;
+}
+
+/// set the context of the call inside a loop
+void SLAMP_ext_push(const uint32_t instr) ATTRIBUTE(always_inline) {
+  assert(ext_context == 0);
+  ext_context = instr;
+}
+
+/// unset the context of the call inside a loop
+void SLAMP_ext_pop() ATTRIBUTE(always_inline) {
+  ext_context = 0;
 }
 
 /// set the context of the call inside a loop
