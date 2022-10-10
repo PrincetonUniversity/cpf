@@ -9,7 +9,7 @@ find_package(Threads REQUIRED)
 find_package(Boost 1.80.0 REQUIRED COMPONENTS system)
 include_directories(${Boost_INCLUDE_DIRS})
 
-add_executable (consumer consumer.cpp)
+add_executable (consumer consumer.cpp ./ProfilingModules/DependenceModule.cpp)
 target_link_libraries(consumer LINK_PUBLIC 
 	${Boost_LIBRARIES}
 	rt

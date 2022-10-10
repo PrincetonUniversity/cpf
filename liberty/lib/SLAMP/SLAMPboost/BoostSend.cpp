@@ -4,54 +4,79 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <cstdint>
 #include <iostream>
+#include "malloc.h"
 
 #define LOCAL_BUFFER_SIZE 256
 
 namespace bip = boost::interprocess;
 namespace shm
 {
-    typedef bip::allocator<char, bip::managed_shared_memory::segment_manager> char_alloc;
-    typedef bip::basic_string<char, std::char_traits<char>, char_alloc >      shared_string;
+    // typedef bip::allocator<char, bip::managed_shared_memory::segment_manager> char_alloc;
+    // typedef bip::basic_string<char, std::char_traits<char>, char_alloc >      shared_string;
 
     // using ring_buffer = boost::lockfree::spsc_queue<shared_string, boost::lockfree::capacity<65536>>;
-    using ring_buffer = boost::lockfree::spsc_queue<unsigned int, boost::lockfree::capacity<65536>>;
+    using ring_buffer = boost::lockfree::spsc_queue<uint64_t, boost::lockfree::capacity<65536>>;
 }
 
 #include <unistd.h>
 
+static void *(*old_malloc_hook)(size_t, const void *);
+static void (*old_free_hook)(void *, const void *);
+static void *(*old_memalign_hook)(size_t, size_t, const void *);
 // create segment and corresponding allocator
 bip::managed_shared_memory *segment;
-shm::char_alloc *char_alloc;
 
 // Ringbuffer fully constructed in shared memory. The element strings are
 // also allocated from the same shared memory segment. This vector can be
 // safely accessed from other processes.
 shm::ring_buffer *queue;
-unsigned long counter4 = 0;
-unsigned long counter8 = 0;
-unsigned long counter4_ext = 0;
-unsigned long counter8_ext = 0;
+unsigned long counter_load = 0;
+unsigned long counter_store = 0;
+unsigned long counter_ctx = 0;
+unsigned long counter_alloc = 0;
 char local_buffer[LOCAL_BUFFER_SIZE];
 unsigned buffer_counter = 0;
 
+enum DepModAction: uint64_t
+{
+    INIT = 0,
+    LOAD,
+    STORE,
+    ALLOC,
+    LOOP_INVOC,
+    LOOP_ITER,
+    FINISHED
+};
+
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   segment = new bip::managed_shared_memory(bip::open_or_create, "MySharedMemory", 65536UL*1600);
-  char_alloc = new shm::char_alloc(segment->get_segment_manager());
   queue = segment->find_or_construct<shm::ring_buffer>("queue")();
 
-
   // send a msg with "fn_id, loop_id"
-  char msg[100];
-  sprintf(msg, "%d,%d", fn_id, loop_id);
-   // queue->push(shm::shared_string(msg, *char_alloc));
-  queue->push(fn_id);
+  // char msg[100];
+  // sprintf(msg, "%d,%d", fn_id, loop_id);
+  // queue->push(shm::shared_string(msg, *char_alloc));
+  while(!queue->push(INIT));
+  queue->push((uint64_t)loop_id);
+  auto pid = getpid();
+  printf("SLAMP_init: %d, %d, %d\n", fn_id, loop_id, pid);
+  queue->push(pid);
+
+  old_malloc_hook = __malloc_hook;
+  // old_free_hook = __free_hook;
+  // old_memalign_hook = __memalign_hook;
+  __malloc_hook = SLAMP_malloc_hook;
+  // __free_hook = SLAMP_free_hook;
+  // __memalign_hook = SLAMP_memalign_hook;
 }
 
 void SLAMP_fini(const char* filename){
   // send a msg with "fini"
   // queue->push(shm::shared_string("fini", *char_alloc));
-  std::cout << counter4 << " " << counter8 << " " << counter4_ext << " " << counter8_ext << std::endl;
+  std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
+  while(!queue->push(FINISHED));
 }
 
 void SLAMP_allocated(uint64_t addr){}
@@ -78,93 +103,133 @@ void SLAMP_ext_pop(){}
 void SLAMP_push(const uint32_t instr){}
 void SLAMP_pop(){}
 
+void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline) {
+  // send a msg with "load, instr, addr, bare_instr, value"
+  // char msg[100];
+  // sprintf(msg, "load,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // queue->push(shm::shared_string(msg, *char_alloc));
+  while(!queue->push(LOAD));
+  while(!queue->push(instr));
+  while(!queue->push(addr));
+  while(!queue->push(bare_instr));
+  while(!queue->push(value));
+  counter_load++;
+}
+
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
+  SLAMP_load(instr, addr, bare_instr, value);
 }
 void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
+  SLAMP_load(instr, addr, bare_instr, value);
 }
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  counter4++;
-
-  queue->push(4);
-  queue->push(instr);
-
-  // local_buffer[buffer_counter++] = 4;
-  // local_buffer[buffer_counter++] = instr & 0xFF;
-
-  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    // queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    // buffer_counter = 0;
-  // }
+  SLAMP_load(instr, addr, bare_instr, value);
 }
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  counter8++;
-
-  queue->push(8);
-  queue->push(instr);
-  // local_buffer[buffer_counter++] = 8;
-  // local_buffer[buffer_counter++] = instr & 0xFF;
-
-  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    // queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    // buffer_counter = 0;
-  // }
+  SLAMP_load(instr, addr, bare_instr, value);
 }
 
-void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n){}
+void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n){
+  SLAMP_load(instr, addr, bare_instr, 0);
+}
 
-void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){}
-void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){}
+void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
+  SLAMP_load1(bare_instr, addr, bare_instr, value);
+}
+void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
+  SLAMP_load2(bare_instr, addr, bare_instr, value);
+}
 void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  counter4_ext++;
-
-  queue->push(14);
-  queue->push(addr & 0xFFFFFFFF);
-  // local_buffer[buffer_counter++] = 14;
-  // local_buffer[buffer_counter++] = addr & 0xFF;
-
-  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
-  //   queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-  //   buffer_counter = 0;
-  // }
-
+  SLAMP_load4(bare_instr, addr, bare_instr, value);
 }
 void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  counter8_ext++;
-
-  queue->push(18);
-  queue->push(addr & 0xFFFFFFFF);
-  // local_buffer[buffer_counter++] = 18;
-  // local_buffer[buffer_counter++] = addr & 0xFF;
-
-  // // // sprintf(msg, "load8,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
-  // if (buffer_counter == LOCAL_BUFFER_SIZE) {
-    // queue->push(shm::shared_string(local_buffer, LOCAL_BUFFER_SIZE, *char_alloc));
-    // buffer_counter = 0;
-  // }
+  SLAMP_load8(bare_instr, addr, bare_instr, value);
 }
-void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n){}
+void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n){
+  SLAMP_loadn(bare_instr, addr, bare_instr, n);
+}
 
-void SLAMP_store1(uint32_t instr, const uint64_t addr){}
-void SLAMP_store2(uint32_t instr, const uint64_t addr){}
-void SLAMP_store4(uint32_t instr, const uint64_t addr){}
-void SLAMP_store8(uint32_t instr, const uint64_t addr){}
-void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n){}
+void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_instr) ATTRIBUTE(always_inline) {
+  // send a msg with "store, instr, addr, bare_instr, value"
+  // char msg[100];
+  // sprintf(msg, "store,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
+  // queue->push(shm::shared_string(msg, *char_alloc));
+  while(!queue->push(STORE));
+  while(!queue->push(instr));
+  while(!queue->push(bare_instr));
+  while(!queue->push(addr));
+  counter_store++;
+}
 
-void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst){}
-void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst){}
-void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst){}
-void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst){}
-void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n){}
+void SLAMP_store1(uint32_t instr, const uint64_t addr){
+  SLAMP_store(instr, addr, instr);
+}
+
+void SLAMP_store2(uint32_t instr, const uint64_t addr){
+  SLAMP_store(instr, addr, instr);
+}
+void SLAMP_store4(uint32_t instr, const uint64_t addr){
+  SLAMP_store(instr, addr, instr);
+}
+void SLAMP_store8(uint32_t instr, const uint64_t addr){
+  SLAMP_store(instr, addr, instr);
+}
+void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n){
+  SLAMP_store(instr, addr, instr);
+}
+
+void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst){
+  SLAMP_store1(bare_inst, addr);
+}
+void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst){
+  SLAMP_store2(bare_inst, addr);
+}
+void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst){
+  SLAMP_store4(bare_inst, addr);
+}
+void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst){
+  SLAMP_store8(bare_inst, addr);
+}
+void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n){
+  SLAMP_storen(bare_inst, addr, n);
+}
 
 /* wrappers */
-static void* SLAMP_malloc_hook(size_t size, const void *caller){}
-static void SLAMP_free_hook(void *ptr, const void *caller){}
-static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller){}
-void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment){}
+static void* SLAMP_malloc_hook(size_t size, const void *caller){
+  __malloc_hook = old_malloc_hook;
+  void* ptr = malloc(size);
+  while(!queue->push(ALLOC));
+  queue->push(reinterpret_cast<uint64_t>(ptr));
+  queue->push(size);
+  printf("malloc %lu at %p", size, ptr);
+  counter_alloc++;
+  __malloc_hook = SLAMP_malloc_hook;
+  return ptr;
+}
+static void SLAMP_free_hook(void *ptr, const void *caller){
+  old_free_hook(ptr, caller);
+}
+static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller){
+  void* ptr = old_memalign_hook(alignment, size, caller);
+  while(!queue->push(ALLOC));
+  queue->push(reinterpret_cast<uint64_t>(ptr));
+  queue->push(size);
+  counter_alloc++;
+  return ptr;
+}
+void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment){
+  // void* ptr = malloc(size);
+  // // send a msg with "malloc, instr, ptr, size, alignment"
+  // // char msg[100];
+  // // sprintf(msg, "malloc,%d,%lu,%lu,%lu", instr, ptr, size, alignment);
+  // // queue->push(shm::shared_string(msg, *char_alloc));
+  // queue->push(ALLOC);
+  // queue->push(reinterpret_cast<uint64_t>(ptr));
+  // queue->push(size);
+  // counter_alloc++;
+  // return ptr;
+}
 
 void* SLAMP_calloc(size_t nelem, size_t elsize){}
 void* SLAMP_realloc(void* ptr, size_t size){}
