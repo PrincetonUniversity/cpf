@@ -63,7 +63,7 @@ void fini(const char *filename) {
 
 void allocate(void *addr, uint64_t size) {
   smmap->allocate(addr, size);
-  std::cout << "allocate " << addr << " " << size << std::endl;
+  // std::cout << "allocate " << addr << " " << size << std::endl;
 }
 
 // void log(TS ts, const uint32_t dst_inst, TS *pts, const uint32_t bare_inst,
@@ -85,7 +85,9 @@ void log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst){
 void load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   TS* s = (TS*)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS tss = s[0];
-  log(tss, instr, bare_instr);
+  if (tss != 0) {
+    log(tss, instr, bare_instr);
+  }
 }
 
 // template <unsigned size>

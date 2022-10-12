@@ -8,6 +8,8 @@
 #include <iostream>
 #include <sstream>
 
+#define DEBUG 0
+
 
 namespace bip = boost::interprocess;
 namespace shm
@@ -46,7 +48,9 @@ int main()
         case Action::INIT: {
           while (!queue->pop(v1));
           while (!queue->pop(v2));
-          std::cout << "INIT " << v1 << " " << v2 << std::endl;
+          if (DEBUG) {
+            std::cout << "INIT " << v1 << " " << v2 << std::endl;
+          }
           loop_id = v1;
           DepMod::init(v1, v2);
           break;
@@ -60,7 +64,9 @@ int main()
             ;
           while (!queue->pop(v4))
             ;
-          // std::cout << "LOAD " << v1 << " " << v2 << " " << v3 << " " << v4 << std::endl;
+          if (DEBUG) {
+            std::cout << "LOAD " << v1 << " " << v2 << " " << v3 << " " << v4 << std::endl;
+          }
           DepMod::load(v1, v2, v3, v4);
 
           break;
@@ -69,7 +75,9 @@ int main()
           while (!queue->pop(v1));
           while (!queue->pop(v2));
           while (!queue->pop(v3));
-          // std::cout << "STORE " << v1 << " " << v2 << " " << v3 << std::endl;
+          if (DEBUG) {
+            std::cout << "STORE " << v1 << " " << v2 << " " << v3 << std::endl;
+          }
           DepMod::store(v1, v2, v3);
           break;
         };
@@ -77,14 +85,23 @@ int main()
           while (!queue->pop(v1));
           while (!queue->pop(v2));
           DepMod::allocate(reinterpret_cast<void *>(v1), v2);
+          if (DEBUG) {
+            std::cout << "ALLOC " << v1 << " " << v2 << std::endl;
+          }
           break;
         };
         case Action::LOOP_INVOC: {
           DepMod::loop_invoc();
+          if (DEBUG) {
+            std::cout << "LOOP_INVOC" << std::endl;
+          }
           break;
         };
         case Action::LOOP_ITER: {
           DepMod::loop_iter();
+          if (DEBUG) {
+            std::cout << "LOOP_ITER" << std::endl;
+          }
           break;
         };
         case Action::FINISHED: {
@@ -97,8 +114,8 @@ int main()
         };
         }
 
-        if (counter % 1000000 == 0) {
-          std::cout << "Processed " << counter << " events" << std::endl;
+        if (counter % 100000000 == 0) {
+          std::cout << "Processed " << counter / 1000000 << "M events" << std::endl;
         }
       }
     }

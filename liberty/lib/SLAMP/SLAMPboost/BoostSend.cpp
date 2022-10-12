@@ -8,7 +8,7 @@
 #include <iostream>
 #include "malloc.h"
 
-#define LOCAL_BUFFER_SIZE 256
+#define LOCAL_BUFFER_SIZE 32768
 
 namespace bip = boost::interprocess;
 namespace shm
@@ -36,8 +36,38 @@ unsigned long counter_load = 0;
 unsigned long counter_store = 0;
 unsigned long counter_ctx = 0;
 unsigned long counter_alloc = 0;
-char local_buffer[LOCAL_BUFFER_SIZE];
-unsigned buffer_counter = 0;
+// char local_buffer[LOCAL_BUFFER_SIZE];
+// unsigned buffer_counter = 0;
+bool onProfiling = false;
+
+template <typename T>
+struct LocalBuffer {
+  T buffer[LOCAL_BUFFER_SIZE];
+  shm::ring_buffer *queue;
+  unsigned counter = 0;
+
+  LocalBuffer(shm::ring_buffer *queue) : queue(queue) {}
+
+  LocalBuffer *push(T value) {
+    buffer[counter++] = value;
+    if (counter == LOCAL_BUFFER_SIZE) {
+      flush();
+    }
+    return this;
+  }
+
+  void flush() {
+    // for (int i = 0; i < counter; i++) {
+    auto pushed = 0;
+    while (pushed < counter) {
+      pushed += queue->push(buffer + pushed, counter - pushed);
+    }
+    // }
+    counter = 0;
+  }
+};
+
+LocalBuffer<uint64_t> *local_buffer;
 
 enum DepModAction: uint64_t
 {
@@ -53,34 +83,41 @@ enum DepModAction: uint64_t
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   segment = new bip::managed_shared_memory(bip::open_or_create, "MySharedMemory", 65536UL*1600);
   queue = segment->find_or_construct<shm::ring_buffer>("queue")();
+  local_buffer = new LocalBuffer<uint64_t>(queue);
 
   // send a msg with "fn_id, loop_id"
   // char msg[100];
   // sprintf(msg, "%d,%d", fn_id, loop_id);
   // queue->push(shm::shared_string(msg, *char_alloc));
-  while(!queue->push(INIT));
-  queue->push((uint64_t)loop_id);
+
+  local_buffer->push(INIT);
+  local_buffer->push(loop_id);
   auto pid = getpid();
   printf("SLAMP_init: %d, %d, %d\n", fn_id, loop_id, pid);
-  queue->push(pid);
+  local_buffer->push(pid);
 
   old_malloc_hook = __malloc_hook;
   // old_free_hook = __free_hook;
-  // old_memalign_hook = __memalign_hook;
+  old_memalign_hook = __memalign_hook;
   __malloc_hook = SLAMP_malloc_hook;
+  __free_hook = nullptr;
+  __realloc_hook = nullptr;
   // __free_hook = SLAMP_free_hook;
-  // __memalign_hook = SLAMP_memalign_hook;
+  __memalign_hook = SLAMP_memalign_hook;
 }
 
 void SLAMP_fini(const char* filename){
   // send a msg with "fini"
   // queue->push(shm::shared_string("fini", *char_alloc));
   std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
-  while(!queue->push(FINISHED));
+  local_buffer->push(FINISHED);
+  local_buffer->flush();
 }
 
 void SLAMP_allocated(uint64_t addr){}
-void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size){}
+void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size){
+  local_buffer->push(ALLOC)->push(addr)->push(size);
+}
 void SLAMP_main_entry(uint32_t argc, char** argv, char** env){}
 
 void SLAMP_enter_fcn(uint32_t id){}
@@ -88,9 +125,21 @@ void SLAMP_exit_fcn(uint32_t id){}
 void SLAMP_enter_loop(uint32_t id){}
 void SLAMP_exit_loop(uint32_t id){}
 void SLAMP_loop_iter_ctx(uint32_t id){}
-void SLAMP_loop_invocation(){}
-void SLAMP_loop_iteration(){}
-void SLAMP_loop_exit(){}
+void SLAMP_loop_invocation(){
+  // send a msg with "loop_invocation"
+  local_buffer->push(LOOP_INVOC);
+
+  counter_ctx++;
+  onProfiling = true;
+}
+void SLAMP_loop_iteration(){
+  local_buffer->push(LOOP_ITER);
+  counter_ctx++;
+}
+
+void SLAMP_loop_exit(){
+  onProfiling = false;
+}
 
 void SLAMP_report_base_pointer_arg(uint32_t, uint32_t, void *ptr){}
 void SLAMP_report_base_pointer_inst(uint32_t, void *ptr){}
@@ -108,12 +157,11 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // char msg[100];
   // sprintf(msg, "load,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
-  while(!queue->push(LOAD));
-  while(!queue->push(instr));
-  while(!queue->push(addr));
-  while(!queue->push(bare_instr));
-  while(!queue->push(value));
-  counter_load++;
+  //
+  if (onProfiling) {
+    local_buffer->push(LOAD)->push(instr)->push(addr)->push(bare_instr)->push(value);
+    counter_load++;
+  }
 }
 
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
@@ -155,11 +203,10 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // char msg[100];
   // sprintf(msg, "store,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
-  while(!queue->push(STORE));
-  while(!queue->push(instr));
-  while(!queue->push(bare_instr));
-  while(!queue->push(addr));
-  counter_store++;
+  if (onProfiling) {
+    local_buffer->push(STORE)->push(instr)->push(bare_instr)->push(addr);
+    counter_store++;
+  }
 }
 
 void SLAMP_store1(uint32_t instr, const uint64_t addr){
@@ -199,10 +246,8 @@ void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n){
 static void* SLAMP_malloc_hook(size_t size, const void *caller){
   __malloc_hook = old_malloc_hook;
   void* ptr = malloc(size);
-  while(!queue->push(ALLOC));
-  queue->push(reinterpret_cast<uint64_t>(ptr));
-  queue->push(size);
-  printf("malloc %lu at %p", size, ptr);
+  local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
+  // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
   __malloc_hook = SLAMP_malloc_hook;
   return ptr;
@@ -211,11 +256,12 @@ static void SLAMP_free_hook(void *ptr, const void *caller){
   old_free_hook(ptr, caller);
 }
 static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller){
-  void* ptr = old_memalign_hook(alignment, size, caller);
-  while(!queue->push(ALLOC));
-  queue->push(reinterpret_cast<uint64_t>(ptr));
-  queue->push(size);
+  old_memalign_hook = __memalign_hook;
+  void* ptr = memalign(alignment, size);
+  local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
+  // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;
+  __memalign_hook = SLAMP_memalign_hook;
   return ptr;
 }
 void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment){
