@@ -84,9 +84,8 @@ int main() {
       uint64_t addr;
       uint32_t bare_instr;
       uint64_t value = 0;
-      instr = (uint32_t)CONSUME;
+      CONSUME_2(instr, bare_instr);
       addr = CONSUME;
-      bare_instr = (uint32_t)CONSUME;
       // value = CONSUME;
       if (DEBUG) {
         std::cout << "LOAD: " << instr << " " << addr << " " << bare_instr
@@ -103,8 +102,7 @@ int main() {
       uint32_t instr;
       uint32_t bare_instr;
       uint64_t addr;
-      instr = (uint32_t)CONSUME;
-      bare_instr = (uint32_t)CONSUME;
+      CONSUME_2(instr, bare_instr);
       addr = CONSUME;
       if (DEBUG) {
         std::cout << "STORE: " << instr << " " << bare_instr << " " << addr

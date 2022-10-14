@@ -15,6 +15,7 @@
 namespace bip = boost::interprocess;
 
 static void *(*old_malloc_hook)(size_t, const void *);
+static void *(*old_realloc_hook)(void *, size_t, const void *);
 static void (*old_free_hook)(void *, const void *);
 static void *(*old_memalign_hook)(size_t, size_t, const void *);
 // create segment and corresponding allocator
@@ -27,6 +28,17 @@ static SW_Queue the_queue;
 
 #define PRODUCE_2(x,y)  PRODUCE( (((uint64_t)x)<<32) | (uint32_t)(y) )
 #define CONSUME_2(x,y)  do { uint64_t tmp = CONSUME; x = (uint32_t)(tmp>>32); y = (uint32_t) tmp; } while(0)
+
+#define TURN_ON_HOOKS \
+  __malloc_hook = SLAMP_malloc_hook;\
+  __realloc_hook = SLAMP_realloc_hook;\
+  __memalign_hook = SLAMP_memalign_hook;
+
+
+#define TURN_OFF_HOOKS \
+  __malloc_hook = old_malloc_hook; \
+  __realloc_hook = old_realloc_hook; \
+  __memalign_hook = old_memalign_hook;
 
 // Ringbuffer fully constructed in shared memory. The element strings are
 // also allocated from the same shared memory segment. This vector can be
@@ -95,9 +107,10 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   old_malloc_hook = __malloc_hook;
   // old_free_hook = __free_hook;
   old_memalign_hook = __memalign_hook;
+  old_realloc_hook = __realloc_hook;
   __malloc_hook = SLAMP_malloc_hook;
   __free_hook = nullptr;
-  __realloc_hook = nullptr;
+  __realloc_hook = SLAMP_realloc_hook;
   // __free_hook = SLAMP_free_hook;
   __memalign_hook = SLAMP_memalign_hook;
 }
@@ -164,9 +177,9 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   if (onProfiling) {
     // local_buffer->push(LOAD)->push(instr)->push(addr)->push(bare_instr); //->push(value);
     PRODUCE(LOAD);
-    PRODUCE(instr);
+    // PRODUCE(instr);
+    PRODUCE_2(instr, bare_instr);
     PRODUCE(addr);
-    PRODUCE(bare_instr);
     // PRODUCE(value);
     counter_load++;
   }
@@ -214,8 +227,9 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   if (onProfiling) {
     // local_buffer->push(STORE)->push(instr)->push(bare_instr)->push(addr);
     PRODUCE(STORE);
-    PRODUCE(instr);
-    PRODUCE(bare_instr);
+    // PRODUCE(instr);
+    // PRODUCE(bare_instr);
+    PRODUCE_2(instr, bare_instr);
     PRODUCE(addr);
     counter_store++;
   }
@@ -256,7 +270,7 @@ void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n){
 
 /* wrappers */
 static void* SLAMP_malloc_hook(size_t size, const void *caller){
-  __malloc_hook = old_malloc_hook;
+  TURN_OFF_HOOKS
   void* ptr = malloc(size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
   PRODUCE(ALLOC);
@@ -264,14 +278,28 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   PRODUCE(size);
   // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
-  __malloc_hook = SLAMP_malloc_hook;
+  TURN_ON_HOOKS
   return ptr;
 }
+
+static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
+  TURN_OFF_HOOKS
+  void* new_ptr = realloc(ptr, size);
+  // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
+  PRODUCE(ALLOC);
+  PRODUCE((uint64_t)new_ptr);
+  PRODUCE(size);
+  // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
+  counter_alloc++;
+  TURN_ON_HOOKS
+  return new_ptr;
+}
+
 static void SLAMP_free_hook(void *ptr, const void *caller){
   old_free_hook(ptr, caller);
 }
 static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller){
-  old_memalign_hook = __memalign_hook;
+  TURN_OFF_HOOKS
   void* ptr = memalign(alignment, size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
   PRODUCE(ALLOC);
@@ -280,7 +308,7 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
 
   // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;
-  __memalign_hook = SLAMP_memalign_hook;
+  TURN_ON_HOOKS
   return ptr;
 }
 void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment){
