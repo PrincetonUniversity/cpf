@@ -1,3 +1,4 @@
+#include <boost/interprocess/interprocess_fwd.hpp>
 #include <cstdint>
 #include "ProfilingModules/DependenceModule.h"
 #include <iostream>
@@ -11,10 +12,10 @@
 namespace bip = boost::interprocess;
 
 #define DEBUG 0
-#define ACTION 0
+#define ACTION 1
 
 // create segment and corresponding allocator
-bip::managed_shared_memory *segment;
+bip::fixed_managed_shared_memory *segment, *segment2;
 static SW_Queue the_queue;
 
 #define CONSUME         sq_consume(the_queue);
@@ -24,10 +25,16 @@ static SW_Queue the_queue;
 #define CONSUME_2(x,y)  do { uint64_t tmp = CONSUME; x = (uint32_t)(tmp>>32); y = (uint32_t) tmp; } while(0)
 
 int main() {
-  segment = new bip::managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *2);
+  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 32));
+  segment2 = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory2", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 28));
+    // managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *2);
   // auto a_queue = new atomic_queue::AtomicQueueB<shm::Element, shm::char_alloc, shm::NIL>(65536);
   the_queue = static_cast<SW_Queue>(segment->find_or_construct<sw_queue_t>("MyQueue")());
-  auto data = static_cast<uint64_t*>(segment->find_or_construct<uint64_t>("smtx_queue_data")[QSIZE]());
+  auto data = static_cast<uint64_t*>(segment2->find_or_construct<uint64_t>("smtx_queue_data")[QSIZE]());
+  // segment = new bip::managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *2);
+  // auto a_queue = new atomic_queue::AtomicQueueB<shm::Element, shm::char_alloc, shm::NIL>(65536);
+  // the_queue = static_cast<SW_Queue>(segment->find_or_construct<sw_queue_t>("MyQueue")());
+  // auto data = static_cast<uint64_t*>(segment->find_or_construct<uint64_t>("smtx_queue_data")[QSIZE]());
   if (the_queue == nullptr) {
     std::cout << "Error: could not create queue" << std::endl;
     return 1;

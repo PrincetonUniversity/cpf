@@ -4,6 +4,8 @@
 #ifndef SW_QUEUE_H
 #define SW_QUEUE_H
 
+#define DUALCORE
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/mman.h>
