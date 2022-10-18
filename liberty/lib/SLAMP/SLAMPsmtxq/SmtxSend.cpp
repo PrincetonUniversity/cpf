@@ -3,6 +3,7 @@
 #include <boost/interprocess/detail/os_file_functions.hpp>
 #include <boost/interprocess/interprocess_fwd.hpp>
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include "malloc.h"
 
@@ -103,6 +104,25 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   printf("SLAMP_init: %d, %d, %d\n", fn_id, loop_id, pid);
   // local_buffer->push(pid);
   PRODUCE(pid);
+
+  auto allocateLibcReqs = [](void *addr, size_t size) {
+    PRODUCE(ALLOC);
+    PRODUCE((uint64_t)addr);
+    PRODUCE(size);
+  };
+
+  allocateLibcReqs((void*)&errno, sizeof(errno));
+  allocateLibcReqs((void*)&stdin, sizeof(stdin));
+  allocateLibcReqs((void*)&stdout, sizeof(stdout));
+  allocateLibcReqs((void*)&stderr, sizeof(stderr));
+  allocateLibcReqs((void*)&sys_nerr, sizeof(sys_nerr));
+
+  const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
+  allocateLibcReqs((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
+  const int32_t* itype_ptr = (*__ctype_tolower_loc()) - 128;
+  allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
+  itype_ptr = (*__ctype_toupper_loc()) - 128;
+  allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
 
   old_malloc_hook = __malloc_hook;
   // old_free_hook = __free_hook;

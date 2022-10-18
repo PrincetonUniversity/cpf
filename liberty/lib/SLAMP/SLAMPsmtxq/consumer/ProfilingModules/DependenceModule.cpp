@@ -70,24 +70,6 @@ void init(uint32_t loop_id, uint32_t pid) {
   deplog_vec->reserve(DEPLOG_VEC_SIZE);
 
   smmap->init_stack(SIZE_8M, pid);
-  smmap->allocate((void*)&errno, sizeof(errno));
-  smmap->allocate((void*)&stdin, sizeof(stdin));
-  smmap->allocate((void*)&stdout, sizeof(stdout));
-  smmap->allocate((void*)&stderr, sizeof(stderr));
-  smmap->allocate((void*)&sys_nerr, sizeof(sys_nerr));
-
-  {
-    const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
-    smmap->allocate((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
-  }
-  {
-    const int32_t* itype_ptr = (*__ctype_tolower_loc()) - 128;
-    smmap->allocate((void*)itype_ptr, 384 * sizeof(*itype_ptr));
-  }
-  {
-    const int32_t* itype_ptr = (*__ctype_toupper_loc()) - 128;
-    smmap->allocate((void*)itype_ptr, 384 * sizeof(*itype_ptr));
-  }
 }
 
 void fini(const char *filename) {
