@@ -15,6 +15,14 @@
 
 namespace bip = boost::interprocess;
 
+static unsigned long counter_load = 0;
+static unsigned long counter_store = 0;
+static unsigned long counter_ctx = 0;
+static unsigned long counter_alloc = 0;
+// char local_buffer[LOCAL_BUFFER_SIZE];
+// unsigned buffer_counter = 0;
+static bool onProfiling = false;
+
 static void *(*old_malloc_hook)(size_t, const void *);
 static void *(*old_realloc_hook)(void *, size_t, const void *);
 static void (*old_free_hook)(void *, const void *);
@@ -26,6 +34,8 @@ static SW_Queue the_queue;
 static double_queue_p dqA, dqB, dq, dq_other;
 static uint64_t dq_index = 0;
 static uint64_t *dq_data;
+static uint64_t total_pushed = 0;
+static uint64_t total_swapped = 0;
 static void swap(){
   if(dq == dqA){
     dq = dqB;
@@ -40,6 +50,7 @@ static void swap(){
 static void produce_wait() ATTRIBUTE(noinline){
   dq->size = dq_index;
   dq->ready_to_read = true;
+  dq->ready_to_write = false;
   while (!dq_other->ready_to_write){
     // spin
     usleep(10);
@@ -47,28 +58,31 @@ static void produce_wait() ATTRIBUTE(noinline){
   swap();
   dq->ready_to_read = false;
   dq_index = 0;
+  total_swapped++;
 }
 
-static void produce(uint64_t x) {// ATTRIBUTE(always_inline) {
+static void produce(uint64_t x) ATTRIBUTE(noinline) {
   if (dq_index == QSIZE){
     produce_wait();
   }
   dq_data[dq_index] = x;
   dq_index++;
+  total_pushed++;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
-static void produce_2(uint64_t x, uint64_t y) {// ATTRIBUTE(always_inline) {
+static void produce_2(uint64_t x, uint64_t y) ATTRIBUTE(noinline) {
   if (dq_index + 2 >= QSIZE){
     produce_wait();
   }
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
   dq_index += 2;
+  total_pushed += 2;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
-static void produce_3(uint64_t x, uint64_t y, uint64_t z) {// ATTRIBUTE(always_inline) {
+static void produce_3(uint64_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
   if (dq_index + 3 >= QSIZE){
     produce_wait();
   }
@@ -76,6 +90,7 @@ static void produce_3(uint64_t x, uint64_t y, uint64_t z) {// ATTRIBUTE(always_i
   dq_data[dq_index+1] = y;
   dq_data[dq_index+2] = z;
   dq_index += 3;
+  total_pushed += 3;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
@@ -88,6 +103,7 @@ static void produce_4(uint64_t x, uint64_t y, uint64_t z, uint64_t w) {// ATTRIB
   dq_data[dq_index+2] = z;
   dq_data[dq_index+3] = w;
   dq_index += 4;
+  total_pushed += 4;
 }
 
 // #define CONSUME         sq_consume(the_queue);
@@ -111,13 +127,6 @@ static void produce_4(uint64_t x, uint64_t y, uint64_t z, uint64_t w) {// ATTRIB
 // Ringbuffer fully constructed in shared memory. The element strings are
 // also allocated from the same shared memory segment. This vector can be
 // safely accessed from other processes.
-unsigned long counter_load = 0;
-unsigned long counter_store = 0;
-unsigned long counter_ctx = 0;
-unsigned long counter_alloc = 0;
-// char local_buffer[LOCAL_BUFFER_SIZE];
-// unsigned buffer_counter = 0;
-bool onProfiling = false;
 
 enum DepModAction: char
 {
@@ -269,10 +278,43 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   if (onProfiling) {
     // local_buffer->push(LOAD)->push(instr)->push(addr)->push(bare_instr); //->push(value);
     produce_3(LOAD, COMBINE_2_32(instr, bare_instr), addr);
-    if (instr == 12356 && addr == 140724580372352) {
-      printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
-      exit(-1);
-    }
+    // // if (counter_load % 10000000 == 0) {
+    //   // printf("load: %lu\n", counter_load);
+    // // }
+    // // if (counter_load >= 113957060 && counter_load <= 113957064) {
+    //   // printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
+    //   // printf("counter load %d\n", counter_load);
+    //   // printf("counter store%d\n", counter_store);
+    //   // printf("dq_data[%ld - 4] = %lu at addr %p\n", dq_index, dq_data[dq_index - 4], &dq_data[dq_index - 4]);
+    //   // printf("dq_data[%ld - 3] = %lu at addr %p\n", dq_index, dq_data[dq_index - 3], &dq_data[dq_index - 3]);
+    //   // printf("dq_data[%ld - 2] = %lu at addr %p\n", dq_index, dq_data[dq_index - 2], &dq_data[dq_index - 2]);
+    //   // printf("dq_data[%ld - 1] = %lu at addr %p\n", dq_index, dq_data[dq_index - 1], &dq_data[dq_index - 1]);
+    //   // printf("Total pushed: %ld\n", total_pushed);
+    //   // printf("Total swapped: %ld\n", total_swapped);
+    // // }
+
+    // if (dq_index > 2087456 && dq_index < 2087464) {
+    //   // if (counter_load > 113957060 && counter_load < 113957064)
+    //     // printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
+    //   // if (counter_load == 113957064) {
+    //     // printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
+    //     // printf("counter load %d\n", counter_load);
+    //   // }
+    //   // printf("dq_index: %d\n", dq_index);
+    //   // printf("dq: %p\n", dq);
+    //   // printf("counter load %d\n", counter_load);
+    //   if (instr == 12356 ) {
+    //     printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
+    //     printf("counter load %d\n", counter_load);
+    //     printf("Total pushed: %ld\n", total_pushed);
+    //     printf("Total swapped: %ld\n", total_swapped);
+    //     // printf("dq_data[%ld] = %lu at addr %p\n", dq_index, dq_data[dq_index], &dq_data[dq_index]);
+    //     printf("dq_data[%ld - 4] = %lu at addr %p\n", dq_index, dq_data[dq_index - 4], &dq_data[dq_index - 4]);
+    //     printf("dq_data[%ld - 3] = %lu at addr %p\n", dq_index, dq_data[dq_index - 3], &dq_data[dq_index - 3]);
+    //     printf("dq_data[%ld - 2] = %lu at addr %p\n", dq_index, dq_data[dq_index - 2], &dq_data[dq_index - 2]);
+    //     printf("dq_data[%ld - 1] = %lu at addr %p\n", dq_index, dq_data[dq_index - 1], &dq_data[dq_index - 1]);
+    //   }
+    // }
     // PRODUCE(value);
     counter_load++;
   }
@@ -322,6 +364,16 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
     // PRODUCE(instr);
     // PRODUCE(bare_instr);
     produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
+    // // if (counter_load >= 113957060 && counter_load <= 113957064) {
+    // if (counter_store == 32816445){
+    //   printf("SLAMP_store: %d, %lu, %d\n", instr, addr, bare_instr);
+    //   printf("counter load %d\n", counter_load);
+    //   printf("counter store%d\n", counter_store);
+    //   printf("dq_data[%ld - 4] = %lu at addr %p\n", dq_index, dq_data[dq_index - 4], &dq_data[dq_index - 4]);
+    //   printf("dq_data[%ld - 3] = %lu at addr %p\n", dq_index, dq_data[dq_index - 3], &dq_data[dq_index - 3]);
+    //   printf("dq_data[%ld - 2] = %lu at addr %p\n", dq_index, dq_data[dq_index - 2], &dq_data[dq_index - 2]);
+    //   printf("dq_data[%ld - 1] = %lu at addr %p\n", dq_index, dq_data[dq_index - 1], &dq_data[dq_index - 1]);
+    // }
     counter_store++;
   }
 }
@@ -364,9 +416,7 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* ptr = malloc(size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  PRODUCE(ALLOC);
-  PRODUCE((uint64_t)ptr);
-  PRODUCE(size);
+  produce_3(ALLOC, (uint64_t)ptr, size);
   // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -377,9 +427,7 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* new_ptr = realloc(ptr, size);
   // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
-  PRODUCE(ALLOC);
-  PRODUCE((uint64_t)new_ptr);
-  PRODUCE(size);
+  produce_3(ALLOC, (uint64_t)new_ptr, size);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -393,9 +441,7 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   TURN_OFF_HOOKS
   void* ptr = memalign(alignment, size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  PRODUCE(ALLOC);
-  PRODUCE((uint64_t)ptr);
-  PRODUCE(size);
+  produce_3(ALLOC, (uint64_t)ptr, size);
 
   // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;

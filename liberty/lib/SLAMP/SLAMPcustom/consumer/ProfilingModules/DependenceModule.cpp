@@ -29,7 +29,7 @@ static uint64_t slamp_invocation = 0;
 static uint32_t target_loop_id = 0;
 
 struct LoadStoreEvent {
-  bool isLoad;
+  // bool isLoad;
   uint64_t addr;
   // uint64_t value;
   TS ts;
@@ -173,120 +173,146 @@ void handleLoadAndStore(std::vector<LoadStoreEvent> *loadstore_vec) {
   std::thread t[LOCALWRITE_THREADS];
 
   for (auto i = 0; i < LOCALWRITE_THREADS; i++) {
-    t[i] = std::thread(
-        [&](const unsigned thread_id) {
-          for (auto &e : *loadstore_vec) {
+    unsigned begin = i * (loadstore_vec_counter / LOCALWRITE_THREADS);
+    unsigned end = (i + 1) * (loadstore_vec_counter / LOCALWRITE_THREADS);
+    unsigned thread_id = 0;
+    // t[i] = std::thread(
+        // [&](const unsigned thread_id, const unsigned begin, const unsigned end) {
+          for (auto i = begin; i < end; i++) {
+            auto &e = (*loadstore_vec)[i];
             const auto &addr = e.addr;
             const auto &ts = e.ts;
             const auto invoc = GET_INVOC(ts);
             const auto iter = GET_ITER(ts);
             const auto instr = GET_INSTR(ts);
-            unsigned addr_mod = (addr >> 3) % LOCALWRITE_THREADS;
-            if (thread_id != addr_mod) {
-              continue;
-            }
 
             TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
-            if (e.isLoad) {
-              // load
-              // std::cout << "load " << e.addr << " " << e.value << " " <<
-              // e.instr
-              // << " " << e.bare_instr << std::endl; smmap->load(e.addr,
-              // e.value, e.instr, e.bare_instr);
+            // if (e.isLoad) {
+            // load
+            // std::cout << "load " << e.addr << " " << e.value << " " <<
+            // e.instr
+            // << " " << e.bare_instr << std::endl; smmap->load(e.addr,
+            // e.value, e.instr, e.bare_instr);
 
-              // std::cout << "load " << instr << " " << addr << " " <<
-              // bare_instr
-              // << " "
-              // << value << std::endl;
-              TS tss = s[0];
-              if (tss != 0) {
-                log(thread_id, tss, instr, instr, invoc, iter);
-              }
-            } else {
-              // store
-              // std::cout << "store " << e.addr << " " << e.value << " " <<
-              // e.instr
-              // << " " << e.bare_instr << std::endl; smmap->store(e.addr,
-              // e.value, e.instr, e.bare_instr);
-              // if (!smmap->is_allocated(s)) {
-              //   std::cout << "store not allocated: " << instr << " " <<
-              //   bare_instr << " " << addr << std::endl;
-              // }
-              // TODO: handle output dependence. ignore it as of now.
-              // if (ASSUME_ONE_ADDR) {
-              s[0] = ts;
-              // } else {
-              // for (auto i = 0; i < size; i++)
-              // s[i] = ts;
-              // }
+            // std::cout << "load " << instr << " " << addr << " " <<
+            // bare_instr
+            // << " "
+            // << value << std::endl;
+            TS tss = s[0];
+            if (tss != 0) {
+              log(thread_id, tss, instr, instr, invoc, iter);
             }
+            // }
+            // else {
+            // // store
+            // // std::cout << "store " << e.addr << " " << e.value << " " <<
+            // // e.instr
+            // // << " " << e.bare_instr << std::endl; smmap->store(e.addr,
+            // // e.value, e.instr, e.bare_instr);
+            // // if (!smmap->is_allocated(s)) {
+            // //   std::cout << "store not allocated: " << instr << " " <<
+            // //   bare_instr << " " << addr << std::endl;
+            // // }
+            // // TODO: handle output dependence. ignore it as of now.
+            // // if (ASSUME_ONE_ADDR) {
+            // s[0] = ts;
+            // // } else {
+            // // for (auto i = 0; i < size; i++)
+            // // s[i] = ts;
+            // // }
+            // }
           }
-        },
-        i);
+        // }, i, begin, end);
   }
 
-  for (auto & i : t) {
-    i.join();
-  }
-  mutex_process_load_store.unlock();
+  // for (auto & i : t) {
+    // i.join();
+  // }
+  // mutex_process_load_store.unlock();
 }
 
 
 // template <unsigned size>
 void load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
 
+  TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  // if (e.isLoad) {
+  // load
+  // std::cout << "load " << e.addr << " " << e.value << " " <<
+  // e.instr
+  // << " " << e.bare_instr << std::endl; smmap->load(e.addr,
+  // e.value, e.instr, e.bare_instr);
 
-  // auto start = std::chrono::high_resolution_clock::now();
-  loadstore_vec->emplace_back(LoadStoreEvent{true, addr, CREATE_TS(instr, slamp_iteration, slamp_invocation)});
-  loadstore_vec_counter++;
-  // auto end = std::chrono::high_resolution_clock::now();
-  // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  // loadstore_vec_time += duration;
-  if (loadstore_vec_counter == MAX_EVENTS - 1) {
-
-    // measure time in here
-    auto start = std::chrono::high_resolution_clock::now();
-
-    // run this asynchrously
-    mutex_process_load_store.lock();
-    std::thread t = std::thread(handleLoadAndStore, loadstore_vec);
-    t.detach();
-
-    // swap double buffer
-    loadstore_vec = loadstore_vec == loadstore_vec0 ? loadstore_vec1 : loadstore_vec0;
-    
-    loadstore_vec->resize(0);
-    loadstore_vec_counter = 0;
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    total_time_off_critical_path += duration;
+  // std::cout << "load " << instr << " " << addr << " " <<
+  // bare_instr
+  // << " "
+  // << value << std::endl;
+  TS tss = s[0];
+  if (tss != 0) {
+    log(0, tss, instr, instr, slamp_invocation, slamp_iteration);
   }
+  // // auto start = std::chrono::high_resolution_clock::now();
+  // loadstore_vec->emplace_back(LoadStoreEvent{addr, CREATE_TS(instr, slamp_iteration, slamp_invocation)});
+  // loadstore_vec_counter++;
+  // // auto end = std::chrono::high_resolution_clock::now();
+  // // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  // // loadstore_vec_time += duration;
+  // if (loadstore_vec_counter == MAX_EVENTS - 1) {
+  //   handleLoadAndStore(loadstore_vec);
+
+  //   // // measure time in here
+  //   // auto start = std::chrono::high_resolution_clock::now();
+
+  //   // // run this asynchrously
+  //   // mutex_process_load_store.lock();
+  //   // std::thread t = std::thread(handleLoadAndStore, loadstore_vec);
+  //   // t.detach();
+
+  //   // // swap double buffer
+  //   // loadstore_vec = loadstore_vec == loadstore_vec0 ? loadstore_vec1 : loadstore_vec0;
+    
+  //   // loadstore_vec->resize(0);
+  //   // loadstore_vec_counter = 0;
+
+  //   // auto end = std::chrono::high_resolution_clock::now();
+  //   // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  //   // total_time_off_critical_path += duration;
+  // }
 
 }
 
 // template <unsigned size>
 void store(uint32_t instr, uint32_t bare_instr, const uint64_t addr) {
-  // auto start = std::chrono::high_resolution_clock::now();
-  loadstore_vec->emplace_back(LoadStoreEvent{false, addr, CREATE_TS(instr, slamp_iteration, slamp_invocation)});
-  loadstore_vec_counter++;
-  // auto end = std::chrono::high_resolution_clock::now();
-  // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  // loadstore_vec_time += duration;
-  if (loadstore_vec_counter == MAX_EVENTS - 1) {
-    // measure time in here
-    auto start = std::chrono::high_resolution_clock::now();
-    mutex_process_load_store.lock();
-    std::thread t = std::thread(handleLoadAndStore, loadstore_vec);
-    t.detach();
-    loadstore_vec = loadstore_vec == loadstore_vec0 ? loadstore_vec1 : loadstore_vec0;
+  // if (loadstore_vec_counter > 0) {
+  //   handleLoadAndStore(loadstore_vec);
+  //   loadstore_vec->resize(0);
+  //   loadstore_vec_counter = 0;
+  // }
 
-    loadstore_vec->resize(0);
-    loadstore_vec_counter = 0;
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    total_time_off_critical_path += duration;
-  }
+  TS ts = CREATE_TS(instr, slamp_iteration, slamp_invocation);
+  TS *shadow_addr = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+  shadow_addr[0] = ts;
+
+  // // auto start = std::chrono::high_resolution_clock::now();
+  // loadstore_vec->emplace_back(LoadStoreEvent{false, addr, CREATE_TS(instr, slamp_iteration, slamp_invocation)});
+  // loadstore_vec_counter++;
+  // // auto end = std::chrono::high_resolution_clock::now();
+  // // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  // // loadstore_vec_time += duration;
+  // if (loadstore_vec_counter == MAX_EVENTS - 1) {
+  //   // measure time in here
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   mutex_process_load_store.lock();
+  //   std::thread t = std::thread(handleLoadAndStore, loadstore_vec);
+  //   t.detach();
+  //   loadstore_vec = loadstore_vec == loadstore_vec0 ? loadstore_vec1 : loadstore_vec0;
+
+  //   loadstore_vec->resize(0);
+  //   loadstore_vec_counter = 0;
+  //   auto end = std::chrono::high_resolution_clock::now();
+  //   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  //   total_time_off_critical_path += duration;
+  // }
 }
 
 void loop_invoc() {

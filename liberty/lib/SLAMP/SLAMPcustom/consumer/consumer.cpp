@@ -36,6 +36,7 @@ static void swap(){
 
 static void check() {
   if (dq_index == dq_size){
+    dq->ready_to_read = false;
     dq->ready_to_write = true;
     while (!dq_other->ready_to_read){
       // spin
