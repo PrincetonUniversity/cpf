@@ -302,6 +302,7 @@ bool OptRepl::runOnModule(Module &M) {
 
       // print the selected instruction
       if (queryInstId != -1) {
+        bool found = false;
         for (auto &[instId, node] : *instIdMap) {
           auto *inst = dyn_cast<Instruction>(node->getT());
           auto instNamerId = Namer::getInstrId(inst);
@@ -311,7 +312,13 @@ bool OptRepl::runOnModule(Module &M) {
               liberty::printInstDebugInfo(inst);
             }
             outs() << "\n";
+            found = true;
+            break;
           }
+        }
+
+        if (!found) {
+          outs() << "Instruction with NamerId " << queryInstId << " not found\n";
         }
       } else { // print all instructions
         for (auto &[instId, node] : *instIdMap) {
