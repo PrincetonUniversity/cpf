@@ -47,6 +47,7 @@ function drive {
 
   # local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks_stats.a"
   local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPcustom/libslamp_hooks_custom.a"
+  # local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPsmtxq/libslamp_hooks_smtx.a"
   local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
 
  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
@@ -135,10 +136,12 @@ function drive {
   rm /dev/shm/MySharedMemory2
   rm /dev/shm/MySharedMemory
   taskset --cpu-list 0-6,9-27 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
+  # taskset --cpu-list 0-6,9-27 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPsmtxq/consumer/build/consumer &
   CONSUME_PID=$!
   RUN_TIMEOUT=14400 # 4 hours
   echo "timeout $RUN_TIMEOUT $CMD4"
   eval regressions-watchdog $RUN_TIMEOUT slamp-custom.time $CMD4
+  # eval regressions-watchdog $RUN_TIMEOUT slamp-smtx.time $CMD4
   # if command fail
   if [ $? -ne 0 ]; then
       # print in red
