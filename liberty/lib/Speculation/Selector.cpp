@@ -534,7 +534,7 @@ void Selector::computeEdges(const Vertices &vertices, Edges &edges)
   BasicBlock *hA = A->getHeader();
   Function *fA = hA->getParent();
   Module *m = fA->getParent();
-  auto fm = FunctionsManager(*m, pdgAnalysis);
+  auto fm = FunctionsManager(*m, pdgAnalysis, nullptr);
   /*
    *   Call graph.
    */
