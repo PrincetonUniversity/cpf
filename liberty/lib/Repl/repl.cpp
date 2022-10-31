@@ -4,6 +4,7 @@
 #include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
 #include "scaf/Utilities/ReportDump.h"
+#include "scaf/Utilities/Metadata.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -21,6 +22,7 @@
 #include "noelle/core/PDG.hpp"
 #include "noelle/core/PDGPrinter.hpp"
 #include "noelle/core/SCCDAG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
 #include "ReplParse.hpp"
 
 using namespace llvm;
@@ -47,7 +49,6 @@ void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired<PDGBuilder>();
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
-  au.addRequired<LoopAA>();
   au.setPreservesAll();
 }
 
@@ -133,7 +134,6 @@ bool OptRepl::runOnModule(Module &M) {
   bool modified = false;
 
   auto &noelle = getAnalysis<Noelle>();
-  auto loops = noelle.getLoops();
   ModuleLoops &mloops = getAnalysis<ModuleLoops>();
   const Targets &targets = getAnalysis<Targets>();
   PDGBuilder &pdgbuilder = getAnalysis<PDGBuilder>();
@@ -151,6 +151,20 @@ bool OptRepl::runOnModule(Module &M) {
   unique_ptr<InstIdReverseMap_t> instIdLookupMap;
   unique_ptr<DepIdMap_t> depIdMap;
   shared_ptr<DepIdReverseMap_t> depIdLookupMap;
+
+  // have a vector of all the loop aas
+  LoopAA* loopAA = (LoopAA*)getSCAFLoopAA();
+  vector<LoopAA*> loopAAs;
+  auto aa = loopAA;
+  while (aa) {
+    loopAAs.push_back(aa);
+    aa = aa->getNextAA();
+  }
+  unsigned numLoopAAs = loopAAs.size();
+  vector<bool> loopAAEnabled(numLoopAAs, true);
+
+  outs() << "LoopAA (" << numLoopAAs << "): ";
+  loopAA->dump();
 
   // prepare hot loops from the targets
   {
@@ -280,9 +294,24 @@ bool OptRepl::runOnModule(Module &M) {
     };
 
     // show instructions with id
-    auto InstsFn = [&instIdMap]() {
+    auto instsFn = [&parser, &instIdMap]() {
+      auto printDebug = parser.isVerbose();
       for (auto &[instId, node] : *instIdMap) {
-        outs() << instId << "\t" << *node->getT() << "\n";
+        auto *inst = dyn_cast<Instruction>(node->getT());
+        // not an instruction
+        if (!inst) {
+          outs() << instId << "\t" << *node->getT() << "\n";
+          continue;
+        }
+
+        auto instNamerId = Namer::getInstrId(inst);
+        outs() << instId << " (" << instNamerId << ")\t" << *node->getT();
+
+        if (printDebug) {
+          liberty::printInstDebugInfo(inst);
+        }
+
+        outs()<< "\n";
       }
     };
 
@@ -429,13 +458,14 @@ bool OptRepl::runOnModule(Module &M) {
     };
 
     // modref: create a modref query and (optionally explore the loopaa stack)
-    auto modrefFn = [this, &parser, &instIdMap, &selectedLoop]() {
+    auto modrefFn = [this, &parser, &instIdMap, &selectedLoop, &loopAA,
+                     &loopAAs, &loopAAEnabled, &numLoopAAs]() {
       int fromId = parser.getFromId();
       int toId = parser.getToId();
 
       if (fromId == -1) {
-          outs() << "From InstId not set\n";
-          return;
+        outs() << "From InstId not set\n";
+        return;
       }
       else {
         if (instIdMap->find(fromId) == instIdMap->end()) {
@@ -445,8 +475,8 @@ bool OptRepl::runOnModule(Module &M) {
       }
 
       if (toId == -1) {
-          outs() << "To InstId not set\n";
-          return;
+        outs() << "To InstId not set\n";
+        return;
       }
       else {
         if (instIdMap->find(toId) == instIdMap->end()) {
@@ -463,11 +493,83 @@ bool OptRepl::runOnModule(Module &M) {
         return;
       }
 
-      LoopAA *aa = getAnalysis<LoopAA>().getTopAA();
+      LoopAA *aa = loopAA;
       Remedies remeds;
 
       if (parser.isVerbose()) {
         // TODO: try all combination of analysis and find a setting that the result is different
+
+        // try all loopAA, from only the first one, to all of them, the last one is always NoLoopAA
+        liberty::LoopAA::ModRefResult lastRet[3] = {liberty::LoopAA::ModRef, liberty::LoopAA::ModRef, liberty::LoopAA::ModRef};
+        for (auto i = 1; i < numLoopAAs - 1; i++) {
+          // set the first i loopAA to be enabled(loopAAEnabled[i] = true)
+          // and the rest to be disabled (loopAAEnabled[i] = false)
+          for (auto j = 0; j < i; j++) {
+            loopAAEnabled[j] = true;
+          }
+          for (auto j = i; j < numLoopAAs; j++) {
+            loopAAEnabled[j] = false;
+          }
+
+          // configure the loop AAs
+          for (auto j = 0; j < i; j++) {
+            // if (j >= i) {
+              // loopAAs[j]->disable();
+              // continue;
+            // }           
+
+            // set up the correct prev and next
+            LoopAA *prev, *next;
+            if (j == 0) {
+              prev = nullptr;
+            } else {
+              prev = loopAAs[j - 1];
+            }
+            if (j == i - 1) {
+              // NoLoopAA
+              next = loopAAs[numLoopAAs - 1];
+            } else {
+              next = loopAAs[j + 1];
+            }
+
+            loopAAs[j]->configure(prev, next);
+          }
+          loopAAs[numLoopAAs - 1]->configure(loopAAs[i - 1], nullptr);
+
+          // aa->dump();
+          auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
+          auto red = "\033[1;31m";
+          auto green = "\033[1;32m";
+          auto reset = "\033[0m";
+          if (ret != lastRet[0]) {
+            outs() << "Modref (same) refine from " << red << lastRet[0] << reset
+                   << " to " << red << ret << reset << " with " << green
+                   << loopAAs[i - 1]->getLoopAAName() << reset << "\n";
+          }
+          lastRet[0] = ret;
+
+          ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
+          if (ret != lastRet[1]) {
+            outs() << "Modref (before) refine from " << red << lastRet[1] << reset
+                   << " to " << red << ret << reset << " with " << green
+                   << loopAAs[i - 1]->getLoopAAName() << reset << "\n";
+          }
+          lastRet[1] = ret;
+
+          ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
+          if (ret != lastRet[2]) {
+            outs() << "Modref (after) refine from " << red << lastRet[2] << reset
+                   << " to " << red << ret << reset << " with " << green
+                   << loopAAs[i - 1]->getLoopAAName() << reset << "\n";
+          }
+          lastRet[2] = ret;
+
+          // outs() << *fromInst << "->" << *toInst << ": (Same)" << ret << " with " << remeds.size() <<  " remedies\n";
+          // ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
+          // outs() << *fromInst << "->" << *toInst << ": (Before)" << ret << " with " << remeds.size() <<  " remedies\n";
+          // ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
+          // outs() << *fromInst << "->" << *toInst << ": (After)" << ret << " with " << remeds.size() <<  " remedies\n";
+        }
       }
       else {
         auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
@@ -487,7 +589,7 @@ bool OptRepl::runOnModule(Module &M) {
       dumpFn();
       break;
     case ReplAction::Insts:
-      InstsFn();
+      instsFn();
       break;
     case ReplAction::Remove:
       removeFn();
