@@ -56,6 +56,24 @@ static inline uint64_t consume(){
   return ret;
 }
 
+static inline void consume_64_64(uint64_t &x, uint64_t &y){
+  x = dq_data[dq_index];
+  dq_index++;
+  y = dq_data[dq_index];
+  dq_index++;
+  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+}
+
+static inline void consume_32_32_64(uint32_t &x, uint32_t &y, uint64_t &z){
+  uint64_t tmp = dq_data[dq_index];
+  dq_index++;
+  x = (tmp >> 32) & 0xFFFFFFFF;
+  y = tmp & 0xFFFFFFFF;
+  z = dq_data[dq_index];
+  dq_index++;
+  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+}
+
 // #define CONSUME         sq_consume(the_queue);
 #define CONSUME         consume();
 #define PRODUCE(x)      sq_produce(the_queue,(uint64_t)x);
@@ -173,8 +191,9 @@ int main(int argc, char** argv) {
       uint64_t addr;
       uint32_t bare_instr;
       uint64_t value = 0;
-      CONSUME_2(instr, bare_instr);
-      addr = CONSUME;
+      consume_32_32_64(instr, bare_instr, addr);
+      // CONSUME_2(instr, bare_instr);
+      // addr = CONSUME;
       // value = CONSUME;
       if (DEBUG) {
         std::cout << "LOAD: " << instr << " " << addr << " " << bare_instr
@@ -191,8 +210,9 @@ int main(int argc, char** argv) {
       uint32_t instr;
       uint32_t bare_instr;
       uint64_t addr;
-      CONSUME_2(instr, bare_instr);
-      addr = CONSUME;
+      consume_32_32_64(instr, bare_instr, addr);
+      // CONSUME_2(instr, bare_instr);
+      // addr = CONSUME;
       if (DEBUG) {
         std::cout << "STORE: " << instr << " " << bare_instr << " " << addr
                   << std::endl;
@@ -205,8 +225,9 @@ int main(int argc, char** argv) {
     case Action::ALLOC: {
       uint64_t addr;
       uint64_t size;
-      addr = CONSUME;
-      size = CONSUME;
+      consume_64_64(addr, size);
+      // addr = CONSUME;
+      // size = CONSUME;
       if (DEBUG) {
         std::cout << "ALLOC: " << addr << " " << size << std::endl;
       }
