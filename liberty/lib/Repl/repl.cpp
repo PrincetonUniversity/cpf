@@ -298,22 +298,39 @@ bool OptRepl::runOnModule(Module &M) {
     // show instructions with id
     auto instsFn = [&parser, &instIdMap]() {
       auto printDebug = parser.isVerbose();
-      for (auto &[instId, node] : *instIdMap) {
-        auto *inst = dyn_cast<Instruction>(node->getT());
-        // not an instruction
-        if (!inst) {
-          outs() << instId << "\t" << *node->getT() << "\n";
-          continue;
+      int queryInstId = parser.getActionId();
+
+      // print the selected instruction
+      if (queryInstId != -1) {
+        for (auto &[instId, node] : *instIdMap) {
+          auto *inst = dyn_cast<Instruction>(node->getT());
+          auto instNamerId = Namer::getInstrId(inst);
+          if (queryInstId == instNamerId) {
+            outs() << instId << " (" << queryInstId << ")\t" << *inst;
+            if (printDebug) {
+              liberty::printInstDebugInfo(inst);
+            }
+            outs() << "\n";
+          }
         }
+      } else { // print all instructions
+        for (auto &[instId, node] : *instIdMap) {
+          auto *inst = dyn_cast<Instruction>(node->getT());
+          // not an instruction
+          if (!inst) {
+            outs() << instId << "\t" << *node->getT() << "\n";
+            continue;
+          }
 
-        auto instNamerId = Namer::getInstrId(inst);
-        outs() << instId << " (" << instNamerId << ")\t" << *node->getT();
+          auto instNamerId = Namer::getInstrId(inst);
+          outs() << instId << " (" << instNamerId << ")\t" << *node->getT();
 
-        if (printDebug) {
-          liberty::printInstDebugInfo(inst);
+          if (printDebug) {
+            liberty::printInstDebugInfo(inst);
+          }
+
+          outs()<< "\n";
         }
-
-        outs()<< "\n";
       }
     };
 
