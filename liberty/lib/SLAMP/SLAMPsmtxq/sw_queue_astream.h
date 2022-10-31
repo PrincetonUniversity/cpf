@@ -189,7 +189,8 @@ Inline void sq_waitConsumer(SW_Queue q, sq_callback cb, sq_cbData cbd)
 /*
  * Produce a value to a queue.
  */
-Inline void sq_produce(SW_Queue q, uint64_t value,
+// Inline void sq_produce(SW_Queue q, uint64_t value,
+void sq_produce(SW_Queue q, uint64_t value,
                        sq_callback cb, sq_cbData cbd)
 {
 #ifdef INSTRUMENT
@@ -214,7 +215,8 @@ Inline void sq_produce(SW_Queue q, uint64_t value,
 /*
  * Produce two values to a queue. Do not intermingle with sq_produce.
  */
-Inline void sq_produce2(SW_Queue q, uint64_t a, uint64_t b,
+// Inline void sq_produce2(SW_Queue q, uint64_t a, uint64_t b,
+void sq_produce2(SW_Queue q, uint64_t a, uint64_t b,
                         sq_callback cb, sq_cbData cbd)
 {
 #ifdef INSTRUMENT
