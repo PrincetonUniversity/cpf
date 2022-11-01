@@ -61,6 +61,7 @@ static inline void consume_64_64(uint64_t &x, uint64_t &y){
   dq_index++;
   y = dq_data[dq_index];
   dq_index++;
+  _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
 }
 
@@ -71,6 +72,7 @@ static inline void consume_32_32_64(uint32_t &x, uint32_t &y, uint64_t &z){
   y = tmp & 0xFFFFFFFF;
   z = dq_data[dq_index];
   dq_index++;
+  _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
 }
 

@@ -50,7 +50,7 @@
 #endif /* QMARGIN */
 
 #ifndef QSIZE
-#define QSIZE (1 << 21)
+#define QSIZE (1 << 23)
 #endif /* QSIZE */
 
 #ifndef QPREFETCH

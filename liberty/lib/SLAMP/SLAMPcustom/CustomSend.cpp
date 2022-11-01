@@ -8,6 +8,7 @@
 #include "malloc.h"
 
 #include <unistd.h>
+#include <xmmintrin.h>
 #include "sw_queue_astream.h"
 
 #include <boost/interprocess/managed_shared_memory.hpp>
@@ -34,7 +35,7 @@ static SW_Queue the_queue;
 static double_queue_p dqA, dqB, dq, dq_other;
 static uint64_t dq_index = 0;
 static uint64_t *dq_data;
-static uint64_t total_pushed = 0;
+// static uint64_t total_pushed = 0;
 static uint64_t total_swapped = 0;
 static void swap(){
   if(dq == dqA){
@@ -67,7 +68,7 @@ static void produce(uint64_t x) ATTRIBUTE(noinline) {
   }
   dq_data[dq_index] = x;
   dq_index++;
-  total_pushed++;
+  // total_pushed++;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
@@ -78,7 +79,7 @@ static void produce_2(uint64_t x, uint64_t y) ATTRIBUTE(noinline) {
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
   dq_index += 2;
-  total_pushed += 2;
+  // total_pushed += 2;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
@@ -86,11 +87,18 @@ static void produce_3(uint64_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
   if (dq_index + 3 >= QSIZE){
     produce_wait();
   }
-  dq_data[dq_index] = x;
-  dq_data[dq_index+1] = y;
-  dq_data[dq_index+2] = z;
+  // dq_data[0] = x;
+  // dq_data[1] = y;
+  // dq_data[2] = z;
+
+  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
+  // dq_data[dq_index] = x;
+  // dq_data[dq_index+1] = y;
+  // dq_data[dq_index+2] = z;
   dq_index += 3;
-  total_pushed += 3;
+  // total_pushed += 3;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
@@ -103,7 +111,7 @@ static void produce_4(uint64_t x, uint64_t y, uint64_t z, uint64_t w) {// ATTRIB
   dq_data[dq_index+2] = z;
   dq_data[dq_index+3] = w;
   dq_index += 4;
-  total_pushed += 4;
+  // total_pushed += 4;
 }
 
 // #define CONSUME         sq_consume(the_queue);
