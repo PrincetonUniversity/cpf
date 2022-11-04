@@ -26,9 +26,22 @@
 namespace slamp {
 
 class MemoryMap {
+private:
+  // TODO: fix this redundant info as the LocalWriteModule
+  const uint32_t LOCALWRITE_MASK{};
+  const uint32_t LOCALWRITE_PATTERN{};
+  static constexpr uint32_t LOCALWRITE_SHIFT = 12; // PAGE SIZE 4096 = 2^12
+
+  bool local_write_cond(uint64_t addr) {
+    if (((addr >> LOCALWRITE_SHIFT) & LOCALWRITE_MASK) == LOCALWRITE_PATTERN)
+      return true;
+    return false;
+  }
+
 public:
   uint64_t heapStart = 0;
-  MemoryMap(unsigned r) : ratio(r), ratio_shift(0) {
+  MemoryMap(uint32_t mask, uint32_t pattern, unsigned r)
+      : LOCALWRITE_MASK(mask), LOCALWRITE_PATTERN(pattern), ratio(r), ratio_shift(0)  {
     // ratio expected to be a power of 2
     assert((r & (r - 1)) == 0);
 
@@ -47,6 +60,8 @@ public:
   ~MemoryMap() {
     // freeing all remaining shadow addresses
     for (auto page : pages) {
+      if (!local_write_cond(page))
+        continue;
       uint64_t s = GET_SHADOW(page, ratio_shift);
       munmap(reinterpret_cast<void *>(s), pagesize * ratio);
     }
@@ -75,6 +90,8 @@ public:
     bool success = true;
 
     for (uint64_t page = pagebegin; page <= pageend; page += pagesize) {
+      if (!local_write_cond(page))
+        continue;
       if (pages.find(page) != pages.end())
         continue;
 

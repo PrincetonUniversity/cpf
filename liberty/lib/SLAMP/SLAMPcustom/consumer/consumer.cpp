@@ -22,10 +22,9 @@ static inline uint64_t rdtsc() {
 
 #define DEBUG 0
 #define ACTION 1
-#define MEASURE_TIME 1
+#define MEASURE_TIME 0
 
 // #define CONSUME         sq_consume(the_queue);
-#define CONSUME         consume();
 
 static uint64_t load_time(0);
 static uint64_t store_time(0);
@@ -33,68 +32,8 @@ static uint64_t alloc_time(0);
 
 // create segment and corresponding allocator
 bip::fixed_managed_shared_memory *segment;
-static double_queue_p dqA, dqB, dq, dq_other;
-static uint64_t dq_index = 0;
-static uint64_t dq_size = 0;
-static uint64_t *dq_data;
 
-static void swap(){
-  if(dq == dqA){
-    dq = dqB;
-    dq_other = dqA;
-  }else{
-    dq = dqA;
-    dq_other = dqB;
-  }
-  dq_data = dq->data;
-}
-
-static void check() {
-  if (dq_index == dq_size){
-    dq->ready_to_read = false;
-    dq->ready_to_write = true;
-    while (!dq_other->ready_to_read){
-      // spin
-      usleep(10);
-    }
-    swap();
-    dq->ready_to_write = false;
-    dq_index = 0;
-    dq_size = dq->size;
-  }
-}
-
-static inline uint64_t consume(){
-  uint64_t ret = dq_data[dq_index];
-  dq_index++;
-  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
-  return ret;
-}
-
-static inline void consume_64_64(uint64_t &x, uint64_t &y){
-  x = dq_data[dq_index];
-  dq_index++;
-  y = dq_data[dq_index];
-  dq_index++;
-  _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
-  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
-}
-
-static inline void consume_32_32_64(uint32_t &x, uint32_t &y, uint64_t &z){
-  uint64_t tmp = dq_data[dq_index];
-  dq_index++;
-  x = (tmp >> 32) & 0xFFFFFFFF;
-  y = tmp & 0xFFFFFFFF;
-  z = dq_data[dq_index];
-  dq_index++;
-  _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
-  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
-}
-
-void consume_loop() {
-
-  DependenceModule depMod(0x3, 1);
-
+void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
   uint64_t rdtsc_start = 0;
   uint64_t counter = 0;
   uint32_t loop_id;
@@ -114,16 +53,16 @@ void consume_loop() {
   };
 
   while (true) {
-    check();
+    dq.check();
     char v;
-    v = (char)CONSUME;
+    v = (char)dq.consume();
     counter++;
 
     switch (v) {
     case Action::INIT: {
       uint32_t pid;
-      loop_id = (uint32_t)CONSUME;
-      pid = (uint32_t)CONSUME;
+      loop_id = (uint32_t)dq.consume();
+      pid = (uint32_t)dq.consume();
       rdtsc_start = rdtsc();
 
       if (DEBUG) {
@@ -140,7 +79,7 @@ void consume_loop() {
       uint32_t bare_instr;
       uint64_t value = 0;
 
-      consume_32_32_64(instr, bare_instr, addr);
+      dq.consume_32_32_64(instr, bare_instr, addr);
 
       if (DEBUG) {
         std::cout << "LOAD: " << instr << " " << addr << " " << bare_instr
@@ -157,7 +96,7 @@ void consume_loop() {
       uint32_t instr;
       uint32_t bare_instr;
       uint64_t addr;
-      consume_32_32_64(instr, bare_instr, addr);
+      dq.consume_32_32_64(instr, bare_instr, addr);
 
       if (DEBUG) {
         std::cout << "STORE: " << instr << " " << bare_instr << " " << addr
@@ -172,7 +111,7 @@ void consume_loop() {
     case Action::ALLOC: {
       uint64_t addr;
       uint64_t size;
-      consume_64_64(addr, size);
+      dq.consume_64_64(addr, size);
 
       if (DEBUG) {
         std::cout << "ALLOC: " << addr << " " << size << std::endl;
@@ -227,12 +166,12 @@ void consume_loop() {
     default:
       std::cout << "Unknown action: " << (uint64_t)v << std::endl;
 
-      std::cout << "Is ready to read?:" << dq->ready_to_read << " "
-                << "Is ready to write?:" << dq->ready_to_write << std::endl;
-      std::cout << "Index: " << dq_index << " Size:" << dq->size << std::endl;
+      std::cout << "Is ready to read?:" << dq.qNow->ready_to_read << " "
+                << "Is ready to write?:" << dq.qNow->ready_to_write << std::endl;
+      std::cout << "Index: " << dq.index << " Size:" << dq.qNow->size << std::endl;
 
       for (int i = 0; i < 101; i++) {
-        std::cout << dq->data[dq_index - 100 + i] << " ";
+        std::cout << dq.qNow->data[dq.index - 100 + i] << " ";
       }
       exit(-1);
     }
@@ -247,16 +186,37 @@ void consume_loop() {
 int main(int argc, char** argv) {
   segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *4, (void*)(1UL << 32));
 
+  Queue_p dqA, dqB;
   // double buffering
-  dqA = segment->construct<double_queue_t>("DQ_A")(double_queue_t());
-  dqB = segment->construct<double_queue_t>("DQ_B")(double_queue_t());
+  dqA = segment->construct<Queue>("DQ_A")(Queue());
+  dqB = segment->construct<Queue>("DQ_B")(Queue());
   auto dataA = segment->construct<uint64_t>("DQ_Data_A")[QSIZE](uint64_t());
   auto dataB = segment->construct<uint64_t>("DQ_Data_B")[QSIZE](uint64_t());
   dqA->init(dataA);
   dqB->init(dataB);
-  dq = dqB;
-  dq_other = dqA;
-  dq_data = dq->data;
 
-  consume_loop();
+  // set the thread count
+  constexpr unsigned THREAD_COUNT = 8;
+  constexpr unsigned MASK = THREAD_COUNT - 1;
+
+  unsigned running_threads= THREAD_COUNT;
+  std::mutex m;
+  std::condition_variable cv;
+
+  std::vector<std::thread> threads;
+  DoubleQueue *dqs[THREAD_COUNT];
+  DependenceModule *depMods[THREAD_COUNT];
+
+  for (unsigned i = 0; i < THREAD_COUNT; i++) {
+    dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+    depMods[i] = new DependenceModule(MASK, i);
+
+    threads.emplace_back(std::thread([&](unsigned id) {
+          consume_loop(*dqs[id], *depMods[id]);
+    }, i));
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
 }

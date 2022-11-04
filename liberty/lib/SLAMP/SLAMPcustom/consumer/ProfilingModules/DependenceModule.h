@@ -50,7 +50,7 @@ private:
 
   slamp::MemoryMap *smmap = nullptr;
 
-  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 1> dep_set;
+  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 8> dep_set;
 
   void log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst,
            const uint64_t load_invocation, const uint64_t load_iteration);
@@ -58,7 +58,7 @@ private:
 public:
   DependenceModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
-    smmap = new slamp::MemoryMap(TIMESTAMP_SIZE_IN_BYTES);
+    smmap = new slamp::MemoryMap(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
   }
 
   void init(uint32_t loop_id, uint32_t pid);

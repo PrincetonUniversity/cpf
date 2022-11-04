@@ -12,6 +12,11 @@
 #include "slamp_timestamp.h"
 
 // static std::map<uint32_t, uint64_t> *inst_count;
+static inline uint64_t rdtsc() {
+  uint64_t a, d;
+  __asm__ volatile("rdtsc" : "=a"(a), "=d"(d));
+  return (d << 32) | a;
+}
 
 // init: setup the shadow memory
 void DependenceModule::init(uint32_t loop_id, uint32_t pid) {
@@ -23,21 +28,25 @@ void DependenceModule::init(uint32_t loop_id, uint32_t pid) {
 
 }
 
+static uint64_t log_time = 0;
+
 
 void DependenceModule::fini(const char *filename) {
   std::cout << "Load count: " << load_count << std::endl;
   std::cout << "Store count: " << store_count << std::endl;
 
-  std::ofstream of(filename);
-  of << target_loop_id << " " << 0 << " " << 0 << " "
-       << 0 << " " << 0 << " " << 0 << "\n";
+  // std::ofstream of(filename);
+  // of << target_loop_id << " " << 0 << " " << 0 << " "
+       // << 0 << " " << 0 << " " << 0 << "\n";
 
-  std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
-  for (auto &k: ordered) {
-    of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
-       << (k.cross ? 1 : 0) << " " << 1 << " ";
-    of << "\n";
-  }
+  // std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
+  // for (auto &k: ordered) {
+    // of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
+       // << (k.cross ? 1 : 0) << " " << 1 << " ";
+    // of << "\n";
+  // }
+
+  std::cout << "Log time: " << log_time/ 2.6e9 << " s" << std::endl;
 
   // for (auto &i : *inst_count) {
   //   of << target_loop_id << " " << i.first << " " << i.second << "\n";
@@ -81,7 +90,10 @@ void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t 
 
     TS tss = s[0];
     if (tss != 0) {
+      uint64_t start = rdtsc();
       log(tss, instr, instr, slamp_invocation, slamp_iteration);
+      uint64_t end = rdtsc();
+      log_time += end - start;
     }
   });
 }

@@ -135,7 +135,7 @@ function drive {
   CMD4="taskset --cpu-list 7-8 $CMD4"
   rm /dev/shm/MySharedMemory2
   rm /dev/shm/MySharedMemory
-  taskset --cpu-list 0-6,9-27 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
+  taskset --cpu-list 0-6,9-55 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
   # taskset --cpu-list 0-6,9-27 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPsmtxq/consumer/build/consumer &
   CONSUME_PID=$!
   RUN_TIMEOUT=14400 # 4 hours

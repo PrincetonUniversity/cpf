@@ -31,8 +31,7 @@ static void *(*old_memalign_hook)(size_t, size_t, const void *);
 // create segment and corresponding allocator
 bip::fixed_managed_shared_memory *segment;
 bip::fixed_managed_shared_memory *segment2;
-static SW_Queue the_queue;
-static double_queue_p dqA, dqB, dq, dq_other;
+static Queue_p dqA, dqB, dq, dq_other;
 static uint64_t dq_index = 0;
 static uint64_t *dq_data;
 // static uint64_t total_pushed = 0;
@@ -152,8 +151,8 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *4, (void*)(1UL << 32));
   // segment2 = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory2", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 28));
   
-  dqA = segment->find<double_queue_t>("DQ_A").first;
-  dqB = segment->find<double_queue_t>("DQ_B").first;
+  dqA = segment->find<Queue>("DQ_A").first;
+  dqB = segment->find<Queue>("DQ_B").first;
   dq = dqA;
   dq_other = dqB;
   dq_index = 0;
