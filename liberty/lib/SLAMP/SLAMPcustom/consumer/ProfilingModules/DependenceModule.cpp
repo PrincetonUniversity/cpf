@@ -1,49 +1,17 @@
 #include <cstdint>
+#include <fstream>
 #include <map>
 #include <set>
 #include <thread>
-#include <vector>
 #include <unordered_set>
-#include <fstream>
+#include <vector>
 
-#include "slamp_timestamp.h"
+#include "DependenceModule.h"
 #include "slamp_logger.h"
 #include "slamp_shadow_mem.h"
-#include "DependenceModule.h"
-#include <mutex>
-
+#include "slamp_timestamp.h"
 
 // static std::map<uint32_t, uint64_t> *inst_count;
-void DependenceModule::convertVectorToSet() {
-  // launch N threads to convert the vector to set independently, chunking
-  std::thread t[VECTOR_TO_SET_THREADS];
-  for (unsigned long i = 0; i < VECTOR_TO_SET_THREADS; i++) {
-    t[i] = std::thread(
-        [&](int id) {
-          // take the chunk and convert to a set and return
-          auto *deplog_set_chunk =
-              new std::unordered_set<slamp::KEY, slamp::KEYHash,
-                                     slamp::KEYEqual>();
-          deplog_set_chunk->reserve(DEPLOG_VEC_SIZE / VECTOR_TO_SET_THREADS + 1);
-          auto begin = id * (DEPLOG_VEC_SIZE / VECTOR_TO_SET_THREADS);
-          auto end = (id + 1) * (DEPLOG_VEC_SIZE / VECTOR_TO_SET_THREADS);
-          deplog_set_chunk->insert(deplog_vec.begin() + begin,
-                                   deplog_vec.begin() + end);
-
-          m.lock();
-          // lock the global set and insert the chunk
-          deplog_set.insert(deplog_set_chunk->begin(),
-                             deplog_set_chunk->end());
-          m.unlock();
-          delete deplog_set_chunk;
-        },
-        i);
-  }
-  // join the threads
-  for (auto &i : t) {
-    i.join();
-  }
-}
 
 // init: setup the shadow memory
 void DependenceModule::init(uint32_t loop_id, uint32_t pid) {
@@ -60,13 +28,11 @@ void DependenceModule::fini(const char *filename) {
   std::cout << "Load count: " << load_count << std::endl;
   std::cout << "Store count: " << store_count << std::endl;
 
-  convertVectorToSet();
-
   std::ofstream of(filename);
   of << target_loop_id << " " << 0 << " " << 0 << " "
        << 0 << " " << 0 << " " << 0 << "\n";
 
-  std::set<slamp::KEY, slamp::KEYComp> ordered(deplog_set.begin(), deplog_set.end());
+  std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
   for (auto &k: ordered) {
     of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
        << (k.cross ? 1 : 0) << " " << 1 << " ";
@@ -84,7 +50,7 @@ void DependenceModule::allocate(void *addr, uint64_t size) {
   smmap->allocate(addr, size);
 }
 
-void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst, const uint64_t load_invocation, const uint64_t load_iteration){ 
+void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst, const uint64_t load_invocation, const uint64_t load_iteration){
 
     uint32_t src_inst = GET_INSTR(ts);
 
@@ -96,12 +62,8 @@ void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_i
     }
 
     slamp::KEY key(src_inst, dst_inst, bare_inst, src_iter != load_iteration);
-    
-    deplog_vec.emplace_back(key);
-    if (deplog_vec.size() == DEPLOG_VEC_SIZE - 1) {
-      convertVectorToSet();
-      deplog_vec.resize(0);
-    }
+
+    dep_set.emplace_back(key);
 }
 
 void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
