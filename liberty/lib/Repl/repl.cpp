@@ -523,40 +523,45 @@ bool OptRepl::runOnModule(Module &M) {
 
         // try all loopAA, from only the first one, to all of them, the last one is always NoLoopAA
         liberty::LoopAA::ModRefResult lastRet[3] = {liberty::LoopAA::ModRef, liberty::LoopAA::ModRef, liberty::LoopAA::ModRef};
-        for (auto i = 1; i < numLoopAAs - 1; i++) {
+        for (auto i = 1; i <= numLoopAAs - 1; i++) {
           // set the first i loopAA to be enabled(loopAAEnabled[i] = true)
           // and the rest to be disabled (loopAAEnabled[i] = false)
+          // [0~i-1]
           for (auto j = 0; j < i; j++) {
             loopAAEnabled[j] = true;
           }
-          for (auto j = i; j < numLoopAAs; j++) {
+
+          // [i~numLoopAAs-2]
+          for (auto j = i; j < numLoopAAs - 1; j++) {
             loopAAEnabled[j] = false;
           }
+          // the last one is always NoLoopAA and enabled
+          loopAAEnabled[numLoopAAs - 1] = true;
 
-          // configure the loop AAs
-          for (auto j = 0; j < i; j++) {
-            // if (j >= i) {
-              // loopAAs[j]->disable();
-              // continue;
-            // }           
-
-            // set up the correct prev and next
-            LoopAA *prev, *next;
-            if (j == 0) {
-              prev = nullptr;
-            } else {
-              prev = loopAAs[j - 1];
+          // configure the loop AAs prev and next based on the enabled/disabled setting
+          LoopAA *prev, *cur, *next;
+          prev = nullptr;
+          cur = nullptr;
+          next = nullptr;
+          // cur is the first enabled, next is the second enabled
+          for (auto j = 0; j < numLoopAAs; j++) {
+            if (loopAAEnabled[j]) {
+              // the first one
+              if (!cur) {
+                cur = loopAAs[j];
+                continue;
+              } else {
+                next = loopAAs[j];
+                cur->configure(prev, next);
+                prev = cur;
+                cur = next;
+              }
             }
-            if (j == i - 1) {
-              // NoLoopAA
-              next = loopAAs[numLoopAAs - 1];
-            } else {
-              next = loopAAs[j + 1];
-            }
-
-            loopAAs[j]->configure(prev, next);
           }
-          loopAAs[numLoopAAs - 1]->configure(loopAAs[i - 1], nullptr);
+
+          // NoLoopAA is always enabled
+          assert(cur->getLoopAAName() == "NoLoopAA");
+          cur->configure(prev, nullptr);
 
           // aa->dump();
           auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
