@@ -436,7 +436,7 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   void* new_ptr = realloc(ptr, size);
   // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
   // produce_3(ALLOC, (uint64_t)new_ptr, size);
-  produce_32_64_64(ALLOC, (uint64_t)ptr, (uint64_t)new_ptr);
+  produce_32_64_64(ALLOC, (uint64_t)new_ptr, size);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
   counter_alloc++;
   TURN_ON_HOOKS
