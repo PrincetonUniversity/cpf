@@ -8,8 +8,21 @@
  */
 #include <mutex>
 #include <thread>
-#include <unordered_set>
 #include <vector>
+
+#define PB
+#ifdef PB
+#include "parallel_hashmap/phmap.h"
+#else
+#include <unordered_set>
+#endif
+
+#ifdef PB
+#define hash_set phmap::flat_hash_set
+#else
+#define hash_set std::unordered_set
+#endif
+
 
 template <typename T, typename Hash = std::hash<T>,
           typename KeyEqual = std::equal_to<T>,
@@ -21,7 +34,7 @@ private:
   std::mutex m;
 
 public:
-  std::unordered_set<T, Hash, KeyEqual> set;
+  hash_set<T, Hash, KeyEqual> set;
   HTSet() { buffer.reserve(BUFFER_SIZE); }
 
   void emplace_back(T &&t) {
@@ -80,7 +93,7 @@ private:
       t[i] = std::thread(
           [&](int id) {
             // take the chunk and convert to a set and return
-            auto *set_chunk = new std::unordered_set<T, Hash, KeyEqual>();
+            auto *set_chunk = new hash_set<T, Hash, KeyEqual>();
             set_chunk->reserve(set_size);
 
             auto begin = id * (buffer_size / thread_count);
