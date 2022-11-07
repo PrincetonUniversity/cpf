@@ -14,6 +14,8 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 
+#define MM_STREAM
+
 namespace bip = boost::interprocess;
 
 static unsigned long counter_load = 0;
@@ -65,7 +67,12 @@ static void produce(uint64_t x) ATTRIBUTE(noinline) {
   if (dq_index == QSIZE){
     produce_wait();
   }
+#ifdef MM_STREAM
+  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
+#else
   dq_data[dq_index] = x;
+#endif
+
   dq_index++;
   // total_pushed++;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
@@ -75,8 +82,13 @@ static void produce_2(uint64_t x, uint64_t y) ATTRIBUTE(noinline) {
   if (dq_index + 2 >= QSIZE){
     produce_wait();
   }
+#ifdef MM_STREAM
+  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
+#else
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
+#endif
   dq_index += 2;
   // total_pushed += 2;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
@@ -86,16 +98,16 @@ static void produce_3(uint64_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
   if (dq_index + 3 >= QSIZE){
     produce_wait();
   }
-  // dq_data[0] = x;
-  // dq_data[1] = y;
-  // dq_data[2] = z;
 
+#ifdef MM_STREAM
   _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
   _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
   _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
-  // dq_data[dq_index] = x;
-  // dq_data[dq_index+1] = y;
-  // dq_data[dq_index+2] = z;
+#else
+  dq_data[dq_index] = x;
+  dq_data[dq_index+1] = y;
+  dq_data[dq_index+2] = z;
+#endif
   dq_index += 3;
   // total_pushed += 3;
   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
@@ -105,10 +117,17 @@ static void produce_4(uint64_t x, uint64_t y, uint64_t z, uint64_t w) {// ATTRIB
   if (dq_index + 4 >= QSIZE){
     produce_wait();
   }
+#ifdef MM_STREAM
+  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+3], (__m64)w);
+#else
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
   dq_data[dq_index+2] = z;
   dq_data[dq_index+3] = w;
+#endif
   dq_index += 4;
   // total_pushed += 4;
 }
