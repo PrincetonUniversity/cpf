@@ -46,7 +46,7 @@ void DependenceModule::fini(const char *filename) {
     // of << "\n";
   // }
 
-  std::cout << "Log time: " << log_time/ 2.6e9 << " s" << std::endl;
+  // std::cout << "Log time: " << log_time/ 2.6e9 << " s" << std::endl;
 
   // for (auto &i : *inst_count) {
   //   of << target_loop_id << " " << i.first << " " << i.second << "\n";
@@ -90,10 +90,10 @@ void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t 
 
     TS tss = s[0];
     if (tss != 0) {
-      uint64_t start = rdtsc();
+      // uint64_t start = rdtsc();
       log(tss, instr, instr, slamp_invocation, slamp_iteration);
-      uint64_t end = rdtsc();
-      log_time += end - start;
+      // uint64_t end = rdtsc();
+      // log_time += end - start;
     }
   });
 }

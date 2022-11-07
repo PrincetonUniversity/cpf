@@ -156,9 +156,11 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
                 << " events" << std::endl;
       // print time in seconds
       std::cout << "Total time: " << total_cycles / 2.6e9 << " s" << std::endl;
-      std::cout << "Load time: " << load_time / 2.6e9 << " s" << std::endl;
-      std::cout << "Store time: " << store_time / 2.6e9 << " s" << std::endl;
-      std::cout << "Alloc time: " << alloc_time / 2.6e9 << " s" << std::endl;
+      if (MEASURE_TIME) {
+        std::cout << "Load time: " << load_time / 2.6e9 << " s" << std::endl;
+        std::cout << "Store time: " << store_time / 2.6e9 << " s" << std::endl;
+        std::cout << "Alloc time: " << alloc_time / 2.6e9 << " s" << std::endl;
+      }
       exit(0);
 
       break;
@@ -176,9 +178,9 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
       exit(-1);
     }
 
-    if (counter % 100'000'000 == 0) {
-      std::cout << "Processed " << counter / 1'000'000 << "M events" << std::endl;
-    }
+    // if (counter % 100'000'000 == 0) {
+      // std::cout << "Processed " << counter / 1'000'000 << "M events" << std::endl;
+    // }
   }
 
 }
