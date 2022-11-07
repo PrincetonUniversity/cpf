@@ -9,7 +9,7 @@
 
 #include "HTContainer.h"
 
-enum DepModAction : char {
+enum DepModAction : uint32_t {
   INIT = 0,
   LOAD,
   STORE,

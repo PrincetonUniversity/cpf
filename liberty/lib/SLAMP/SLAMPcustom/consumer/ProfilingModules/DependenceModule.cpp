@@ -49,7 +49,7 @@ void DependenceModule::fini(const char *filename) {
   // std::cout << "Log time: " << log_time/ 2.6e9 << " s" << std::endl;
 
   // for (auto &i : *inst_count) {
-  //   of << target_loop_id << " " << i.first << " " << i.second << "\n";
+    // of << target_loop_id << " " << i.first << " " << i.second << "\n";
   // }
 
   delete smmap;

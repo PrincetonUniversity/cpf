@@ -35,7 +35,7 @@ bip::fixed_managed_shared_memory *segment;
 bip::fixed_managed_shared_memory *segment2;
 static Queue_p dqA, dqB, dq, dq_other;
 static uint64_t dq_index = 0;
-static uint64_t *dq_data;
+static uint32_t *dq_data;
 // static uint64_t total_pushed = 0;
 static uint64_t total_swapped = 0;
 static void swap(){
@@ -63,78 +63,71 @@ static void produce_wait() ATTRIBUTE(noinline){
   total_swapped++;
 }
 
-static void produce(uint64_t x) ATTRIBUTE(noinline) {
-  if (dq_index == QSIZE){
+static void produce_32(uint32_t x) ATTRIBUTE(noinline){
+  if (dq_index + 1 >= QSIZE){
     produce_wait();
   }
 #ifdef MM_STREAM
-  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
+  _mm_stream_si32((int *) &dq_data[dq_index], x);
 #else
   dq_data[dq_index] = x;
 #endif
-
   dq_index++;
-  // total_pushed++;
-  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
-static void produce_2(uint64_t x, uint64_t y) ATTRIBUTE(noinline) {
-  if (dq_index + 2 >= QSIZE){
+static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinline) {
+  if (dq_index + 4 >= QSIZE){
     produce_wait();
   }
 #ifdef MM_STREAM
-  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
+  _mm_stream_si32((int *) &dq_data[dq_index], x);
+  _mm_stream_si32((int *) &dq_data[dq_index+1], y);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
 #else
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
+  *(uint64_t*)&dq_data[dq_index+2] = z;
 #endif
-  dq_index += 2;
-  // total_pushed += 2;
-  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
+  dq_index += 4;
 }
 
-static void produce_3(uint64_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
+static void produce_32_32_32(uint32_t x, uint32_t y, uint32_t z) ATTRIBUTE(noinline) {
   if (dq_index + 3 >= QSIZE){
     produce_wait();
   }
-
 #ifdef MM_STREAM
-  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
+  _mm_stream_si32((int *) &dq_data[dq_index], x);
+  _mm_stream_si32((int *) &dq_data[dq_index+1], y);
+  _mm_stream_si32((int *) &dq_data[dq_index+2], z);
 #else
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
   dq_data[dq_index+2] = z;
 #endif
   dq_index += 3;
-  // total_pushed += 3;
-  // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
 }
 
-static void produce_4(uint64_t x, uint64_t y, uint64_t z, uint64_t w) {// ATTRIBUTE(always_inline) {
-  if (dq_index + 4 >= QSIZE){
+
+static void produce_32_64_64(uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
+  if (dq_index + 5 >= QSIZE){
     produce_wait();
   }
 #ifdef MM_STREAM
-  _mm_stream_pi((__m64*)&dq_data[dq_index], (__m64)x);
+  _mm_stream_si32((int *) &dq_data[dq_index], x);
   _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+3], (__m64)w);
+  _mm_stream_pi((__m64*)&dq_data[dq_index+3], (__m64)z);
 #else
   dq_data[dq_index] = x;
-  dq_data[dq_index+1] = y;
-  dq_data[dq_index+2] = z;
-  dq_data[dq_index+3] = w;
+  *(uint64_t*)&dq_data[dq_index+1] = y;
+  *(uint64_t*)&dq_data[dq_index+3] = z;
 #endif
-  dq_index += 4;
-  // total_pushed += 4;
+  dq_index += 5;
 }
+
 
 // #define CONSUME         sq_consume(the_queue);
 // #define PRODUCE(x)      sq_produce(the_queue,(uint64_t)x);
-#define PRODUCE(x)      produce((uint64_t)x);
+#define PRODUCE(x)      produce_32((uint32_t)x);
 
 #define COMBINE_2_32(x,y)   ((((uint64_t)x)<<32) | (uint32_t)(y)) 
 #define CONSUME_2(x,y)  do { uint64_t tmp = CONSUME; x = (uint32_t)(tmp>>32); y = (uint32_t) tmp; } while(0)
@@ -167,7 +160,7 @@ enum DepModAction: char
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
 
-  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *4, (void*)(1UL << 32));
+  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
   // segment2 = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory2", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 28));
   
   dqA = segment->find<Queue>("DQ_A").first;
@@ -212,10 +205,10 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   uint32_t pid = getpid();
   printf("SLAMP_init: %d, %d, %d\n", fn_id, loop_id, pid);
   // local_buffer->push(pid);
-  produce_3(INIT, loop_id, pid);
+  produce_32_32_32(INIT, loop_id, pid);
 
   auto allocateLibcReqs = [](void *addr, size_t size) {
-    produce_3(ALLOC, (uint64_t)addr, size);
+    produce_32_64_64(ALLOC, (uint64_t)addr, size);
   };
 
   allocateLibcReqs((void*)&errno, sizeof(errno));
@@ -257,7 +250,7 @@ void SLAMP_fini(const char* filename){
 void SLAMP_allocated(uint64_t addr){}
 void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size){
   // local_buffer->push(ALLOC)->push(addr)->push(size);
-  produce_3(ALLOC, addr, size);
+  produce_32_64_64(ALLOC, addr, size);
 }
 void SLAMP_main_entry(uint32_t argc, char** argv, char** env){}
 
@@ -303,7 +296,8 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   //
   if (onProfiling) {
     // local_buffer->push(LOAD)->push(instr)->push(addr)->push(bare_instr); //->push(value);
-    produce_3(LOAD, COMBINE_2_32(instr, bare_instr), addr);
+    // produce_3(LOAD, COMBINE_2_32(instr, bare_instr), addr);
+    produce_32_32_64(LOAD, instr, addr);
     // // if (counter_load % 10000000 == 0) {
     //   // printf("load: %lu\n", counter_load);
     // // }
@@ -386,20 +380,8 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // sprintf(msg, "store,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
   if (onProfiling) {
-    // local_buffer->push(STORE)->push(instr)->push(bare_instr)->push(addr);
-    // PRODUCE(instr);
-    // PRODUCE(bare_instr);
-    produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
-    // // if (counter_load >= 113957060 && counter_load <= 113957064) {
-    // if (counter_store == 32816445){
-    //   printf("SLAMP_store: %d, %lu, %d\n", instr, addr, bare_instr);
-    //   printf("counter load %d\n", counter_load);
-    //   printf("counter store%d\n", counter_store);
-    //   printf("dq_data[%ld - 4] = %lu at addr %p\n", dq_index, dq_data[dq_index - 4], &dq_data[dq_index - 4]);
-    //   printf("dq_data[%ld - 3] = %lu at addr %p\n", dq_index, dq_data[dq_index - 3], &dq_data[dq_index - 3]);
-    //   printf("dq_data[%ld - 2] = %lu at addr %p\n", dq_index, dq_data[dq_index - 2], &dq_data[dq_index - 2]);
-    //   printf("dq_data[%ld - 1] = %lu at addr %p\n", dq_index, dq_data[dq_index - 1], &dq_data[dq_index - 1]);
-    // }
+    // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
+    produce_32_32_64(STORE, instr, addr);
     counter_store++;
   }
 }
@@ -442,7 +424,7 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* ptr = malloc(size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  produce_3(ALLOC, (uint64_t)ptr, size);
+  produce_32_64_64(ALLOC, (uint64_t)ptr, size);
   // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -453,7 +435,8 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* new_ptr = realloc(ptr, size);
   // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
-  produce_3(ALLOC, (uint64_t)new_ptr, size);
+  // produce_3(ALLOC, (uint64_t)new_ptr, size);
+  produce_32_64_64(ALLOC, (uint64_t)ptr, (uint64_t)new_ptr);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -467,7 +450,8 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   TURN_OFF_HOOKS
   void* ptr = memalign(alignment, size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  produce_3(ALLOC, (uint64_t)ptr, size);
+  // produce_3(ALLOC, (uint64_t)ptr, size);
+  produce_32_64_64(ALLOC, (uint64_t)ptr, size);
 
   // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;

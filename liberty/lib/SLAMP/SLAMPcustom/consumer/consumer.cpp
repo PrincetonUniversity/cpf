@@ -54,15 +54,16 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
 
   while (true) {
     dq.check();
-    char v;
-    v = (char)dq.consume();
+    uint32_t v;
+    v = dq.consume32();
     counter++;
 
     switch (v) {
     case Action::INIT: {
       uint32_t pid;
-      loop_id = (uint32_t)dq.consume();
-      pid = (uint32_t)dq.consume();
+      // loop_id = (uint32_t)dq.consume();
+      // pid = (uint32_t)dq.consume();
+      dq.consume_32_32(loop_id, pid);
       rdtsc_start = rdtsc();
 
       if (DEBUG) {
@@ -76,35 +77,37 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
     case Action::LOAD: {
       uint32_t instr;
       uint64_t addr;
-      uint32_t bare_instr;
+      // uint32_t bare_instr;
       uint64_t value = 0;
 
-      dq.consume_32_32_64(instr, bare_instr, addr);
+      dq.consume_32_64(instr, addr);
 
       if (DEBUG) {
-        std::cout << "LOAD: " << instr << " " << addr << " " << bare_instr
+        std::cout << "LOAD: " << instr << " " << addr // << " " << bare_instr
                   << " " << value << std::endl;
       }
       if (ACTION) {
         measure_time(load_time,
-                     [&]() { depMod.load(instr, addr, bare_instr, value); });
+                     [&]() { depMod.load(instr, addr, instr, value); });
+                     // [&]() { depMod.load(instr, addr, bare_instr, value); });
       }
 
       break;
     };
     case Action::STORE: {
       uint32_t instr;
-      uint32_t bare_instr;
+      // uint32_t bare_instr;
       uint64_t addr;
-      dq.consume_32_32_64(instr, bare_instr, addr);
+      dq.consume_32_64(instr, addr);
 
       if (DEBUG) {
-        std::cout << "STORE: " << instr << " " << bare_instr << " " << addr
+        std::cout << "STORE: " << instr << " " << addr // << " " << bare_instr
                   << std::endl;
       }
       if (ACTION) {
         measure_time(store_time,
-                     [&]() { depMod.store(instr, bare_instr, addr); });
+                     [&]() { depMod.store(instr, instr, addr); });
+                     // [&]() { depMod.store(instr, bare_instr, addr); });
       }
       break;
     };
@@ -186,14 +189,14 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
 }
 
 int main(int argc, char** argv) {
-  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *4, (void*)(1UL << 32));
+  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
 
   Queue_p dqA, dqB;
   // double buffering
   dqA = segment->construct<Queue>("DQ_A")(Queue());
   dqB = segment->construct<Queue>("DQ_B")(Queue());
-  auto dataA = segment->construct<uint64_t>("DQ_Data_A")[QSIZE](uint64_t());
-  auto dataB = segment->construct<uint64_t>("DQ_Data_B")[QSIZE](uint64_t());
+  auto dataA = segment->construct<uint32_t>("DQ_Data_A")[QSIZE]();
+  auto dataB = segment->construct<uint32_t>("DQ_Data_B")[QSIZE]();
   dqA->init(dataA);
   dqB->init(dataB);
 
