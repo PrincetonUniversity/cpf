@@ -26,45 +26,16 @@
  * namely the smtx ones, vindicate this. */
 #endif /* CACHELINE_SIZE */
 
-#ifndef CHUNK_SIZE
-#ifdef DUALCORE
-#define CHUNK_SIZE (1 << 8)
-#else /* DUALCORE */
-#define CHUNK_SIZE (1 << 14)
-#endif /* DUALCORE */
-#endif /* CHUNK_SIZE */
-
-#define HIGH_CHUNKMASK ((((uint64_t) (CHUNK_SIZE - 1)) << 32))
-
-#ifndef STREAM
-#ifdef DUALCORE
-#define STREAM (false)
-#else /* DUALCORE */
-#define STREAM (true)
-#endif /* DUALCORE */
-#endif /* STREAM */
-
-#if !STREAM
-#define sq_write sq_stdWrite
-#else /* STREAM */
-#define sq_write sq_streamWrite
-#endif /* STREAM */
-
-#ifndef QMARGIN
-#define QMARGIN 4
-#endif /* QMARGIN */
-
+#define QTYPE uint32_t
 #ifndef QSIZE
-#define QSIZE (1 << 26) // in bytes 64MB
+#define QSIZE_BYTES (1 << 26) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 8MB
+#define QSIZE (QSIZE_BYTES / sizeof(QTYPE))
 // #define QSIZE (1 << 23)
 #endif /* QSIZE */
 
 #ifndef QPREFETCH
 #define QPREFETCH (1 << 7)
 #endif /* QPREFETCH */
-
-#define QMASK (QSIZE - 1)
-#define HIGH_QMASK (((uint64_t) QMASK) << 32 | (uint32_t) ~0)
 
 #define PAD(suffix, size) char padding ## suffix [CACHELINE_SIZE - (size)]
 
