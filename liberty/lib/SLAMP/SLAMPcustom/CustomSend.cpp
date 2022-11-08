@@ -18,10 +18,15 @@
 
 namespace bip = boost::interprocess;
 
+
+static constexpr uint64_t QSIZE_GUARD = QSIZE - 8;
+
 static unsigned long counter_load = 0;
 static unsigned long counter_store = 0;
 static unsigned long counter_ctx = 0;
 static unsigned long counter_alloc = 0;
+static unsigned long counter_invoc = 0;
+static unsigned long counter_iter = 0;
 // char local_buffer[LOCAL_BUFFER_SIZE];
 // unsigned buffer_counter = 0;
 static bool onProfiling = false;
@@ -64,21 +69,35 @@ static void produce_wait() ATTRIBUTE(noinline){
 }
 
 static void produce_32(uint32_t x) ATTRIBUTE(noinline){
-  if (dq_index + 1 >= QSIZE){
-    produce_wait();
-  }
 #ifdef MM_STREAM
   _mm_stream_si32((int *) &dq_data[dq_index], x);
 #else
   dq_data[dq_index] = x;
 #endif
   dq_index++;
-}
 
-static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinline) {
-  if (dq_index + 4 >= QSIZE){
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
     produce_wait();
   }
+}
+
+static void produce_64_64(const uint64_t x, const uint64_t y) ATTRIBUTE(noinline){
+#ifdef MM_STREAM
+  _mm_stream_si64((long long *) &dq_data[dq_index], x);
+  _mm_stream_si64((long long *) &dq_data[dq_index + 2], y);
+#else
+  *((uint64_t *) &dq_data[dq_index]) = x;
+  *((uint64_t *) &dq_data[dq_index + 2]) = y;
+#endif
+  dq_index += 4;
+
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
+}
+
+// static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) {
+static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinline) {
 #ifdef MM_STREAM
   _mm_stream_si32((int *) &dq_data[dq_index], x);
   _mm_stream_si32((int *) &dq_data[dq_index+1], y);
@@ -89,12 +108,12 @@ static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinl
   *(uint64_t*)&dq_data[dq_index+2] = z;
 #endif
   dq_index += 4;
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
 }
 
 static void produce_32_32_32(uint32_t x, uint32_t y, uint32_t z) ATTRIBUTE(noinline) {
-  if (dq_index + 3 >= QSIZE){
-    produce_wait();
-  }
 #ifdef MM_STREAM
   _mm_stream_si32((int *) &dq_data[dq_index], x);
   _mm_stream_si32((int *) &dq_data[dq_index+1], y);
@@ -105,13 +124,13 @@ static void produce_32_32_32(uint32_t x, uint32_t y, uint32_t z) ATTRIBUTE(noinl
   dq_data[dq_index+2] = z;
 #endif
   dq_index += 3;
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
 }
 
 
 static void produce_32_64_64(uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
-  if (dq_index + 5 >= QSIZE){
-    produce_wait();
-  }
 #ifdef MM_STREAM
   _mm_stream_si32((int *) &dq_data[dq_index], x);
   _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
@@ -122,6 +141,9 @@ static void produce_32_64_64(uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinl
   *(uint64_t*)&dq_data[dq_index+3] = z;
 #endif
   dq_index += 5;
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
 }
 
 
@@ -129,7 +151,7 @@ static void produce_32_64_64(uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinl
 // #define PRODUCE(x)      sq_produce(the_queue,(uint64_t)x);
 #define PRODUCE(x)      produce_32((uint32_t)x);
 
-#define COMBINE_2_32(x,y)   ((((uint64_t)x)<<32) | (uint32_t)(y)) 
+#define COMBINE_2_32(x,y)   ((((uint64_t)y)<<32) | (uint32_t)(x)) 
 #define CONSUME_2(x,y)  do { uint64_t tmp = CONSUME; x = (uint32_t)(tmp>>32); y = (uint32_t) tmp; } while(0)
 
 #define TURN_ON_HOOKS \
@@ -295,47 +317,7 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // queue->push(shm::shared_string(msg, *char_alloc));
   //
   if (onProfiling) {
-    // local_buffer->push(LOAD)->push(instr)->push(addr)->push(bare_instr); //->push(value);
-    // produce_3(LOAD, COMBINE_2_32(instr, bare_instr), addr);
-    produce_32_32_64(LOAD, instr, addr);
-    // // if (counter_load % 10000000 == 0) {
-    //   // printf("load: %lu\n", counter_load);
-    // // }
-    // // if (counter_load >= 113957060 && counter_load <= 113957064) {
-    //   // printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
-    //   // printf("counter load %d\n", counter_load);
-    //   // printf("counter store%d\n", counter_store);
-    //   // printf("dq_data[%ld - 4] = %lu at addr %p\n", dq_index, dq_data[dq_index - 4], &dq_data[dq_index - 4]);
-    //   // printf("dq_data[%ld - 3] = %lu at addr %p\n", dq_index, dq_data[dq_index - 3], &dq_data[dq_index - 3]);
-    //   // printf("dq_data[%ld - 2] = %lu at addr %p\n", dq_index, dq_data[dq_index - 2], &dq_data[dq_index - 2]);
-    //   // printf("dq_data[%ld - 1] = %lu at addr %p\n", dq_index, dq_data[dq_index - 1], &dq_data[dq_index - 1]);
-    //   // printf("Total pushed: %ld\n", total_pushed);
-    //   // printf("Total swapped: %ld\n", total_swapped);
-    // // }
-
-    // if (dq_index > 2087456 && dq_index < 2087464) {
-    //   // if (counter_load > 113957060 && counter_load < 113957064)
-    //     // printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
-    //   // if (counter_load == 113957064) {
-    //     // printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
-    //     // printf("counter load %d\n", counter_load);
-    //   // }
-    //   // printf("dq_index: %d\n", dq_index);
-    //   // printf("dq: %p\n", dq);
-    //   // printf("counter load %d\n", counter_load);
-    //   if (instr == 12356 ) {
-    //     printf("SLAMP_load: %d, %lu, %d, %lu\n", instr, addr, bare_instr, value);
-    //     printf("counter load %d\n", counter_load);
-    //     printf("Total pushed: %ld\n", total_pushed);
-    //     printf("Total swapped: %ld\n", total_swapped);
-    //     // printf("dq_data[%ld] = %lu at addr %p\n", dq_index, dq_data[dq_index], &dq_data[dq_index]);
-    //     printf("dq_data[%ld - 4] = %lu at addr %p\n", dq_index, dq_data[dq_index - 4], &dq_data[dq_index - 4]);
-    //     printf("dq_data[%ld - 3] = %lu at addr %p\n", dq_index, dq_data[dq_index - 3], &dq_data[dq_index - 3]);
-    //     printf("dq_data[%ld - 2] = %lu at addr %p\n", dq_index, dq_data[dq_index - 2], &dq_data[dq_index - 2]);
-    //     printf("dq_data[%ld - 1] = %lu at addr %p\n", dq_index, dq_data[dq_index - 1], &dq_data[dq_index - 1]);
-    //   }
-    // }
-    // PRODUCE(value);
+    produce_64_64(COMBINE_2_32(LOAD, instr), addr);
     counter_load++;
   }
 }
@@ -381,7 +363,8 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // queue->push(shm::shared_string(msg, *char_alloc));
   if (onProfiling) {
     // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
-    produce_32_32_64(STORE, instr, addr);
+    produce_64_64(COMBINE_2_32(STORE, instr), addr);
+    // produce_32_32_64(STORE, instr, addr);
     counter_store++;
   }
 }
