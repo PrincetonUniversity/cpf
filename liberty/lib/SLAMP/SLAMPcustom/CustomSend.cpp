@@ -15,6 +15,7 @@
 #include <boost/interprocess/allocators/allocator.hpp>
 
 #define MM_STREAM
+//#define SAMPLING_ITER
 
 namespace bip = boost::interprocess;
 
@@ -287,12 +288,28 @@ void SLAMP_loop_invocation(){
   PRODUCE(LOOP_INVOC);
 
   counter_ctx++;
+
   onProfiling = true;
+  // if (counter_invoc % 1 == 0) {
+    // onProfiling = true;
+  // }
+  counter_invoc++;
 }
+
 void SLAMP_loop_iteration(){
   // local_buffer->push(LOOP_ITER);
   PRODUCE(LOOP_ITER);
   counter_ctx++;
+
+#ifdef SAMPLING_ITER
+    if (counter_iter % 100 == 0) {
+      onProfiling = true;
+    }
+    if (counter_iter % 100 == 10) { // 0-10000 out of 100000, sampling 10%
+      onProfiling = false;
+    }
+    counter_iter++;
+#endif
 }
 
 void SLAMP_loop_exit(){
