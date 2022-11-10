@@ -11,6 +11,7 @@
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <xmmintrin.h>
 
+#define ATTRIBUTE(x) __attribute__((x))
 namespace bip = boost::interprocess;
 using Action = DepModAction;
 
@@ -33,7 +34,7 @@ static uint64_t alloc_time(0);
 // create segment and corresponding allocator
 bip::fixed_managed_shared_memory *segment;
 
-void consume_loop(DoubleQueue &dq, DependenceModule &depMod) {
+void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline) {
   uint64_t rdtsc_start = 0;
   uint64_t counter = 0;
   uint32_t loop_id;
@@ -208,7 +209,6 @@ int main(int argc, char** argv) {
   std::mutex m;
   std::condition_variable cv;
 
-
   std::vector<std::thread> threads;
   DoubleQueue *dqs[THREAD_COUNT];
   DependenceModule *depMods[THREAD_COUNT];
@@ -219,9 +219,11 @@ int main(int argc, char** argv) {
   }
 
   if (THREAD_COUNT == 1) {
+    std::cout << "Running in main thread" << std::endl;
     // single threaded, easy to debug
     consume_loop(*dqs[0], *depMods[0]);
   } else {
+    std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
     for (unsigned i = 0; i < THREAD_COUNT; i++) {
       threads.emplace_back(std::thread([&](unsigned id) {
             consume_loop(*dqs[id], *depMods[id]);
@@ -231,6 +233,4 @@ int main(int argc, char** argv) {
       t.join();
     }
   }
-
-
 }
