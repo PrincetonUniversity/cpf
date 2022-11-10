@@ -230,22 +230,28 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   // local_buffer->push(pid);
   produce_32_32_32(INIT, loop_id, pid);
 
-  auto allocateLibcReqs = [](void *addr, size_t size) {
-    produce_32_64_64(ALLOC, (uint64_t)addr, size);
-  };
+  // auto allocateLibcReqs = [](void *addr, size_t size) {
+  //   produce_32_64_64(ALLOC, (uint64_t)addr, size);
+  // };
 
-  allocateLibcReqs((void*)&errno, sizeof(errno));
-  allocateLibcReqs((void*)&stdin, sizeof(stdin));
-  allocateLibcReqs((void*)&stdout, sizeof(stdout));
-  allocateLibcReqs((void*)&stderr, sizeof(stderr));
-  allocateLibcReqs((void*)&sys_nerr, sizeof(sys_nerr));
+  // allocateLibcReqs((void*)&errno, sizeof(errno));
+  // allocateLibcReqs((void*)&stdin, sizeof(stdin));
+  // allocateLibcReqs((void*)&stdout, sizeof(stdout));
+  // allocateLibcReqs((void*)&stderr, sizeof(stderr));
+  // allocateLibcReqs((void*)&sys_nerr, sizeof(sys_nerr));
 
-  const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
-  allocateLibcReqs((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
-  const int32_t* itype_ptr = (*__ctype_tolower_loc()) - 128;
-  allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
-  itype_ptr = (*__ctype_toupper_loc()) - 128;
-  allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
+  // const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
+  // allocateLibcReqs((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
+  // const int32_t* itype_ptr = (*__ctype_tolower_loc()) - 128;
+  // allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
+  // itype_ptr = (*__ctype_toupper_loc()) - 128;
+  // allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
+
+  // // FIXME: a dirty way to get xalancbmk to work
+  // auto locale = localeconv();
+  // auto decimal = locale->decimal_point;
+  // allocateLibcReqs((void*)locale, sizeof(*locale));
+  // allocateLibcReqs((void*)decimal, sizeof(*decimal));
 
   old_malloc_hook = __malloc_hook;
   // old_free_hook = __free_hook;

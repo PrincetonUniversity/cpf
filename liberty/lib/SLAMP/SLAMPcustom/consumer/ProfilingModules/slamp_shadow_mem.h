@@ -168,6 +168,7 @@ public:
 
     bool allocated = false;
 
+    bool after_lib = false;
     while (fgets(buf, sizeof(buf), fp) != nullptr) {
       uint64_t start, end;
       char name[5000];
@@ -176,8 +177,15 @@ public:
                      &end, name);
 
       if (n != 3) {
+        // if n == 2, could be the anonymous mapping after lib
+        // FIXME: double check this
+        if (n == 2 && after_lib) {
+          allocated = true;
+          allocate(reinterpret_cast<void *>(start), end - start);
+        }
         continue;
       }
+      after_lib = false;
 
       // FIXME: get heap start addr
       if (!strcmp(name, "[heap]")) {
@@ -192,6 +200,18 @@ public:
         allocate(reinterpret_cast<void *>(end - stack_size), stack_size);
         allocated = true;
         break;
+      }
+
+      // if contains libxxx.so, then allocate
+      if (strstr(name, ".so")) {
+        allocate(reinterpret_cast<void *>(start), end - start);
+        after_lib = true;
+        continue;
+      }
+
+      // locale
+      if (strstr(name, "locale")) {
+        allocate(reinterpret_cast<void *>(start), end - start);
       }
     }
 
