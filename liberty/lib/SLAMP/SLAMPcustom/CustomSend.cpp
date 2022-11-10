@@ -19,7 +19,6 @@
 
 namespace bip = boost::interprocess;
 
-
 static constexpr uint64_t QSIZE_GUARD = QSIZE - 8;
 
 static unsigned long counter_load = 0;
@@ -30,7 +29,8 @@ static unsigned long counter_invoc = 0;
 static unsigned long counter_iter = 0;
 // char local_buffer[LOCAL_BUFFER_SIZE];
 // unsigned buffer_counter = 0;
-static bool onProfiling = false;
+static int nested_level = 0;
+static bool on_profiling = false;
 
 static void *(*old_malloc_hook)(size_t, const void *);
 static void *(*old_realloc_hook)(void *, size_t, const void *);
@@ -230,15 +230,15 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   // local_buffer->push(pid);
   produce_32_32_32(INIT, loop_id, pid);
 
-  // auto allocateLibcReqs = [](void *addr, size_t size) {
-  //   produce_32_64_64(ALLOC, (uint64_t)addr, size);
-  // };
+  auto allocateLibcReqs = [](void *addr, size_t size) {
+    produce_32_64_64(ALLOC, (uint64_t)addr, size);
+  };
 
-  // allocateLibcReqs((void*)&errno, sizeof(errno));
-  // allocateLibcReqs((void*)&stdin, sizeof(stdin));
-  // allocateLibcReqs((void*)&stdout, sizeof(stdout));
-  // allocateLibcReqs((void*)&stderr, sizeof(stderr));
-  // allocateLibcReqs((void*)&sys_nerr, sizeof(sys_nerr));
+  allocateLibcReqs((void*)&errno, sizeof(errno));
+  allocateLibcReqs((void*)&stdin, sizeof(stdin));
+  allocateLibcReqs((void*)&stdout, sizeof(stdout));
+  allocateLibcReqs((void*)&stderr, sizeof(stderr));
+  allocateLibcReqs((void*)&sys_nerr, sizeof(sys_nerr));
 
   // const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
   // allocateLibcReqs((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
@@ -274,6 +274,11 @@ void SLAMP_fini(const char* filename){
   // sq_flushQueue(the_queue);
   dq->size = dq_index;
   dq->ready_to_read = true;
+
+  if (nested_level != 0) {
+    std::cerr << "Error: nested_level != 0 on exit" << std::endl;
+    exit(-1);
+  }
 }
 
 void SLAMP_allocated(uint64_t addr){}
@@ -288,6 +293,7 @@ void SLAMP_exit_fcn(uint32_t id){}
 void SLAMP_enter_loop(uint32_t id){}
 void SLAMP_exit_loop(uint32_t id){}
 void SLAMP_loop_iter_ctx(uint32_t id){}
+
 void SLAMP_loop_invocation(){
   // send a msg with "loop_invocation"
   // local_buffer->push(LOOP_INVOC);
@@ -295,9 +301,11 @@ void SLAMP_loop_invocation(){
 
   counter_ctx++;
 
-  onProfiling = true;
+  nested_level++;
+  on_profiling = true;
+
   // if (counter_invoc % 1 == 0) {
-    // onProfiling = true;
+    // on_profiling= true;
   // }
   counter_invoc++;
 }
@@ -309,17 +317,25 @@ void SLAMP_loop_iteration(){
 
 #ifdef SAMPLING_ITER
     if (counter_iter % 100 == 0) {
-      onProfiling = true;
+      on_profiling = true;
     }
     if (counter_iter % 100 == 10) { // 0-10000 out of 100000, sampling 10%
-      onProfiling = false;
+      on_profiling = false;
     }
     counter_iter++;
 #endif
 }
 
 void SLAMP_loop_exit(){
-  onProfiling = false;
+  nested_level--;
+  if (nested_level < 0) {
+    // huge problem
+    std::cerr << "Error: nested_level < 0" << std::endl;
+    exit(-1);
+  }
+  if (nested_level == 0) {
+    on_profiling = false;
+  }
 }
 
 void SLAMP_report_base_pointer_arg(uint32_t, uint32_t, void *ptr){}
@@ -339,7 +355,7 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // sprintf(msg, "load,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
   //
-  if (onProfiling) {
+  if (on_profiling) {
     produce_64_64(COMBINE_2_32(LOAD, instr), addr);
     counter_load++;
   }
@@ -384,7 +400,7 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // char msg[100];
   // sprintf(msg, "store,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
-  if (onProfiling) {
+  if (on_profiling) {
     // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
     produce_64_64(COMBINE_2_32(STORE, instr), addr);
     // produce_32_32_64(STORE, instr, addr);
