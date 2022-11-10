@@ -23,7 +23,10 @@ class LocalWriteModule {
 protected:
   const uint32_t LOCALWRITE_MASK{};
   const uint32_t LOCALWRITE_PATTERN{};
-  static constexpr uint32_t LOCALWRITE_SHIFT = 12; // PAGE SIZE 4096 = 2^12
+  // PAGE SIZE 4096 = 2^12; FIXME: here we can make it finer because we
+  // allocate 8 bytes of metadata per one byte of data, but changes to
+  // shadow memory needed
+  static constexpr uint32_t LOCALWRITE_SHIFT = 12;
   // takes in a lambda action and uint64_t addr
   template <typename F>
   inline void local_write(uint64_t addr, const F &action) {
@@ -50,7 +53,7 @@ private:
 
   slamp::MemoryMap *smmap = nullptr;
 
-  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 8> dep_set;
+  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 1> dep_set;
 
   void log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst,
            const uint64_t load_invocation, const uint64_t load_iteration);
