@@ -201,12 +201,13 @@ int main(int argc, char** argv) {
   dqB->init(dataB);
 
   // set the thread count
-  constexpr unsigned THREAD_COUNT = 8;
+  constexpr unsigned THREAD_COUNT = 1;
   constexpr unsigned MASK = THREAD_COUNT - 1;
 
   unsigned running_threads= THREAD_COUNT;
   std::mutex m;
   std::condition_variable cv;
+
 
   std::vector<std::thread> threads;
   DoubleQueue *dqs[THREAD_COUNT];
@@ -215,13 +216,21 @@ int main(int argc, char** argv) {
   for (unsigned i = 0; i < THREAD_COUNT; i++) {
     dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
     depMods[i] = new DependenceModule(MASK, i);
-
-    threads.emplace_back(std::thread([&](unsigned id) {
-          consume_loop(*dqs[id], *depMods[id]);
-    }, i));
   }
 
-  for (auto &t : threads) {
-    t.join();
+  if (THREAD_COUNT == 1) {
+    // single threaded, easy to debug
+    consume_loop(*dqs[0], *depMods[0]);
+  } else {
+    for (unsigned i = 0; i < THREAD_COUNT; i++) {
+      threads.emplace_back(std::thread([&](unsigned id) {
+            consume_loop(*dqs[id], *depMods[id]);
+            }, i));
+    }
+    for (auto &t : threads) {
+      t.join();
+    }
   }
+
+
 }
