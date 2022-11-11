@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <sys/mman.h>
 #include <xmmintrin.h>
+#include <smmintrin.h>
 #include <unistd.h>
 #include <mutex>
 #include <condition_variable>
@@ -68,6 +69,8 @@ struct DoubleQueue {
   std::mutex &m;
   std::condition_variable &cv;
   unsigned &running_threads;
+  // uint32_t packet[4];
+  __m128i packet;
 
   DoubleQueue(Queue_p dqA, Queue_p dqB, bool isConsumer, unsigned &threads, 
       std::mutex &m, std::condition_variable &cv)
@@ -139,54 +142,93 @@ struct DoubleQueue {
     }
   }
 
-  uint32_t consume32() {
-    uint32_t ret = data[index];
-    index++;
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
-    return ret;
-  }
+  // consume a 128 bit packet and return the opcode
+  uint32_t consumePacket() {
+    // load four 32 bit integers into uint32_t[4]
+    // packet[0] = data[index++];
+    // packet[1] = data[index++];
+    // packet[2] = data[index++];
+    // packet[3] = data[index++];
 
-  uint64_t consume64() {
-    uint64_t ret = *(uint64_t *) &data[index];
-    index += 2;
-    return ret;
-  }
+    // for (int i = 0; i < 16; i++) {
+    //   std::cout << data[index + i] << " ";
+    //   if (i % 4 == 3) {
+    //     std::cout << std::endl;
+    //   }
+    // }
 
-  void consume_64_64(uint64_t &x, uint64_t &y) {
-    uint64_t *ptr = (uint64_t *) &data[index];
-    x = ptr[0];
-    y = ptr[1];
+    // packet = _mm_load_si128((__m128i *) &data[index]);
+    packet = _mm_stream_load_si128((__m128i *) &data[index]);
     index += 4;
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+    return _mm_extract_epi32(packet, 0);
+    // return packet[0];
   }
 
-  void consume_32_32(uint32_t &x, uint32_t &y) {
-    uint32_t *ptr = &data[index];
-    x = ptr[0];
-    y = ptr[1];
-    index += 2;
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  void unpack_32_32(uint32_t &a, uint32_t &b) {
+    // a = packet[1];
+    // b = packet[2];
+    a = _mm_extract_epi32(packet, 1);
+    b = _mm_extract_epi32(packet, 2);
   }
 
-  void consume_32_64(uint32_t &x, uint64_t &y) {
-    uint32_t *ptr = &data[index];
-    x = ptr[0];
-    y = *(uint64_t *) &ptr[1];
-    index += 3;
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  void unpack_32_64(uint32_t &a, uint64_t &c) {
+    // std::cout << packet[0] << " " << packet[1] << " " << packet[2] << " " << packet[3] << std::endl;
+    // a = packet[1];
+    // c = ((uint64_t) packet[3] << 32) | packet[2];
+    // c = ((uint64_t) packet[2] << 32) | packet[3];
+    // c = *(uint64_t*) &packet[2];
+    a = _mm_extract_epi32(packet, 1);
+    c = _mm_extract_epi64(packet, 1);
   }
 
-  void consume_32_32_64(uint32_t &x, uint32_t &y, uint64_t &z) {
-    uint32_t *ptr = &data[index];
-    x = ptr[0];
-    y = ptr[1];
-    z = *(uint64_t *) &ptr[2];
-    index += 4;
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
-    // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
-  }
+  // uint32_t consume32() {
+  //   uint32_t ret = data[index];
+  //   index++;
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  //   return ret;
+  // }
+
+  // uint64_t consume64() {
+  //   uint64_t ret = *(uint64_t *) &data[index];
+  //   index += 2;
+  //   return ret;
+  // }
+
+  // void consume_64_64(uint64_t &x, uint64_t &y) {
+  //   uint64_t *ptr = (uint64_t *) &data[index];
+  //   x = ptr[0];
+  //   y = ptr[1];
+  //   index += 4;
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  // }
+
+  // void consume_32_32(uint32_t &x, uint32_t &y) {
+  //   uint32_t *ptr = &data[index];
+  //   x = ptr[0];
+  //   y = ptr[1];
+  //   index += 2;
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  // }
+
+  // void consume_32_64(uint32_t &x, uint64_t &y) {
+  //   uint32_t *ptr = &data[index];
+  //   x = ptr[0];
+  //   y = *(uint64_t *) &ptr[1];
+  //   index += 3;
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  // }
+
+  // void consume_32_32_64(uint32_t &x, uint32_t &y, uint64_t &z) {
+  //   uint32_t *ptr = &data[index];
+  //   x = ptr[0];
+  //   y = ptr[1];
+  //   z = *(uint64_t *) &ptr[2];
+  //   index += 4;
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_T0);
+  //   // _mm_prefetch(&dq_data[dq_index] + QPREFETCH, _MM_HINT_NTA);
+  // }
 };
 #endif /* SW_QUEUE_H */

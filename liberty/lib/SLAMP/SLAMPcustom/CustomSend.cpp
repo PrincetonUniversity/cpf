@@ -4,6 +4,7 @@
 #include <boost/interprocess/interprocess_fwd.hpp>
 #include <cstdint>
 #include <cstdio>
+#include <emmintrin.h>
 #include <iostream>
 #include "malloc.h"
 
@@ -19,7 +20,7 @@
 
 namespace bip = boost::interprocess;
 
-static constexpr uint64_t QSIZE_GUARD = QSIZE - 8;
+static constexpr uint64_t QSIZE_GUARD = QSIZE - 60;
 
 static unsigned long counter_load = 0;
 static unsigned long counter_store = 0;
@@ -69,13 +70,18 @@ static void produce_wait() ATTRIBUTE(noinline){
   total_swapped++;
 }
 
+// the packet is always 128bit, pad  with 0
 static void produce_32(uint32_t x) ATTRIBUTE(noinline){
 #ifdef MM_STREAM
+  // _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi32(0, 0, 0, x));
   _mm_stream_si32((int *) &dq_data[dq_index], x);
 #else
   dq_data[dq_index] = x;
+  // dq_data[dq_index + 1] = 0;
+  // dq_data[dq_index + 2] = 0;
+  // dq_data[dq_index + 3] = 0;
 #endif
-  dq_index++;
+  dq_index += 4;
 
   if (dq_index >= QSIZE_GUARD) [[unlikely]] {
     produce_wait();
@@ -84,8 +90,9 @@ static void produce_32(uint32_t x) ATTRIBUTE(noinline){
 
 static void produce_64_64(const uint64_t x, const uint64_t y) ATTRIBUTE(noinline){
 #ifdef MM_STREAM
-  _mm_stream_si64((long long *) &dq_data[dq_index], x);
-  _mm_stream_si64((long long *) &dq_data[dq_index + 2], y);
+  _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi64x(y, x));
+  // _mm_stream_si64((long long *) &dq_data[dq_index], x);
+  // _mm_stream_si64((long long *) &dq_data[dq_index + 2], y);
 #else
   *((uint64_t *) &dq_data[dq_index]) = x;
   *((uint64_t *) &dq_data[dq_index + 2]) = y;
@@ -100,9 +107,11 @@ static void produce_64_64(const uint64_t x, const uint64_t y) ATTRIBUTE(noinline
 // static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) {
 static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinline) {
 #ifdef MM_STREAM
+  // FIXME: set 32bit x, 32bit y, 64bit z, small endian
   _mm_stream_si32((int *) &dq_data[dq_index], x);
-  _mm_stream_si32((int *) &dq_data[dq_index+1], y);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+2], (__m64)z);
+  _mm_stream_si32((int *) &dq_data[dq_index + 1], y);
+  _mm_stream_si64((long long *) &dq_data[dq_index + 2], z);
+  // _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi32( z >> 32, z & 0xFFFFFFFF, y, x));
 #else
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
@@ -116,36 +125,39 @@ static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinl
 
 static void produce_32_32_32(uint32_t x, uint32_t y, uint32_t z) ATTRIBUTE(noinline) {
 #ifdef MM_STREAM
-  _mm_stream_si32((int *) &dq_data[dq_index], x);
-  _mm_stream_si32((int *) &dq_data[dq_index+1], y);
-  _mm_stream_si32((int *) &dq_data[dq_index+2], z);
+  _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi32(0, z, y, x));
+
+  // _mm_stream_si32((int *) &dq_data[dq_index], x);
+  // _mm_stream_si32((int *) &dq_data[dq_index+1], y);
+  // _mm_stream_si32((int *) &dq_data[dq_index+2], z);
 #else
   dq_data[dq_index] = x;
   dq_data[dq_index+1] = y;
   dq_data[dq_index+2] = z;
+  dq_data[dq_index+3] = 0;
 #endif
-  dq_index += 3;
+  dq_index += 4;
   if (dq_index >= QSIZE_GUARD) [[unlikely]] {
     produce_wait();
   }
 }
 
 
-static void produce_32_64_64(uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
-#ifdef MM_STREAM
-  _mm_stream_si32((int *) &dq_data[dq_index], x);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
-  _mm_stream_pi((__m64*)&dq_data[dq_index+3], (__m64)z);
-#else
-  dq_data[dq_index] = x;
-  *(uint64_t*)&dq_data[dq_index+1] = y;
-  *(uint64_t*)&dq_data[dq_index+3] = z;
-#endif
-  dq_index += 5;
-  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
-    produce_wait();
-  }
-}
+// static void produce_32_64_64(uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline) {
+// #ifdef MM_STREAM
+  // _mm_stream_si32((int *) &dq_data[dq_index], x);
+  // _mm_stream_pi((__m64*)&dq_data[dq_index+1], (__m64)y);
+  // _mm_stream_pi((__m64*)&dq_data[dq_index+3], (__m64)z);
+// #else
+  // dq_data[dq_index] = x;
+  // *(uint64_t*)&dq_data[dq_index+1] = y;
+  // *(uint64_t*)&dq_data[dq_index+3] = z;
+// #endif
+  // dq_index += 5;
+  // if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    // produce_wait();
+  // }
+// }
 
 
 // #define CONSUME         sq_consume(the_queue);
@@ -231,7 +243,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   produce_32_32_32(INIT, loop_id, pid);
 
   auto allocateLibcReqs = [](void *addr, size_t size) {
-    produce_32_64_64(ALLOC, (uint64_t)addr, size);
+    produce_32_32_64(ALLOC, size, (uint64_t)addr);
   };
 
   allocateLibcReqs((void*)&errno, sizeof(errno));
@@ -284,7 +296,8 @@ void SLAMP_fini(const char* filename){
 void SLAMP_allocated(uint64_t addr){}
 void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size){
   // local_buffer->push(ALLOC)->push(addr)->push(size);
-  produce_32_64_64(ALLOC, addr, size);
+
+  produce_32_32_64(ALLOC, size, addr);
 }
 void SLAMP_main_entry(uint32_t argc, char** argv, char** env){}
 
@@ -402,8 +415,8 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // queue->push(shm::shared_string(msg, *char_alloc));
   if (on_profiling) {
     // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
-    produce_64_64(COMBINE_2_32(STORE, instr), addr);
-    // produce_32_32_64(STORE, instr, addr);
+    // produce_64_64(COMBINE_2_32(STORE, instr), addr);
+    produce_32_32_64(STORE, instr, addr);
     counter_store++;
   }
 }
@@ -446,7 +459,8 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* ptr = malloc(size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  produce_32_64_64(ALLOC, (uint64_t)ptr, size);
+  //
+  produce_32_32_64(ALLOC, size, (uint64_t)ptr);
   // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -458,7 +472,7 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   void* new_ptr = realloc(ptr, size);
   // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
   // produce_3(ALLOC, (uint64_t)new_ptr, size);
-  produce_32_64_64(ALLOC, (uint64_t)new_ptr, size);
+  produce_32_32_64(ALLOC, size, (uint64_t)new_ptr);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -473,7 +487,7 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   void* ptr = memalign(alignment, size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
   // produce_3(ALLOC, (uint64_t)ptr, size);
-  produce_32_64_64(ALLOC, (uint64_t)ptr, size);
+  produce_32_32_64(ALLOC, size, (uint64_t)ptr);
 
   // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;
