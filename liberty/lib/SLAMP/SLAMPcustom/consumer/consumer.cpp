@@ -210,7 +210,7 @@ int main(int argc, char** argv) {
   dqB->init(dataB);
 
   // set the thread count
-  constexpr unsigned THREAD_COUNT = 8;
+  constexpr unsigned THREAD_COUNT = 1;
   constexpr unsigned MASK = THREAD_COUNT - 1;
 
   unsigned running_threads= THREAD_COUNT;
@@ -245,9 +245,6 @@ int main(int argc, char** argv) {
     }
 
     for (unsigned i = 0; i < THREAD_COUNT; i++) {
-      std::stringstream ss;
-      ss << "deplog-" << i << ".txt";
-      depMods[i]->fini(ss.str().c_str());
       if (i != 0) {
         depMods[0]->merge_dep(*depMods[i]);
       }
