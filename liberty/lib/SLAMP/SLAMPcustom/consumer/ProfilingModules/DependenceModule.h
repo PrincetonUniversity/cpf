@@ -53,7 +53,7 @@ private:
 
   slamp::MemoryMap *smmap = nullptr;
 
-  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 1> dep_set;
+  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 56> dep_set;
 
   void log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst,
            const uint64_t load_invocation, const uint64_t load_iteration);
@@ -64,6 +64,8 @@ public:
     smmap = new slamp::MemoryMap(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
   }
 
+  ~DependenceModule() override { delete smmap; }
+
   void init(uint32_t loop_id, uint32_t pid);
   void fini(const char *filename);
   // always_inline attribute
@@ -73,4 +75,6 @@ public:
   void allocate(void *addr, uint64_t size);
   void loop_invoc();
   void loop_iter();
+
+  void merge_dep(DependenceModule &other);
 };

@@ -32,9 +32,10 @@ class HTSet {
 private:
   std::vector<T> buffer;
   std::mutex m;
+  using hash_set_t = hash_set<T, Hash, KeyEqual>;
 
 public:
-  hash_set<T, Hash, KeyEqual> set;
+  hash_set_t set;
   HTSet() { buffer.reserve(BUFFER_SIZE); }
 
   void emplace_back(T &&t) {
@@ -60,6 +61,18 @@ public:
     convertVectorToSet();
     return set.end();
   }
+
+  void merge_set(HTSet &other) {
+    merge_set(other.begin(), other.end());
+  }
+
+  // insert (begin, end)
+  void merge_set(typename hash_set_t::iterator begin, typename hash_set_t::iterator end) {
+    for (auto it = begin; it != end; ++it) {
+      set.insert(*it);
+    }
+  }
+
 
 private:
   // TODO: adaptive thread count

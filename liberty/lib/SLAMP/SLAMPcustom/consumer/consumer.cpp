@@ -53,10 +53,11 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
     }
   };
 
+  bool finished = false;
   while (true) {
     dq.check();
     uint32_t v;
-    v = dq.consume32();
+    v = dq.consumePacket();
     counter++;
 
     switch (v) {
@@ -64,7 +65,7 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       uint32_t pid;
       // loop_id = (uint32_t)dq.consume();
       // pid = (uint32_t)dq.consume();
-      dq.consume_32_32(loop_id, pid);
+      dq.unpack_32_32(loop_id, pid);
       rdtsc_start = rdtsc();
 
       if (DEBUG) {
@@ -81,7 +82,7 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       // uint32_t bare_instr;
       uint64_t value = 0;
 
-      dq.consume_32_64(instr, addr);
+      dq.unpack_32_64(instr, addr);
 
       if (DEBUG) {
         std::cout << "LOAD: " << instr << " " << addr // << " " << bare_instr
@@ -99,7 +100,7 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       uint32_t instr;
       // uint32_t bare_instr;
       uint64_t addr;
-      dq.consume_32_64(instr, addr);
+      dq.unpack_32_64(instr, addr);
 
       if (DEBUG) {
         std::cout << "STORE: " << instr << " " << addr // << " " << bare_instr
@@ -114,8 +115,8 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
     };
     case Action::ALLOC: {
       uint64_t addr;
-      uint64_t size;
-      dq.consume_64_64(addr, size);
+      uint32_t size;
+      dq.unpack_32_64(size, addr);
 
       if (DEBUG) {
         std::cout << "ALLOC: " << addr << " " << size << std::endl;
@@ -147,11 +148,12 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       break;
     };
     case Action::FINISHED: {
-      if (ACTION) {
-        std::stringstream ss;
-        ss << "deplog-" << loop_id << ".txt";
-        depMod.fini(ss.str().c_str());
-      }
+
+      // if (ACTION) {
+      //   std::stringstream ss;
+      //   ss << "deplog-" << loop_id << ".txt";
+      //   depMod.fini(ss.str().c_str());
+      // }
 
       uint64_t rdtsc_end = rdtsc();
       // total cycles
@@ -165,7 +167,7 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
         std::cout << "Store time: " << store_time / 2.6e9 << " s" << std::endl;
         std::cout << "Alloc time: " << alloc_time / 2.6e9 << " s" << std::endl;
       }
-      exit(0);
+      finished = true;
 
       break;
     };
@@ -185,8 +187,10 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
     // if (counter % 100'000'000 == 0) {
       // std::cout << "Processed " << counter / 1'000'000 << "M events" << std::endl;
     // }
+    if (finished) {
+      break;
+    }
   }
-
 }
 
 int main(int argc, char** argv) {
@@ -198,11 +202,15 @@ int main(int argc, char** argv) {
   dqB = segment->construct<Queue>("DQ_B")(Queue());
   auto dataA = segment->construct<uint32_t>("DQ_Data_A")[QSIZE]();
   auto dataB = segment->construct<uint32_t>("DQ_Data_B")[QSIZE]();
+
+  // find the first 16byte alignment 
+  dataA = (uint32_t*)(((uint64_t)dataA + 15) & ~15);
+  dataB = (uint32_t*)(((uint64_t)dataB + 15) & ~15);
   dqA->init(dataA);
   dqB->init(dataB);
 
   // set the thread count
-  constexpr unsigned THREAD_COUNT = 1;
+  constexpr unsigned THREAD_COUNT = 8;
   constexpr unsigned MASK = THREAD_COUNT - 1;
 
   unsigned running_threads= THREAD_COUNT;
@@ -222,6 +230,8 @@ int main(int argc, char** argv) {
     std::cout << "Running in main thread" << std::endl;
     // single threaded, easy to debug
     consume_loop(*dqs[0], *depMods[0]);
+
+    depMods[0]->fini("deplog.txt");
   } else {
     std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
     for (unsigned i = 0; i < THREAD_COUNT; i++) {
@@ -229,8 +239,20 @@ int main(int argc, char** argv) {
             consume_loop(*dqs[id], *depMods[id]);
             }, i));
     }
+
     for (auto &t : threads) {
       t.join();
     }
+
+    for (unsigned i = 0; i < THREAD_COUNT; i++) {
+      std::stringstream ss;
+      ss << "deplog-" << i << ".txt";
+      depMods[i]->fini(ss.str().c_str());
+      if (i != 0) {
+        depMods[0]->merge_dep(*depMods[i]);
+      }
+    }
+
+    depMods[0]->fini("deplog.txt");
   }
 }

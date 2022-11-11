@@ -28,31 +28,30 @@ void DependenceModule::init(uint32_t loop_id, uint32_t pid) {
 
 }
 
-static uint64_t log_time = 0;
+// static uint64_t log_time = 0;
 
 
 void DependenceModule::fini(const char *filename) {
   std::cout << "Load count: " << load_count << std::endl;
   std::cout << "Store count: " << store_count << std::endl;
 
-  // std::ofstream of(filename);
-  // of << target_loop_id << " " << 0 << " " << 0 << " "
-       // << 0 << " " << 0 << " " << 0 << "\n";
+  std::ofstream of(filename);
+  of << target_loop_id << " " << 0 << " " << 0 << " "
+       << 0 << " " << 0 << " " << 0 << "\n";
 
-  // std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
-  // for (auto &k: ordered) {
-    // of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
-       // << (k.cross ? 1 : 0) << " " << 1 << " ";
-    // of << "\n";
-  // }
+  std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
+  for (auto &k: ordered) {
+    of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
+       << (k.cross ? 1 : 0) << " " << 1 << " ";
+    of << "\n";
+  }
 
   // std::cout << "Log time: " << log_time/ 2.6e9 << " s" << std::endl;
 
   // for (auto &i : *inst_count) {
-    // of << target_loop_id << " " << i.first << " " << i.second << "\n";
+  //   of << target_loop_id << " " << i.first << " " << i.second << "\n";
   // }
 
-  delete smmap;
 }
 
 void DependenceModule::allocate(void *addr, uint64_t size) {
@@ -115,4 +114,8 @@ void DependenceModule::loop_invoc() {
 
 void DependenceModule::loop_iter() {
   slamp_iteration++;
+}
+
+void DependenceModule::merge_dep(DependenceModule &other) {
+  dep_set.merge_set(other.dep_set);
 }
