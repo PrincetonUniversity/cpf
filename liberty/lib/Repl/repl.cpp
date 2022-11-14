@@ -1,8 +1,8 @@
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Orchestration/PSDSWPCritic.h"
-#include "liberty/Speculation/PDGBuilder.hpp"
 #include "liberty/Strategy/ProfilePerformanceEstimator.h"
+#include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/ReportDump.h"
 #include "scaf/Utilities/Metadata.h"
 #include "llvm/Pass.h"
@@ -25,276 +25,117 @@
 #include "noelle/core/LoopDependenceInfo.hpp"
 #include "ReplParse.hpp"
 
+#include "noelle/tools/Repl.hpp"
+
 using namespace llvm;
 using namespace std;
 using namespace liberty;
 using namespace llvm::noelle;
 
-cl::opt<string> HistoryFileName("history", cl::desc("Specify command history file name"), cl::init(""));
+cl::opt<string> HistoryFileName("cpf-repl-history", cl::desc("Specify command history file name"), cl::init(""));
 
-class OptRepl : public ModulePass {
+class CpfRepl : public ModulePass {
   public:
     static char ID;
     void getAnalysisUsage(AnalysisUsage &au) const;
-    StringRef getPassName() const { return "remed-selector"; }
+    StringRef getPassName() const { return "cpf-repl"; }
     bool runOnModule(Module &M);
-    OptRepl() : ModulePass(ID) {}
+    CpfRepl() : ModulePass(ID) {}
 };
 
-char OptRepl::ID = 0;
-static RegisterPass<OptRepl> rp("opt-repl", "Opt Repl");
+char CpfRepl::ID = 0;
+static RegisterPass<CpfRepl> rp("cpf-repl", "CPF Repl");
 
-void OptRepl::getAnalysisUsage(AnalysisUsage &au) const {
+void CpfRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired<Noelle>();
   au.addRequired<ModuleLoops>();
   au.addRequired<Targets>();
-  au.addRequired<PDGBuilder>();
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
+  au.addRequired< LoopInfoWrapperPass >();
   au.setPreservesAll();
 }
 
-typedef map<unsigned, DGNode<Value> *> InstIdMap_t;
-typedef map<DGNode<Value> *, unsigned> InstIdReverseMap_t;
-typedef map<unsigned, DGEdge<Value> *> DepIdMap_t;
-typedef map<DGEdge<Value> *, uint32_t> DepIdReverseMap_t;
+class CpfReplDriver: public Repl::ReplDriver {
+  private:
+    LoopAA* loopAA;
+    const Targets &targets;
+    ModuleLoops &mloops;
+    vector<LoopAA*> loopAAs;
+    Pass &pass;
+    vector<bool> loopAAEnabled;
 
-// helper function to generate
-static unique_ptr<InstIdMap_t> createInstIdMap(PDG *pdg) {
-  auto instIdMap = std::make_unique<InstIdMap_t>();
-  unsigned instId = 0;
-  for (auto &instNode : pdg->getNodes()) {
-    instIdMap->insert(make_pair(instId, instNode));
-    instId++;
-  }
+    Loop *getSelectedLLVMLoop() {
+      auto loops = &pass.getAnalysis<LoopInfoWrapperPass>(*selectedLoop->getLoopStructure()->getFunction()).getLoopInfo();
+      auto loop = loops->getLoopFor(selectedLoop->getLoopStructure()->getHeader());
+      return loop;
+    }
 
-  return instIdMap;
-}
+  public:
+    CpfReplDriver(Noelle &noelle, Module &m, LoopAA* loopAA, const Targets &targets, ModuleLoops &mloops, Pass &pass) : ReplDriver(noelle, m), loopAA(loopAA), targets(targets), mloops(mloops), pass(pass) {
+      // initialize loop aa
+      auto aa = loopAA;
+      while (aa) {
+        loopAAs.push_back(aa);
+        aa = aa->getNextAA();
+      }
+      unsigned numLoopAAs = loopAAs.size();
+      loopAAEnabled = vector<bool>(numLoopAAs, true);
 
-static unique_ptr<InstIdReverseMap_t> createInstIdLookupMap(InstIdMap_t m) {
-  auto lookupMap = std::make_unique<InstIdReverseMap_t>();
-  for (auto &[instId, node] : m) {
-    lookupMap->insert(make_pair(node, instId));
-  }
+      outs() << "LoopAA (" << numLoopAAs << "): ";
+      loopAA->dump();
+    }
 
-  return lookupMap;
-}
+    string prompt() override {
+      stringstream ss;
+      ss << "(cpf-repl";
+      if (selectedLoopId != -1)
+        ss << " loop " << selectedLoopId;
+      ss << ") ";
+      return ss.str();
+    }
 
-static shared_ptr<DepIdReverseMap_t> createDepIdLookupMap(DepIdMap_t m) {
-  auto lookupMap = std::make_shared<DepIdReverseMap_t>();
-  for (auto &[instId, node] : m) {
-    lookupMap->insert(make_pair(node, instId));
-  }
+    void createLoopMap() override {
 
-  return lookupMap;
-}
-
-// a simple autocompletion generator
-char* completion_generator(const char* text, int state) {
-  // This function is called with state=0 the first time; subsequent calls are
-  // with a nonzero state. state=0 can be used to perform one-time
-  // initialization for this completion session.
-  static std::vector<std::string> matches;
-  static size_t match_index = 0;
-
-  if (state == 0) {
-    // During initialization, compute the actual matches for 'text' and keep
-    // them in a static vector.
-    matches.clear();
-    match_index = 0;
-
-    // Collect a vector of matches: vocabulary words that begin with text.
-    std::string textstr = std::string(text);
-    for (auto word : ReplVocab) {
-      if (word.size() >= textstr.size() &&
-          word.compare(0, textstr.size(), textstr) == 0) {
-        matches.push_back(word);
+      outs() << "CPF create loop map\n";
+      
+      // prepare hot loops from the targets
+      unsigned loopId = 0;
+      for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
+          i != e; ++i) {
+        Loop *loop = *i;
+        LoopStructure loopStructure(loop);
+        auto ldi = noelle.getLoop(&loopStructure);
+        loopIdMap[loopId++] = ldi;
+        continue;
       }
     }
-  }
 
-  if (match_index >= matches.size()) {
-    // We return nullptr to notify the caller no more matches are available.
-    return nullptr;
-  } else {
-    // Return a malloc'd char* for the match. The caller frees it.
-    return strdup(matches[match_index++].c_str());
-  }
-}
+    void loopsFn() override {
 
-char** completer(const char* text, int start, int end) {
-  // Don't do filename completion even if our generator finds no matches.
-  rl_attempted_completion_over = 1;
-
-  // Note: returning nullptr here will make readline use the default filename
-  // completer.
-  return rl_completion_matches(text, completion_generator);
-}
-
-
-bool OptRepl::runOnModule(Module &M) {
-  bool modified = false;
-
-  auto &noelle = getAnalysis<Noelle>();
-
-  ModuleLoops &mloops = getAnalysis<ModuleLoops>();
-  const Targets &targets = getAnalysis<Targets>();
-  PDGBuilder &pdgbuilder = getAnalysis<PDGBuilder>();
-
-  // store the loopID
-  map<unsigned, Loop *> loopIdMap;
-
-  // the selected information
-  llvm::Function *selectedFunction; // TODO: not used yet
-  Loop *selectedLoop;
-  unique_ptr<PDG> selectedPDG;
-  unique_ptr<SCCDAG> selectedSCCDAG;
-
-  unique_ptr<InstIdMap_t> instIdMap;
-  unique_ptr<InstIdReverseMap_t> instIdLookupMap;
-  unique_ptr<DepIdMap_t> depIdMap;
-  shared_ptr<DepIdReverseMap_t> depIdLookupMap;
-
-  // have a vector of all the loop aas
-  LoopAA* loopAA = (LoopAA*)getSCAFLoopAA();
-  vector<LoopAA*> loopAAs;
-  auto aa = loopAA;
-  while (aa) {
-    loopAAs.push_back(aa);
-    aa = aa->getNextAA();
-  }
-  unsigned numLoopAAs = loopAAs.size();
-  vector<bool> loopAAEnabled(numLoopAAs, true);
-
-  outs() << "LoopAA (" << numLoopAAs << "): ";
-  loopAA->dump();
-
-  // prepare hot loops from the targets
-  {
-    unsigned loopId = 0;
-    for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
-         i != e; ++i) {
-      Loop *loop = *i;
-      loopIdMap[loopId++] = loop;
-      continue;
-    }
-  }
-
-  rl_attempted_completion_function = completer;
-  int selectLoopId = -1;
-  bool quit = false;
-  auto mainLoop = [&](string &query) {
-    // check if it's quit or unknown
-    ReplParser parser(query);
-    if (parser.getAction() == ReplAction::Quit) {
-      quit = true;
-      return;
-    }
-
-    if (parser.getAction() == ReplAction::Unknown) {
-      outs() << "Unknown command!\n";
-      return;
-    }
-
-    // print all loops
-    auto loopsFn = [&loopIdMap]() {
       outs() << "List of hot loops:\n";
 
+      auto &load = pass.getAnalysis< LoopProfLoad >();
+
       for (auto &[loopId, loop] : loopIdMap) {
-        outs() << loopId << ": " << loop->getHeader()->getParent()->getName()
-               << "::" << loop->getHeader()->getName() << '\n';
+        auto header = loop->getLoopStructure()->getHeader();
+        outs() << loopId << ": " << header->getName()
+               << "::" << header->getName();
+        Instruction *term = header->getTerminator();
+        if (term)
+          liberty::printInstDebugInfo(term);
+
+        char percent[10];
+        const unsigned long loop_time = load.getLoopTime(header);
+
+        snprintf(percent,10, "%.1f", 100.0 * loop_time / load.getTotTime());
+        errs() << "\tTime " << loop_time << " / " << load.getTotTime()
+          << " Coverage: " << percent << "%\n";
       }
-    };
-
-    // select one loop
-    auto selectFn = [&selectLoopId, &loopIdMap, &parser, &selectedLoop, &selectedPDG, &selectedSCCDAG, &pdgbuilder, &instIdMap, &instIdLookupMap, &noelle]() {
-      int loopId = parser.getActionId();
-      if (loopId == -1) {
-        outs() << "No number specified\n";
-        return;
-      }
-      selectLoopId = loopId;
-
-      if (loopIdMap.find(loopId) == loopIdMap.end()) {
-        outs() << "Loop " << loopId << " does not exist\n";
-        return;
-      }
-
-      Loop *loop = loopIdMap[loopId];
-      outs() << "Selecting loop " << loopId << ": ";
-      outs() << loop->getHeader()->getParent()->getName()
-             << "::" << loop->getHeader()->getName() << '\n';
-      selectedLoop = loop;
-
-      //selectedPDG = pdgbuilder.getLoopPDG(loop);
-      LoopStructure loopStructure(loop);
-      auto ldi = noelle.getLoop(&loopStructure);
-
-      selectedPDG = std::make_unique<PDG>(*(ldi->getLoopDG()));
-
-      selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
-
-      instIdMap = createInstIdMap(selectedPDG.get());
-      instIdLookupMap = createInstIdLookupMap(*instIdMap);
-    };
-
-    // show help
-    auto helpFn = [&parser]() {
-      string action = parser.getStringAfterAction();
-      if (ReplActions.find(action) != ReplActions.end()) {
-        outs() << HelpText.at(ReplActions.at(action)) << "\n";
-      }
-      else {
-        for (auto &[action, explaination] : HelpText) {
-          outs() << explaination << "\n";
-        }
-      }
-    };
-
-    // early checks for several actions that do not need the loop set
-    if (parser.getAction() == ReplAction::Loops) {
-      loopsFn();
-      return;
     }
 
-    if (parser.getAction() == ReplAction::Select) {
-      selectFn();
-      return;
-    }
+    void instsFn() override {
 
-    if (parser.getAction() == ReplAction::Help){
-      helpFn();
-      return;
-    }
-
-    // after this assume the loop has been selected
-    if (!selectedLoop) {
-      outs() << "No loops selected\n";
-      return;
-    }
-
-    // dump information about the loop
-    auto dumpFn = [&parser, &selectedLoop, &selectedPDG, &selectedSCCDAG]() {
-      outs() << *selectedLoop;
-      outs() << "Number of instructions: "
-             << selectedPDG->getNumberOfInstructionsIncluded() << "\n";
-      outs() << "Number of dependences: "
-             << selectedPDG->getNumberOfDependencesBetweenInstructions()
-             << "\n";
-      outs() << "Number of SCCs: " << selectedSCCDAG->numNodes();
-
-      outs() << "\n";
-
-      if (parser.isVerbose()) {
-        for (auto block : selectedLoop->getBlocks()) {
-          outs() << *block;
-        }
-      }
-      outs() << "\n";
-    };
-
-    // show instructions with id
-    auto instsFn = [&parser, &instIdMap]() {
       auto printDebug = parser.isVerbose();
       int queryInstId = parser.getActionId();
 
@@ -316,7 +157,8 @@ bool OptRepl::runOnModule(Module &M) {
         }
 
         if (!found) {
-          outs() << "Instruction with NamerId " << queryInstId << " not found\n";
+          outs() << "Instruction with NamerId " << queryInstId
+                 << " not found\n";
         }
       } else { // print all instructions
         for (auto &[instId, node] : *instIdMap) {
@@ -334,131 +176,20 @@ bool OptRepl::runOnModule(Module &M) {
             liberty::printInstDebugInfo(inst);
           }
 
-          outs()<< "\n";
+          outs() << "\n";
         }
       }
-    };
+    }
 
-    // helper function for dumping edge
-    auto dumpEdge = [&instIdLookupMap](unsigned depId, DGEdge<Value> *edge) {
-      auto idA = instIdLookupMap->at(edge->getOutgoingNode());
-      auto idB = instIdLookupMap->at(edge->getIncomingNode());
-      outs() << depId << "\t" << idA << "->" << idB << ":\t" << edge->toString() << (edge->isLoopCarriedDependence() ? "(LC)" : "(LL)")
-             << "\n";
-    };
+    void parallelizeFn() override {
 
-    // show all deps with id; also generate a currentPDG.dot file, the edge number is annotated on the PDG
-    auto depsFn = [&instIdLookupMap, &parser, &depIdMap, &depIdLookupMap, &selectedPDG, &dumpEdge, &instIdMap]() {
-      int fromId = parser.getFromId();
-      int toId = parser.getToId();
-      if (fromId != -1) {
-        if (instIdMap->find(fromId) == instIdMap->end()) {
-          outs() << "From InstId " << fromId<< " not found\n";
-          return;
-        }
-      }
-
-      if (toId != -1) {
-        if (instIdMap->find(toId) == instIdMap->end()) {
-          outs() << "To InstId " << toId<< " not found\n";
-          return;
-        }
-      }
-
-      depIdMap = std::make_unique<DepIdMap_t>();
-      unsigned id = 0;
-      if (fromId == -1 && toId == -1) { // both not specified
-        for (auto &edge : selectedPDG->getEdges()) {
-          dumpEdge(id, edge);
-          depIdMap->insert(make_pair(id++, edge));
-        }
-      } else if (fromId != -1 && toId != -1) { // both specified
-        auto fromNode = instIdMap->at(fromId);
-        auto toNode = instIdMap->at(toId);
-        for (auto &edge : fromNode->getOutgoingEdges()) {
-          if (edge->getIncomingNode() == toNode) {
-            dumpEdge(id, edge);
-            depIdMap->insert(make_pair(id++, edge));
-          }
-        }
-      } else if (fromId != -1) { // from is specified
-        auto node = instIdMap->at(fromId);
-        for (auto &edge : node->getOutgoingEdges()) {
-          dumpEdge(id, edge);
-          depIdMap->insert(make_pair(id++, edge));
-        }
-      } else if (toId != -1) { // to is specified
-        auto node = instIdMap->at(toId);
-        for (auto &edge : node->getIncomingEdges()) {
-          dumpEdge(id, edge);
-          depIdMap->insert(make_pair(id++, edge));
-        }
-      }
-
-      depIdLookupMap = createDepIdLookupMap(*depIdMap);
-      selectedPDG->setDepLookupMap(depIdLookupMap);
-      llvm::noelle::DGPrinter::writeClusteredGraph<PDG, Value>("currentPDG.dot", selectedPDG.get());
-    };
-
-    // remove a dependence
-    auto removeFn = [&parser, &depIdMap, &selectedPDG, &selectedSCCDAG]() {
-      int depId = parser.getActionId();
-      if (depId == -1) {
-        outs() << "No number specified\n";
-        return;
-      }
-
-      if (depIdMap->find(depId) == depIdMap->end()) {
-        outs() << "DepId" << depId << " not found\n";
-        return;
-      }
-
-      auto dep = depIdMap->at(depId);
-      selectedPDG->removeEdge(dep);
-      // update SCCDAG
-      selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
-    };
-
-    // remove all dependence from a instruction node
-    auto removeAllFromInstFn = [&parser, &instIdMap, &selectedPDG, &selectedSCCDAG]() {
-      int instId = parser.getActionId();
-      if (instId == -1) {
-        outs() << "No number specified\n";
-        return;
-      }
-
-      if (instIdMap->find(instId) == instIdMap->end()) {
-        outs() << "InstId" << instId << " not found\n";
-        return;
-      }
-
-      auto node = instIdMap->at(instId);
-      list<llvm::noelle::DGEdge<Value>*> edgesToRemove;
-      for (auto &edge : node->getOutgoingEdges()) {
-        edgesToRemove.push_back(edge);
-      }
-
-      for (auto &edge : node->getIncomingEdges()) {
-        edgesToRemove.push_back(edge);
-      }
-
-      for (auto edge : edgesToRemove) {
-        selectedPDG->removeEdge(edge);
-      }
-      // update SCCDAG
-      selectedSCCDAG = std::make_unique<SCCDAG>(selectedPDG.get());
-    };
-
-
-    // try to parallelize
-    auto parallelizeFn = [&parser, this, &selectedPDG, &selectedLoop]() {
       int threadBudget = parser.getActionId();
       if (threadBudget == -1) {
         threadBudget = 28;
       }
 
-      LoopProfLoad *lpl = &getAnalysis<LoopProfLoad>();
-      auto perf = &getAnalysis<ProfilePerformanceEstimator>();
+      LoopProfLoad *lpl = &pass.getAnalysis<LoopProfLoad>();
+      auto perf = &pass.getAnalysis<ProfilePerformanceEstimator>();
 
       // initialize performance estimator
       auto psdswp = std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl);
@@ -477,15 +208,19 @@ bool OptRepl::runOnModule(Module &M) {
         }
       };
 
-      check(doall, "DOALL", *selectedPDG.get(), selectedLoop);
-      check(psdswp, "PSDSWPCritic", *selectedPDG.get(), selectedLoop);
-    };
+      auto loop = getSelectedLLVMLoop();
 
-    // modref: create a modref query and (optionally explore the loopaa stack)
-    auto modrefFn = [this, &parser, &instIdMap, &selectedLoop, &loopAA,
-                     &loopAAs, &loopAAEnabled, &numLoopAAs]() {
+      check(doall, "DOALL", *selectedPDG.get(), loop);
+      check(psdswp, "PSDSWPCritic", *selectedPDG.get(), loop);
+    }
+
+
+    void modrefFn() override {
+
       int fromId = parser.getFromId();
       int toId = parser.getToId();
+
+      unsigned numLoopAAs = loopAAs.size();
 
       if (fromId == -1) {
         outs() << "From InstId not set\n";
@@ -519,6 +254,7 @@ bool OptRepl::runOnModule(Module &M) {
 
       LoopAA *aa = loopAA;
       Remedies remeds;
+      Loop *loop = getSelectedLLVMLoop();
 
       if (parser.isVerbose()) {
         // TODO: try all combination of analysis and find a setting that the result is different
@@ -566,7 +302,7 @@ bool OptRepl::runOnModule(Module &M) {
           cur->configure(prev, nullptr);
 
           // aa->dump();
-          auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
+          auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, loop, remeds);
           auto red = "\033[1;31m";
           auto green = "\033[1;32m";
           auto reset = "\033[0m";
@@ -577,7 +313,7 @@ bool OptRepl::runOnModule(Module &M) {
           }
           lastRet[0] = ret;
 
-          ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
+          ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, loop, remeds);
           if (ret != lastRet[1]) {
             outs() << "Modref (before) refine from " << red << lastRet[1] << reset
                    << " to " << red << ret << reset << " with " << green
@@ -585,7 +321,7 @@ bool OptRepl::runOnModule(Module &M) {
           }
           lastRet[1] = ret;
 
-          ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
+          ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, loop, remeds);
           if (ret != lastRet[2]) {
             outs() << "Modref (after) refine from " << red << lastRet[2] << reset
                    << " to " << red << ret << reset << " with " << green
@@ -594,96 +330,112 @@ bool OptRepl::runOnModule(Module &M) {
           lastRet[2] = ret;
 
           // outs() << *fromInst << "->" << *toInst << ": (Same)" << ret << " with " << remeds.size() <<  " remedies\n";
-          // ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
+          // ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, loop, remeds);
           // outs() << *fromInst << "->" << *toInst << ": (Before)" << ret << " with " << remeds.size() <<  " remedies\n";
-          // ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
+          // ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, loop, remeds);
           // outs() << *fromInst << "->" << *toInst << ": (After)" << ret << " with " << remeds.size() <<  " remedies\n";
         }
       }
       else {
-        auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, selectedLoop, remeds);
+        auto ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Same, toInst, loop, remeds);
         outs() << *fromInst << "->" << *toInst << ": (Same)" << ret << " with " << remeds.size() <<  " remedies\n";
-        ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, selectedLoop, remeds);
+        ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::Before, toInst, loop, remeds);
         outs() << *fromInst << "->" << *toInst << ": (Before)" << ret << " with " << remeds.size() <<  " remedies\n";
-        ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, selectedLoop, remeds);
+        ret = aa->modref(fromInst, liberty::LoopAA::TemporalRelation::After, toInst, loop, remeds);
         outs() << *fromInst << "->" << *toInst << ": (After)" << ret << " with " << remeds.size() <<  " remedies\n";
       }
-    };
-
-    auto saveFn = [&parser]() {
-      string fileName = parser.getStringAfterAction();
-      if (fileName == "") {
-        fileName = "repl_command_history.log";
-      }
-      // remove the current command from readline history
-      remove_history(history_length - 1);
-      write_history(fileName.c_str());
-      outs() << "command history (excluding \"save\" command) has been written "
-                "into "
-             << fileName << "\n";
-    };
-
-    switch (parser.getAction()) {
-    case ReplAction::Deps:
-      depsFn();
-      break;
-    case ReplAction::Dump:
-      dumpFn();
-      break;
-    case ReplAction::Insts:
-      instsFn();
-      break;
-    case ReplAction::Remove:
-      removeFn();
-      break;
-    case ReplAction::RemoveAll:
-      removeAllFromInstFn();
-      break;
-    case ReplAction::Parallelize:
-      parallelizeFn();
-      break;
-    case ReplAction::Modref:
-      modrefFn();
-      break;
-    case ReplAction::Save:
-      saveFn();
-      break;
-    default:
-      outs() << "SHOULD NOT HAPPEN\n";
-      break;
     }
-  };
+};
 
+// a simple autocompletion generator
+char* completion_generator(const char* text, int state) {
+  // This function is called with state=0 the first time; subsequent calls are
+  // with a nonzero state. state=0 can be used to perform one-time
+  // initialization for this completion session.
+  static std::vector<std::string> matches;
+  static size_t match_index = 0;
+
+  if (state == 0) {
+    // During initialization, compute the actual matches for 'text' and keep
+    // them in a static vector.
+    matches.clear();
+    match_index = 0;
+
+    // Collect a vector of matches: vocabulary words that begin with text.
+    std::string textstr = std::string(text);
+    for (auto word : ReplVocab) {
+      if (word.size() >= textstr.size() &&
+          word.compare(0, textstr.size(), textstr) == 0) {
+        matches.push_back(word);
+      }
+    }
+  }
+
+  if (match_index >= matches.size()) {
+    // We return nullptr to notify the caller no more matches are available.
+    return nullptr;
+  } else {
+    // Return a malloc'd char* for the match. The caller frees it.
+    return strdup(matches[match_index++].c_str());
+  }
+}
+
+char** completer(const char* text, int start, int end) {
+  // Don't do filename completion even if our generator finds no matches.
+  rl_attempted_completion_over = 1;
+
+  // Note: returning nullptr here will make readline use the default filename
+  // completer.
+  return rl_completion_matches(text, completion_generator);
+}
+
+
+bool CpfRepl::runOnModule(Module &M) {
+  bool modified = false;
+
+  auto &noelle = getAnalysis<Noelle>();
+
+  ModuleLoops &mloops = getAnalysis<ModuleLoops>();
+  const Targets &targets = getAnalysis<Targets>();
+
+  // have a vector of all the loop aas
+  LoopAA* loopAA = (LoopAA*)getSCAFLoopAA();
+
+  CpfReplDriver driver(noelle, M, loopAA, targets, mloops, *this);
+  driver.createLoopMap();
+
+  rl_attempted_completion_function = completer;
   // execute command history file if specified
   string historyFileName = HistoryFileName;
   if (historyFileName != "") {
     read_history(historyFileName.c_str());
-    // DISCUSSION: the last command won't get executed if using 'i < history_length'
+    // DISCUSSION: the last command won't get executed if using 'i <
+    // history_length'
     for (int i = history_base; i <= history_length; i++) {
       char *buf = history_get(i)->line;
       string query = (const char *)(buf);
-      mainLoop(query);
+      driver.run(query);
     }
     clear_history();
   }
 
   // the main repl while loop
   while (true) {
-    if (quit) {
+    if (driver.hasTerminated()) {
       break;
     }
 
-    stringstream ss;
-    ss << "(cpf-repl";
-    if (selectLoopId != -1) ss << " loop " << selectLoopId;
-    ss << ") ";
-    char *buf = readline(ss.str().c_str());
+    char *buf = readline(driver.prompt().c_str());
+    if (!buf) {
+      outs() << "Quit\n";
+      break;
+    }
     string query = (const char *)(buf);
     if (query.size() > 0) {
       add_history(buf);
       free(buf); // free the buf readline created
     }
-    mainLoop(query);
+    driver.run(query);
   }
 
   return modified;
