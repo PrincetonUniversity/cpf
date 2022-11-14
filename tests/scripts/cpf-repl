@@ -39,6 +39,7 @@ LIBS="-load $LIBERTY_LIBS_DIR/libUtil.so
       -load $LIBERTY_LIBS_DIR/libOrchestration.so
       -load $LIBERTY_LIBS_DIR/libSpeculation.so
       -load $LIBERTY_LIBS_DIR/libCodeGen.so
+      -load $NOELLE_LIBS_DIR/Repl.so
       -load $LIBERTY_LIBS_DIR/libRepl.so"
 
 AA=`aa`
@@ -46,7 +47,7 @@ AA=`aa`
 EXTRA="-basicaa -globals-aa -cfl-steens-aa -tbaa -scev-aa -cfl-anders-aa -objc-arc-aa -scoped-noalias -veto -nander"
 
 OPTS="$LPROF $SLPROF $AA $EXTRA $SPPROF
-  -opt-repl $DBG"
+  -cpf-repl $DBG"
 
 OUT="-disable-output"
 CMD="noelle-load $LIBS $OPTS $1 $OUT ${@:2}"
