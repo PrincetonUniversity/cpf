@@ -6,9 +6,11 @@
  * This can replace set and map in STL
  *
  */
+#include <iostream>
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <fstream>
 
 #define PB
 #ifdef PB
@@ -16,6 +18,8 @@
 #else
 #include <unordered_set>
 #endif
+
+#define ADAPTIVE_HT
 
 #ifdef PB
 #define hash_set phmap::flat_hash_set
@@ -75,8 +79,39 @@ public:
 
 
 private:
-  // TODO: adaptive thread count
-  const uint32_t getThreadCount() { return MAX_THREAD; }
+  const uint32_t getThreadCount() {
+#ifdef ADAPTIVE_HT
+    // TODO: adaptive thread count, measure the performance benefit of this
+    // get current active number of threads from /proc/loadavg
+    std::ifstream loadavg("/proc/loadavg");
+
+    // get active threads count
+    // ignore the first three fp numbers, find the 4th int number (before "/")
+    std::string load;
+    for (int i = 0; i < 3; i++) {
+      loadavg >> load;
+    }
+    loadavg >> load;
+    loadavg.close();
+    load = load.substr(0, load.find('/'));
+    int active_threads = std::stoi(load);
+
+    uint32_t MAX_CORES = 56;
+
+    int running_threads = MAX_CORES - active_threads;
+    // max(1, running_threads)
+    running_threads = running_threads > 0 ? running_threads : 1;
+    // min(MAX_THREAD, running_threads)
+    running_threads = running_threads < MAX_THREAD ? running_threads : MAX_THREAD;
+
+
+    // std::cout << "active threads: " << running_threads << std::endl;
+
+    return running_threads;
+#else
+    return MAX_THREAD;
+#endif
+  }
 
   inline void checkBuffer() {
     if (buffer.size() == BUFFER_SIZE) {
