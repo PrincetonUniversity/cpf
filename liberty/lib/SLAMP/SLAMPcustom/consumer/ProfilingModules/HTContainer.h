@@ -12,14 +12,16 @@
 #include <vector>
 #include <fstream>
 
+#define HT
+// #define ADAPTIVE_HT
 #define PB
+
 #ifdef PB
 #include "parallel_hashmap/phmap.h"
 #else
 #include <unordered_set>
 #endif
 
-#define ADAPTIVE_HT
 
 #ifdef PB
 #define hash_set phmap::flat_hash_set
@@ -43,15 +45,21 @@ public:
   HTSet() { buffer.reserve(BUFFER_SIZE); }
 
   void emplace_back(T &&t) {
+#ifdef HT
     buffer.emplace_back(std::move(t));
-
     checkBuffer();
+#else
+    set.emplace(std::move(t));
+#endif
   }
 
   void emplace_back(const T &t) {
+#ifdef HT
     buffer.emplace_back(t);
-
     checkBuffer();
+#else
+    set.emplace(t);
+#endif
   }
 
   // iterator begin

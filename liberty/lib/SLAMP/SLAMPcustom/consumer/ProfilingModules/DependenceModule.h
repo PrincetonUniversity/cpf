@@ -53,7 +53,7 @@ private:
 
   slamp::MemoryMap *smmap = nullptr;
 
-  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 64> dep_set;
+  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> dep_set;
 
   void log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst,
            const uint64_t load_invocation, const uint64_t load_iteration);
