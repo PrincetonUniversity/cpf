@@ -1,15 +1,13 @@
-#include <boost/interprocess/interprocess_fwd.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <chrono>
 #include <cstdint>
-#include "ProfilingModules/DependenceModule.h"
 #include <iostream>
 #include <sstream>
-#include "sw_queue_astream.h"
-#include <chrono>
-
-
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
 #include <xmmintrin.h>
+
+#include "ProfilingModules/DependenceModule.h"
+#include "sw_queue_astream.h"
 
 #define ATTRIBUTE(x) __attribute__((x))
 namespace bip = boost::interprocess;
@@ -210,7 +208,7 @@ int main(int argc, char** argv) {
   dqB->init(dataB);
 
   // set the thread count
-  constexpr unsigned THREAD_COUNT = 1;
+  constexpr unsigned THREAD_COUNT = 8;
   constexpr unsigned MASK = THREAD_COUNT - 1;
 
   unsigned running_threads= THREAD_COUNT;
