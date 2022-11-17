@@ -119,8 +119,16 @@ class CpfReplDriver: public Repl::ReplDriver {
 
       for (auto &[loopId, loop] : loopIdMap) {
         auto header = loop->getLoopStructure()->getHeader();
-        outs() << loopId << ": " << header->getName()
-               << "::" << header->getName();
+        // get loop id and print it
+        outs() << loopId;
+
+        auto loopNamerId = Namer::getBlkId(header);
+        if (loopNamerId != -1)
+          outs() << " (" << loopNamerId << ")";
+
+
+        outs() << ": " << header->getName()
+          << "::" << header->getName();
         Instruction *term = header->getTerminator();
         if (term)
           liberty::printInstDebugInfo(term);
