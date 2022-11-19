@@ -39,7 +39,7 @@
 #include "scaf/Utilities/ReportDump.h"
 
 #include "noelle/core/DGGraphTraits.hpp"
-#include "noelle/core/DominatorSummary.hpp"
+#include "noelle/core/Dominators.hpp"
 #include "noelle/core/FunctionsManager.hpp"
 #include "noelle/core/LoopDependenceInfo.hpp"
 #include "noelle/core/Noelle.hpp"
