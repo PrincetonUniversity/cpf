@@ -369,7 +369,7 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // queue->push(shm::shared_string(msg, *char_alloc));
   //
   if (on_profiling) {
-    produce_64_64(COMBINE_2_32(LOAD, instr), addr);
+    produce_32_32_64(LOAD, instr, addr);
     counter_load++;
   }
 }

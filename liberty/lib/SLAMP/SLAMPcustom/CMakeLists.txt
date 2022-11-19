@@ -11,8 +11,8 @@ set(CMAKE_CXX_COMPILER "clang++")
 # Compilation flags
 # set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-Wl,-save-temps -std=c++17 -Wno-inline -O3 -fexceptions")# -emit-llvm")
 # set C++ flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-flto -Wno-inline -O3 -fexceptions")# -emit-llvm")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g")
+set_source_files_properties(${SRCS} PROPERTIES COMPILE_FLAGS "-flto -Wno-inline -O3 -g -fexceptions")# -emit-llvm")
 set(PassName "slamp_hooks_custom")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)

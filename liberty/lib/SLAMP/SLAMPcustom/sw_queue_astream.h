@@ -29,7 +29,7 @@
 
 #define QTYPE uint32_t
 #ifndef QSIZE
-#define QSIZE_BYTES (1 << 22) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 8MB
+#define QSIZE_BYTES (1 << 24) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 8MB
 #define QSIZE (QSIZE_BYTES / sizeof(QTYPE))
 // #define QSIZE (1 << 23)
 #endif /* QSIZE */
@@ -157,8 +157,8 @@ struct DoubleQueue {
     //   }
     // }
 
-    packet = _mm_load_si128((__m128i *) &data[index]);
-    // packet = _mm_stream_load_si128((__m128i *) &data[index]);
+    // packet = _mm_load_si128((__m128i *) &data[index]);
+    packet = _mm_stream_load_si128((__m128i *) &data[index]);
     index += 4;
     return _mm_extract_epi32(packet, 0);
     // return packet[0];

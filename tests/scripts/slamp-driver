@@ -153,7 +153,7 @@ function drive {
       exit 1
   else
       # sleep for 20 seconds
-      sleep 20
+      sleep 5
       cat deplog*.txt >> result.slamp.profile
       rm -f deplog*.txt
       kill -9 $CONSUME_PID
