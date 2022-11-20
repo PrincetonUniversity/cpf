@@ -11,6 +11,9 @@ unsigned long counter_fcn_exit = 0;
 unsigned long counter_loop_enter = 0;
 unsigned long counter_loop_exit = 0;
 unsigned long counter_loop_iter = 0;
+unsigned long counter_loop_invoc_interest = 0;
+unsigned long counter_loop_iter_interest = 0;
+unsigned long counter_loop_exit_interest = 0;
 unsigned long counter_ext_fcn_enter = 0;
 unsigned long counter_ext_fcn_exit = 0;
 
@@ -26,6 +29,17 @@ unsigned long counter_store_4 = 0;
 unsigned long counter_store_8 = 0;
 unsigned long counter_store_n = 0;
 
+unsigned long counter_load_1_interest = 0;
+unsigned long counter_load_2_interest = 0;
+unsigned long counter_load_4_interest = 0;
+unsigned long counter_load_8_interest = 0;
+unsigned long counter_load_n_interest = 0;
+unsigned long counter_store_1_interest = 0;
+unsigned long counter_store_2_interest = 0;
+unsigned long counter_store_4_interest = 0;
+unsigned long counter_store_8_interest = 0;
+unsigned long counter_store_n_interest = 0;
+
 // memory access counters
 unsigned long counter_global = 0;
 unsigned long counter_alloca = 0;
@@ -33,30 +47,40 @@ unsigned long counter_alloca_bytes = 0;
 unsigned long counter_malloc = 0;
 unsigned long counter_malloc_bytes = 0;
 unsigned long counter_memalign = 0;
+unsigned long counter_memalign_bytes = 0;
+unsigned long counter_realloc = 0;
+unsigned long counter_realloc_bytes = 0;
 unsigned long counter_free = 0;
 unsigned long counter_report_base = 0;
+
+static int nested_level = 0;
+static bool on_profiling = false;
 
 #define TURN_OFF_CUSTOM_MALLOC do {\
   __malloc_hook = old_malloc_hook; \
   __free_hook = old_free_hook; \
+  __realloc_hook = old_realloc_hook;\
   __memalign_hook = old_memalign_hook; \
 } while (false);
 
 #define TURN_ON_CUSTOM_MALLOC do { \
   __malloc_hook = SLAMP_malloc_hook; \
   __free_hook = SLAMP_free_hook; \
+  __realloc_hook = SLAMP_realloc_hook; \
   __memalign_hook = SLAMP_memalign_hook; \
 } while (false);
 
 static void *(*old_malloc_hook)(size_t, const void *);
 static void (*old_free_hook)(void *, const void *);
 static void *(*old_memalign_hook)(size_t, size_t, const void *);
+static void *(*old_realloc_hook)(void *, size_t, const void *);
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   // replace hooks
   old_malloc_hook = __malloc_hook;
   old_free_hook = __free_hook;
   old_memalign_hook = __memalign_hook;
+  old_realloc_hook = __realloc_hook;
 
   TURN_ON_CUSTOM_MALLOC;
 }
@@ -75,6 +99,9 @@ void SLAMP_fini(const char* filename){
   outfile["context"]["loop_enter"] = counter_loop_enter;
   outfile["context"]["loop_exit"] = counter_loop_exit;
   outfile["context"]["loop_iter"] = counter_loop_iter;
+  outfile["context"]["loop_invoc_interest"] = counter_loop_invoc_interest;
+  outfile["context"]["loop_iter_interest"] = counter_loop_iter_interest;
+  outfile["context"]["loop_exit_interest"] = counter_loop_exit_interest;
   outfile["context"]["ext_fcn_enter"] = counter_ext_fcn_enter;
   outfile["context"]["ext_fcn_exit"] = counter_ext_fcn_exit;
 
@@ -89,47 +116,31 @@ void SLAMP_fini(const char* filename){
   outfile["load_store"]["store_8"] = counter_store_8;
   outfile["load_store"]["store_n"] = counter_store_n;
 
+  outfile["load_store"]["load_1_interest"] = counter_load_1_interest;
+  outfile["load_store"]["load_2_interest"] = counter_load_2_interest;
+  outfile["load_store"]["load_4_interest"] = counter_load_4_interest;
+  outfile["load_store"]["load_8_interest"] = counter_load_8_interest;
+  outfile["load_store"]["load_n_interest"] = counter_load_n_interest;
+  outfile["load_store"]["store_1_interest"] = counter_store_1_interest;
+  outfile["load_store"]["store_2_interest"] = counter_store_2_interest;
+  outfile["load_store"]["store_4_interest"] = counter_store_4_interest;
+  outfile["load_store"]["store_8_interest"] = counter_store_8_interest;
+  outfile["load_store"]["store_n_interest"] = counter_store_n_interest;
+
   outfile["memory_access"]["global"] = counter_global;
   outfile["memory_access"]["alloca"] = counter_alloca;
   outfile["memory_access"]["alloca_bytes"] = counter_alloca_bytes;
   outfile["memory_access"]["malloc"] = counter_malloc;
   outfile["memory_access"]["malloc_bytes"] = counter_malloc_bytes;
   outfile["memory_access"]["memalign"] = counter_memalign;
+  outfile["memory_access"]["memalign_bytes"] = counter_memalign_bytes;
+  outfile["memory_access"]["realloc"] = counter_realloc;
+  outfile["memory_access"]["realloc_bytes"] = counter_realloc_bytes;
   outfile["memory_access"]["free"] = counter_free;
   outfile["memory_access"]["report_base"] = counter_report_base;
 
   stats_file << outfile.dump(2);
   stats_file.close();
-
-  // stats_file.open(filename);
-  // stats_file << "Context Counters: " << "\n"
-    // << "Fcn Enter: " << counter_fcn_enter << "\n"
-    // << "Fcn Exit: " << counter_fcn_exit << "\n"
-    // << "Loop Enter: " << counter_loop_enter << "\n"
-    // << "Loop Exit: " << counter_loop_exit << "\n"
-    // << "Loop Iter: " << counter_loop_iter << "\n"
-    // << "Ext Fcn Enter: " << counter_ext_fcn_enter << "\n"
-    // << "Ext Fcn Exit: " << counter_ext_fcn_exit << "\n\n";
-
-  // stats_file << "Load/Store Counters: " << "\n"
-    // << "Load 1: " << counter_load_1 << "\n"
-    // << "Load 2: " << counter_load_2 << "\n"
-    // << "Load 4: " << counter_load_4 << "\n"
-    // << "Load 8: " << counter_load_8 << "\n"
-    // << "Load N: " << counter_load_n << "\n"
-    // << "Store 1: " << counter_store_1 << "\n"
-    // << "Store 2: " << counter_store_2 << "\n"
-    // << "Store 4: " << counter_store_4 << "\n"
-    // << "Store 8: " << counter_store_8 << "\n"
-    // << "Store N: " << counter_store_n << "\n\n";
-
-  // stats_file << "Memory Access Counters: " << "\n"
-    // << "Global: " << counter_global << "\n"
-    // << "Alloca: " << counter_alloca << "\n"
-    // << "Malloc: " << counter_malloc << "\n"
-    // << "Memalign: " << counter_memalign << "\n"
-    // << "Free: " << counter_free << "\n"
-    // << "Report Base: " << counter_report_base << "\n";
 }
 
 void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size){
@@ -158,9 +169,32 @@ void SLAMP_loop_iter_ctx(uint32_t id){
   counter_loop_iter++;
 }
 
-void SLAMP_loop_invocation(){}
-void SLAMP_loop_iteration(){}
-void SLAMP_loop_exit(){}
+void SLAMP_loop_invocation(){
+
+  nested_level++;
+  on_profiling = true;
+
+  counter_loop_invoc_interest++;
+
+  // if (counter_invoc % 1 == 0) {
+    // on_profiling= true;
+  // }
+}
+void SLAMP_loop_iteration(){
+  counter_loop_iter_interest++;
+}
+void SLAMP_loop_exit(){
+  counter_loop_exit_interest++;
+  nested_level--;
+  if (nested_level < 0) {
+    // huge problem
+    std::cerr << "Error: nested_level < 0" << std::endl;
+    exit(-1);
+  }
+  if (nested_level == 0) {
+    on_profiling = false;
+  }
+}
 
 void SLAMP_report_base_pointer_arg(uint32_t, uint32_t, void *ptr){
   counter_report_base++;
@@ -188,73 +222,114 @@ void SLAMP_pop(){}
 
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_1++;
+  counter_load_1_interest++;
 }
 
 void SLAMP_load2(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_2++;
+  counter_load_2_interest++;
 }
 
 void SLAMP_load4(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_4++;
+  counter_load_4_interest++;
 }
 
 void SLAMP_load8(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_8++;
+  counter_load_8_interest++;
 }
 
 void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, size_t n){
   counter_load_n++;
+  counter_load_n_interest++;
 }
 
 void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_1++;
+  if (on_profiling) {
+    counter_load_1_interest++;
+  }
 }
 
 void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_2++;
+  if (on_profiling) {
+    counter_load_2_interest++;
+  }
 }
 void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_4++;
+  if (on_profiling) {
+    counter_load_4_interest++;
+  }
 }
 
 void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
   counter_load_8++;
+  if (on_profiling) {
+    counter_load_8_interest++;
+  }
 }
 
 void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n){
   counter_load_n++;
+  if (on_profiling) {
+    counter_load_n_interest++;
+  }
 }
+
 
 void SLAMP_store1(uint32_t instr, const uint64_t addr){
   counter_store_1++;
+  counter_store_1_interest++;
 }
 void SLAMP_store2(uint32_t instr, const uint64_t addr){
   counter_store_2++;
+  counter_store_2_interest++;
 }
 void SLAMP_store4(uint32_t instr, const uint64_t addr){
   counter_store_4++;
+  counter_store_4_interest++;
 }
 void SLAMP_store8(uint32_t instr, const uint64_t addr){
   counter_store_8++;
+  counter_store_8_interest++;
 }
 void SLAMP_storen(uint32_t instr, const uint64_t addr, size_t n){
   counter_store_n++;
+  counter_store_n_interest++;
 }
 
 void SLAMP_store1_ext(const uint64_t addr, const uint32_t bare_inst){
   counter_store_1++;
+  if (on_profiling) {
+    counter_store_1_interest++;
+  }
 }
 void SLAMP_store2_ext(const uint64_t addr, const uint32_t bare_inst){
   counter_store_2++;
+  if (on_profiling) {
+    counter_store_2_interest++;
+  }
 }
 void SLAMP_store4_ext(const uint64_t addr, const uint32_t bare_inst){
   counter_store_4++;
+  if (on_profiling) {
+    counter_store_4_interest++;
+  }
 }
 void SLAMP_store8_ext(const uint64_t addr, const uint32_t bare_inst){
   counter_store_8++;
+  if (on_profiling) {
+    counter_store_8_interest++;
+  }
 }
 void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n){
   counter_store_n++;
+  if (on_profiling) {
+    counter_store_n_interest++;
+  }
 }
 
 /* wrappers */
@@ -279,7 +354,18 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   result = memalign(alignment, size);
   TURN_ON_CUSTOM_MALLOC;
   counter_memalign++;
+  counter_memalign_bytes += size;
+
   return result;
+}
+
+static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
+  TURN_OFF_CUSTOM_MALLOC;
+  void* new_ptr = realloc(ptr, size);
+  TURN_ON_CUSTOM_MALLOC;
+  counter_realloc++;
+  counter_realloc_bytes += size;
+  return new_ptr;
 }
 
 void* SLAMP_malloc(size_t size, uint32_t instr, size_t alignment){}

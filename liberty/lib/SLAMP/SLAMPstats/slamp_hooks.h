@@ -109,6 +109,8 @@ void SLAMP_storen_ext(const uint64_t addr, const uint32_t bare_inst, size_t n) A
 static void* SLAMP_malloc_hook(size_t size, const void *caller);
 static void SLAMP_free_hook(void *ptr, const void *caller);
 static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller);
+static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller);
+
 void* SLAMP_malloc(size_t size, uint32_t instr=0, size_t alignment=16);
 
 void* SLAMP_calloc(size_t nelem, size_t elsize);
