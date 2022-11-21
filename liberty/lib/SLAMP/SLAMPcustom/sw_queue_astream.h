@@ -29,7 +29,7 @@
 
 #define QTYPE uint32_t
 #ifndef QSIZE
-#define QSIZE_BYTES (1 << 24) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 8MB
+#define QSIZE_BYTES (1 << 26) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 16MB; 1 << 26 64MB; 1 << 28 256MB; 1 << 30 1GB
 #define QSIZE (QSIZE_BYTES / sizeof(QTYPE))
 // #define QSIZE (1 << 23)
 #endif /* QSIZE */
