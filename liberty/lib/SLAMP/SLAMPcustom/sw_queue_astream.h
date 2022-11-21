@@ -29,7 +29,7 @@
 
 #define QTYPE uint32_t
 #ifndef QSIZE
-#define QSIZE_BYTES (1 << 26) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 16MB; 1 << 26 64MB; 1 << 28 256MB; 1 << 30 1GB
+#define QSIZE_BYTES (1 << 27) // 1 << 0 - 1 byte; 1 << 10 1KB; 1 << 20 1MB; 1 << 24 16MB; 1 << 26 64MB; 1 << 28 256MB; 1 << 30 1GB
 #define QSIZE (QSIZE_BYTES / sizeof(QTYPE))
 // #define QSIZE (1 << 23)
 #endif /* QSIZE */
@@ -68,13 +68,14 @@ struct DoubleQueue {
 
   std::mutex &m;
   std::condition_variable &cv;
+  const unsigned ALL_THREADS;
   unsigned &running_threads;
   // uint32_t packet[4];
   __m128i packet;
 
   DoubleQueue(Queue_p dqA, Queue_p dqB, bool isConsumer, unsigned &threads, 
       std::mutex &m, std::condition_variable &cv)
-      : qA(dqA), qB(dqB), m(m), cv(cv), running_threads(threads) {
+      : qA(dqA), qB(dqB), m(m), cv(cv), running_threads(threads), ALL_THREADS(threads) {
     this->qA = dqA;
     this->qB = dqB;
 
@@ -118,6 +119,7 @@ struct DoubleQueue {
         }
         qOther->ready_to_write = false;
         // std::cerr << "Thread " << std::this_thread::get_id() << " ready for queue" << std::endl;
+        running_threads = ALL_THREADS;
         lock.unlock();
         // allow all other threads to continue
         cv.notify_all();
@@ -132,13 +134,14 @@ struct DoubleQueue {
         cv.wait(lock); // unlocks
         // std::cerr << "Thread " << std::this_thread::get_id() << " is unlocked" << std::endl;
         // lock reaquires
-        running_threads++;
         lock.unlock();
         // std::cerr << "Thread " << std::this_thread::get_id() << " is ready to go" << std::endl;
       }
       swap();
       index = 0;
       size = qNow->size;
+      // // make sure all pending writes are visible
+      // _mm_mfence();
     }
   }
 
@@ -157,8 +160,8 @@ struct DoubleQueue {
     //   }
     // }
 
-    // packet = _mm_load_si128((__m128i *) &data[index]);
-    packet = _mm_stream_load_si128((__m128i *) &data[index]);
+    packet = _mm_load_si128((__m128i *) &data[index]);
+    // packet = _mm_stream_load_si128((__m128i *) &data[index]);
     index += 4;
     return _mm_extract_epi32(packet, 0);
     // return packet[0];
