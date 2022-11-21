@@ -6,9 +6,11 @@
  * This can replace set and map in STL
  *
  */
+#include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 #include <fstream>
 
@@ -29,12 +31,72 @@
 #define hash_set std::unordered_set
 #endif
 
+#define HT_THREAD_POOL
+#define CACHELINE_SIZE 64
+
 
 template <typename T, typename Hash = std::hash<T>,
           typename KeyEqual = std::equal_to<T>,
           uint32_t MAX_THREAD = 56,
           uint32_t BUFFER_SIZE = 1'000'000>
 class HTSet {
+
+    public:
+      void Start() {
+      }
+
+    private:
+#ifdef HT_THREAD_POOL
+      bool should_terminate = false;           // Tells threads to stop looking for jobs
+      std::mutex queue_mutex;                  // Prevents data races to the job queue
+      std::condition_variable mutex_condition; // Allows threads to wait on new jobs or termination 
+      std::vector<std::thread> threads;
+      volatile int pending_jobs = 0;           // Number of jobs that have not been completed
+      // avoid false sharing
+
+      std::vector<bool> ready;
+
+      void ThreadLoop(const int id) {
+        auto set_chunk = std::make_unique<hash_set<T, Hash, KeyEqual>>();
+
+        const auto thread_count = MAX_THREAD;
+        auto job = [&]() {
+          const auto set_size = buffer.size() / thread_count;
+          const auto buffer_size = buffer.size();
+          // take the chunk and convert to a set and return
+          // set_chunk->reserve(set_size);
+
+          auto begin = id * (buffer_size / thread_count);
+          auto end = (id + 1) * (buffer_size / thread_count);
+
+          set_chunk->insert(buffer.begin() + begin, buffer.begin() + end);
+
+          m.lock();
+          // lock the global set and insert the chunk
+          set.insert(set_chunk->begin(), set_chunk->end());
+          m.unlock();
+          set_chunk->clear();
+        };
+        while (true) {
+          {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            mutex_condition.wait(lock, [this, id] { return ready[id * CACHELINE_SIZE]  || should_terminate; });
+            // std::cout << "Thread " << id << " is running" << std::endl;
+            if (should_terminate) {
+              return;
+            }
+          }
+          job();
+          ready[id * CACHELINE_SIZE] = false;
+          {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            pending_jobs--;
+          }
+        }
+      }
+#endif
+
+
 private:
   std::vector<T> buffer;
   std::mutex m;
@@ -42,7 +104,30 @@ private:
 
 public:
   hash_set_t set;
-  HTSet() { buffer.reserve(BUFFER_SIZE); }
+  HTSet() {
+    buffer.reserve(BUFFER_SIZE);
+#ifdef HT_THREAD_POOL
+    const uint32_t num_threads = MAX_THREAD;
+    threads.resize(num_threads);
+
+    ready.resize(num_threads * CACHELINE_SIZE);
+    for (uint32_t i = 0; i < num_threads; i++) {
+      threads[i] = std::thread(&HTSet::ThreadLoop, this, i);
+      ready[i * CACHELINE_SIZE] = false;
+      // threads.at(i) = std::thread(ThreadLoop, i);
+    }
+#endif
+  }
+
+  ~HTSet() {
+#ifdef HT_THREAD_POOL
+    should_terminate = true;
+    mutex_condition.notify_all();
+    for (auto &thread : threads) {
+      thread.join();
+    }
+#endif
+  }
 
   void emplace_back(T &&t) {
 #ifdef HT
@@ -143,6 +228,28 @@ private:
       return;
     }
 
+#ifdef HT_THREAD_POOL
+    pending_jobs = thread_count;
+
+    for (uint32_t i = 0; i < thread_count; i++) {
+      ready[i * CACHELINE_SIZE] = true;
+    }
+
+    // std::cout << "pending jobs: " << pending_jobs << std::endl;
+    mutex_condition.notify_all();
+
+    // std:: cout << "waiting for jobs to finish" << std::endl;
+
+    // busy wait: check if all threads are done
+    while (true) {
+      // std::cout << "pending jobs: " << pending_jobs << std::endl;
+      if (pending_jobs == 0) {
+        break;
+      }
+    }
+#endif
+
+#ifndef HT_THREAD_POOL
     // launch N threads to convert the vector to set independently, chunking
     std::thread t[thread_count];
     for (unsigned long i = 0; i < thread_count; i++) {
@@ -169,5 +276,6 @@ private:
     for (auto &i : t) {
       i.join();
     }
+#endif
   }
 };
