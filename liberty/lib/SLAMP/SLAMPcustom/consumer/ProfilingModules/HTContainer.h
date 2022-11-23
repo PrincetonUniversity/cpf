@@ -6,6 +6,7 @@
  * This can replace set and map in STL
  *
  */
+#pragma once
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
@@ -145,6 +146,15 @@ public:
 #else
     set.emplace(t);
 #endif
+  }
+
+  void emplace(T &&t) {
+    emplace_back(t);
+  }
+
+  // the same as emplace_back
+  void emplace(const T &t) {
+    emplace_back(t);
   }
 
   // iterator begin

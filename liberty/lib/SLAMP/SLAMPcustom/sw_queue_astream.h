@@ -167,6 +167,14 @@ struct DoubleQueue {
     // return packet[0];
   }
 
+  void unpack_32(uint32_t &a) {
+    a = _mm_extract_epi32(packet, 1);
+  }
+
+  void unpack_64(uint64_t &c) {
+    c = _mm_extract_epi64(packet, 1);
+  }
+
   void unpack_32_32(uint32_t &a, uint32_t &b) {
     // a = packet[1];
     // b = packet[2];

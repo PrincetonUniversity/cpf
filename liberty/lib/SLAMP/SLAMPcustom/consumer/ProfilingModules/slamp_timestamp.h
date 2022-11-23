@@ -9,10 +9,10 @@ typedef uint64_t TS; // first 20 bits for instr and following 44 bits for iter
 #define ITERATION_SIZE 28 
 #define INVOCATION_SIZE 16 // 44-40
 #define CREATE_TS(instr, iter, invoc) ( ((TS)instr << 44) | (((TS)iter & (TS)0xfffffff) << INVOCATION_SIZE) | ((TS)invoc & (TS)0xffff))
-// #define CREATE_TS_HASH(instr, hash, iter, invoc)                               \
-  // (((TS)instr << 44) |                                                         \
-   // (((TS)hash & (TS)0xfffffffff) << (INVOCATION_SIZE + 4)) |                   \
-   // (((TS)iter & (TS)0xf) << INVOCATION_SIZE) | ((TS)invoc & (TS)0xf))
+#define CREATE_TS_HASH(instr, hash, iter, invoc)                               \
+  (((TS)instr << 44) |                                                         \
+   (((TS)hash & (TS)0xfffffffff) << (INVOCATION_SIZE + 4)) |                   \
+   (((TS)iter & (TS)0xf) << INVOCATION_SIZE) | ((TS)invoc & (TS)0xf))
 #define GET_INSTR(ts) ((ts >> 44) & 0xfffff)
 #define GET_HASH(ts) ( (ts >> 8) & 0xfffffffff)
 #define GET_ITER(ts) ( (ts >> INVOCATION_SIZE) & 0xfffffff)
