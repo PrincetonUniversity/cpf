@@ -8,6 +8,7 @@
 
 #include "ProfilingModules/DependenceModule.h"
 #include "ProfilingModules/PointsToModule.h"
+#include "ProfilingModules/LoadedValueModule.h"
 #include "sw_queue_astream.h"
 
 #define ATTRIBUTE(x) __attribute__((x))
@@ -31,6 +32,112 @@ static uint64_t alloc_time(0);
 
 // create segment and corresponding allocator
 bip::fixed_managed_shared_memory *segment;
+
+void consume_loop_lv(DoubleQueue &dq, LoadedValueModule &lvMod) ATTRIBUTE(noinline) {
+  uint64_t rdtsc_start = 0;
+  uint64_t counter = 0;
+  uint32_t loop_id;
+
+  using Action = LoadedValueModAction;
+  // measure time with lambda action
+  auto measure_time = [](uint64_t &time, auto action) {
+    // measure time with rdtsc
+    if (MEASURE_TIME) {
+      uint64_t start = rdtsc();
+      action();
+      uint64_t end = rdtsc();
+      time += end - start;
+    }
+    else {
+      action();
+    }
+  };
+
+  bool finished = false;
+  while (true) {
+    dq.check();
+    uint32_t v;
+    v = dq.consumePacket();
+    counter++;
+
+    // convert v to action
+    auto action = static_cast<Action>(v);
+
+    switch (action) {
+    case Action::INIT: {
+      uint32_t pid;
+      // loop_id = (uint32_t)dq.consume();
+      // pid = (uint32_t)dq.consume();
+      dq.unpack_32_32(loop_id, pid);
+      rdtsc_start = rdtsc();
+
+      if (DEBUG) {
+        std::cout << "INIT: " << loop_id << " " << pid << std::endl;
+      }
+      if (ACTION) {
+        lvMod.init(loop_id, pid);
+      }
+      break;
+    };
+    case Action::LOAD: {
+      uint32_t instr;
+      uint64_t addr;
+      uint64_t value = 0;
+
+      // uint32_t bare_instr;
+      uint32_t size;
+
+      dq.unpack_32_64(instr, addr);
+      dq.check();
+      dq.consumePacket();
+      dq.unpack_32_64(size, value);
+      lvMod.load(instr, addr, instr, value, size);
+
+      break;
+    };
+
+    case Action::FINISHED: {
+      uint64_t rdtsc_end = rdtsc();
+      // total cycles
+      uint64_t total_cycles = rdtsc_end - rdtsc_start;
+      std::cout << "Finished loop: " << loop_id << " after " << counter
+                << " events" << std::endl;
+      // print time in seconds
+      std::cout << "Total time: " << total_cycles / 2.6e9 << " s" << std::endl;
+      if (MEASURE_TIME) {
+        std::cout << "Load time: " << load_time / 2.6e9 << " s" << std::endl;
+        std::cout << "Store time: " << store_time / 2.6e9 << " s" << std::endl;
+        std::cout << "Alloc time: " << alloc_time / 2.6e9 << " s" << std::endl;
+      }
+      finished = true;
+
+      if (ACTION) {
+        lvMod.fini("ptlog.txt");
+      }
+
+      break;
+    };
+    default:
+      std::cout << "Unknown action: " << (uint64_t)v << std::endl;
+
+      std::cout << "Is ready to read?:" << dq.qNow->ready_to_read << " "
+                << "Is ready to write?:" << dq.qNow->ready_to_write << std::endl;
+      std::cout << "Index: " << dq.index << " Size:" << dq.qNow->size << std::endl;
+
+      for (int i = 0; i < 101; i++) {
+        std::cout << dq.qNow->data[dq.index - 100 + i] << " ";
+      }
+      exit(-1);
+    }
+
+    // if (counter % 100'000'000 == 0) {
+      // std::cout << "Processed " << counter / 1'000'000 << "M events" << std::endl;
+    // }
+    if (finished) {
+      break;
+    }
+  }
+}
 
 void consume_loop_pt(DoubleQueue &dq, PointsToModule &ptMod) ATTRIBUTE(noinline) {
   uint64_t rdtsc_start = 0;
@@ -432,8 +539,10 @@ int main(int argc, char** argv) {
   std::condition_variable cv;
 
   DoubleQueue dq(dqA, dqB, true, running_threads, m, cv);
-  PointsToModule ptMod(0, 0);
-  consume_loop_pt(dq, ptMod);
+  // PointsToModule ptMod(0, 0);
+  // consume_loop_pt(dq, ptMod);
+  LoadedValueModule lvMod(0, 0);
+  consume_loop_lv(dq, lvMod);
 
   // std::vector<std::thread> threads;
   // DoubleQueue *dqs[THREAD_COUNT];

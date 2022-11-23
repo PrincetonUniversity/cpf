@@ -1,5 +1,7 @@
 file(GLOB SRCS
-    "CustomSend_pt.cpp"
+    "CustomSend_lv.cpp"
+    # "CustomSend_pt.cpp"
+    # "CustomSend.cpp"
     # "*.c"
 )
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/u/ziyangx/test/boost/boost_1_80_0/install/lib/cmake")
