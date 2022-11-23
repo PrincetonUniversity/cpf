@@ -163,7 +163,10 @@ struct DoubleQueue {
     packet = _mm_load_si128((__m128i *) &data[index]);
     // packet = _mm_stream_load_si128((__m128i *) &data[index]);
     index += 4;
-    return _mm_extract_epi32(packet, 0);
+    uint32_t v = _mm_extract_epi32(packet, 0);
+    // get the least significant 8 bits
+    return v & 0xFF;
+    
     // return packet[0];
   }
 
@@ -172,6 +175,13 @@ struct DoubleQueue {
   }
 
   void unpack_64(uint64_t &c) {
+    c = _mm_extract_epi64(packet, 1);
+  }
+
+  void unpack_24_32_64(uint32_t &a, uint32_t &b, uint64_t &c) {
+    uint32_t tmp = _mm_extract_epi32(packet, 0);
+    a = tmp >> 8;
+    b = _mm_extract_epi32(packet, 1);
     c = _mm_extract_epi64(packet, 1);
   }
 

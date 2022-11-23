@@ -79,16 +79,17 @@ void consume_loop_pt(DoubleQueue &dq, PointsToModule &ptMod) ATTRIBUTE(noinline)
       break;
     };
     case Action::ALLOC: {
+      uint32_t instr;
       uint64_t addr;
       uint32_t size;
-      dq.unpack_32_64(size, addr);
+      dq.unpack_24_32_64(instr, size, addr);
 
       if (DEBUG) {
         std::cout << "ALLOC: " << addr << " " << size << std::endl;
       }
       if (ACTION) {
         measure_time(alloc_time, [&]() {
-          ptMod.allocate(reinterpret_cast<void *>(addr), 0, size);
+          ptMod.allocate(reinterpret_cast<void *>(addr), instr, size);
         });
       }
       break;

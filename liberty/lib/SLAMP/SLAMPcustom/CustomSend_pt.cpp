@@ -33,6 +33,8 @@ static unsigned long counter_iter = 0;
 static int nested_level = 0;
 static bool on_profiling = false;
 
+static uint32_t ext_fn_inst_id = 0;
+
 static void *(*old_malloc_hook)(size_t, const void *);
 static void *(*old_realloc_hook)(void *, size_t, const void *);
 static void (*old_free_hook)(void *, const void *);
@@ -122,6 +124,26 @@ static void produce_32_64(uint32_t x, uint64_t y) ATTRIBUTE(noinline){
   }
 }
 
+static void produce_8_24_32_64(uint8_t x, uint32_t y, uint32_t z, uint64_t w) ATTRIBUTE(noinline){
+  uint32_t xy = (y << 8) | x;
+#ifdef MM_STREAM
+  // _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi32(z, w, y, x));
+  _mm_stream_si32((int *) &dq_data[dq_index], xy);
+  _mm_stream_si32((int *) &dq_data[dq_index + 1], z);
+  _mm_stream_si64((long long *) &dq_data[dq_index + 2], w);
+#else
+  dq_data[dq_index] = xy;
+  dq_data[dq_index + 1] = z;
+  *((uint64_t *) &dq_data[dq_index + 2]) = w;
+#endif
+  dq_index += 4;
+
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
+}
+
+
 static void produce_64_64(const uint64_t x, const uint64_t y) ATTRIBUTE(noinline){
 #ifdef MM_STREAM
   _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi64x(y, x));
@@ -141,7 +163,6 @@ static void produce_64_64(const uint64_t x, const uint64_t y) ATTRIBUTE(noinline
 // static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) {
 static void produce_32_32_64(uint32_t x, uint32_t y, uint64_t z) ATTRIBUTE(noinline) {
 #ifdef MM_STREAM
-  // FIXME: set 32bit x, 32bit y, 64bit z, small endian
   _mm_stream_si32((int *) &dq_data[dq_index], x);
   _mm_stream_si32((int *) &dq_data[dq_index + 1], y);
   _mm_stream_si64((long long *) &dq_data[dq_index + 2], z);
@@ -296,7 +317,8 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   produce_32_32_32(INIT, loop_id, pid);
 
   auto allocateLibcReqs = [](void *addr, size_t size) {
-    produce_32_32_64(ALLOC, size, (uint64_t)addr);
+    produce_8_24_32_64(ALLOC, 0, size, (uint64_t)addr);
+    // produce_32_32_64(ALLOC, size, (uint64_t)addr);
   };
 
   allocateLibcReqs((void*)&errno, sizeof(errno));
@@ -312,11 +334,6 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   // itype_ptr = (*__ctype_toupper_loc()) - 128;
   // allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
 
-  // // FIXME: a dirty way to get xalancbmk to work
-  // auto locale = localeconv();
-  // auto decimal = locale->decimal_point;
-  // allocateLibcReqs((void*)locale, sizeof(*locale));
-  // allocateLibcReqs((void*)decimal, sizeof(*decimal));
 
   old_malloc_hook = __malloc_hook;
   // old_free_hook = __free_hook;
@@ -417,7 +434,7 @@ void SLAMP_loop_exit(){
 }
 
 void SLAMP_report_base_pointer_arg(uint32_t fcnId, uint32_t argId, void *ptr){
-  // combine fcnid and argid to 32 bit
+  // FIXME: combine fcnid and argid to 32 bit
   uint32_t id = (fcnId << 16) | (argId & 0xffff);
 
   produce_32_32_64(POINTS_TO_ARG, id, (uint64_t)ptr);
@@ -429,8 +446,12 @@ void SLAMP_report_base_pointer_inst(uint32_t instId, void *ptr){
 void SLAMP_callback_stack_alloca(uint64_t, uint64_t, uint32_t, uint64_t){}
 void SLAMP_callback_stack_free(){}
 
-void SLAMP_ext_push(const uint32_t instr){}
-void SLAMP_ext_pop(){}
+void SLAMP_ext_push(const uint32_t instr){
+  ext_fn_inst_id = instr;
+}
+void SLAMP_ext_pop(){
+  ext_fn_inst_id = 0;
+}
 
 void SLAMP_push(const uint32_t instr){}
 void SLAMP_pop(){}
@@ -533,7 +554,8 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   void* ptr = malloc(size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
   //
-  produce_32_32_64(ALLOC, size, (uint64_t)ptr);
+  produce_8_24_32_64(ALLOC, ext_fn_inst_id, size, (uint64_t)ptr);
+  // produce_32_32_64(ALLOC, size, (uint64_t)ptr);
   // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -545,7 +567,8 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   void* new_ptr = realloc(ptr, size);
   // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
   // produce_3(ALLOC, (uint64_t)new_ptr, size);
-  produce_32_32_64(ALLOC, size, (uint64_t)new_ptr);
+  produce_8_24_32_64(ALLOC, ext_fn_inst_id, size, (uint64_t)new_ptr);
+  // produce_32_32_64(ALLOC, size, (uint64_t)new_ptr);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -563,7 +586,8 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   void* ptr = memalign(alignment, size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
   // produce_3(ALLOC, (uint64_t)ptr, size);
-  produce_32_32_64(ALLOC, size, (uint64_t)ptr);
+  produce_8_24_32_64(ALLOC, ext_fn_inst_id, size, (uint64_t)ptr);
+  // produce_32_32_64(ALLOC, size, (uint64_t)ptr);
 
   // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;

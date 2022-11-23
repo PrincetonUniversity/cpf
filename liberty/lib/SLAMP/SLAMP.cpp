@@ -735,6 +735,10 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
       args.push_back(ConstantInt::get(I32, id));
       InstInsertPt pt = InstInsertPt::Before(inst);
       pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
+      
+      errs() << "Malloc ID " << id << " : "
+        << getInstructionName(inst) << "\n";
+
 
       if (isa<CallInst>(inst)) {
         pt = InstInsertPt::After(inst);
