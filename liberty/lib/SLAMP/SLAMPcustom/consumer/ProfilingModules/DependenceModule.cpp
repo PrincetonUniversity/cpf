@@ -39,10 +39,16 @@ void DependenceModule::fini(const char *filename) {
   of << target_loop_id << " " << 0 << " " << 0 << " "
        << 0 << " " << 0 << " " << 0 << "\n";
 
-  std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
+  // get all the keys of a hash table to ordered set
+  std::set<slamp::KEY, slamp::KEYComp> ordered;
+  for (auto & it : dep_set) {
+    ordered.insert(it.first);
+  }
+  // std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
   for (auto &k: ordered) {
     of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
-       << (k.cross ? 1 : 0) << " " << 1 << " ";
+       // << (k.cross ? 1 : 0) << " " << 1 << " ";
+       << (k.cross ? 1 : 0) << " " << dep_set[k] << " ";
     of << "\n";
   }
 
@@ -117,5 +123,5 @@ void DependenceModule::loop_iter() {
 }
 
 void DependenceModule::merge_dep(DependenceModule &other) {
-  dep_set.merge_set(other.dep_set);
+  // dep_set.merge_set(other.dep_set);
 }
