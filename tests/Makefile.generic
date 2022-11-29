@@ -23,7 +23,9 @@ BENCH_ROOT?=../..
 
 RUN_TIMEOUT?=28800 # 8 hours.
 TRANSFORM_TIMEOUT?=21600 # 6 hours.
-PROFILE_TIMEOUT?=72000 # 20 hours.
+# PROFILE_TIMEOUT?=36000 # 10 hours.
+PROFILE_TIMEOUT?=86400 # 24 hours.
+# PROFILE_TIMEOUT?=72000 # 20 hours.
 
 REG_NUM_WORKERS?=4
 
@@ -342,7 +344,8 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	$(SETUP)
 	$(PROFILESETUP)
 	rm -f result.specpriv.profile.txt
-	/usr/bin/time --output=$(CANON).specpriv-profile.time -f "%e" ./$< $(PROFILEARGS) >rabbit4 2>&1
+	# /usr/bin/time --output=$(CANON).specpriv-profile.time -f "%e" ./$< $(PROFILEARGS) >rabbit4 2>&1
+	regressions-watchdog $(PROFILE_TIMEOUT) $(CANON).specpriv-profile.time ./$< $(PROFILEARGS) >rabbit4 2>&1
 	@echo -n Waiting for profiler to write result file
 	@for i in `seq 1 1200`; do echo -n .; if [ -r result.specpriv.profile.txt ]; then break; fi; sleep 1; done
 	@echo
