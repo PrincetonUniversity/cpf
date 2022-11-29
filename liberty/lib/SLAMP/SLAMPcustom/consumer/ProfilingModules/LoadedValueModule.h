@@ -28,15 +28,16 @@ struct PairHash
 using AccessKey = std::pair<uint32_t, uint32_t>;
 struct Constant {
   bool valid;
-  bool valueinit;
-  uint8_t size;
-  uint64_t addr;
+  // bool valueinit;
+  // uint8_t size;
+  // uint64_t addr;
   uint64_t value;
-  char pad[64 - sizeof(uint64_t) - sizeof(uint64_t) - sizeof(uint8_t) -
-           sizeof(bool) - sizeof(bool)];
+  // char pad[64 - sizeof(uint64_t) - sizeof(uint64_t) - sizeof(uint8_t) -
+  //          sizeof(bool) - sizeof(bool)];
 
-  Constant(bool va, bool vi, uint8_t s, uint64_t a, uint64_t v)
-      : valid(va), valueinit(vi), size(s), addr(a), value(v) {}
+  Constant(bool valid, uint64_t value) : valid(valid), value(value) {}
+  // Constant(bool va, bool vi, uint8_t s, uint64_t a, uint64_t v)
+  //     : valid(va), valueinit(vi), size(s), addr(a), value(v) {}
 };
 
 
@@ -48,17 +49,15 @@ class LoadedValueModule: public LocalWriteModule {
 
     bool in_loop = false;
 
-    std::unordered_map<AccessKey, Constant *, PairHash> *constmap_value;
+    // std::unordered_map<AccessKey, Constant *, PairHash> *constmap_value;
+    HTMap_IsConstant<AccessKey, PairHash>  constmap_value;
 
   public:
     LoadedValueModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
-    constmap_value = new std::unordered_map<AccessKey, Constant *, PairHash>();
   }
  
-  ~LoadedValueModule() override { 
-    delete constmap_value;
-  }
+  ~LoadedValueModule() override = default;
 
   void init(uint32_t loop_id, uint32_t pid);
   void fini(const char *filename);
