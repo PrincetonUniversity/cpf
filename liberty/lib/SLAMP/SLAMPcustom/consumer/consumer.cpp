@@ -539,44 +539,46 @@ int main(int argc, char** argv) {
   std::condition_variable cv;
 
   DoubleQueue dq(dqA, dqB, true, running_threads, m, cv);
+
   // PointsToModule ptMod(0, 0);
   // consume_loop_pt(dq, ptMod);
-  LoadedValueModule lvMod(0, 0);
-  consume_loop_lv(dq, lvMod);
 
-  // std::vector<std::thread> threads;
-  // DoubleQueue *dqs[THREAD_COUNT];
-  // DependenceModule *depMods[THREAD_COUNT];
+  // LoadedValueModule lvMod(0, 0);
+  // consume_loop_lv(dq, lvMod);
 
-  // for (unsigned i = 0; i < THREAD_COUNT; i++) {
-  //   dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
-  //   depMods[i] = new DependenceModule(MASK, i);
-  // }
+  std::vector<std::thread> threads;
+  DoubleQueue *dqs[THREAD_COUNT];
+  DependenceModule *depMods[THREAD_COUNT];
 
-  // if (THREAD_COUNT == 1) {
-  //   std::cout << "Running in main thread" << std::endl;
-  //   // single threaded, easy to debug
-  //   consume_loop(*dqs[0], *depMods[0]);
+  for (unsigned i = 0; i < THREAD_COUNT; i++) {
+    dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+    depMods[i] = new DependenceModule(MASK, i);
+  }
 
-  //   depMods[0]->fini("deplog.txt");
-  // } else {
-  //   std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
-  //   for (unsigned i = 0; i < THREAD_COUNT; i++) {
-  //     threads.emplace_back(std::thread([&](unsigned id) {
-  //           consume_loop(*dqs[id], *depMods[id]);
-  //           }, i));
-  //   }
+  if (THREAD_COUNT == 1) {
+    std::cout << "Running in main thread" << std::endl;
+    // single threaded, easy to debug
+    consume_loop(*dqs[0], *depMods[0]);
 
-  //   for (auto &t : threads) {
-  //     t.join();
-  //   }
+    depMods[0]->fini("deplog.txt");
+  } else {
+    std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
+    for (unsigned i = 0; i < THREAD_COUNT; i++) {
+      threads.emplace_back(std::thread([&](unsigned id) {
+            consume_loop(*dqs[id], *depMods[id]);
+            }, i));
+    }
 
-  //   for (unsigned i = 0; i < THREAD_COUNT; i++) {
-  //     if (i != 0) {
-  //       depMods[0]->merge_dep(*depMods[i]);
-  //     }
-  //   }
+    for (auto &t : threads) {
+      t.join();
+    }
 
-  //   depMods[0]->fini("deplog.txt");
-  // }
+    for (unsigned i = 0; i < THREAD_COUNT; i++) {
+      if (i != 0) {
+        depMods[0]->merge_dep(*depMods[i]);
+      }
+    }
+
+    depMods[0]->fini("deplog.txt");
+  }
 }
