@@ -118,6 +118,8 @@ void PointsToModule::points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr) {
   }
   TS* s = (TS*)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts;
+  if (!smmap->is_allocated(ptr))
+    return;
   ts = s[0];
 
   if (ts != 0) {
@@ -140,6 +142,10 @@ void PointsToModule::points_to_inst(uint32_t instId, void *ptr) {
   }
   TS* s = (TS*)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
   TS ts;
+
+  // not all pointers are well-defined
+  if (!smmap->is_allocated(ptr))
+    return;
   ts = s[0];
 
   if (ts != 0) {
