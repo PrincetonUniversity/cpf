@@ -10,6 +10,8 @@
 #include "LocalWriteModule.h"
 #include "HTContainer.h"
 
+// #define TRACK_COUNT
+
 enum DepModAction : uint32_t {
   INIT = 0,
   LOAD,
@@ -32,8 +34,11 @@ private:
 
   slamp::MemoryMap *smmap = nullptr;
 
-  HTMap_Sum<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> dep_set;
-  // HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> dep_set;
+#ifdef TRACK_COUNT
+  HTMap_Sum<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> deps;
+#else
+  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> deps;
+#endif
 
   void log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst,
            const uint64_t load_invocation, const uint64_t load_iteration);

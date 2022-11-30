@@ -39,16 +39,24 @@ void DependenceModule::fini(const char *filename) {
   of << target_loop_id << " " << 0 << " " << 0 << " "
        << 0 << " " << 0 << " " << 0 << "\n";
 
+#ifdef TRACK_COUNT
   // get all the keys of a hash table to ordered set
   std::set<slamp::KEY, slamp::KEYComp> ordered;
-  for (auto & it : dep_set) {
+  for (auto & it : deps) {
     ordered.insert(it.first);
   }
-  // std::set<slamp::KEY, slamp::KEYComp> ordered(dep_set.begin(), dep_set.end());
+#else
+  std::set<slamp::KEY, slamp::KEYComp> ordered(deps.begin(), deps.end());
+#endif
+
   for (auto &k: ordered) {
+#ifdef TRACK_COUNT
+    auto count = deps[k];
+#else
+    auto count = 1;
+#endif
     of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
-       // << (k.cross ? 1 : 0) << " " << 1 << " ";
-       << (k.cross ? 1 : 0) << " " << dep_set[k] << " ";
+        << (k.cross ? 1 : 0) << " " << count << " ";
     of << "\n";
   }
 
@@ -77,7 +85,7 @@ void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_i
 
     slamp::KEY key(src_inst, dst_inst, bare_inst, src_iter != load_iteration);
 
-    dep_set.emplace_back(key);
+    deps.emplace_back(key);
 }
 
 void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
@@ -123,5 +131,5 @@ void DependenceModule::loop_iter() {
 }
 
 void DependenceModule::merge_dep(DependenceModule &other) {
-  // dep_set.merge_set(other.dep_set);
+   deps.merge(other.deps);
 }

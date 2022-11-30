@@ -171,12 +171,12 @@ public:
     return set.end();
   }
 
-  void merge_set(HTSet &other) {
-    merge_set(other.begin(), other.end());
+  void merge(HTSet &other) {
+    merge(other.begin(), other.end());
   }
 
   // insert (begin, end)
-  void merge_set(typename hash_set_t::iterator begin, typename hash_set_t::iterator end) {
+  void merge(typename hash_set_t::iterator begin, typename hash_set_t::iterator end) {
     for (auto it = begin; it != end; ++it) {
       set.insert(*it);
     }
@@ -299,6 +299,7 @@ template <typename T, typename Hash = std::hash<T>,
           uint32_t MAX_THREAD = 56,
           uint32_t BUFFER_SIZE = 1'000'000>
 class HTMap_Sum {
+  using MyType = HTMap_Sum<T, Hash, KeyEqual, MAX_THREAD, BUFFER_SIZE>;
 
     public:
       void Start() {
@@ -447,16 +448,22 @@ public:
     return map[key];
   }
 
-  // void merge_set(HTSet &other) {
-    // merge_set(other.begin(), other.end());
-  // }
+  void merge(MyType &other) {
+    merge(other.begin(), other.end());
+  }
 
-  // // insert (begin, end)
-  // void merge_set(typename hash_set_t::iterator begin, typename hash_set_t::iterator end) {
-  //   for (auto it = begin; it != end; ++it) {
-  //     set.insert(*it);
-  //   }
-  // }
+  // insert (begin, end)
+  void merge(typename hash_map_t::iterator begin, typename hash_map_t::iterator end) {
+    convertVectorToSet();
+    for (auto it = begin; it != end; ++it) {
+      auto global_it = map.find(it->first);
+      if (global_it == map.end()) {
+        map.insert({it->first, it->second});
+      } else {
+        global_it->second += it->second;
+      }
+    }
+  }
 
 
 private:
