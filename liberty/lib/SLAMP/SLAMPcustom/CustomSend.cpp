@@ -274,6 +274,9 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   __realloc_hook = SLAMP_realloc_hook;
   // __free_hook = SLAMP_free_hook;
   __memalign_hook = SLAMP_memalign_hook;
+
+  // flush
+  produce_wait();
 }
 
 void SLAMP_fini(const char* filename){

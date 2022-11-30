@@ -269,6 +269,9 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   // __realloc_hook = SLAMP_realloc_hook;
   // // __free_hook = SLAMP_free_hook;
   // __memalign_hook = SLAMP_memalign_hook;
+
+  // flush
+  produce_wait();
 }
 
 void SLAMP_fini(const char* filename){
@@ -321,8 +324,9 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // sprintf(msg, "load,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
   //
-    produce_32_32_64(LOAD, instr, addr);
-    produce_32_32_64(LOAD, size, value);
+    produce_32_32_64(LOAD, instr, value);
+    // produce_32_32_64(LOAD, instr, addr);
+    // produce_32_32_64(LOAD, size, value);
     counter_load++;
 }
 
@@ -345,19 +349,19 @@ void SLAMP_loadn(uint32_t instr, const uint64_t addr, const uint32_t bare_instr,
 }
 
 void SLAMP_load1_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  SLAMP_load1(bare_instr, addr, bare_instr, value);
+  // SLAMP_load1(bare_instr, addr, bare_instr, value);
 }
 void SLAMP_load2_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  SLAMP_load2(bare_instr, addr, bare_instr, value);
+  // SLAMP_load2(bare_instr, addr, bare_instr, value);
 }
 void SLAMP_load4_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  SLAMP_load4(bare_instr, addr, bare_instr, value);
+  // SLAMP_load4(bare_instr, addr, bare_instr, value);
 }
 void SLAMP_load8_ext(const uint64_t addr, const uint32_t bare_instr, uint64_t value){
-  SLAMP_load8(bare_instr, addr, bare_instr, value);
+  // SLAMP_load8(bare_instr, addr, bare_instr, value);
 }
 void SLAMP_loadn_ext(const uint64_t addr, const uint32_t bare_instr, size_t n){
-  SLAMP_loadn(bare_instr, addr, bare_instr, n);
+  // SLAMP_loadn(bare_instr, addr, bare_instr, n);
 }
 
 void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_instr) ATTRIBUTE(always_inline) {
