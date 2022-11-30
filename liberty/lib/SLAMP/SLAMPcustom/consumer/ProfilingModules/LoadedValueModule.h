@@ -41,7 +41,7 @@ struct Constant {
 };
 
 
-class LoadedValueModule: public LocalWriteModule {
+class LoadedValueModule: public GenericLocalWriteModule {
   private:
     uint64_t slamp_iteration = 0;
     uint64_t slamp_invocation = 0;
@@ -54,7 +54,7 @@ class LoadedValueModule: public LocalWriteModule {
 
   public:
     LoadedValueModule(uint32_t mask, uint32_t pattern)
-      : LocalWriteModule(mask, pattern) {
+      : GenericLocalWriteModule(mask, pattern) {
   }
  
   ~LoadedValueModule() override = default;
@@ -62,4 +62,6 @@ class LoadedValueModule: public LocalWriteModule {
   void init(uint32_t loop_id, uint32_t pid);
   void fini(const char *filename);
   void load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value, uint8_t size);
+
+  void merge_values(LoadedValueModule &other);
 };

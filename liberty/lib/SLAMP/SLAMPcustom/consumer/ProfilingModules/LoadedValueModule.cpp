@@ -24,29 +24,31 @@ void LoadedValueModule::fini(const char *filename) {
 }
 
 void LoadedValueModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value, uint8_t size) {
-  AccessKey key(instr, bare_instr);
-  constmap_value.emplace(std::make_pair(key, value));
+  local_write(instr, [&]() {
+    AccessKey key(instr, bare_instr);
+    constmap_value.emplace(std::make_pair(key, value));
+  });
   // if (constmap_value.count(key) != 0) {
-    // auto cp = constmap_value[key];
+  // auto cp = constmap_value[key];
 
-    // if (cp->valid) {
-      // if (cp->value != value) {
-        // cp->valid = false;
-      // }
-    // }
-    // // // Remove check for constant need to have the same address
-    // // if (cp->valueinit && cp->addr != addr)
-    // //   cp->valid = false;
-    // // if (cp->valid) {
-    // //   if (cp->valueinit && cp->value != value) {
-    // //     cp->valid = false;
-    // //   }
-    // //   else {
-    // //     cp->valueinit = true;
-    // //     cp->value = value;
-    // //     cp->addr = addr;
-    // //   }
-    // // }
+  // if (cp->valid) {
+  // if (cp->value != value) {
+  // cp->valid = false;
+  // }
+  // }
+  // // // Remove check for constant need to have the same address
+  // // if (cp->valueinit && cp->addr != addr)
+  // //   cp->valid = false;
+  // // if (cp->valid) {
+  // //   if (cp->valueinit && cp->value != value) {
+  // //     cp->valid = false;
+  // //   }
+  // //   else {
+  // //     cp->valueinit = true;
+  // //     cp->value = value;
+  // //     cp->addr = addr;
+  // //   }
+  // // }
   // } else {
     // auto cp = new Constant(true, value);
     // constmap_value[key] = cp;
@@ -55,3 +57,6 @@ void LoadedValueModule::load(uint32_t instr, const uint64_t addr, const uint32_t
   // }
 }
 
+void LoadedValueModule::merge_values(LoadedValueModule &other) {
+  constmap_value.merge(other.constmap_value);
+}

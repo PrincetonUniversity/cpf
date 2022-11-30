@@ -24,6 +24,18 @@ static inline uint64_t rdtsc() {
 #define ACTION 1
 #define MEASURE_TIME 0
 
+enum AvailableModules {
+  DEPENDENCE_MODULE = 0,
+  POINTS_TO_MODULE = 1,
+  LOADED_VALUE_MODULE = 2,
+  OBJECT_LIFETIME_MODULE = 3,
+  NUM_MODULES = 4
+};
+
+constexpr AvailableModules MODULE = LOADED_VALUE_MODULE;
+// set the thread count
+constexpr unsigned THREAD_COUNT = 8;
+
 // #define CONSUME         sq_consume(the_queue);
 
 static uint64_t load_time(0);
@@ -81,16 +93,17 @@ void consume_loop_lv(DoubleQueue &dq, LoadedValueModule &lvMod) ATTRIBUTE(noinli
     };
     case Action::LOAD: {
       uint32_t instr;
-      uint64_t addr;
+      uint64_t addr = 0;
       uint64_t value = 0;
 
       // uint32_t bare_instr;
-      uint32_t size;
+      uint32_t size = 0;
 
-      dq.unpack_32_64(instr, addr);
-      dq.check();
-      dq.consumePacket();
-      dq.unpack_32_64(size, value);
+      dq.unpack_32_64(instr, value);
+      // dq.unpack_32_64(instr, addr);
+      // dq.check();
+      // dq.consumePacket();
+      // dq.unpack_32_64(size, value);
       lvMod.load(instr, addr, instr, value, size);
 
       break;
@@ -530,55 +543,88 @@ int main(int argc, char** argv) {
   dqB->init(dataB);
 
 
-  // set the thread count
-  constexpr unsigned THREAD_COUNT = 1;
   constexpr unsigned MASK = THREAD_COUNT - 1;
 
   unsigned running_threads= THREAD_COUNT;
   std::mutex m;
   std::condition_variable cv;
 
-  DoubleQueue dq(dqA, dqB, true, running_threads, m, cv);
-
-  // PointsToModule ptMod(0, 0);
-  // consume_loop_pt(dq, ptMod);
-
-  // LoadedValueModule lvMod(0, 0);
-  // consume_loop_lv(dq, lvMod);
-
   std::vector<std::thread> threads;
   DoubleQueue *dqs[THREAD_COUNT];
-  DependenceModule *depMods[THREAD_COUNT];
 
-  for (unsigned i = 0; i < THREAD_COUNT; i++) {
-    dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
-    depMods[i] = new DependenceModule(MASK, i);
+  if (MODULE == DEPENDENCE_MODULE) {
+    DependenceModule *depMods[THREAD_COUNT];
+
+    for (unsigned i = 0; i < THREAD_COUNT; i++) {
+      dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+      depMods[i] = new DependenceModule(MASK, i);
+    }
+
+    if (THREAD_COUNT == 1) {
+      std::cout << "Running in main thread" << std::endl;
+      // single threaded, easy to debug
+      consume_loop(*dqs[0], *depMods[0]);
+
+      depMods[0]->fini("deplog.txt");
+    } else {
+      std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
+      for (unsigned i = 0; i < THREAD_COUNT; i++) {
+        threads.emplace_back(std::thread(
+            [&](unsigned id) { consume_loop(*dqs[id], *depMods[id]); }, i));
+      }
+
+      for (auto &t : threads) {
+        t.join();
+      }
+
+      for (unsigned i = 0; i < THREAD_COUNT; i++) {
+        if (i != 0) {
+          depMods[0]->merge_dep(*depMods[i]);
+        }
+      }
+
+      depMods[0]->fini("deplog.txt");
+    }
   }
 
-  if (THREAD_COUNT == 1) {
-    std::cout << "Running in main thread" << std::endl;
-    // single threaded, easy to debug
-    consume_loop(*dqs[0], *depMods[0]);
+  if (MODULE == POINTS_TO_MODULE) {
+    DoubleQueue dq(dqA, dqB, true, running_threads, m, cv);
 
-    depMods[0]->fini("deplog.txt");
-  } else {
-    std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
+    PointsToModule ptMod(0, 0);
+    consume_loop_pt(dq, ptMod);
+  }
+
+  if (MODULE == LOADED_VALUE_MODULE) {
+    LoadedValueModule *lvMods[THREAD_COUNT];
     for (unsigned i = 0; i < THREAD_COUNT; i++) {
-      threads.emplace_back(std::thread([&](unsigned id) {
-            consume_loop(*dqs[id], *depMods[id]);
-            }, i));
+      dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+      lvMods[i] = new LoadedValueModule(MASK, i);
     }
 
-    for (auto &t : threads) {
-      t.join();
-    }
+    if (THREAD_COUNT == 1) {
+      std::cout << "Running in main thread" << std::endl;
+      // single threaded, easy to debug
+      consume_loop_lv(*dqs[0], *lvMods[0]);
 
-    for (unsigned i = 0; i < THREAD_COUNT; i++) {
-      if (i != 0) {
-        depMods[0]->merge_dep(*depMods[i]);
+      lvMods[0]->fini("lvlog.txt");
+    } else {
+      std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
+      for (unsigned i = 0; i < THREAD_COUNT; i++) {
+        threads.emplace_back(std::thread(
+            [&](unsigned id) { consume_loop_lv(*dqs[id], *lvMods[id]); }, i));
       }
-    }
 
-    depMods[0]->fini("deplog.txt");
+      for (auto &t : threads) {
+        t.join();
+      }
+
+      for (unsigned i = 0; i < THREAD_COUNT; i++) {
+        if (i != 0) {
+          lvMods[0]->merge_values(*lvMods[i]);
+        }
+      }
+
+      lvMods[0]->fini("lvlog.txt");
+    }
   }
 }
