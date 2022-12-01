@@ -35,7 +35,7 @@ enum AvailableModules {
 
 constexpr AvailableModules MODULE = POINTS_TO_MODULE;
 // set the thread count
-constexpr unsigned THREAD_COUNT = 2;
+constexpr unsigned THREAD_COUNT = 8;
 
 // #define CONSUME         sq_consume(the_queue);
 
@@ -789,14 +789,12 @@ int main(int argc, char** argv) {
       // FIXME: hack!
       ptMods[0]->decode_all();
       for (unsigned i = 0; i < THREAD_COUNT; i++) {
-        std::string fname = "ptlog" + std::to_string(i) + ".txt";
-        ptMods[i]->fini(fname.c_str());
         if (i != 0) {
           ptMods[0]->merge(*ptMods[i]);
         }
       }
 
-      // ptMods[0]->fini("ptlog.txt");
+      ptMods[0]->fini("ptlog.txt");
     }
   }
 

@@ -84,6 +84,7 @@ template <typename ContextId> struct Context {
 template <class Context>
 struct ContextManager {
   Context *activeContext;
+  bool contextChanged = true;
 
   ContextManager() {
     activeContext = Context::getTopContext();
@@ -102,11 +103,13 @@ struct ContextManager {
     assert(activeContext && "active context is null");
     /// maybe this is not a great idea, expose the semantics of the context to the manager
     activeContext = activeContext->chain(contextId);
+    contextChanged = true;
     // addContext(activeContext->hash(), *activeContext);
   }
 
   void popContext(typename Context::ContextIdType contextId) {
     assert(activeContext && "active context is null");
+    contextChanged = true;
 
     if (activeContext->id == contextId) {
       activeContext = activeContext->pop();
@@ -189,7 +192,6 @@ struct SpecPrivContextManager : public ContextManager<SpecPrivContext> {
   std::map<std::vector<ContextId>, ContextHash> contextIdHashMap;
   size_t contextIdHashCounter = 1;
   
-  SpecPrivContext *cachedActiveContext;
   ContextHash cachedContextHash;
 
   ContextHash encodeContext(SpecPrivContext context) {
@@ -207,11 +209,11 @@ struct SpecPrivContextManager : public ContextManager<SpecPrivContext> {
   ContextHash encodeActiveContext() {
     // std::cerr << "encodeActiveContext: ";
     // activeContext->print(std::cerr);
-    if (activeContext == cachedActiveContext) {
+    if (!contextChanged) {
       return cachedContextHash;
     } else {
-      cachedActiveContext = activeContext;
       cachedContextHash = encodeContext(*activeContext);
+      contextChanged = false;
       return cachedContextHash;
     }
   }

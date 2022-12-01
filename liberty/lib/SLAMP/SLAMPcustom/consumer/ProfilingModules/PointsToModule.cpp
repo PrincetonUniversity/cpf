@@ -119,17 +119,6 @@ void PointsToModule::points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr) {
 }
 
 void PointsToModule::points_to_inst(uint32_t instId, void *ptr) {
-  if (instId == 141) {
-    if (contextManager.activeContext->id.metaId == 5) {
-       std::cerr << LOCALWRITE_PATTERN <<  " " << ptr << " here\n";
-    }
-
-    if (in_func5) {
-      std::cerr << LOCALWRITE_PATTERN << " " << ptr << " should be here\n";
-    }
-
-    // std::cerr << 141 << " " << ptr << " " << contextManager.activeContext->id.metaId <<  "\n";
-  }
   local_write((uint64_t)ptr, [&]() {
     auto instr = FORMAT_INST_INST(instId);
     auto contextHash = contextManager.encodeActiveContext();
@@ -193,65 +182,65 @@ void PointsToModule::fini(const char *filename) {
   //  FUNCTION allocate_matrices WITHIN FUNCTION main WITHIN TOP }  COUNT 300 )
   //  } ;
 
-  // get ordered key from the map
-  std::vector<uint64_t> keys;
-  for (auto &kv : pointsToMap) {
-    keys.push_back(kv.first);
-  }
-  std::sort(keys.begin(), keys.end());
+  // // get ordered key from the map
+  // std::vector<uint64_t> keys;
+  // for (auto &kv : pointsToMap) {
+  //   keys.push_back(kv.first);
+  // }
+  // std::sort(keys.begin(), keys.end());
 
-  for (auto &key : keys) {
-    auto v = pointsToMap[key];
-    auto instr = key  >> 32;
-    auto instrHash = key & 0xFFFFFFFF;
-    std::vector<SpecPrivLib::ContextId> instrContext =
-        contextManager.decodeContext(instrHash);
-    specprivfs << "PRED OBJ " << instr << " at " << instrHash << " ";
-    printContext(instrContext);
-    specprivfs << ": " << v.size() << "\n"; // instruction ID
-    for (auto &it2 : v) { // the set of allocation units
-      auto hash = GET_HASH(it2);
+  // for (auto &key : keys) {
+  //   auto v = pointsToMap[key];
+  //   auto instr = key  >> 32;
+  //   auto instrHash = key & 0xFFFFFFFF;
+  //   std::vector<SpecPrivLib::ContextId> instrContext =
+  //       contextManager.decodeContext(instrHash);
+  //   specprivfs << "PRED OBJ " << instr << " at " << instrHash << " ";
+  //   printContext(instrContext);
+  //   specprivfs << ": " << v.size() << "\n"; // instruction ID
+  //   for (auto &it2 : v) { // the set of allocation units
+  //     auto hash = GET_HASH(it2);
 
+  //     specprivfs << "AU ";
+  //     if (it2 == 0xffffffffffffff00) {
+  //       specprivfs << " UNMANAGED";
+  //     } else if (it2 == 0) {
+  //       specprivfs << " NULL";
+  //     } else {
+  //       std::vector<SpecPrivLib::ContextId> context =
+  //           contextManager.decodeContext(hash);
+
+  //       specprivfs << GET_INSTR(it2);
+  //       specprivfs << " FROM CONTEXT " << instrHash << " ";
+  //       printContext(context);
+  //     }
+  //     specprivfs << ";\n";
+  //   }
+  // }
+
+  for (auto &kv : decodedContextMap) {
+    auto ptrAndContext = kv.first;
+    auto instr = ptrAndContext.first;
+    auto context = ptrAndContext.second;
+
+    specprivfs << "PRED OBJ " << instr << " at ";
+    printContext(context);
+    auto auSet = kv.second;
+    specprivfs << ": " << auSet.size() << "\n"; // instruction ID
+    for (auto &[au, context] : auSet) {
       specprivfs << "AU ";
-      if (it2 == 0xffffffffffffff00) {
+      if (au == -2) {
         specprivfs << " UNMANAGED";
-      } else if (it2 == 0) {
+      } else if (au == -1) {
         specprivfs << " NULL";
       } else {
-        std::vector<SpecPrivLib::ContextId> context =
-            contextManager.decodeContext(hash);
-
-        specprivfs << GET_INSTR(it2);
-        specprivfs << " FROM CONTEXT " << instrHash << " ";
+        specprivfs << au;
+        specprivfs << " FROM CONTEXT ";
         printContext(context);
       }
       specprivfs << ";\n";
     }
   }
-
-  // for (auto &kv : decodedContextMap) {
-    // auto ptrAndContext = kv.first;
-    // auto instr = ptrAndContext.first;
-    // auto context = ptrAndContext.second;
-
-    // specprivfs << "PRED OBJ " << instr << " at ";
-    // printContext(context);
-    // auto auSet = kv.second;
-    // specprivfs << ": " << auSet.size() << "\n"; // instruction ID
-    // for (auto &[au, context] : auSet) {
-      // specprivfs << "AU ";
-      // if (au == -2) {
-        // specprivfs << " UNMANAGED";
-      // } else if (au == -1) {
-        // specprivfs << " NULL";
-      // } else {
-        // specprivfs << au;
-        // specprivfs << " FROM CONTEXT ";
-        // printContext(context);
-      // }
-      // specprivfs << ";\n";
-    // }
-  // }
 
   specprivfs << " END SPEC PRIV PROFILE\n";
 }
