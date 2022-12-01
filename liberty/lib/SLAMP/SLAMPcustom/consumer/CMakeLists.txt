@@ -18,7 +18,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(./
     ../)
 
-add_executable (consumer consumer.cpp ProfilingModules/DependenceModule.cpp ProfilingModules/PointsToModule.cpp ProfilingModules/LoadedValueModule.cpp)
+add_executable (consumer consumer.cpp ProfilingModules/DependenceModule.cpp ProfilingModules/PointsToModule.cpp ProfilingModules/LoadedValueModule.cpp ProfilingModules/ObjectLifetimeModule.cpp)
 target_link_libraries(consumer LINK_PUBLIC 
 	${Boost_LIBRARIES}
 	rt

@@ -9,6 +9,7 @@
 #include "ProfilingModules/DependenceModule.h"
 #include "ProfilingModules/PointsToModule.h"
 #include "ProfilingModules/LoadedValueModule.h"
+#include "ProfilingModules/ObjectLifetimeModule.h"
 #include "sw_queue_astream.h"
 
 #define ATTRIBUTE(x) __attribute__((x))
@@ -32,9 +33,9 @@ enum AvailableModules {
   NUM_MODULES = 4
 };
 
-constexpr AvailableModules MODULE = LOADED_VALUE_MODULE;
+constexpr AvailableModules MODULE = POINTS_TO_MODULE;
 // set the thread count
-constexpr unsigned THREAD_COUNT = 8;
+constexpr unsigned THREAD_COUNT = 2;
 
 // #define CONSUME         sq_consume(the_queue);
 
@@ -124,8 +125,177 @@ void consume_loop_lv(DoubleQueue &dq, LoadedValueModule &lvMod) ATTRIBUTE(noinli
       }
       finished = true;
 
+      // if (ACTION) {
+        // lvMod.fini("ptlog.txt");
+      // }
+
+      break;
+    };
+    default:
+      std::cout << "Unknown action: " << (uint64_t)v << std::endl;
+
+      std::cout << "Is ready to read?:" << dq.qNow->ready_to_read << " "
+                << "Is ready to write?:" << dq.qNow->ready_to_write << std::endl;
+      std::cout << "Index: " << dq.index << " Size:" << dq.qNow->size << std::endl;
+
+      for (int i = 0; i < 101; i++) {
+        std::cout << dq.qNow->data[dq.index - 100 + i] << " ";
+      }
+      exit(-1);
+    }
+
+    // if (counter % 100'000'000 == 0) {
+      // std::cout << "Processed " << counter / 1'000'000 << "M events" << std::endl;
+    // }
+    if (finished) {
+      break;
+    }
+  }
+}
+
+void consume_loop_ol(DoubleQueue &dq, ObjectLifetimeModule &olMod) ATTRIBUTE(noinline) {
+  uint64_t rdtsc_start = 0;
+  uint64_t counter = 0;
+  uint32_t loop_id;
+
+  using Action = ObjectLifetimeModAction;
+  // measure time with lambda action
+  auto measure_time = [](uint64_t &time, auto action) {
+    // measure time with rdtsc
+    if (MEASURE_TIME) {
+      uint64_t start = rdtsc();
+      action();
+      uint64_t end = rdtsc();
+      time += end - start;
+    }
+    else {
+      action();
+    }
+  };
+
+  bool finished = false;
+  while (true) {
+    dq.check();
+    uint32_t v;
+    v = dq.consumePacket();
+    counter++;
+
+    // convert v to action
+    auto action = static_cast<Action>(v);
+
+    switch (action) {
+    case Action::INIT: {
+      uint32_t pid;
+      // loop_id = (uint32_t)dq.consume();
+      // pid = (uint32_t)dq.consume();
+      dq.unpack_32_32(loop_id, pid);
+      rdtsc_start = rdtsc();
+
+      if (DEBUG) {
+        std::cout << "INIT: " << loop_id << " " << pid << std::endl;
+      }
       if (ACTION) {
-        lvMod.fini("ptlog.txt");
+        olMod.init(loop_id, pid);
+      }
+      break;
+    };
+    case Action::ALLOC: {
+      uint32_t instr;
+      uint64_t addr;
+      uint32_t size;
+      dq.unpack_24_32_64(instr, size, addr);
+
+      if (DEBUG) {
+        std::cout << "ALLOC: " << addr << " " << size << std::endl;
+      }
+      if (ACTION) {
+        measure_time(alloc_time, [&]() {
+          olMod.allocate(reinterpret_cast<void *>(addr), instr, size);
+        });
+      }
+      break;
+    };
+    case Action::FREE: {
+      uint64_t addr;
+      dq.unpack_64(addr);
+
+      if (DEBUG) {
+        std::cout << "FREE: " << addr << std::endl;
+      }
+      if (ACTION) {
+        measure_time(alloc_time,
+            [&]() { olMod.free(reinterpret_cast<void *>(addr)); });
+      }
+      break;
+    };
+    case Action::LOOP_INVOC: {
+      if (DEBUG) {
+        std::cout << "LOOP_INVOC" << std::endl;
+      }
+
+      if (ACTION) {
+        olMod.loop_invoc();
+      }
+      break;
+    };
+    case Action::LOOP_ITER: {
+      if (DEBUG) {
+        std::cout << "LOOP_ITER" << std::endl;
+      }
+      if (ACTION) {
+        olMod.loop_iter();
+      }
+      break;
+    };
+    case Action::LOOP_EXIT: {
+      if (DEBUG) {
+        std::cout << "LOOP_EXIT " << std::endl;
+      }
+      if (ACTION) {
+        olMod.loop_exit();
+      }
+      break;
+    };
+    case Action::FUNC_ENTRY: {
+      uint32_t func_id;
+      dq.unpack_32(func_id);
+      if (DEBUG) {
+        std::cout << "FUNC_ENTRY: " << func_id << std::endl;
+      }
+      if (ACTION) {
+        olMod.func_entry(func_id);
+      }
+      break;
+    };
+    case Action::FUNC_EXIT: {
+      uint32_t func_id;
+      dq.unpack_32(func_id);
+      if (DEBUG) {
+        std::cout << "FUNC_EXIT: " << func_id << std::endl;
+      }
+      if (ACTION) {
+        olMod.func_exit(func_id);
+      }
+      break;
+    };
+
+    case Action::FINISHED: {
+      uint64_t rdtsc_end = rdtsc();
+      // total cycles
+      uint64_t total_cycles = rdtsc_end - rdtsc_start;
+      std::cout << "Finished loop: " << loop_id << " after " << counter
+                << " events" << std::endl;
+      // print time in seconds
+      std::cout << "Total time: " << total_cycles / 2.6e9 << " s" << std::endl;
+      if (MEASURE_TIME) {
+        std::cout << "Load time: " << load_time / 2.6e9 << " s" << std::endl;
+        std::cout << "Store time: " << store_time / 2.6e9 << " s" << std::endl;
+        std::cout << "Alloc time: " << alloc_time / 2.6e9 << " s" << std::endl;
+      }
+      finished = true;
+
+      if (ACTION) {
+        olMod.fini("ollog.txt");
       }
 
       break;
@@ -588,10 +758,53 @@ int main(int argc, char** argv) {
   }
 
   if (MODULE == POINTS_TO_MODULE) {
+    PointsToModule *ptMods[THREAD_COUNT];
+
+    for (unsigned i = 0; i < THREAD_COUNT; i++) {
+      dqs[i] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+      // ptMods[i] = new PointsToModule(MASK, i);
+      ptMods[i] = new PointsToModule(MASK, i);
+    }
+
+    if (THREAD_COUNT == 1) {
+
+      std::cout << "Running in main thread" << std::endl;
+      // single threaded, easy to debug
+      consume_loop_pt(*dqs[0], *ptMods[0]);
+
+      // FIXME: hack!
+      ptMods[0]->decode_all();
+      ptMods[0]->fini("ptlog.txt");
+    } else {
+      std::cout << "Running in " << THREAD_COUNT << " threads" << std::endl;
+      for (unsigned i = 0; i < THREAD_COUNT; i++) {
+        threads.emplace_back(std::thread(
+            [&](unsigned id) { consume_loop_pt(*dqs[id], *ptMods[id]); }, i));
+      }
+
+      for (auto &t : threads) {
+        t.join();
+      }
+
+      // FIXME: hack!
+      ptMods[0]->decode_all();
+      for (unsigned i = 0; i < THREAD_COUNT; i++) {
+        std::string fname = "ptlog" + std::to_string(i) + ".txt";
+        ptMods[i]->fini(fname.c_str());
+        if (i != 0) {
+          ptMods[0]->merge(*ptMods[i]);
+        }
+      }
+
+      // ptMods[0]->fini("ptlog.txt");
+    }
+  }
+
+  if (MODULE == OBJECT_LIFETIME_MODULE) {
     DoubleQueue dq(dqA, dqB, true, running_threads, m, cv);
 
-    PointsToModule ptMod(0, 0);
-    consume_loop_pt(dq, ptMod);
+    ObjectLifetimeModule olMod(0, 0);
+    consume_loop_ol(dq, olMod);
   }
 
   if (MODULE == LOADED_VALUE_MODULE) {

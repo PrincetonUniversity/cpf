@@ -318,7 +318,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 #
 
 %.result.slamp.profile: export LINKING_OPTS = $(LINKING_POSTOPTIONS)
-%.result.slamp.profile: %.loopProf.out
+%.result.slamp.profile: $(CANON).bc %.loopProf.out
 	date
 	$(SETUP)
 	$(PROFILESETUP)

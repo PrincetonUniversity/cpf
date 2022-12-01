@@ -46,7 +46,7 @@ private:
 public:
   DependenceModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
-    smmap = new slamp::MemoryMap(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
+    smmap = new slamp::MemoryMap(mask, pattern, TIMESTAMP_SIZE_IN_BYTES);
   }
 
   ~DependenceModule() override { delete smmap; }

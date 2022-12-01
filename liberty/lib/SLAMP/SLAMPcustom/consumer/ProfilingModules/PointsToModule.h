@@ -2,6 +2,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ProfilingModules/parallel_hashmap/phmap.h"
 #include "slamp_logger.h"
 #include "slamp_shadow_mem.h"
 #include "slamp_timestamp.h"
@@ -38,30 +39,24 @@ class PointsToModule : public LocalWriteModule {
 
     bool in_loop = false;
 
-    SpecPrivLib::SpecPrivContextManager *contextManager;
-    std::unordered_set<unsigned long> *shortLivedObjects, *longLivedObjects;
-    std::unordered_set<ContextHash> *targetLoopContexts;
+    SpecPrivLib::SpecPrivContextManager contextManager;
+    std::unordered_set<ContextHash> targetLoopContexts;
     using SlampAllocationUnit = TS;
-    std::unordered_map<uint64_t, std::unordered_set<SlampAllocationUnit>> *pointsToMap;
+    // std::unordered_map<uint64_t, std::unordered_set<SlampAllocationUnit>> pointsToMap;
+    // HTMap_Set<uint64_t, SlampAllocationUnit, std::hash<uint64_t>, std::equal_to<>, 32> pointsToMap;
+    phmap::flat_hash_map<uint64_t, phmap::flat_hash_set<SlampAllocationUnit>> pointsToMap;
+
+    using InstrAndContext = std::pair<uint32_t, std::vector<SpecPrivLib::ContextId>>;
+    std::map<InstrAndContext, std::set<InstrAndContext>> decodedContextMap;
 
   public:
   PointsToModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
-    smmap = new slamp::MemoryMap(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
-
-    contextManager = new SpecPrivLib::SpecPrivContextManager();
-    shortLivedObjects = new std::unordered_set<uint64_t>();
-    longLivedObjects = new std::unordered_set<uint64_t>();
-    targetLoopContexts = new std::unordered_set<uint64_t>();
-    pointsToMap = new std::unordered_map<uint64_t, std::unordered_set<SlampAllocationUnit>>();
+    smmap = new slamp::MemoryMap(mask, pattern, TIMESTAMP_SIZE_IN_BYTES);
   }
 
   ~PointsToModule() override { 
     delete smmap; 
-    delete contextManager;
-    delete shortLivedObjects;
-    delete longLivedObjects;
-    delete targetLoopContexts;
   }
 
   void init(uint32_t loop_id, uint32_t pid);
@@ -80,4 +75,6 @@ class PointsToModule : public LocalWriteModule {
   void points_to_inst(uint32_t instId, void *ptr);
 
   void points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr);
+  void merge(PointsToModule &other);
+  void decode_all();
 };
