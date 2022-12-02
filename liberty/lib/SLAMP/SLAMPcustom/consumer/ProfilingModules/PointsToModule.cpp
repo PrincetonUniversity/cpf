@@ -275,10 +275,10 @@ void PointsToModule::decode_all() {
 
     for (auto &it2 : it.second) { // the set of allocation units
       auto hash = GET_HASH(it2);
-      if (it2 == 0xffffffffffffff00) {
+      if (hash == 0xfffffffff) {
         // insert -2, empty
         decodedContextMap[instrAndContext].insert({-2, {}});
-      } else if (it2 == 0) {
+      } else if (hash == 0) {
         // insert -1, empty
         decodedContextMap[instrAndContext].insert({-1, {}});
       } else {
