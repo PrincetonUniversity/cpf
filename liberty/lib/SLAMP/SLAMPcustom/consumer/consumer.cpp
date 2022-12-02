@@ -33,7 +33,7 @@ enum AvailableModules {
   NUM_MODULES = 4
 };
 
-constexpr AvailableModules MODULE = POINTS_TO_MODULE;
+constexpr AvailableModules MODULE = LOADED_VALUE_MODULE;
 // set the thread count
 constexpr unsigned THREAD_COUNT = 8;
 

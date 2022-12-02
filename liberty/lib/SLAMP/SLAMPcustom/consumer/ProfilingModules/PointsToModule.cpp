@@ -18,7 +18,9 @@
 bool in_func5 = false;
 
 void PointsToModule::allocate(void *addr, uint32_t instr, uint64_t size) {
-  void* shadow = smmap->allocate(addr, size);
+  // FIXME: is it leagal
+  void* shadow = smmap->allocate(addr, size + 1);
+  // void* shadow = smmap->allocate(addr, size);
 
   TS *s = (TS *)shadow;
   // log all data into sigle TS
@@ -41,6 +43,13 @@ void PointsToModule::allocate(void *addr, uint32_t instr, uint64_t size) {
       s[i] = ts;
     });
   }
+
+  // FIXME: is this legal?
+  // Guard the last byte out of the range
+  local_write((uint64_t)addr + size, [&](){
+    s[size] = ts;
+  });
+
 }
 
 void PointsToModule::free(void *addr) {
@@ -100,6 +109,11 @@ void PointsToModule::points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr) {
       // pointsToMap.emplace(std::make_pair(instrAndHash, 0));
       return;
     }
+    if (ptr < (void *)0x1000) {
+      // Protect against null pointers
+      // If it gets dereferenced, it will be caught by segfault
+      return;
+    }
     TS *s = (TS *)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     TS ts;
     // if (!smmap->is_allocated(ptr))
@@ -126,6 +140,11 @@ void PointsToModule::points_to_inst(uint32_t instId, void *ptr) {
     if (ptr == nullptr) {
       pointsToMap[instrAndHash].insert(0);
       // pointsToMap.emplace(std::make_pair(instrAndHash, 0));
+      return;
+    }
+    if (ptr < (void *)0x1000) {
+      // Protect against null pointers
+      // If it gets dereferenced, it will be caught by segfault
       return;
     }
     TS *s = (TS *)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);

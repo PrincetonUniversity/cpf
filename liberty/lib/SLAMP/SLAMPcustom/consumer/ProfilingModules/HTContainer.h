@@ -577,6 +577,7 @@ public:
 private:
 #ifdef HT_THREAD_POOL
   bool should_terminate = false; // Tells threads to stop looking for jobs
+  bool should_gather = false;
   std::mutex queue_mutex;        // Prevents data races to the job queue
   std::condition_variable
       mutex_condition; // Allows threads to wait on new jobs or termination
@@ -610,22 +611,25 @@ private:
         }
       }
 
-      m.lock();
-      // lock the global set and insert the chunk
-      // merge the map_chunk into the global map
-      for (auto it = map_chunk->begin(); it != map_chunk->end(); ++it) {
-        auto global_it = map.find(it->first);
-        if (global_it == map.end()) {
-          map.insert({it->first, it->second});
-        } else {
-          // check if value is the same
-          if (global_it->second != MAGIC_INVALID && global_it->second != it->second) {
-            global_it->second = MAGIC_INVALID;
+      if (should_gather) {
+        m.lock();
+        std::cout << "thread " << id << " is gathering" << std::endl;
+        // lock the global set and insert the chunk
+        // merge the map_chunk into the global map
+        for (auto it = map_chunk->begin(); it != map_chunk->end(); ++it) {
+          auto global_it = map.find(it->first);
+          if (global_it == map.end()) {
+            map.insert({it->first, it->second});
+          } else {
+            // check if value is the same
+            if (global_it->second != MAGIC_INVALID && global_it->second != it->second) {
+              global_it->second = MAGIC_INVALID;
+            }
           }
         }
+        m.unlock();
+        map_chunk->clear();
       }
-      m.unlock();
-      map_chunk->clear();
     };
     while (true) {
       {
@@ -706,24 +710,24 @@ public:
 
   // iterator begin
   auto begin() {
-    convertVectorToSet();
+    convertVectorToSet(true);
     return map.begin();
   }
 
   // iterator end
   auto end() {
-    convertVectorToSet();
+    convertVectorToSet(true);
     return map.end();
   }
 
   auto count(const TK &key) {
-    convertVectorToSet();
+    convertVectorToSet(true);
     return map.count(key);
   }
 
   // provide [] operator
   auto &operator[](const TK &key) {
-    convertVectorToSet();
+    convertVectorToSet(true);
     return map[key];
   }
 
@@ -733,7 +737,7 @@ public:
 
   // insert (begin, end)
   void merge(typename hash_map_t::iterator begin, typename hash_map_t::iterator end) {
-    convertVectorToSet();
+    convertVectorToSet(true);
     for (auto it = begin; it != end; ++it) {
       auto global_it = map.find(it->first);
       if (global_it == map.end()) {
@@ -790,7 +794,7 @@ private:
     }
   }
 
-  void convertVectorToSet() {
+  void convertVectorToSet(bool gather = false) {
     const uint32_t thread_count = getThreadCount();
     const auto set_size = buffer.size() / thread_count;
     const auto buffer_size = buffer.size();
@@ -826,6 +830,9 @@ private:
     }
 
     // std::cout << "pending jobs: " << pending_jobs << std::endl;
+    if (gather) {
+      should_gather = true;
+    }
     mutex_condition.notify_all();
 
     // std:: cout << "waiting for jobs to finish" << std::endl;
@@ -837,6 +844,7 @@ private:
         break;
       }
     }
+    should_gather = false;
 #endif
 
 #ifndef HT_THREAD_POOL
@@ -1109,7 +1117,6 @@ private:
     }
     // std::cout << "pending jobs: " << pending_jobs << std::endl;
     mutex_condition.notify_all();
-    should_gather = false;
 
     // std:: cout << "waiting for jobs to finish" << std::endl;
 
@@ -1120,6 +1127,7 @@ private:
         break;
       }
     }
+    should_gather = false;
 #endif
 
 #ifndef HT_THREAD_POOL
