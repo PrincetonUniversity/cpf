@@ -9,7 +9,7 @@
 
 #include "LocalWriteModule.h"
 #include "HTContainer.h"
-#include "context.h"
+#include "ContextManager.h"
 
 enum class PointsToModAction : uint32_t {
   INIT = 0,
@@ -28,8 +28,6 @@ enum class PointsToModAction : uint32_t {
   FINISHED
 };
 
-using namespace SLAMPLib;
-
 class PointsToModule : public LocalWriteModule {
   private:
     uint64_t slamp_iteration = 0;
@@ -39,14 +37,23 @@ class PointsToModule : public LocalWriteModule {
 
     bool in_loop = false;
 
-    SpecPrivLib::SpecPrivContextManager contextManager;
+    enum SpecPrivContextType {
+      TopContext = 0,
+      FunctionContext,
+      LoopContext,
+    };
+    using ContextHash = uint64_t;
+    using SpecPrivContextManager = NewContextManager<SpecPrivContextType, uint32_t, ContextHash>;
+    using ContextId = ContextId<SpecPrivContextType, uint32_t>;
     std::unordered_set<ContextHash> targetLoopContexts;
+    SpecPrivContextManager contextManager;
+
     using SlampAllocationUnit = TS;
     // std::unordered_map<uint64_t, std::unordered_set<SlampAllocationUnit>> pointsToMap;
     // HTMap_Set<uint64_t, SlampAllocationUnit, std::hash<uint64_t>, std::equal_to<>, 32> pointsToMap;
     phmap::flat_hash_map<uint64_t, phmap::flat_hash_set<SlampAllocationUnit>> pointsToMap;
 
-    using InstrAndContext = std::pair<uint32_t, std::vector<SpecPrivLib::ContextId>>;
+    using InstrAndContext = std::pair<uint32_t, std::vector<ContextId>>;
     std::map<InstrAndContext, std::set<InstrAndContext>> decodedContextMap;
 
   public:

@@ -1,5 +1,4 @@
 #include "ObjectLifetimeModule.h"
-#include "context.h"
 #include "slamp_timestamp.h"
 
 void ObjectLifetimeModule::allocate(void *addr, uint32_t instr, uint64_t size) {
@@ -50,12 +49,12 @@ void ObjectLifetimeModule::free(void *addr) {
 
 // manage context
 void ObjectLifetimeModule::func_entry(uint32_t fcnId) {
-  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
-  contextManager.updateContext(contextId);
+  auto contextId = ContextId(FunctionContext, fcnId);
+  contextManager.pushContext(contextId);
 }
 
 void ObjectLifetimeModule::func_exit(uint32_t fcnId) {
-  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
+  auto contextId = ContextId(FunctionContext, fcnId);
   contextManager.popContext(contextId);
 }
 
@@ -86,13 +85,6 @@ void ObjectLifetimeModule::fini(const char *filename) {
   specprivfs << "BEGIN SPEC PRIV PROFILE\n";
   specprivfs << "COMPLETE ALLOCATION INFO ; \n";
 
-  auto printContext =
-      [&specprivfs](const std::vector<SpecPrivLib::ContextId> &ctx) {
-        for (auto &c : ctx) {
-          specprivfs << "(" << c.type << "," << c.metaId << ")";
-        }
-      };
-
   // local objects
   for (auto &obj : shortLivedObjects) {
     // LOCAL OBJECT AU HEAP main if.else.i call.i4.i FROM  CONTEXT { LOOP main
@@ -103,9 +95,8 @@ void ObjectLifetimeModule::fini(const char *filename) {
 
     auto instr = GET_INSTR(obj);
     auto hash = GET_HASH(obj);
-    auto context = contextManager.decodeContext(hash);
     specprivfs << "LOCAL OBJECT " << instr << " at context ";
-    printContext(context);
+    contextManager.printContext(specprivfs, hash);
     specprivfs << ";\n";
   }
 

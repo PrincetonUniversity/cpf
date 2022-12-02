@@ -8,7 +8,7 @@
 
 #include "LocalWriteModule.h"
 #include "HTContainer.h"
-#include "context.h"
+#include "ContextManager.h"
 
 enum class ObjectLifetimeModAction : uint32_t {
   INIT = 0,
@@ -24,7 +24,7 @@ enum class ObjectLifetimeModAction : uint32_t {
   FINISHED
 };
 
-using namespace SLAMPLib;
+// using namespace SLAMPLib;
 
 class ObjectLifetimeModule: public LocalWriteModule {
   private:
@@ -35,8 +35,18 @@ class ObjectLifetimeModule: public LocalWriteModule {
 
     bool in_loop = false;
 
-    SpecPrivLib::SpecPrivContextManager contextManager;
-    HTSet<uint64_t, std::hash<uint64_t>, std::equal_to<>, 8> shortLivedObjects, longLivedObjects;
+
+    enum SpecPrivContextType {
+      TopContext = 0,
+      FunctionContext,
+      LoopContext,
+    };
+
+    using SpecPrivContextManager = NewContextManager<SpecPrivContextType, uint32_t, uint64_t>;
+    using ContextId = ContextId<SpecPrivContextType, uint32_t>;
+    SpecPrivContextManager contextManager;
+
+    HTSet<uint64_t, std::hash<uint64_t>, std::equal_to<>, 16> shortLivedObjects, longLivedObjects;
     // std::unordered_set<unsigned long> shortLivedObjects, longLivedObjects;
 
   public:
@@ -45,8 +55,8 @@ class ObjectLifetimeModule: public LocalWriteModule {
     smmap = new slamp::MemoryMap(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
   }
 
-  ~ObjectLifetimeModule() override { 
-    delete smmap; 
+  ~ObjectLifetimeModule() override {
+    delete smmap;
   }
 
   void init(uint32_t loop_id, uint32_t pid);

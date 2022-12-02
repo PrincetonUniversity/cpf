@@ -61,21 +61,21 @@ void PointsToModule::func_entry(uint32_t fcnId) {
     in_func5 = true;
   }
 
-  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
-  contextManager.updateContext(contextId);
+  auto contextId = ContextId(FunctionContext, fcnId);
+  contextManager.pushContext(contextId);
 }
 
 void PointsToModule::func_exit(uint32_t fcnId) {
   if (fcnId == 5) {
     in_func5 = false;
   }
-  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::FunctionContext, fcnId);
+  auto contextId = ContextId(FunctionContext, fcnId);
   contextManager.popContext(contextId);
 }
 
 void PointsToModule::loop_entry(uint32_t loopId) {
-  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::LoopContext, loopId);
-  contextManager.updateContext(contextId);
+  auto contextId = ContextId(LoopContext, loopId);
+  contextManager.pushContext(contextId);
 
   if (loopId == target_loop_id) {
     in_loop = true;
@@ -83,7 +83,7 @@ void PointsToModule::loop_entry(uint32_t loopId) {
 }
 
 void PointsToModule::loop_exit(uint32_t loopId) {
-  auto contextId = SpecPrivLib::ContextId(SpecPrivLib::LoopContext, loopId);
+  auto contextId = ContextId(LoopContext, loopId);
   contextManager.popContext(contextId);
   if (loopId == target_loop_id) {
     in_loop = false;
@@ -179,18 +179,11 @@ void PointsToModule::fini(const char *filename) {
   specprivfs << "BEGIN SPEC PRIV PROFILE\n";
   specprivfs << "COMPLETE ALLOCATION INFO ; \n";
 
-  auto printContext =
-      [&specprivfs](const std::vector<SpecPrivLib::ContextId> &ctx) {
-        for (auto &c : ctx) {
-          specprivfs << "(" << c.type << "," << c.metaId << ")";
-        }
-      };
 
   // print all loop contexts
   specprivfs << "LOOP CONTEXTS: " << targetLoopContexts.size() << "\n";
   for (auto contextHash : targetLoopContexts) {
-    auto context = contextManager.decodeContext(contextHash);
-    printContext(context);
+    contextManager.printContext(specprivfs, contextHash);
     specprivfs << "\n";
   }
 
@@ -237,6 +230,13 @@ void PointsToModule::fini(const char *filename) {
   //   }
   // }
 
+  auto printContext = [&](std::vector<ContextId> context) {
+    for (auto it = context.rbegin(); it != context.rend(); it++) {
+      auto &c = *it;
+      c.print(specprivfs);
+    }
+  };
+
   for (auto &kv : decodedContextMap) {
     auto ptrAndContext = kv.first;
     auto instr = ptrAndContext.first;
@@ -269,7 +269,7 @@ void PointsToModule::decode_all() {
   for (auto &it : pointsToMap) {
     auto instr = it.first  >> 32;
     auto instrHash = it.first & 0xFFFFFFFF;
-    std::vector<SpecPrivLib::ContextId> instrContext =
+    std::vector<ContextId> instrContext =
         contextManager.decodeContext(instrHash);
     InstrAndContext instrAndContext = {instr, instrContext};
 
@@ -282,7 +282,7 @@ void PointsToModule::decode_all() {
         // insert -1, empty
         decodedContextMap[instrAndContext].insert({-1, {}});
       } else {
-        std::vector<SpecPrivLib::ContextId> context =
+        std::vector<ContextId> context =
             contextManager.decodeContext(hash);
         decodedContextMap[instrAndContext].insert({GET_INSTR(it2), context});
       }

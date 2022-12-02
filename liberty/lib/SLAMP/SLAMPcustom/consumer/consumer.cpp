@@ -33,9 +33,9 @@ enum AvailableModules {
   NUM_MODULES = 4
 };
 
-constexpr AvailableModules MODULE = LOADED_VALUE_MODULE;
+constexpr AvailableModules MODULE = OBJECT_LIFETIME_MODULE;
 // set the thread count
-constexpr unsigned THREAD_COUNT = 8;
+constexpr unsigned THREAD_COUNT = 1;
 
 // #define CONSUME         sq_consume(the_queue);
 
