@@ -99,7 +99,9 @@ public:
       // create a shadow page for the page
       void *p = mmap(reinterpret_cast<void *>(s), pagesize * ratio,
                      PROT_WRITE | PROT_READ,
-                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+                     // So do not replace the orignal program memory by accident
+                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+                     // MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
       if (p == MAP_FAILED) {
         int err = errno;
         printf("mmap failed: %lx errno: %d\n", s, err);
