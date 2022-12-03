@@ -332,12 +332,14 @@ class HTMap_Sum {
           auto end = (id + 1) * (buffer_size / thread_count);
 
           // for each element in the chunk, insert into the map, and increment the count
-          for (auto key : buffer) {
-            auto it = map_chunk->find(key);
-            if (it == map_chunk->end()) {
-              map_chunk->insert({key, 1});
+          // from begin to end
+          for (auto it = buffer.begin() + begin; it != buffer.begin() + end; ++it) {
+            auto key = *it;
+            auto search = map_chunk->find(key);
+            if (search != map_chunk->end()) {
+              search->second++;
             } else {
-              it->second++;
+              map_chunk->insert({key, 1});
             }
           }
 
@@ -599,7 +601,10 @@ private:
       auto end = (id + 1) * (buffer_size / thread_count);
 
       // for each element in the chunk, insert into the map, and set invalid if not same
-      for (auto &&[key, value]: buffer) {
+      for (auto it_buffer = buffer.begin() + begin; it_buffer != buffer.begin() + end; ++it_buffer) {
+        auto &key = it_buffer->first;
+        auto &value = it_buffer->second;
+
         auto it = map_chunk->find(key);
         if (it == map_chunk->end()) {
           map_chunk->insert({key, value});
@@ -610,10 +615,12 @@ private:
           }
         }
       }
+      for (auto &&[key, value]: buffer) {
+      }
 
       if (should_gather) {
         m.lock();
-        std::cout << "thread " << id << " is gathering" << std::endl;
+        // std::cout << "thread " << id << " is gathering" << std::endl;
         // lock the global set and insert the chunk
         // merge the map_chunk into the global map
         for (auto it = map_chunk->begin(); it != map_chunk->end(); ++it) {
@@ -692,6 +699,11 @@ public:
 #else
     set.emplace(std::move(t));
 #endif
+  }
+
+  size_t size() {
+    convertVectorToSet(true);
+    return map.size();
   }
 
   void emplace_back(const buffer_item_t &t) {
@@ -887,10 +899,13 @@ private:
       auto end = (id + 1) * (buffer_size / thread_count);
 
       // for each element in the chunk, insert into the map, and set invalid if not same
-      for (auto &&[key, value]: buffer) {
-        auto it = map_chunk->find(key);
+      for (auto it = buffer.begin() + begin; it != buffer.begin() + end; ++it) {
+        auto &key = it->first;
+        auto &value = it->second;
 
-        if (it == map_chunk->end()) {
+        auto it_chunk = map_chunk->find(key);
+
+        if (it_chunk == map_chunk->end()) {
           // insert a new set as value
           hash_set<TV> set = {value};
           map_chunk->insert({key, set});

@@ -33,9 +33,9 @@ enum AvailableModules {
   NUM_MODULES = 4
 };
 
-constexpr AvailableModules MODULE = OBJECT_LIFETIME_MODULE;
+constexpr AvailableModules MODULE = POINTS_TO_MODULE;
 // set the thread count
-constexpr unsigned THREAD_COUNT = 1;
+constexpr unsigned THREAD_COUNT = 8;
 
 // #define CONSUME         sq_consume(the_queue);
 
@@ -508,9 +508,9 @@ void consume_loop_pt(DoubleQueue &dq, PointsToModule &ptMod) ATTRIBUTE(noinline)
       }
       finished = true;
 
-      if (ACTION) {
-        ptMod.fini("ptlog.txt");
-      }
+      // if (ACTION) {
+        // ptMod.fini("ptlog.txt");
+      // }
 
       break;
     };

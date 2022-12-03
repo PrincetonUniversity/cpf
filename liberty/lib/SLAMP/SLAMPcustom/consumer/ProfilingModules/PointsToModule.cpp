@@ -1,6 +1,7 @@
 #include "PointsToModule.h"
 #include "context.h"
 #include "slamp_timestamp.h"
+#include <utility>
 
 // Points-to module
 // Requires events:
@@ -105,7 +106,8 @@ void PointsToModule::points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr) {
     auto contextHash = contextManager.encodeActiveContext();
     uint64_t instrAndHash = ((uint64_t)instr << 32) | contextHash;
     if (ptr == nullptr) {
-      pointsToMap[instrAndHash].insert(0);
+      pointsToMap.emplace(std::make_pair(instrAndHash, 0));
+      // pointsToMap[instrAndHash].(0);
       // pointsToMap.emplace(std::make_pair(instrAndHash, 0));
       return;
     }
@@ -126,7 +128,8 @@ void PointsToModule::points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr) {
       // ts = ts & 0xfffffffffffffff0;
       // ts = ts & 0xfffff0000000000f;
       // create set of objects for each load/store
-      pointsToMap[instrAndHash].insert(ts);
+      pointsToMap.emplace(std::make_pair(instrAndHash, ts));
+      // pointsToMap[instrAndHash].insert(ts);
       // pointsToMap.emplace(std::make_pair(instrAndHash, ts));
     }
   });
@@ -138,7 +141,8 @@ void PointsToModule::points_to_inst(uint32_t instId, void *ptr) {
     auto contextHash = contextManager.encodeActiveContext();
     uint64_t instrAndHash = ((uint64_t)instr << 32) | contextHash;
     if (ptr == nullptr) {
-      pointsToMap[instrAndHash].insert(0);
+      pointsToMap.emplace(std::make_pair(instrAndHash, 0));
+      // pointsToMap[instrAndHash].insert(0);
       // pointsToMap.emplace(std::make_pair(instrAndHash, 0));
       return;
     }
@@ -161,7 +165,8 @@ void PointsToModule::points_to_inst(uint32_t instId, void *ptr) {
       // ts = ts & 0xfffffffffffffff0;
       // ts = ts & 0xfffff0000000000f;
       // create set of objects for each load/store
-      pointsToMap[instrAndHash].insert(ts);
+      pointsToMap.emplace(std::make_pair(instrAndHash, ts));
+      // pointsToMap[instrAndHash].insert(ts);
       // pointsToMap.emplace(std::make_pair(instrAndHash, ts));
     }
   });
@@ -244,21 +249,39 @@ void PointsToModule::fini(const char *filename) {
 
     specprivfs << "PRED OBJ " << instr << " at ";
     printContext(context);
-    auto auSet = kv.second;
-    specprivfs << ": " << auSet.size() << "\n"; // instruction ID
-    for (auto &[au, context] : auSet) {
-      specprivfs << "AU ";
-      if (au == -2) {
-        specprivfs << " UNMANAGED";
-      } else if (au == -1) {
-        specprivfs << " NULL";
-      } else {
-        specprivfs << au;
-        specprivfs << " FROM CONTEXT ";
-        printContext(context);
-      }
-      specprivfs << ";\n";
+    // auto auSet = kv.second;
+    // specprivfs << ": " << auSet.size() << "\n"; // instruction ID
+    // for (auto &[au, context] : auSet) {
+      // specprivfs << "AU ";
+      // if (au == -2) {
+        // specprivfs << " UNMANAGED";
+      // } else if (au == -1) {
+        // specprivfs << " NULL";
+      // } else {
+        // specprivfs << au;
+        // specprivfs << " FROM CONTEXT ";
+        // printContext(context);
+      // }
+      // specprivfs << ";\n";
+    // }
+    specprivfs << ": " << 1 << "\n"; // instruction ID
+    auto au = kv.second.first;
+    auto auContext = kv.second.second;
+    specprivfs << "AU ";
+    if (au == -3) {
+      specprivfs << " NOT CONSTANT";
     }
+    else if (au == -2) {
+      specprivfs << " UNMANAGED";
+    } else if (au == -1) {
+      specprivfs << " NULL";
+    } else {
+      specprivfs << au;
+      specprivfs << " FROM CONTEXT ";
+      printContext(auContext);
+    }
+    specprivfs << ";\n";
+
   }
 
   specprivfs << " END SPEC PRIV PROFILE\n";
@@ -267,26 +290,47 @@ void PointsToModule::fini(const char *filename) {
 void PointsToModule::decode_all() {
   // convert it to decodedContextMap
   for (auto &it : pointsToMap) {
+
     auto instr = it.first  >> 32;
     auto instrHash = it.first & 0xFFFFFFFF;
+
     std::vector<ContextId> instrContext =
         contextManager.decodeContext(instrHash);
     InstrAndContext instrAndContext = {instr, instrContext};
 
-    for (auto &it2 : it.second) { // the set of allocation units
-      auto hash = GET_HASH(it2);
-      if (hash == 0xfffffffff) {
-        // insert -2, empty
-        decodedContextMap[instrAndContext].insert({-2, {}});
-      } else if (hash == 0) {
-        // insert -1, empty
-        decodedContextMap[instrAndContext].insert({-1, {}});
-      } else {
-        std::vector<ContextId> context =
-            contextManager.decodeContext(hash);
-        decodedContextMap[instrAndContext].insert({GET_INSTR(it2), context});
-      }
+    SlampAllocationUnit au = it.second;
+    auto hash = GET_HASH(au);
+
+    if (au == HTMap_IsConstant<uint64_t>::MAGIC_INVALID) {
+      // Not constant
+      decodedContextMap[instrAndContext] = {-3, {}};
     }
+    else if (au == 0xffffffffffffff00) {
+      // unmanaged
+      decodedContextMap[instrAndContext] = {-2, {}};
+    } else if (au == 0) {
+      // null
+      decodedContextMap[instrAndContext] = {-1, {}};
+    } else {
+      std::vector<ContextId> context = contextManager.decodeContext(hash);
+      decodedContextMap[instrAndContext] = {GET_INSTR(au), context};
+    }
+    // for (auto &it2 : it.second) { // the set of allocation units
+      // auto hash = GET_HASH(it2);
+      // if (hash == 0xfffffffff) {
+        // // insert -2, empty
+        // decodedContextMap[instrAndContext].insert({-2, {}});
+      // } else if (hash == 0) {
+        // // insert -1, empty
+        // decodedContextMap[instrAndContext].insert({-1, {}});
+      // } else {
+        // std::vector<ContextId> context =
+            // contextManager.decodeContext(hash);
+        // decodedContextMap[instrAndContext].insert({GET_INSTR(it2), context});
+      // }
+    // }
+
+
   }
 }
 
@@ -299,10 +343,14 @@ void PointsToModule::merge(PointsToModule &other) {
       // not found, insert
       decodedContextMap[instrAndContext] = it.second;
     } else {
-      // found, merge
-      for (auto &it2 : it.second) {
-        decodedContextMap[instrAndContext].insert(it2);
+      // found, if different, set to unmanaged
+      if (decodedContextMap[instrAndContext] != it.second) {
+        decodedContextMap[instrAndContext] = {-2, {}};
       }
+      
+      // for (auto &it2 : it.second) {
+      //   decodedContextMap[instrAndContext].insert(it2);
+      // }
     }
   }
 

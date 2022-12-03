@@ -51,10 +51,12 @@ class PointsToModule : public LocalWriteModule {
     using SlampAllocationUnit = TS;
     // std::unordered_map<uint64_t, std::unordered_set<SlampAllocationUnit>> pointsToMap;
     // HTMap_Set<uint64_t, SlampAllocationUnit, std::hash<uint64_t>, std::equal_to<>, 32> pointsToMap;
-    phmap::flat_hash_map<uint64_t, phmap::flat_hash_set<SlampAllocationUnit>> pointsToMap;
+    // phmap::flat_hash_map<uint64_t, phmap::flat_hash_set<SlampAllocationUnit>> pointsToMap;
+    HTMap_IsConstant<uint64_t> pointsToMap;
 
     using InstrAndContext = std::pair<uint32_t, std::vector<ContextId>>;
-    std::map<InstrAndContext, std::set<InstrAndContext>> decodedContextMap;
+    std::map<InstrAndContext, InstrAndContext> decodedContextMap;
+    // std::map<InstrAndContext, std::set<InstrAndContext>> decodedContextMap;
 
   public:
   PointsToModule(uint32_t mask, uint32_t pattern)
