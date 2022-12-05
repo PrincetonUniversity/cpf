@@ -44,6 +44,7 @@ unsigned long counter_store_n_interest = 0;
 unsigned long counter_global = 0;
 unsigned long counter_alloca = 0;
 unsigned long counter_alloca_bytes = 0;
+unsigned long counter_stack_free = 0;
 unsigned long counter_malloc = 0;
 unsigned long counter_malloc_bytes = 0;
 unsigned long counter_memalign = 0;
@@ -130,6 +131,7 @@ void SLAMP_fini(const char* filename){
   outfile["memory_access"]["global"] = counter_global;
   outfile["memory_access"]["alloca"] = counter_alloca;
   outfile["memory_access"]["alloca_bytes"] = counter_alloca_bytes;
+  outfile["memory_access"]["stack_free"] = counter_stack_free;
   outfile["memory_access"]["malloc"] = counter_malloc;
   outfile["memory_access"]["malloc_bytes"] = counter_malloc_bytes;
   outfile["memory_access"]["memalign"] = counter_memalign;
@@ -208,7 +210,9 @@ void SLAMP_callback_stack_alloca(uint64_t array_sz, uint64_t type_sz, uint32_t i
   counter_alloca_bytes += array_sz * type_sz;
 }
 
-void SLAMP_callback_stack_free(){}
+void SLAMP_callback_stack_free(){
+  counter_stack_free++;
+}
 
 void SLAMP_ext_push(const uint32_t instr){
   counter_ext_fcn_enter++;
