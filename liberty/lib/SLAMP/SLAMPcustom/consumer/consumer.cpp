@@ -33,7 +33,7 @@ enum AvailableModules {
   NUM_MODULES = 4
 };
 
-constexpr AvailableModules MODULE = POINTS_TO_MODULE;
+constexpr AvailableModules MODULE = DEPENDENCE_MODULE;
 // set the thread count
 constexpr unsigned THREAD_COUNT = 8;
 
@@ -583,17 +583,16 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       uint32_t instr;
       uint64_t addr;
       // uint32_t bare_instr;
-      uint64_t value = 0;
 
       dq.unpack_32_64(instr, addr);
 
       if (DEBUG) {
         std::cout << "LOAD: " << instr << " " << addr // << " " << bare_instr
-                  << " " << value << std::endl;
+                  << std::endl;
       }
       if (ACTION) {
         measure_time(load_time,
-                     [&]() { depMod.load(instr, addr, instr, value); });
+                     [&]() { depMod.load(instr, addr, instr); });
                      // [&]() { depMod.load(instr, addr, bare_instr, value); });
       }
 

@@ -57,6 +57,10 @@ void DependenceModule::fini(const char *filename) {
 #endif
     of << target_loop_id << " " << k.src << " " << k.dst << " " << k.dst_bare << " "
         << (k.cross ? 1 : 0) << " " << count << " ";
+#ifdef TRACK_MIN_DISTANCE
+    auto dist = min_dist[k];
+    of << dist;
+#endif
     of << "\n";
   }
 
@@ -72,42 +76,46 @@ void DependenceModule::allocate(void *addr, uint64_t size) {
   smmap->allocate(addr, size);
 }
 
-void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst, const uint64_t load_invocation, const uint64_t load_iteration){
+void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst){
 
     uint32_t src_inst = GET_INSTR(ts);
 
     uint64_t src_invoc = GET_INVOC(ts);
     uint64_t src_iter = GET_ITER(ts);
 
-    if (src_invoc != GET_INVOC(load_invocation)) {
+    if (src_invoc != GET_INVOC(slamp_invocation)) {
       return;
     }
 
-    slamp::KEY key(src_inst, dst_inst, bare_inst, src_iter != load_iteration);
+    slamp::KEY key(src_inst, dst_inst, bare_inst, src_iter != slamp_iteration);
+
+#ifdef TRACK_MIN_DISTANCE
+    auto dist = slamp_iteration - src_iter;
+    min_dist.emplace({key, dist});
+#endif
 
     deps.emplace_back(key);
 }
 
-void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) {
-
-  // // increase inst_count for this instr
-  // if (inst_count->find(instr) == inst_count->end()) {
-  //   inst_count->insert(std::make_pair(instr, 1));
-  // } else {
-  //   inst_count->at(instr)++;
-  // }
-
+void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr) {
   local_write(addr, [&]() {
     load_count++;
-    TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+
+    // if tracking multiple loops
+
+    TS *s = (TS *)GET_SHADOW(addr, DM_TIMESTAMP_SIZE_IN_BYTES_LOG2);
 
     TS tss = s[0];
     if (tss != 0) {
       // uint64_t start = rdtsc();
-      log(tss, instr, instr, slamp_invocation, slamp_iteration);
+      log(tss, instr, instr);
       // uint64_t end = rdtsc();
       // log_time += end - start;
     }
+#ifdef TRACK_WAR
+    TS ts = CREATE_TS(instr, slamp_iteration, slamp_invocation);
+    s[1] = ts;
+#endif
   });
 }
 
@@ -115,9 +123,30 @@ void DependenceModule::store(uint32_t instr, uint32_t bare_instr, const uint64_t
 
   local_write(addr, [&]() {
     store_count++;
+    TS *shadow_addr = (TS *)GET_SHADOW(addr, DM_TIMESTAMP_SIZE_IN_BYTES_LOG2);
+
+#ifdef TRACK_WAW
+    if (shadow_addr[0] != 0) {
+      // uint64_t start = rdtsc();
+      log(shadow_addr[0], instr, bare_instr);
+      // uint64_t end = rdtsc();
+      // log_time += end - start;
+    }
+#endif
+
+#ifdef TRACK_WAR
+    if (shadow_addr[1] != 0) {
+      // uint64_t start = rdtsc();
+      log(shadow_addr[1], instr, bare_instr);
+      // uint64_t end = rdtsc();
+      // log_time += end - start;
+    }
+#endif
+
     TS ts = CREATE_TS(instr, slamp_iteration, slamp_invocation);
-    TS *shadow_addr = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     shadow_addr[0] = ts;
+
+
   });
 }
 
@@ -132,4 +161,7 @@ void DependenceModule::loop_iter() {
 
 void DependenceModule::merge_dep(DependenceModule &other) {
    deps.merge(other.deps);
+#ifdef TRACK_MIN_DISTANCE
+   min_dist.merge(other.min_dist);
+#endif
 }
