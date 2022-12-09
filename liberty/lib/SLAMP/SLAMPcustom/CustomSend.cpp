@@ -15,7 +15,7 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 
-#define TRACK_CONTEXT
+// #define TRACK_CONTEXT
 
 #define MM_STREAM
 //#define SAMPLING_ITER
@@ -300,7 +300,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   __memalign_hook = SLAMP_memalign_hook;
 
   // flush
-  produce_wait();
+  // produce_wait();
 }
 
 void SLAMP_fini(const char* filename){
