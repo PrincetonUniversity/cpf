@@ -63,6 +63,7 @@ void DependenceModule::fini(const char *filename) {
 #endif
     of << "\n";
   }
+  of.close();
 
   // std::cout << "Log time: " << log_time/ 2.6e9 << " s" << std::endl;
 
@@ -70,6 +71,12 @@ void DependenceModule::fini(const char *filename) {
   //   of << target_loop_id << " " << i.first << " " << i.second << "\n";
   // }
 
+#ifdef COLLECT_TRACE
+  // dump the dep trace to a binary file
+  std::ofstream trace_file("dep_trace.bin", std::ios::binary);
+  trace_file.write((char *)dep_trace.data(), dep_trace.size() * sizeof(slamp::KEY));
+  trace_file.close();
+#endif
 }
 
 void DependenceModule::allocate(void *addr, uint64_t size) {
@@ -95,6 +102,13 @@ void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_i
 #endif
 
     deps.emplace_back(key);
+
+#ifdef COLLECT_TRACE
+    if (dep_trace_idx < dep_trace_size) {
+      dep_trace.emplace_back(key);
+      dep_trace_idx++;
+    }
+#endif
 }
 
 void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr) {
@@ -108,11 +122,15 @@ void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t 
     TS tss = s[0];
     if (tss != 0) {
       // uint64_t start = rdtsc();
-      log(tss, instr, instr);
+      log(tss, instr, context);
       // uint64_t end = rdtsc();
       // log_time += end - start;
     }
 #ifdef TRACK_WAR
+#ifdef TRACK_CONTEXT
+    if (context != 0)
+      instr = context;
+#endif
     TS ts = CREATE_TS(instr, slamp_iteration, slamp_invocation);
     s[1] = ts;
 #endif
@@ -128,7 +146,7 @@ void DependenceModule::store(uint32_t instr, uint32_t bare_instr, const uint64_t
 #ifdef TRACK_WAW
     if (shadow_addr[0] != 0) {
       // uint64_t start = rdtsc();
-      log(shadow_addr[0], instr, bare_instr);
+      log(shadow_addr[0], instr, context);
       // uint64_t end = rdtsc();
       // log_time += end - start;
     }
@@ -137,12 +155,16 @@ void DependenceModule::store(uint32_t instr, uint32_t bare_instr, const uint64_t
 #ifdef TRACK_WAR
     if (shadow_addr[1] != 0) {
       // uint64_t start = rdtsc();
-      log(shadow_addr[1], instr, bare_instr);
+      log(shadow_addr[1], instr, context);
       // uint64_t end = rdtsc();
       // log_time += end - start;
     }
 #endif
 
+#ifdef TRACK_CONTEXT
+    if (context != 0)
+      instr = context;
+#endif
     TS ts = CREATE_TS(instr, slamp_iteration, slamp_invocation);
     shadow_addr[0] = ts;
 
@@ -157,6 +179,14 @@ void DependenceModule::loop_invoc() {
 
 void DependenceModule::loop_iter() {
   slamp_iteration++;
+}
+
+void DependenceModule::func_entry(uint32_t instr) {
+  context = instr;
+}
+
+void DependenceModule::func_exit(uint32_t instr) {
+  context = 0;
 }
 
 void DependenceModule::merge_dep(DependenceModule &other) {

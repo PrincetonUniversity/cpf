@@ -15,6 +15,8 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 
+#define TRACK_CONTEXT
+
 #define MM_STREAM
 //#define SAMPLING_ITER
 
@@ -32,6 +34,8 @@ static unsigned long counter_iter = 0;
 // unsigned buffer_counter = 0;
 static int nested_level = 0;
 static bool on_profiling = false;
+
+static unsigned int context = 0;
 
 static void *(*old_malloc_hook)(size_t, const void *);
 static void *(*old_realloc_hook)(void *, size_t, const void *);
@@ -78,6 +82,24 @@ static void produce_32(uint32_t x) ATTRIBUTE(noinline){
 #else
   dq_data[dq_index] = x;
   // dq_data[dq_index + 1] = 0;
+  // dq_data[dq_index + 2] = 0;
+  // dq_data[dq_index + 3] = 0;
+#endif
+  dq_index += 4;
+
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
+}
+
+static void produce_32_32(uint32_t x, uint32_t y) ATTRIBUTE(noinline){
+#ifdef MM_STREAM
+  // _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi32(0, 0, y, x));
+  _mm_stream_si32((int *) &dq_data[dq_index], x);
+  _mm_stream_si32((int *) &dq_data[dq_index + 1], y);
+#else
+  dq_data[dq_index] = x;
+  dq_data[dq_index + 1] = y;
   // dq_data[dq_index + 2] = 0;
   // dq_data[dq_index + 3] = 0;
 #endif
@@ -190,7 +212,9 @@ enum DepModAction: char
     ALLOC,
     LOOP_INVOC,
     LOOP_ITER,
-    FINISHED
+    FINISHED,
+    FUNC_ENTRY,
+    FUNC_EXIT,
 };
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
@@ -362,8 +386,22 @@ void SLAMP_callback_stack_free(){}
 void SLAMP_ext_push(const uint32_t instr){}
 void SLAMP_ext_pop(){}
 
-void SLAMP_push(const uint32_t instr){}
-void SLAMP_pop(){}
+void SLAMP_push(const uint32_t instr){
+#ifdef TRACK_CONTEXT
+  if (nested_level == 1) {
+    context = instr;
+    produce_32_32(FUNC_ENTRY, instr);
+  }
+#endif
+}
+void SLAMP_pop(){
+#ifdef TRACK_CONTEXT
+  if (nested_level == 1) {
+    produce_32_32(FUNC_EXIT, context);
+    context = 0;
+  }
+#endif
+}
 
 void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value) ATTRIBUTE(always_inline) {
   // send a msg with "load, instr, addr, bare_instr, value"

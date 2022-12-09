@@ -25,6 +25,15 @@ static inline uint64_t rdtsc() {
 #define ACTION 1
 #define MEASURE_TIME 0
 
+// #define COLLECT_TRACE_EVENT
+#ifdef COLLECT_TRACE_EVENT
+#include <xmmintrin.h>
+#include <smmintrin.h>
+std::vector<__m128i> event_trace;
+static constexpr unsigned event_trace_size = 10'000'000;
+unsigned event_trace_idx = 0;
+#endif
+
 enum AvailableModules {
   DEPENDENCE_MODULE = 0,
   POINTS_TO_MODULE = 1,
@@ -562,7 +571,12 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
     uint32_t v;
     v = dq.consumePacket();
     counter++;
-
+#ifdef COLLECT_TRACE_EVENT
+    if (event_trace_idx < event_trace_size) {
+      event_trace.push_back(dq.packet);
+      event_trace_idx++;
+    }
+#endif
     switch (v) {
     case Action::INIT: {
       uint32_t pid;
@@ -649,6 +663,18 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       }
       break;
     };
+    case Action::FUNC_ENTRY: {
+      uint32_t func_id;
+      dq.unpack_32(func_id);
+      depMod.func_entry(func_id);
+      break;
+    };
+    case Action::FUNC_EXIT: {
+      uint32_t func_id;
+      dq.unpack_32(func_id);
+      depMod.func_exit(func_id);
+      break;
+    };
     case Action::FINISHED: {
 
       // if (ACTION) {
@@ -693,6 +719,14 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       break;
     }
   }
+
+#ifdef COLLECT_TRACE_EVENT
+  // dump the event trace to a binary file
+  std::ofstream event_trace_file("event_trace.bin", std::ios::binary);
+  event_trace_file.write((char *)event_trace.data(),
+                         event_trace.size() * sizeof(__m128i));
+  event_trace_file.close();
+#endif
 }
 
 int main(int argc, char** argv) {

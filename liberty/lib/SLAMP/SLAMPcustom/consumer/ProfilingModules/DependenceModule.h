@@ -11,8 +11,9 @@
 #include "HTContainer.h"
 
 #define TRACK_COUNT
-#define TRACK_MIN_DISTANCE
+// #define TRACK_MIN_DISTANCE
 
+// #define TRACK_CONTEXT
 
 #define TRACK_WAW
 #define TRACK_WAR
@@ -25,6 +26,8 @@
 #define DM_TIMESTAMP_SIZE_IN_BYTES_LOG2 3
 #endif
 
+// #define COLLECT_TRACE
+
 enum DepModAction : uint32_t {
   INIT = 0,
   LOAD,
@@ -32,7 +35,9 @@ enum DepModAction : uint32_t {
   ALLOC,
   LOOP_INVOC,
   LOOP_ITER,
-  FINISHED
+  FINISHED,
+  FUNC_ENTRY,
+  FUNC_EXIT,
 };
 
 class DependenceModule : public LocalWriteModule {
@@ -44,6 +49,16 @@ private:
   // debugging stats
   uint64_t load_count = 0;
   uint64_t store_count = 0;
+
+  unsigned int context = 0;
+
+#ifdef COLLECT_TRACE
+  // Collect trace
+  std::vector<slamp::KEY> dep_trace;
+  static constexpr unsigned dep_trace_size = 10'000'000;
+  unsigned dep_trace_idx = 0;
+#endif
+
 
   slamp::MemoryMap *smmap = nullptr;
 
@@ -63,6 +78,9 @@ public:
   DependenceModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
     smmap = new slamp::MemoryMap(mask, pattern, DM_TIMESTAMP_SIZE_IN_BYTES);
+#ifdef COLLECT_TRACE
+    dep_trace.reserve(dep_trace_size + 10); // 10M
+#endif
   }
 
   ~DependenceModule() override { delete smmap; }
@@ -75,6 +93,8 @@ public:
   void allocate(void *addr, uint64_t size);
   void loop_invoc();
   void loop_iter();
+  void func_entry(uint32_t context);
+  void func_exit(uint32_t context);
 
   void merge_dep(DependenceModule &other);
 };
