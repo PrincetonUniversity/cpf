@@ -10,13 +10,13 @@
 #include "LocalWriteModule.h"
 #include "HTContainer.h"
 
-#define TRACK_COUNT
+// #define TRACK_COUNT
 // #define TRACK_MIN_DISTANCE
 
 // #define TRACK_CONTEXT
 
-#define TRACK_WAW
-#define TRACK_WAR
+// #define TRACK_WAW
+// #define TRACK_WAR
 
 #ifdef TRACK_WAR
 #define DM_TIMESTAMP_SIZE_IN_BYTES 16
@@ -65,7 +65,8 @@ private:
 #ifdef TRACK_COUNT
   HTMap_Sum<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> deps;
 #else
-  HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> deps;
+  // HTSet<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> deps;
+  phmap::flat_hash_set<slamp::KEY, slamp::KEYHash, slamp::KEYEqual> deps;
 #endif
 
 #ifdef TRACK_MIN_DISTANCE

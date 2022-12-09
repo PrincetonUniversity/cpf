@@ -104,11 +104,15 @@ public:
                      // MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
       if (p == MAP_FAILED) {
         int err = errno;
-        printf("mmap failed: %lx errno: %d\n", s, err);
-        raise(SIGINT);
+        // if (err == EEXIST) {
+          // shadow_pages.insert(reinterpret_cast<void *>(s));
+        // } else {
+          printf("mmap failed: %lx errno: %d\n", s, err);
+          raise(SIGINT);
 
-        success = false;
-        break;
+          success = false;
+          break;
+        // }
       } else {
         shadow_pages.insert(p);
       }

@@ -32,8 +32,8 @@ void DependenceModule::init(uint32_t loop_id, uint32_t pid) {
 
 
 void DependenceModule::fini(const char *filename) {
-  std::cout << "Load count: " << load_count << std::endl;
-  std::cout << "Store count: " << store_count << std::endl;
+  // std::cout << "Load count: " << load_count << std::endl;
+  // std::cout << "Store count: " << store_count << std::endl;
 
   std::ofstream of(filename);
   of << target_loop_id << " " << 0 << " " << 0 << " "
@@ -101,7 +101,7 @@ void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_i
     min_dist.emplace({key, dist});
 #endif
 
-    deps.emplace_back(key);
+    deps.emplace(key);
 
 #ifdef COLLECT_TRACE
     if (dep_trace_idx < dep_trace_size) {
@@ -113,7 +113,7 @@ void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_i
 
 void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t bare_instr) {
   local_write(addr, [&]() {
-    load_count++;
+    // load_count++;
 
     // if tracking multiple loops
 
@@ -140,7 +140,7 @@ void DependenceModule::load(uint32_t instr, const uint64_t addr, const uint32_t 
 void DependenceModule::store(uint32_t instr, uint32_t bare_instr, const uint64_t addr)  {
 
   local_write(addr, [&]() {
-    store_count++;
+    // store_count++;
     TS *shadow_addr = (TS *)GET_SHADOW(addr, DM_TIMESTAMP_SIZE_IN_BYTES_LOG2);
 
 #ifdef TRACK_WAW
