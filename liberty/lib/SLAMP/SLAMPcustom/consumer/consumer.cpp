@@ -1,4 +1,5 @@
 #include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/interprocess_fwd.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <chrono>
 #include <cstdint>
@@ -44,7 +45,7 @@ enum AvailableModules {
 
 constexpr AvailableModules MODULE = DEPENDENCE_MODULE;
 // set the thread count
-constexpr unsigned THREAD_COUNT = 8;
+constexpr unsigned THREAD_COUNT = 32;
 
 // #define CONSUME         sq_consume(the_queue);
 
@@ -730,7 +731,14 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
 }
 
 int main(int argc, char** argv) {
-  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
+  char *env = getenv("SLAMP_QUEUE_ID");
+  if (env == NULL) {
+    std::cout << "SLAMP_QUEUE_ID not set" << std::endl;
+    exit(-1);
+  }
+  auto queue_name = std::string("slamp_queue_") + env;
+
+  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, queue_name.c_str(), sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
 
   Queue_p dqA, dqB;
   // double buffering
@@ -871,4 +879,7 @@ int main(int argc, char** argv) {
       lvMods[0]->fini("lvlog.txt");
     }
   }
+
+  // remove the shared memory file
+  bip::shared_memory_object::remove(queue_name.c_str());
 }

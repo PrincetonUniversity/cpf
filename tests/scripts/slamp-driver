@@ -46,8 +46,8 @@ function drive {
      -basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa -global-malloc-aa -pure-fun-aa -semi-local-fun-aa -phi-maze-aa -no-capture-global-aa -no-capture-src-aa -type-aa -no-escape-fields-aa -acyclic-aa -disjoint-fields-aa -field-malloc-aa -loop-variant-allocation-aa -std-in-out-err-aa -array-of-structures-aa -kill-flow-aa -callsite-depth-combinator-aa -unique-access-paths-aa $EXTRA -llvm-aa-results  -pdgbuilder "
 
   # local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks_stats.a"
-  local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPcustom/libslamp_hooks_custom.a"
-  # local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPsmtxq/libslamp_hooks_smtx.a"
+  # local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPcustom/libslamp_hooks_custom.a"
+  local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPsmtxq/libslamp_hooks_smtx.a"
   local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
 
  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
@@ -134,16 +134,23 @@ function drive {
 
   # CMD4="taskset --cpu-list 7-8 $CMD4"
 
-  rm /dev/shm/MySharedMemory2
-  rm /dev/shm/MySharedMemory
-  /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
+  rm -f /dev/shm/MySharedMemory2 /dev/shm/MySharedMemory
 
-  # taskset --cpu-list 0-6,9-55 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
-  # taskset --cpu-list 0-6,9-27 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPsmtxq/consumer/build/consumer &
+  # create a random number between 0 and 32767
+  slamp_queue_id=$RANDOM
+  # check if /dev/shm/slamp_queue_$id exists and if so, create a new random number
+  while [ -e /dev/shm/slamp_queue_$slamp_queue_id ]; do
+      slamp_queue_id=$RANDOM
+  done
+
+  # SLAMP_QUEUE_ID=$slamp_queue_id /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
+
+  # # taskset --cpu-list 0-6,9-55 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
+  /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPsmtxq/consumer/build/consumer &
   CONSUME_PID=$!
-  RUN_TIMEOUT=14400 # 4 hours
+  RUN_TIMEOUT=86400 # 24 hours
   echo "timeout $RUN_TIMEOUT $CMD4"
-  eval regressions-watchdog $RUN_TIMEOUT slamp-custom.time $CMD4
+  SLAMP_QUEUE_ID=$slamp_queue_id eval regressions-watchdog $RUN_TIMEOUT slamp-custom.time $CMD4
   # eval regressions-watchdog $RUN_TIMEOUT slamp-smtx.time $CMD4
   # if command fail
   if [ $? -ne 0 ]; then
@@ -152,13 +159,15 @@ function drive {
       echo -e "${red}    --- SIMULATION FAILED${nc}"
       echo "Timed out or other problems"
       rm -f result.slamp.profile
+      rm -f /dev/shm/slamp_queue_$slamp_queue_id
       exit 1
   else
       # sleep for 20 seconds
-      sleep 5
+      sleep 10
+      # sleep 0
       cat deplog*.txt >> result.slamp.profile
       rm -f deplog*.txt
-      kill -9 $CONSUME_PID
+      rm -f /dev/shm/slamp_queue_$slamp_queue_id
   fi
 
   if [[ x$LOCALWRITE_THREADS != x ]]; then
