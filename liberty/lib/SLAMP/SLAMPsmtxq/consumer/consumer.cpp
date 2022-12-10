@@ -43,7 +43,7 @@ enum class NewDepModAction: char
     POINTS_TO_ARG,
     STACK_ALLOC,
     STACK_FREE,
-    FREE,
+    HEAP_FREE,
 };
 
 int main() {
@@ -84,6 +84,8 @@ int main() {
 
   uint32_t loop_id;
   uint32_t v, d;
+
+  uint64_t last = 0;
   while (true) {
     CONSUME_2(v, d);
 
@@ -98,6 +100,8 @@ int main() {
       pid = (uint32_t)CONSUME;
 
       if (DEBUG) {
+        std::cout << last << std::endl;
+        std::cout << ((uint64_t)v << 32 | d) << std::endl;
         std::cout << "INIT: " << loop_id << " " << pid << std::endl;
       }
 #if ACTION
@@ -185,18 +189,43 @@ int main() {
     case Action::LOOP_ENTRY:
     case Action::LOOP_EXIT:
     case Action::LOOP_ITER_CTX:
+      // if (DEBUG) {
+        // std::cout << "Action: " << v << std::endl;
+      // }
+      break;
+    case Action::POINTS_TO_ARG: {
+      uint64_t addr;
+      addr = CONSUME;
+      if (DEBUG) {
+      // std::cout << "Action: " << v << " " << addr << std::endl;
+      }
+      break;
+    }
+    case Action::POINTS_TO_INST: {
+      uint64_t addr;
+      addr = CONSUME;
+      if (DEBUG) {
+      // // std::cout << "Action: " << v << std::endl;
+      }
+      break;
+    }
+    case Action::HEAP_FREE: {
+      uint64_t addr;
+      addr = CONSUME;
+      if (DEBUG) {
+      // std::cout << "Action: " << v << " " << addr << std::endl;
+      }
+      break;
+    }
     case Action::STACK_ALLOC:
     case Action::STACK_FREE:
-       break;
-    case Action::POINTS_TO_ARG:
-    case Action::POINTS_TO_INST:
-       CONSUME;
-       break;
+      break;
     default:
+      std::cout << last << std::endl;
       std::cout << "Unknown action: " << v << std::endl;
       exit(-1);
     };
-
+    last  = v;
     // if (counter % 100000000 == 0) {
       // std::cout << "Processed " << counter / 1000000 << "M events" << std::endl;
     // }

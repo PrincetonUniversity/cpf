@@ -73,7 +73,7 @@ enum DepModAction: char
     POINTS_TO_ARG,
     STACK_ALLOC,
     STACK_FREE,
-    FREE,
+    HEAP_FREE,
 };
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
@@ -374,7 +374,7 @@ static void SLAMP_free_hook(void *ptr, const void *caller){
   TURN_OFF_HOOKS
   free(ptr);
 #ifdef NO_SPECIAL
-  PRODUCE_2(free, 0);
+  PRODUCE_2(HEAP_FREE, 0);
   PRODUCE((uint64_t)ptr);
 #endif
   TURN_ON_HOOKS

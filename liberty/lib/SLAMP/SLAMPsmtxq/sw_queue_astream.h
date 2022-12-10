@@ -191,7 +191,9 @@ Inline void sq_waitConsumer(SW_Queue q, sq_callback cb, sq_cbData cbd)
  */
 // Inline void sq_produce(SW_Queue q, uint64_t value,
 void sq_produce(SW_Queue q, uint64_t value,
-                       sq_callback cb, sq_cbData cbd)
+                       sq_callback cb, sq_cbData cbd) // attribute: noinline
+__attribute__((noinline))
+
 {
 #ifdef INSTRUMENT
   q->total_produces++;
