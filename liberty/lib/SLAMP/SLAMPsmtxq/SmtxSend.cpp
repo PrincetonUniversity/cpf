@@ -15,6 +15,8 @@
 
 namespace bip = boost::interprocess;
 
+#define NO_SPECIAL
+
 static void *(*old_malloc_hook)(size_t, const void *);
 static void *(*old_realloc_hook)(void *, size_t, const void *);
 static void (*old_free_hook)(void *, const void *);
@@ -50,7 +52,8 @@ unsigned long counter_ctx = 0;
 unsigned long counter_alloc = 0;
 // char local_buffer[LOCAL_BUFFER_SIZE];
 // unsigned buffer_counter = 0;
-bool onProfiling = false;
+static int nested_level = 0;
+bool on_profiling = false;
 
 enum DepModAction: char
 {
@@ -60,7 +63,17 @@ enum DepModAction: char
     ALLOC,
     LOOP_INVOC,
     LOOP_ITER,
-    FINISHED
+    FINISHED,
+    FUNC_ENTRY,
+    FUNC_EXIT,
+    LOOP_ENTRY,
+    LOOP_EXIT,
+    LOOP_ITER_CTX,
+    POINTS_TO_INST,
+    POINTS_TO_ARG,
+    STACK_ALLOC,
+    STACK_FREE,
+    FREE,
 };
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
@@ -98,17 +111,15 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
 
   // local_buffer->push(INIT);
   // local_buffer->push(loop_id);
-  PRODUCE(INIT);
-  PRODUCE(loop_id);
+  PRODUCE_2(INIT, loop_id);
   uint32_t pid = getpid();
   printf("SLAMP_init: %d, %d, %d\n", fn_id, loop_id, pid);
   // local_buffer->push(pid);
   PRODUCE(pid);
 
   auto allocateLibcReqs = [](void *addr, size_t size) {
-    PRODUCE(ALLOC);
+    PRODUCE_2(ALLOC, size);
     PRODUCE((uint64_t)addr);
-    PRODUCE(size);
   };
 
   allocateLibcReqs((void*)&errno, sizeof(errno));
@@ -117,12 +128,12 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
   allocateLibcReqs((void*)&stderr, sizeof(stderr));
   allocateLibcReqs((void*)&sys_nerr, sizeof(sys_nerr));
 
-  const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
-  allocateLibcReqs((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
-  const int32_t* itype_ptr = (*__ctype_tolower_loc()) - 128;
-  allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
-  itype_ptr = (*__ctype_toupper_loc()) - 128;
-  allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
+  // const unsigned short int* ctype_ptr = (*__ctype_b_loc()) - 128;
+  // allocateLibcReqs((void*)ctype_ptr, 384 * sizeof(*ctype_ptr));
+  // const int32_t* itype_ptr = (*__ctype_tolower_loc()) - 128;
+  // allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
+  // itype_ptr = (*__ctype_toupper_loc()) - 128;
+  // allocateLibcReqs((void*)itype_ptr, 384 * sizeof(*itype_ptr));
 
   old_malloc_hook = __malloc_hook;
   // old_free_hook = __free_hook;
@@ -141,46 +152,94 @@ void SLAMP_fini(const char* filename){
   std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
   // local_buffer->push(FINISHED);
   // local_buffer->flush();
-  PRODUCE(FINISHED);
+  PRODUCE_2(FINISHED, 0);
   sq_flushQueue(the_queue);
 }
 
 void SLAMP_allocated(uint64_t addr){}
 void SLAMP_init_global_vars(const char *name, uint64_t addr, size_t size){
   // local_buffer->push(ALLOC)->push(addr)->push(size);
-  PRODUCE(ALLOC);
+  PRODUCE_2(ALLOC, size);
   PRODUCE(addr);
-  PRODUCE(size);
 }
 void SLAMP_main_entry(uint32_t argc, char** argv, char** env){}
 
-void SLAMP_enter_fcn(uint32_t id){}
-void SLAMP_exit_fcn(uint32_t id){}
-void SLAMP_enter_loop(uint32_t id){}
-void SLAMP_exit_loop(uint32_t id){}
-void SLAMP_loop_iter_ctx(uint32_t id){}
+void SLAMP_enter_fcn(uint32_t id){
+#ifdef NO_SPECIAL
+  PRODUCE_2(FUNC_ENTRY, id);
+#endif
+}
+void SLAMP_exit_fcn(uint32_t id){
+#ifdef NO_SPECIAL
+  PRODUCE_2(FUNC_EXIT, id);
+#endif
+}
+void SLAMP_enter_loop(uint32_t id){
+#ifdef NO_SPECIAL
+  PRODUCE_2(LOOP_ENTRY, id);
+#endif
+}
+void SLAMP_exit_loop(uint32_t id){
+#ifdef NO_SPECIAL
+  PRODUCE_2(LOOP_EXIT, id);
+#endif
+}
+void SLAMP_loop_iter_ctx(uint32_t id){
+#ifdef NO_SPECIAL
+  PRODUCE_2(LOOP_ITER_CTX, id);
+#endif
+}
 void SLAMP_loop_invocation(){
   // send a msg with "loop_invocation"
   // local_buffer->push(LOOP_INVOC);
-  PRODUCE(LOOP_INVOC);
+  PRODUCE_2(LOOP_INVOC, 0);
 
   counter_ctx++;
-  onProfiling = true;
+  on_profiling = true;
+  nested_level++;
+  on_profiling = true;
 }
 void SLAMP_loop_iteration(){
   // local_buffer->push(LOOP_ITER);
-  PRODUCE(LOOP_ITER);
+  PRODUCE_2(LOOP_ITER, 0);
   counter_ctx++;
 }
 
 void SLAMP_loop_exit(){
-  onProfiling = false;
+  nested_level--;
+  if (nested_level < 0) {
+    // huge problem
+    std::cerr << "Error: nested_level < 0" << std::endl;
+    exit(-1);
+  }
+  if (nested_level == 0) {
+    on_profiling = false;
+  }
 }
 
-void SLAMP_report_base_pointer_arg(uint32_t, uint32_t, void *ptr){}
-void SLAMP_report_base_pointer_inst(uint32_t, void *ptr){}
-void SLAMP_callback_stack_alloca(uint64_t, uint64_t, uint32_t, uint64_t){}
-void SLAMP_callback_stack_free(){}
+void SLAMP_report_base_pointer_arg(uint32_t fcnId, uint32_t argId, void *ptr){
+  uint32_t id = (fcnId << 16) | (argId & 0xffff);
+#ifdef NO_SPECIAL
+  PRODUCE_2(POINTS_TO_ARG, id);
+  PRODUCE((uint64_t)ptr);
+#endif
+}
+void SLAMP_report_base_pointer_inst(uint32_t instId, void *ptr){
+#ifdef NO_SPECIAL
+  PRODUCE_2(POINTS_TO_INST, instId);
+  PRODUCE((uint64_t)ptr);
+#endif
+}
+void SLAMP_callback_stack_alloca(uint64_t, uint64_t, uint32_t, uint64_t){
+#ifdef NO_SPECIAL
+  PRODUCE_2(STACK_ALLOC, 0);
+#endif
+}
+void SLAMP_callback_stack_free(){
+#ifdef NO_SPECIAL
+  PRODUCE_2(STACK_FREE, 0);
+#endif
+}
 
 void SLAMP_ext_push(const uint32_t instr){}
 void SLAMP_ext_pop(){}
@@ -194,11 +253,9 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // sprintf(msg, "load,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
   //
-  if (onProfiling) {
+  if (on_profiling) {
     // local_buffer->push(LOAD)->push(instr)->push(addr)->push(bare_instr); //->push(value);
-    PRODUCE(LOAD);
-    // PRODUCE(instr);
-    PRODUCE_2(instr, bare_instr);
+    PRODUCE_2(LOAD, instr);
     PRODUCE(addr);
     // PRODUCE(value);
     counter_load++;
@@ -244,12 +301,12 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // char msg[100];
   // sprintf(msg, "store,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // queue->push(shm::shared_string(msg, *char_alloc));
-  if (onProfiling) {
+  if (on_profiling) {
     // local_buffer->push(STORE)->push(instr)->push(bare_instr)->push(addr);
-    PRODUCE(STORE);
+    PRODUCE_2(STORE, instr);
     // PRODUCE(instr);
     // PRODUCE(bare_instr);
-    PRODUCE_2(instr, bare_instr);
+    // PRODUCE_2(instr, bare_instr);
     PRODUCE(addr);
     counter_store++;
   }
@@ -293,9 +350,8 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* ptr = malloc(size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  PRODUCE(ALLOC);
+  PRODUCE_2(ALLOC, size);
   PRODUCE((uint64_t)ptr);
-  PRODUCE(size);
   // printf("malloc %lu at %p\n", size, ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -306,9 +362,8 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* new_ptr = realloc(ptr, size);
   // local_buffer->push(REALLOC)->push((uint64_t)ptr)->push((uint64_t)new_ptr)->push(size);
-  PRODUCE(ALLOC);
+  PRODUCE_2(ALLOC, size);
   PRODUCE((uint64_t)new_ptr);
-  PRODUCE(size);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
   counter_alloc++;
   TURN_ON_HOOKS
@@ -316,15 +371,20 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
 }
 
 static void SLAMP_free_hook(void *ptr, const void *caller){
-  old_free_hook(ptr, caller);
+  TURN_OFF_HOOKS
+  free(ptr);
+#ifdef NO_SPECIAL
+  PRODUCE_2(free, 0);
+  PRODUCE((uint64_t)ptr);
+#endif
+  TURN_ON_HOOKS
 }
 static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *caller){
   TURN_OFF_HOOKS
   void* ptr = memalign(alignment, size);
   // local_buffer->push(ALLOC)->push((uint64_t)ptr)->push(size);
-  PRODUCE(ALLOC);
+  PRODUCE_2(ALLOC, size);
   PRODUCE((uint64_t)ptr);
-  PRODUCE(size);
 
   // printf("memalign %lu at %p\n", size, ptr);
   counter_alloc++;

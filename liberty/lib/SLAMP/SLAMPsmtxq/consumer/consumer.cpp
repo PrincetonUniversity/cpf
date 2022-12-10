@@ -24,6 +24,28 @@ static SW_Queue the_queue;
 #define PRODUCE_2(x,y)  PRODUCE( (((uint64_t)x)<<32) | (uint32_t)(y) )
 #define CONSUME_2(x,y)  do { uint64_t tmp = CONSUME; x = (uint32_t)(tmp>>32); y = (uint32_t) tmp; } while(0)
 
+
+enum class NewDepModAction: char
+{
+    INIT = 0,
+    LOAD,
+    STORE,
+    ALLOC,
+    LOOP_INVOC,
+    LOOP_ITER,
+    FINISHED,
+    FUNC_ENTRY,
+    FUNC_EXIT,
+    LOOP_ENTRY,
+    LOOP_EXIT,
+    LOOP_ITER_CTX,
+    POINTS_TO_INST,
+    POINTS_TO_ARG,
+    STACK_ALLOC,
+    STACK_FREE,
+    FREE,
+};
+
 int main() {
   segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 32));
   segment2 = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory2", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 28));
@@ -53,38 +75,41 @@ int main() {
   the_queue->ptr_c_glb_inx = &(the_queue->c_glb_inx);
   the_queue->ptr_p_glb_inx = &(the_queue->p_glb_inx);
 
+  DependenceModule depMod(0, 0);
 
   uint64_t counter = 0;
   // shm::shared_string v(char_alloc);
 
-  using Action = DepMod::DepModAction;
+  using Action = NewDepModAction;
 
   uint32_t loop_id;
+  uint32_t v, d;
   while (true) {
-    char v;
-    v = (char)CONSUME;
+    CONSUME_2(v, d);
+
     counter++;
 
-    switch (v) {
+    Action action = static_cast<Action>(v);
+
+    switch (action) {
     case Action::INIT: {
       uint32_t pid;
-      loop_id = (uint32_t)CONSUME;
+      loop_id = d;
       pid = (uint32_t)CONSUME;
 
       if (DEBUG) {
         std::cout << "INIT: " << loop_id << " " << pid << std::endl;
       }
 #if ACTION
-      DepMod::init(loop_id, pid);
+      depMod.init(loop_id, pid);
 #endif
       break;
     };
     case Action::LOAD: {
-      uint32_t instr;
+      uint32_t instr = d;
       uint64_t addr;
       uint32_t bare_instr;
       uint64_t value = 0;
-      CONSUME_2(instr, bare_instr);
       addr = CONSUME;
       // value = CONSUME;
       if (DEBUG) {
@@ -92,43 +117,41 @@ int main() {
                   << " " << value << std::endl;
       }
 #if ACTION
-      DepMod::load(instr, addr, bare_instr, value);
+      depMod.load(instr, addr, instr);
       // DepMod::load(instr, addr, bare_instr, value);
 #endif
 
       break;
     };
     case Action::STORE: {
-      uint32_t instr;
+      uint32_t instr = d;
       uint32_t bare_instr;
       uint64_t addr;
-      CONSUME_2(instr, bare_instr);
       addr = CONSUME;
       if (DEBUG) {
         std::cout << "STORE: " << instr << " " << bare_instr << " " << addr
                   << std::endl;
       }
 #if ACTION
-      DepMod::store(instr, bare_instr, addr);
+      depMod.store(instr, bare_instr, addr);
 #endif
       break;
     };
     case Action::ALLOC: {
       uint64_t addr;
-      uint64_t size;
+      uint32_t size = d;
       addr = CONSUME;
-      size = CONSUME;
       if (DEBUG) {
         std::cout << "ALLOC: " << addr << " " << size << std::endl;
       }
 #if ACTION
-      DepMod::allocate(reinterpret_cast<void *>(addr), size);
+      depMod.allocate(reinterpret_cast<void *>(addr), size);
 #endif
       break;
     };
     case Action::LOOP_INVOC: {
 #if ACTION
-      DepMod::loop_invoc();
+      depMod.loop_invoc();
 #endif
 
       if (DEBUG) {
@@ -138,7 +161,7 @@ int main() {
     };
     case Action::LOOP_ITER: {
 #if ACTION
-      DepMod::loop_iter();
+      depMod.loop_iter();
 #endif
 
       if (DEBUG) {
@@ -150,19 +173,32 @@ int main() {
       std::stringstream ss;
       ss << "deplog-" << loop_id << ".txt";
 #if ACTION
-      DepMod::fini(ss.str().c_str());
+      depMod.fini(ss.str().c_str());
 #endif
       std::cout << "Finished loop: " << loop_id << " after " << counter
                 << " events" << std::endl;
+      exit(0);
       break;
     };
+    case Action::FUNC_ENTRY:
+    case Action::FUNC_EXIT:
+    case Action::LOOP_ENTRY:
+    case Action::LOOP_EXIT:
+    case Action::LOOP_ITER_CTX:
+    case Action::STACK_ALLOC:
+    case Action::STACK_FREE:
+       break;
+    case Action::POINTS_TO_ARG:
+    case Action::POINTS_TO_INST:
+       CONSUME;
+       break;
     default:
       std::cout << "Unknown action: " << v << std::endl;
       exit(-1);
-    }
+    };
 
-    if (counter % 100000000 == 0) {
-      std::cout << "Processed " << counter / 1000000 << "M events" << std::endl;
-    }
+    // if (counter % 100000000 == 0) {
+      // std::cout << "Processed " << counter / 1000000 << "M events" << std::endl;
+    // }
   }
 }
