@@ -190,7 +190,14 @@ enum LoadeValueModAction: char
 
 void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
 
-  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory", sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
+  // get QUEUE ID from env
+  char *env = getenv("SLAMP_QUEUE_ID");
+  if (env == NULL) {
+    std::cerr << "SLAMP_QUEUE_ID not set" << std::endl;
+    exit(-1);
+  }
+  auto queue_name = std::string("slamp_queue_") + env;
+  segment = new bip::fixed_managed_shared_memory(bip::open_or_create, queue_name.c_str(), sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
   // segment2 = new bip::fixed_managed_shared_memory(bip::open_or_create, "MySharedMemory2", sizeof(uint64_t) *QSIZE *2, (void*)(1UL << 28));
   
   dqA = segment->find<Queue>("DQ_A").first;

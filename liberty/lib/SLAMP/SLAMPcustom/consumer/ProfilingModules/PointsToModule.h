@@ -32,7 +32,7 @@ class PointsToModule : public LocalWriteModule {
   private:
     uint64_t slamp_iteration = 0;
     uint64_t slamp_invocation = 0;
-    slamp::MemoryMap *smmap = nullptr;
+    slamp::MemoryMap<MASK2_PT> *smmap = nullptr;
     uint32_t target_loop_id = 0;
 
     bool in_loop = false;
@@ -61,7 +61,7 @@ class PointsToModule : public LocalWriteModule {
   public:
   PointsToModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
-    smmap = new slamp::MemoryMap(mask, pattern, TIMESTAMP_SIZE_IN_BYTES);
+    smmap = new slamp::MemoryMap<MASK2_PT>(mask, pattern, TIMESTAMP_SIZE_IN_BYTES);
   }
 
   ~PointsToModule() override { 

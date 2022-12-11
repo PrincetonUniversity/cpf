@@ -26,6 +26,25 @@ static inline uint64_t rdtsc() {
 #define ACTION 1
 #define MEASURE_TIME 0
 
+// #define UNIFIED_WORKFLOW 1
+enum class UnifiedAction : char {
+  INIT = 0,
+  LOAD,
+  STORE,
+  ALLOC,
+  FREE,
+  LOOP_INVOC,
+  LOOP_ITER,
+  LOOP_ENTRY,
+  LOOP_EXIT,
+  LOOP_ITER_CTX,
+  FUNC_ENTRY,
+  FUNC_EXIT,
+  POINTS_TO_INST,
+  POINTS_TO_ARG,
+  FINISHED
+};
+
 // #define COLLECT_TRACE_EVENT
 #ifdef COLLECT_TRACE_EVENT
 #include <xmmintrin.h>
@@ -45,7 +64,7 @@ enum AvailableModules {
 
 constexpr AvailableModules MODULE = DEPENDENCE_MODULE;
 // set the thread count
-constexpr unsigned THREAD_COUNT = 32;
+constexpr unsigned THREAD_COUNT = 8;
 
 // #define CONSUME         sq_consume(the_queue);
 
@@ -61,7 +80,12 @@ void consume_loop_lv(DoubleQueue &dq, LoadedValueModule &lvMod) ATTRIBUTE(noinli
   uint64_t counter = 0;
   uint32_t loop_id;
 
+#ifdef UNIFIED_WORKFLOW
+  using Action = UnifiedAction;
+#else
   using Action = LoadedValueModAction;
+#endif
+
   // measure time with lambda action
   auto measure_time = [](uint64_t &time, auto action) {
     // measure time with rdtsc
@@ -111,15 +135,34 @@ void consume_loop_lv(DoubleQueue &dq, LoadedValueModule &lvMod) ATTRIBUTE(noinli
       uint32_t size = 0;
 
       dq.unpack_32_64(instr, value);
-      // dq.unpack_32_64(instr, addr);
-      // dq.check();
-      // dq.consumePacket();
-      // dq.unpack_32_64(size, value);
+      lvMod.load(instr, addr, instr, value, size);
+#ifdef UNIFIED_WORKFLOW
+      dq.unpack_32_64(instr, addr);
+      dq.check();
+      dq.consumePacket();
+      dq.unpack_64(value);
+#else
+      dq.unpack_32_64(instr, value);
+#endif
       lvMod.load(instr, addr, instr, value, size);
 
       break;
     };
-
+#ifdef UNIFIED_WORKFLOW
+    case Action::STORE:
+    case Action::ALLOC:
+    case Action::FREE:
+    case Action::LOOP_INVOC:
+    case Action::LOOP_ITER:
+    case Action::LOOP_ENTRY:
+    case Action::LOOP_EXIT:
+    case Action::LOOP_ITER_CTX:
+    case Action::FUNC_ENTRY:
+    case Action::FUNC_EXIT:
+    case Action::POINTS_TO_INST:
+    case Action::POINTS_TO_ARG:
+      break;
+#endif
     case Action::FINISHED: {
       uint64_t rdtsc_end = rdtsc();
       // total cycles
@@ -168,7 +211,11 @@ void consume_loop_ol(DoubleQueue &dq, ObjectLifetimeModule &olMod) ATTRIBUTE(noi
   uint64_t counter = 0;
   uint32_t loop_id;
 
+#ifdef UNIFIED_WORKFLOW
+  using Action = UnifiedAction;
+#else
   using Action = ObjectLifetimeModAction;
+#endif
   // measure time with lambda action
   auto measure_time = [](uint64_t &time, auto action) {
     // measure time with rdtsc
@@ -288,7 +335,18 @@ void consume_loop_ol(DoubleQueue &dq, ObjectLifetimeModule &olMod) ATTRIBUTE(noi
       }
       break;
     };
-
+#ifdef UNIFIED_WORKFLOW
+    case Action::LOAD:
+      dq.check();
+      dq.consumePacket();
+      break;
+    case Action::STORE:
+    case Action::LOOP_ENTRY:
+    case Action::LOOP_ITER_CTX:
+    case Action::POINTS_TO_INST:
+    case Action::POINTS_TO_ARG:
+      break;
+#endif
     case Action::FINISHED: {
       uint64_t rdtsc_end = rdtsc();
       // total cycles
@@ -337,7 +395,11 @@ void consume_loop_pt(DoubleQueue &dq, PointsToModule &ptMod) ATTRIBUTE(noinline)
   uint64_t counter = 0;
   uint32_t loop_id;
 
+#ifdef UNIFIED_WORKFLOW
+  using Action = UnifiedAction;
+#else
   using Action = PointsToModAction;
+#endif
   // measure time with lambda action
   auto measure_time = [](uint64_t &time, auto action) {
     // measure time with rdtsc
@@ -502,7 +564,15 @@ void consume_loop_pt(DoubleQueue &dq, PointsToModule &ptMod) ATTRIBUTE(noinline)
       }
       break;
     };
-
+#ifdef UNIFIED_WORKFLOW
+    case Action::LOAD:
+      dq.check();
+      dq.consumePacket();
+      break;
+    case Action::STORE:
+    case Action::LOOP_ITER_CTX:
+      break;
+#endif
     case Action::FINISHED: {
       uint64_t rdtsc_end = rdtsc();
       // total cycles
@@ -551,7 +621,11 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
   uint64_t counter = 0;
   uint32_t loop_id;
 
+#ifdef UNIFIED_WORKFLOW
+  using Action = UnifiedAction;
+#else
   using Action = DepModAction;
+#endif
   // measure time with lambda action
   auto measure_time = [](uint64_t &time, auto action) {
     // measure time with rdtsc
@@ -578,7 +652,8 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       event_trace_idx++;
     }
 #endif
-    switch (v) {
+    auto action = static_cast<Action>(v);
+    switch (action) {
     case Action::INIT: {
       uint32_t pid;
       // loop_id = (uint32_t)dq.consume();
@@ -599,7 +674,14 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       uint64_t addr;
       // uint32_t bare_instr;
 
+#ifdef UNIFIED_WORKFLOW
       dq.unpack_32_64(instr, addr);
+      dq.check();
+      dq.consumePacket();
+      // dq.unpack_64(value);
+#else
+      dq.unpack_32_64(instr, addr);
+#endif
 
       if (DEBUG) {
         std::cout << "LOAD: " << instr << " " << addr // << " " << bare_instr
@@ -676,6 +758,18 @@ void consume_loop(DoubleQueue &dq, DependenceModule &depMod) ATTRIBUTE(noinline)
       depMod.func_exit(func_id);
       break;
     };
+    case Action::LOOP_EXIT: {
+      depMod.loop_exit();
+      break;
+    }
+#ifdef UNIFIED_WORKFLOW
+    case Action::FREE:
+    case Action::LOOP_ENTRY:
+    case Action::LOOP_ITER_CTX:
+    case Action::POINTS_TO_INST:
+    case Action::POINTS_TO_ARG:
+      break;
+#endif
     case Action::FINISHED: {
 
       // if (ACTION) {
@@ -739,6 +833,8 @@ int main(int argc, char** argv) {
   auto queue_name = std::string("slamp_queue_") + env;
 
   segment = new bip::fixed_managed_shared_memory(bip::open_or_create, queue_name.c_str(), sizeof(uint32_t) *QSIZE *4, (void*)(1UL << 32));
+  // print the address of the shared memory segment
+  std::cout << "Shared memory segment address: " << segment->get_address() << std::endl;
 
   Queue_p dqA, dqB;
   // double buffering
@@ -763,6 +859,142 @@ int main(int argc, char** argv) {
   std::vector<std::thread> threads;
   DoubleQueue *dqs[THREAD_COUNT];
 
+#ifdef UNIFIED_WORKFLOW
+  constexpr unsigned THREADS_DEP = 4;
+  constexpr unsigned THREADS_PT = 2; //4;
+  constexpr unsigned THREADS_LV = 4; //4;
+  constexpr unsigned THREADS_OL = 1; //1;
+  constexpr unsigned THREADS = THREADS_DEP + THREADS_PT + THREADS_LV + THREADS_OL;
+  running_threads = THREADS;
+  DoubleQueue *dqs_unified[THREADS];
+
+  DependenceModule *depMods[THREADS_DEP];
+  PointsToModule *ptMods[THREADS_PT];
+  LoadedValueModule *lvMods[THREADS_LV];
+  ObjectLifetimeModule *olMods[THREADS_OL];
+
+  auto thread_idx = 0;
+
+  std::cout << "Running in " << THREADS << " threads" << std::endl;
+
+  auto MASK_DEP = THREADS_DEP - 1;
+  for (unsigned i = 0; i < THREADS_DEP; i++) {
+    dqs_unified[thread_idx++] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+    depMods[i] = new DependenceModule(MASK_DEP, i);
+  }
+
+  auto MASK_PT = THREADS_PT - 1;
+  for (unsigned i = 0; i < THREADS_PT; i++) {
+    dqs_unified[thread_idx++] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+    ptMods[i] = new PointsToModule(MASK_PT, i);
+  }
+
+  auto MASK_LV = THREADS_LV - 1;
+  for (unsigned i = 0; i < THREADS_LV; i++) {
+    dqs_unified[thread_idx++] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+    lvMods[i] = new LoadedValueModule(MASK_LV, i);
+  }
+
+  auto MASK_OL = THREADS_OL - 1;
+  for (unsigned i = 0; i < THREADS_OL; i++) {
+    dqs_unified[thread_idx++] = new DoubleQueue(dqA, dqB, true, running_threads, m, cv);
+    olMods[i] = new ObjectLifetimeModule(MASK_OL, i);
+  }
+
+  thread_idx = 0;
+  for (unsigned i = 0; i < THREADS_DEP; i++) {
+    threads.emplace_back(std::thread(
+        [&](unsigned thread_id, unsigned id) {
+          consume_loop(*dqs_unified[thread_id], *depMods[id]);
+        },
+        thread_idx++, i));
+  }
+
+  for (unsigned i = 0; i < THREADS_PT; i++) {
+    threads.emplace_back(std::thread(
+        [&](unsigned thread_id, unsigned id) {
+          consume_loop_pt(*dqs_unified[thread_id], *ptMods[id]);
+        },
+        thread_idx++, i));
+  }
+
+  for (unsigned i = 0; i < THREADS_LV; i++) {
+    threads.emplace_back(std::thread(
+        [&](unsigned thread_id, unsigned id) {
+          consume_loop_lv(*dqs_unified[thread_id], *lvMods[id]);
+        },
+        thread_idx++, i));
+  }
+
+  for (unsigned i = 0; i < THREADS_OL; i++) {
+    threads.emplace_back(std::thread(
+        [&](unsigned thread_id, unsigned id) {
+          consume_loop_ol(*dqs_unified[thread_id], *olMods[id]);
+        },
+        thread_idx++, i));
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
+
+  for (unsigned i = 0; i < THREADS_DEP; i++) {
+    if (i != 0) {
+      depMods[0]->merge_dep(*depMods[i]);
+    }
+  }
+
+  if (THREADS_DEP > 0) {
+    depMods[0]->fini("deplog.txt");
+  }
+
+  for (unsigned i = 0; i < THREADS_PT; i++) {
+    if (i != 0) {
+      ptMods[0]->merge(*ptMods[i]);
+    }
+  }
+
+  if (THREADS_PT > 0) {
+    ptMods[0]->fini("ptlog.txt");
+  }
+
+  for (unsigned i = 0; i < THREADS_LV; i++) {
+    if (i != 0) {
+      lvMods[0]->merge_values(*lvMods[i]);
+    }
+  }
+  if (THREADS_LV > 0) {
+    lvMods[0]->fini("lvlog.txt");
+  }
+
+  if (THREADS_OL > 0) {
+    olMods[0]->fini("ollog.txt");
+  }
+
+
+
+  // for (unsigned i = 0; i < THREADS_DEP; i++) {
+    // if (i != 0) {
+      // depMods[0]->merge_dep(*depMods[i]);
+    // }
+  // }
+  // if (THREADS_DEP > 0) {
+    // depMods[0]->fini("deplog.txt");
+  // }
+
+  // for (unsigned i = 0; i < THREADS_PT; i++) {
+    // if (i != 0) {
+      // ptMods[0]->merge(*ptMods[i]);
+    // }
+  // }
+  // if (THREADS_PT > 0) {
+    // ptMods[0]->fini("ptlog.txt");
+  // }
+  
+  // if (THREADS_OL > 0) {
+    // olMods[0]->fini("ollog.txt");
+  // }
+#else
   if (MODULE == DEPENDENCE_MODULE) {
     DependenceModule *depMods[THREAD_COUNT];
 
@@ -879,6 +1111,7 @@ int main(int argc, char** argv) {
       lvMods[0]->fini("lvlog.txt");
     }
   }
+#endif
 
   // remove the shared memory file
   bip::shared_memory_object::remove(queue_name.c_str());

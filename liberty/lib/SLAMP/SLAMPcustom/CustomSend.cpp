@@ -24,12 +24,12 @@ namespace bip = boost::interprocess;
 
 static constexpr uint64_t QSIZE_GUARD = QSIZE - 60;
 
-static unsigned long counter_load = 0;
-static unsigned long counter_store = 0;
-static unsigned long counter_ctx = 0;
-static unsigned long counter_alloc = 0;
-static unsigned long counter_invoc = 0;
-static unsigned long counter_iter = 0;
+// static unsigned long counter_load = 0;
+// static unsigned long counter_store = 0;
+// static unsigned long counter_ctx = 0;
+// static unsigned long counter_alloc = 0;
+// static unsigned long counter_invoc = 0;
+// static unsigned long counter_iter = 0;
 // char local_buffer[LOCAL_BUFFER_SIZE];
 // unsigned buffer_counter = 0;
 static int nested_level = 0;
@@ -212,6 +212,7 @@ enum DepModAction: char
     ALLOC,
     LOOP_INVOC,
     LOOP_ITER,
+    LOOP_EXIT,
     FINISHED,
     FUNC_ENTRY,
     FUNC_EXIT,
@@ -313,7 +314,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
 void SLAMP_fini(const char* filename){
   // send a msg with "fini"
   // queue->push(shm::shared_string("fini", *char_alloc));
-  std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
+  // std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
   // local_buffer->push(FINISHED);
   // local_buffer->flush();
   PRODUCE(FINISHED);
@@ -346,7 +347,7 @@ void SLAMP_loop_invocation(){
   // local_buffer->push(LOOP_INVOC);
   PRODUCE(LOOP_INVOC);
 
-  counter_ctx++;
+  // counter_ctx++;
 
   nested_level++;
   on_profiling = true;
@@ -354,13 +355,13 @@ void SLAMP_loop_invocation(){
   // if (counter_invoc % 1 == 0) {
     // on_profiling= true;
   // }
-  counter_invoc++;
+  // counter_invoc++;
 }
 
 void SLAMP_loop_iteration(){
   // local_buffer->push(LOOP_ITER);
   PRODUCE(LOOP_ITER);
-  counter_ctx++;
+  // counter_ctx++;
 
 #ifdef SAMPLING_ITER
     if (counter_iter % 100 == 0) {
@@ -375,6 +376,7 @@ void SLAMP_loop_iteration(){
 
 void SLAMP_loop_exit(){
   nested_level--;
+  PRODUCE(LOOP_EXIT);
   if (nested_level < 0) {
     // huge problem
     std::cerr << "Error: nested_level < 0" << std::endl;
@@ -418,7 +420,7 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   //
   if (on_profiling) {
     produce_32_32_64(LOAD, instr, addr);
-    counter_load++;
+    // counter_load++;
   }
 }
 
@@ -465,7 +467,7 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
     // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
     // produce_64_64(COMBINE_2_32(STORE, instr), addr);
     produce_32_32_64(STORE, instr, addr);
-    counter_store++;
+    // counter_store++;
   }
 }
 
@@ -510,7 +512,7 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   //
   produce_32_32_64(ALLOC, size, (uint64_t)ptr);
   // printf("malloc %lu at %p\n", size, ptr);
-  counter_alloc++;
+  // counter_alloc++;
   TURN_ON_HOOKS
   return ptr;
 }
@@ -522,7 +524,7 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   // produce_3(ALLOC, (uint64_t)new_ptr, size);
   produce_32_32_64(ALLOC, size, (uint64_t)new_ptr);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
-  counter_alloc++;
+  // counter_alloc++;
   TURN_ON_HOOKS
   return new_ptr;
 }
@@ -538,7 +540,7 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   produce_32_32_64(ALLOC, size, (uint64_t)ptr);
 
   // printf("memalign %lu at %p\n", size, ptr);
-  counter_alloc++;
+  // counter_alloc++;
   TURN_ON_HOOKS
   return ptr;
 }

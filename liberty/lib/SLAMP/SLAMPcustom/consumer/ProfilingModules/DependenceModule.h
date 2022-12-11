@@ -28,13 +28,14 @@
 
 // #define COLLECT_TRACE
 
-enum DepModAction : uint32_t {
+enum class DepModAction : uint32_t{
   INIT = 0,
   LOAD,
   STORE,
   ALLOC,
   LOOP_INVOC,
   LOOP_ITER,
+  LOOP_EXIT,
   FINISHED,
   FUNC_ENTRY,
   FUNC_EXIT,
@@ -51,6 +52,7 @@ private:
   uint64_t store_count = 0;
 
   unsigned int context = 0;
+  int nested_level = 0;
 
 #ifdef COLLECT_TRACE
   // Collect trace
@@ -60,7 +62,7 @@ private:
 #endif
 
 
-  slamp::MemoryMap *smmap = nullptr;
+  slamp::MemoryMap<MASK2> *smmap = nullptr;
 
 #ifdef TRACK_COUNT
   HTMap_Sum<slamp::KEY, slamp::KEYHash, slamp::KEYEqual, 16> deps;
@@ -94,6 +96,7 @@ public:
   void allocate(void *addr, uint64_t size);
   void loop_invoc();
   void loop_iter();
+  void loop_exit();
   void func_entry(uint32_t context);
   void func_exit(uint32_t context);
 

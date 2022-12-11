@@ -20,13 +20,23 @@
 /// left shift by `shift`, mask 47 LSB, toggle #45 bit?
 #define MASK1 0x00007fffffffffffL
 #define MASK2 0x0000200000000000L
+#define MASK2_PT 0x0000100000000000L
+#define MASK2_OL 0x0000400000000000L
 #define GET_SHADOW(addr, shift)                                                \
   (((((uint64_t)(addr)) << (shift)) & MASK1) ^ MASK2)
+#define GET_SHADOW_PT(addr, shift)                                                \
+  (((((uint64_t)(addr)) << (shift)) & MASK1) ^ MASK2_PT)
+#define GET_SHADOW_OL(addr, shift)                                                \
+  (((((uint64_t)(addr)) << (shift)) & MASK1) ^ MASK2_OL)
 
 namespace slamp {
 
+template <uint64_t MASK2_VAL=MASK2>
 class MemoryMap {
 private:
+  inline uint64_t get_shadow(uint64_t addr, uint64_t shift) {
+    return (((addr << shift) & MASK1) ^ MASK2_VAL);
+  }
   // TODO: fix this redundant info as the LocalWriteModule
   const uint32_t LOCALWRITE_MASK{};
   const uint32_t LOCALWRITE_PATTERN{};
@@ -62,7 +72,7 @@ public:
     for (auto page : pages) {
       if (!local_write_cond(page))
         continue;
-      uint64_t s = GET_SHADOW(page, ratio_shift);
+      uint64_t s = get_shadow(page, ratio_shift);
       munmap(reinterpret_cast<void *>(s), pagesize * ratio);
     }
   }
@@ -95,7 +105,7 @@ public:
       if (pages.find(page) != pages.end())
         continue;
 
-      uint64_t s = GET_SHADOW(page, ratio_shift);
+      uint64_t s = get_shadow(page, ratio_shift);
       // create a shadow page for the page
       void *p = mmap(reinterpret_cast<void *>(s), pagesize * ratio,
                      PROT_WRITE | PROT_READ,
@@ -125,7 +135,7 @@ public:
       uint64_t pageend = (a + size - 1) & pagemask;
 
       // return shadow_mem
-      auto *shadow_addr = (uint64_t *)GET_SHADOW(a, ratio_shift);
+      auto *shadow_addr = (uint64_t *)get_shadow(a, ratio_shift);
       return (void *)(shadow_addr);
     } else {
       // cleanup
@@ -137,10 +147,10 @@ public:
 
   // free the shadow pages
   void deallocate_pages(uint64_t page, unsigned cnt) {
-    munmap(reinterpret_cast<void *>(GET_SHADOW(page, ratio_shift)),
+    munmap(reinterpret_cast<void *>(get_shadow(page, ratio_shift)),
            pagesize * ratio * cnt);
 
-    // fprintf(stderr, "deallocate_pages: %lx %d\n", GET_SHADOW(page, ratio_shift), cnt);
+    // fprintf(stderr, "deallocate_pages: %lx %d\n", get_shadow(page, ratio_shift), cnt);
 
     for (auto i = 0; i < cnt; i++, page += pagesize)
       pages.erase(page);
@@ -149,8 +159,8 @@ public:
   /// for realloc; the dependence carries over
   void copy(void *dst, void *src, size_t size) {
     size_t shadow_size = size * ratio;
-    void *shadow_dst = (void *)GET_SHADOW(dst, ratio_shift);
-    void *shadow_src = (void *)GET_SHADOW(src, ratio_shift);
+    void *shadow_dst = (void *)get_shadow(dst, ratio_shift);
+    void *shadow_src = (void *)get_shadow(src, ratio_shift);
     memcpy(shadow_dst, shadow_src, shadow_size);
   }
 

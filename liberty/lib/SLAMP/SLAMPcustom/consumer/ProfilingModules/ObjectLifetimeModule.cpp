@@ -29,7 +29,7 @@ void ObjectLifetimeModule::free(void *addr) {
       return;
     // if we are still in the loop and the iteration is the same, mark it as
     // local otherwise mark it as not local
-    TS *s = (TS *)GET_SHADOW(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+    TS *s = (TS *)GET_SHADOW_OL(addr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     // auto instr = GET_INSTR(s[0]);
     // auto hash = GET_HASH(s[0]);
     auto iteration = GET_INVOC(s[0]) & 0xF0 >> 4;

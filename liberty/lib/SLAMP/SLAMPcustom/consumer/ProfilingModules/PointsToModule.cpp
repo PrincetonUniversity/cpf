@@ -116,7 +116,7 @@ void PointsToModule::points_to_arg(uint32_t fcnId, uint32_t argId, void *ptr) {
       // If it gets dereferenced, it will be caught by segfault
       return;
     }
-    TS *s = (TS *)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+    TS *s = (TS *)GET_SHADOW_PT(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     TS ts;
     // if (!smmap->is_allocated(ptr))
     // return;
@@ -151,7 +151,7 @@ void PointsToModule::points_to_inst(uint32_t instId, void *ptr) {
       // If it gets dereferenced, it will be caught by segfault
       return;
     }
-    TS *s = (TS *)GET_SHADOW(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
+    TS *s = (TS *)GET_SHADOW_PT(ptr, TIMESTAMP_SIZE_IN_POWER_OF_TWO);
     TS ts;
 
     // not all pointers are well-defined

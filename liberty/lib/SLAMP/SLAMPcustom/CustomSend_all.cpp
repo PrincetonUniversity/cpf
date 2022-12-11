@@ -22,12 +22,12 @@ namespace bip = boost::interprocess;
 
 static constexpr uint64_t QSIZE_GUARD = QSIZE - 60;
 
-static unsigned long counter_load = 0;
-static unsigned long counter_store = 0;
-static unsigned long counter_ctx = 0;
-static unsigned long counter_alloc = 0;
-static unsigned long counter_invoc = 0;
-static unsigned long counter_iter = 0;
+// static unsigned long counter_load = 0;
+// static unsigned long counter_store = 0;
+// static unsigned long counter_ctx = 0;
+// static unsigned long counter_alloc = 0;
+// static unsigned long counter_invoc = 0;
+// static unsigned long counter_iter = 0;
 // char local_buffer[LOCAL_BUFFER_SIZE];
 // unsigned buffer_counter = 0;
 static int nested_level = 0;
@@ -118,6 +118,26 @@ static void produce_32_64(uint32_t x, uint64_t y) ATTRIBUTE(noinline){
   *((uint64_t *) &dq_data[dq_index + 2]) = y;
 #endif
   dq_index += 4;
+
+  if (dq_index >= QSIZE_GUARD) [[unlikely]] {
+    produce_wait();
+  }
+}
+
+static void produce_32_32_64_64(uint32_t w, uint32_t x, uint64_t y, uint64_t z) ATTRIBUTE(noinline){
+#ifdef MM_STREAM
+  // _mm_stream_si128((__m128i *)(dq_data + dq_index), _mm_set_epi32(0, 0, y, x));
+  _mm_stream_si32((int *) &dq_data[dq_index], w);
+  _mm_stream_si32((int *) &dq_data[dq_index+1], x);
+  _mm_stream_si64((long long *) &dq_data[dq_index + 2], y);
+  _mm_stream_si64((long long *) &dq_data[dq_index + 6], z);
+#else
+  dq_data[dq_index] = w;
+  dq_data[dq_index+1] = x;
+  *((uint64_t *) &dq_data[dq_index + 2]) = y;
+  dq_data[dq_index + 6] = z;
+#endif
+  dq_index += 8;
 
   if (dq_index >= QSIZE_GUARD) [[unlikely]] {
     produce_wait();
@@ -250,17 +270,21 @@ static void produce_32_32_32(uint32_t x, uint32_t y, uint32_t z) ATTRIBUTE(noinl
 //     LOOP_ITER,
 //     FINISHED
 // };
-enum ObjectLifetimeModAction : uint32_t {
+enum UnifiedAction : char {
   INIT = 0,
-  // LOAD,
-  // STORE,
+  LOAD,
+  STORE,
   ALLOC,
   FREE,
   LOOP_INVOC,
   LOOP_ITER,
+  LOOP_ENTRY,
   LOOP_EXIT,
+  LOOP_ITER_CTX,
   FUNC_ENTRY,
   FUNC_EXIT,
+  POINTS_TO_INST,
+  POINTS_TO_ARG,
   FINISHED
 };
 
@@ -355,7 +379,7 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
 void SLAMP_fini(const char* filename){
   // send a msg with "fini"
   // queue->push(shm::shared_string("fini", *char_alloc));
-  std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
+  // std::cout << counter_load << " " << counter_store << " " << counter_ctx << std::endl;
   // local_buffer->push(FINISHED);
   // local_buffer->flush();
   PRODUCE(FINISHED);
@@ -386,19 +410,23 @@ void SLAMP_exit_fcn(uint32_t id){
 }
 
 void SLAMP_enter_loop(uint32_t id){
+  produce_32_32(LOOP_ENTRY, id);
 }
 
 void SLAMP_exit_loop(uint32_t id){
+  produce_32_32(LOOP_EXIT, id);
 }
 
-void SLAMP_loop_iter_ctx(uint32_t id){}
+void SLAMP_loop_iter_ctx(uint32_t id){
+  // produce_32_32(LOOP_ITER_CTX, id);
+}
 
 void SLAMP_loop_invocation(){
   // send a msg with "loop_invocation"
   // local_buffer->push(LOOP_INVOC);
   PRODUCE(LOOP_INVOC);
 
-  counter_ctx++;
+  // counter_ctx++;
 
   nested_level++;
   on_profiling = true;
@@ -406,13 +434,13 @@ void SLAMP_loop_invocation(){
   // if (counter_invoc % 1 == 0) {
     // on_profiling= true;
   // }
-  counter_invoc++;
+  // counter_invoc++;
 }
 
 void SLAMP_loop_iteration(){
   // local_buffer->push(LOOP_ITER);
   PRODUCE(LOOP_ITER);
-  counter_ctx++;
+  // counter_ctx++;
 
 #ifdef SAMPLING_ITER
     if (counter_iter % 100 == 0) {
@@ -435,12 +463,16 @@ void SLAMP_loop_exit(){
   if (nested_level == 0) {
     on_profiling = false;
   }
-  PRODUCE(LOOP_EXIT);
 }
 
 void SLAMP_report_base_pointer_arg(uint32_t fcnId, uint32_t argId, void *ptr){
+  // FIXME: combine fcnid and argid to 32 bit
+  uint32_t id = (fcnId << 16) | (argId & 0xffff);
+
+  produce_32_32_64(POINTS_TO_ARG, id, (uint64_t)ptr);
 }
 void SLAMP_report_base_pointer_inst(uint32_t instId, void *ptr){
+  produce_32_32_64(POINTS_TO_INST, instId, (uint64_t)ptr);
 }
 
 void SLAMP_callback_stack_alloca(uint64_t, uint64_t, uint32_t, uint64_t){}
@@ -462,10 +494,10 @@ void SLAMP_load(const uint32_t instr, const uint64_t addr, const uint32_t bare_i
   // // sprintf(msg, "load,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // // queue->push(shm::shared_string(msg, *char_alloc));
   // //
-  // if (on_profiling) {
-  //   produce_32_32_64(LOAD, instr, addr);
-  //   counter_load++;
-  // }
+  if (on_profiling) {
+    produce_32_32_64_64(LOAD, instr, addr, value);
+    // counter_load++;
+  }
 }
 
 void SLAMP_load1(uint32_t instr, const uint64_t addr, const uint32_t bare_instr, uint64_t value){
@@ -507,12 +539,12 @@ void SLAMP_store(const uint32_t instr, const uint64_t addr, const uint32_t bare_
   // // char msg[100];
   // // sprintf(msg, "store,%d,%lu,%d,%lu", instr, addr, bare_instr, value);
   // // queue->push(shm::shared_string(msg, *char_alloc));
-  // if (on_profiling) {
-  //   // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
-  //   // produce_64_64(COMBINE_2_32(STORE, instr), addr);
-  //   produce_32_32_64(STORE, instr, addr);
-  //   counter_store++;
-  // }
+  if (on_profiling) {
+    // produce_3(STORE, COMBINE_2_32(instr, bare_instr), addr);
+    // produce_64_64(COMBINE_2_32(STORE, instr), addr);
+    produce_32_32_64(STORE, instr, addr);
+    // counter_store++;
+  }
 }
 
 void SLAMP_store1(uint32_t instr, const uint64_t addr){
@@ -557,7 +589,7 @@ static void* SLAMP_malloc_hook(size_t size, const void *caller){
   produce_8_24_32_64(ALLOC, ext_fn_inst_id, size, (uint64_t)ptr);
   // produce_32_32_64(ALLOC, size, (uint64_t)ptr);
   // printf("malloc %lu at %p\n", size, ptr);
-  counter_alloc++;
+  // counter_alloc++;
   TURN_ON_HOOKS
   return ptr;
 }
@@ -570,7 +602,7 @@ static void* SLAMP_realloc_hook(void* ptr, size_t size, const void *caller){
   produce_8_24_32_64(ALLOC, ext_fn_inst_id, size, (uint64_t)new_ptr);
   // produce_32_32_64(ALLOC, size, (uint64_t)new_ptr);
   // printf("realloc %p to %lu at %p", ptr, size, new_ptr);
-  counter_alloc++;
+  // counter_alloc++;
   TURN_ON_HOOKS
   return new_ptr;
 }
@@ -590,7 +622,7 @@ static void* SLAMP_memalign_hook(size_t alignment, size_t size, const void *call
   // produce_32_32_64(ALLOC, size, (uint64_t)ptr);
 
   // printf("memalign %lu at %p\n", size, ptr);
-  counter_alloc++;
+  // counter_alloc++;
   TURN_ON_HOOKS
   return ptr;
 }

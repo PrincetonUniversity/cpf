@@ -83,7 +83,7 @@ void DependenceModule::allocate(void *addr, uint64_t size) {
   smmap->allocate(addr, size);
 }
 
-void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_inst){
+void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t context){
 
     uint32_t src_inst = GET_INSTR(ts);
 
@@ -94,7 +94,12 @@ void DependenceModule::log(TS ts, const uint32_t dst_inst, const uint32_t bare_i
       return;
     }
 
-    slamp::KEY key(src_inst, dst_inst, bare_inst, src_iter != slamp_iteration);
+#ifdef TRACK_CONTEXT
+    slamp::KEY key(src_inst, dst_inst, context, src_iter != slamp_iteration);
+#else
+    slamp::KEY key(src_inst, dst_inst, 0, src_iter != slamp_iteration);
+#endif
+
 
 #ifdef TRACK_MIN_DISTANCE
     auto dist = slamp_iteration - src_iter;
@@ -175,18 +180,27 @@ void DependenceModule::store(uint32_t instr, uint32_t bare_instr, const uint64_t
 void DependenceModule::loop_invoc() {
   slamp_iteration = 0;
   slamp_invocation++;
+  nested_level++;
 }
 
 void DependenceModule::loop_iter() {
   slamp_iteration++;
 }
 
+void DependenceModule::loop_exit() {
+  nested_level--;
+}
+
 void DependenceModule::func_entry(uint32_t instr) {
-  context = instr;
+  if (nested_level == 1) {
+    context = instr;
+  }
 }
 
 void DependenceModule::func_exit(uint32_t instr) {
-  context = 0;
+  if (nested_level == 1) {
+    context = 0;
+  }
 }
 
 void DependenceModule::merge_dep(DependenceModule &other) {

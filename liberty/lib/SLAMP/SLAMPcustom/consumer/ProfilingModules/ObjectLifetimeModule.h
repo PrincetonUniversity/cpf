@@ -30,7 +30,7 @@ class ObjectLifetimeModule: public LocalWriteModule {
   private:
     uint64_t slamp_iteration = 0;
     uint64_t slamp_invocation = 0;
-    slamp::MemoryMap *smmap = nullptr;
+    slamp::MemoryMap<MASK2_OL> *smmap = nullptr;
     uint32_t target_loop_id = 0;
 
     bool in_loop = false;
@@ -52,7 +52,7 @@ class ObjectLifetimeModule: public LocalWriteModule {
   public:
   ObjectLifetimeModule(uint32_t mask, uint32_t pattern)
       : LocalWriteModule(mask, pattern) {
-    smmap = new slamp::MemoryMap(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
+    smmap = new slamp::MemoryMap<MASK2_OL>(LOCALWRITE_MASK, LOCALWRITE_PATTERN, TIMESTAMP_SIZE_IN_BYTES);
   }
 
   ~ObjectLifetimeModule() override {
