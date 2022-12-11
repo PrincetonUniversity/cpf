@@ -15,7 +15,7 @@
 
 namespace bip = boost::interprocess;
 
-#define NO_SPECIAL
+// #define NO_SPECIAL
 
 static void *(*old_malloc_hook)(size_t, const void *);
 static void *(*old_realloc_hook)(void *, size_t, const void *);
@@ -111,6 +111,8 @@ void SLAMP_init(uint32_t fn_id, uint32_t loop_id) {
 
   // local_buffer->push(INIT);
   // local_buffer->push(loop_id);
+  //
+  setlocale(LC_ALL,"");
   PRODUCE_2(INIT, loop_id);
   uint32_t pid = getpid();
   printf("SLAMP_init: %d, %d, %d\n", fn_id, loop_id, pid);
