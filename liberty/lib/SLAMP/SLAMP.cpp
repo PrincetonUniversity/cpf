@@ -3,9 +3,10 @@
 // Single Loop Aware Memory Profiler.
 //
 
+#define DEBUG_TYPE "SLAMP"
+
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/raw_ostream.h"
-#define DEBUG_TYPE "SLAMP"
 
 #define USE_PDG
 

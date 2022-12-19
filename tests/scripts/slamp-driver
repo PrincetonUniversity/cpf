@@ -46,8 +46,8 @@ function drive {
      -basic-loop-aa -scev-loop-aa -auto-restrict-aa -intrinsic-aa -global-malloc-aa -pure-fun-aa -semi-local-fun-aa -phi-maze-aa -no-capture-global-aa -no-capture-src-aa -type-aa -no-escape-fields-aa -acyclic-aa -disjoint-fields-aa -field-malloc-aa -loop-variant-allocation-aa -std-in-out-err-aa -array-of-structures-aa -kill-flow-aa -callsite-depth-combinator-aa -unique-access-paths-aa $EXTRA -llvm-aa-results  -pdgbuilder "
 
   # local SLAMP_HOOKS="$LIBERTY_LIBS_DIR/libslamp_hooks_stats.a"
-  # local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPcustom/libslamp_hooks_custom.a"
-  local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPsmtxq/libslamp_hooks_smtx.a"
+  local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPcustom/libslamp_hooks_custom.a"
+  # local SLAMP_HOOKS="/u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/build/cpf-build-release/lib/SLAMP/SLAMPsmtxq/libslamp_hooks_smtx.a"
   local SLAMP_OUTFILE="$2-$3.result.slamp.profile"
 
  local OPTS="-slamp-insts -slamp-target-fn=$2 -slamp-target-loop=$3 $EXTRA_FLAGS -slamp-outfile=$SLAMP_OUTFILE"
@@ -136,21 +136,22 @@ function drive {
 
   rm -f /dev/shm/MySharedMemory2 /dev/shm/MySharedMemory
 
-  # create a random number between 0 and 32767
-  slamp_queue_id=$RANDOM
+  # create a random number between 0 and 999
+  slamp_queue_id=$(($RANDOM%1000))
+
   # check if /dev/shm/slamp_queue_$id exists and if so, create a new random number
   while [ -e /dev/shm/slamp_queue_$slamp_queue_id ]; do
-      slamp_queue_id=$RANDOM
+      slamp_queue_id=$(($RANDOM%1000))
   done
 
-  # SLAMP_QUEUE_ID=$slamp_queue_id /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
 
   # # taskset --cpu-list 0-6,9-55 /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
-  /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPsmtxq/consumer/build/consumer &
+  # /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPsmtxq/consumer/build/consumer &
+  SLAMP_QUEUE_ID=$slamp_queue_id /usr/bin/time -v /u/NAS_SCRATCH/ziyangx/cpf-workspace-9-master/cpf/liberty/lib/SLAMP/SLAMPcustom/consumer/build/consumer &
   CONSUME_PID=$!
-  RUN_TIMEOUT=86400 # 24 hours
-  echo "timeout $RUN_TIMEOUT $CMD4"
-  SLAMP_QUEUE_ID=$slamp_queue_id eval regressions-watchdog $RUN_TIMEOUT slamp-custom.time $CMD4
+  RUN_TIMEOUT=7200 # 2 hours
+  echo "timeout $RUN_TIMEOUT SLAMP_QUEUE_ID=$slamp_queue_id $CMD4"
+  SLAMP_QUEUE_ID=$slamp_queue_id eval /usr/bin/time -v regressions-watchdog $RUN_TIMEOUT slamp-custom.time $CMD4
   # eval regressions-watchdog $RUN_TIMEOUT slamp-smtx.time $CMD4
   # if command fail
   if [ $? -ne 0 ]; then
