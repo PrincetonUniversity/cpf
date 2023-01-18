@@ -23,7 +23,10 @@ BENCH_ROOT?=../..
 
 RUN_TIMEOUT?=28800 # 8 hours.
 TRANSFORM_TIMEOUT?=21600 # 6 hours.
-PROFILE_TIMEOUT?=72000 # 20 hours.
+# PROFILE_TIMEOUT?=36000 # 10 hours.
+PROFILE_TIMEOUT?=7200 # 2 hours.
+PROFILE_TIMEOUT?=86400 # 24 hours.
+# PROFILE_TIMEOUT?=72000 # 20 hours.
 
 REG_NUM_WORKERS?=4
 
@@ -316,7 +319,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 #
 
 %.result.slamp.profile: export LINKING_OPTS = $(LINKING_POSTOPTIONS)
-%.result.slamp.profile: %.loopProf.out
+%.result.slamp.profile: $(CANON).bc %.loopProf.out
 	date
 	$(SETUP)
 	$(PROFILESETUP)
@@ -324,7 +327,8 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	## Need to add a "\" at the end of the next line
 	# DISTANCE_MODULE=1 CONSTANT_VALUE_MODULE=1 CONSTANT_ADDRESS_MODULE=1 LINEAR_VALUE_MODULE=1 LINEAR_ADDRESS_MODULE=1
 	DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" SETUP="$(SETUP) $(PROFILESETUP)" \
-	regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
+	slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
+	# regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	# LOCALWRITE_THREADS=16 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	#NO_DEPENDENCE_MODULE=1 TRACE_MODULE=1 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6-no-module 2>&1
 	#DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
@@ -342,7 +346,8 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	$(SETUP)
 	$(PROFILESETUP)
 	rm -f result.specpriv.profile.txt
-	/usr/bin/time --output=$(CANON).specpriv-profile.time -f "%e" ./$< $(PROFILEARGS) >rabbit4 2>&1
+	# /usr/bin/time --output=$(CANON).specpriv-profile.time -f "%e" ./$< $(PROFILEARGS) >rabbit4 2>&1
+	regressions-watchdog $(PROFILE_TIMEOUT) $(CANON).specpriv-profile.time ./$< $(PROFILEARGS) >rabbit4 2>&1
 	@echo -n Waiting for profiler to write result file
 	@for i in `seq 1 1200`; do echo -n .; if [ -r result.specpriv.profile.txt ]; then break; fi; sleep 1; done
 	@echo
@@ -426,7 +431,8 @@ seq.time seq.out: $(PLAIN).o3.exe
 profile-seq.time profile-seq.out: $(PLAIN).o3.exe
 	$(SETUP)
 	$(PROFILESETUP)
-	regressions-watchdog $(RUN_TIMEOUT) profile-seq.time ./$(PLAIN).o3.exe $(PROFILEARGS) > profile-seq.out 2>&1
+	# regressions-watchdog $(RUN_TIMEOUT) profile-seq.time ./$(PLAIN).o3.exe $(PROFILEARGS) > profile-seq.out 2>&1
+	/usr/bin/time -v ./$(PLAIN).o3.exe $(PROFILEARGS) > profile-seq.out 2>&1
 	$(CLEANUP)
 
 reg_seq: $(PLAIN).o3.exe

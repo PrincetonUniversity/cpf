@@ -19,3 +19,9 @@ include_directories(./)
 add_llvm_library(${PassName} SHARED ${SRCS}) # This is to generate libxxx.so
 
 add_subdirectory(SLAMPlib/hooks)
+add_subdirectory(SLAMPnng)
+add_subdirectory(SLAMPboost)
+add_subdirectory(SLAMPatomicq)
+add_subdirectory(SLAMPstats)
+add_subdirectory(SLAMPsmtxq)
+add_subdirectory(SLAMPcustom)

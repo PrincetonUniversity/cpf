@@ -3,8 +3,10 @@
 // Single Loop Aware Memory Profiler.
 //
 
-#include "llvm/IR/LLVMContext.h"
 #define DEBUG_TYPE "SLAMP"
+
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/Support/raw_ostream.h"
 
 #define USE_PDG
 
@@ -14,6 +16,8 @@
 
 #include "liberty/SLAMP/SLAMP.h"
 #include "liberty/SLAMP/externs.h"
+#include "scaf/Utilities/CallSiteFactory.h"
+#include "liberty/PointsToProfiler/Indeterminate.h"
 
 #include "llvm/IR/CFG.h"
 #include "llvm/ADT/Statistic.h"
@@ -98,7 +102,7 @@ static cl::opt<bool> UseLinearValueModule("slamp-linear-value-module", cl::init(
 static cl::opt<bool> UseConstantAddressModule("slamp-constant-address-module", cl::init(false), cl::NotHidden, cl::desc("Use address module"));
 
 // linear address module
-static cl::opt<bool> UseLinearAddressModule("slamp-linear-address-module", cl::init(false), cl::NotHidden, cl::desc("Use linear address module"));
+ static cl::opt<bool> UseLinearAddressModule("slamp-linear-address-module", cl::init(false), cl::NotHidden, cl::desc("Use linear address module"));
 
 // trace module
 static cl::opt<bool> UseTraceModule("slamp-trace-module", cl::init(false), cl::NotHidden, cl::desc("Use trace module"));
@@ -142,6 +146,7 @@ SLAMP::~SLAMP() = default;
 void SLAMP::getAnalysisUsage(AnalysisUsage &au) const {
   // au.addRequired<StaticID>(); // use static ID (requires the bitcode to be exact the same)
   au.addRequired<ModuleLoops>();
+  au.addRequired<LoopInfoWrapperPass>();
 #ifdef USE_PDG
   au.addRequired<LoopAA>();
   au.addRequired<PDGBuilder>();
@@ -191,7 +196,25 @@ Instruction* updateDebugInfo(Instruction *inserted, Instruction *location, Modul
   return inserted;
 }
 
+unordered_map<Instruction*, uint32_t> instOffsetMap;
+
+void generateInstOffset(Module &m) {
+  // generate instruction offset
+  for (auto &f : m) {
+    if (f.isDeclaration()) continue;
+    for (auto &bb : f) {
+      unsigned offsetWithinBlock = 0;
+      for (auto &inst : bb) {
+        instOffsetMap[&inst] = offsetWithinBlock++;
+      }
+    }
+  }
+}
+
 bool SLAMP::runOnModule(Module &m) {
+  // generate instruction offset
+  generateInstOffset(m);
+
   LLVMContext &ctxt = m.getContext();
 
   // frequently used types
@@ -287,21 +310,21 @@ bool SLAMP::runOnModule(Module &m) {
 
           // debug
           LLVM_DEBUG(if (Namer::getInstrId(&I) == 21182) {
-            Remedies remedies;
-            LoopAA::ModRefResult modrefIIFW = aa->modref(
-                target_inst, LoopAA::Same, &I, target_loop, remedies);
-            auto modrefIIBW = aa->modref(&I, LoopAA::Same, target_inst,
-                                         target_loop, remedies);
-            errs() << "Target inst: " << *target_inst << "\n";
-            errs() << "I: " << I << "\n";
-            // convert retLCFW to int and print
-            errs() << "retLCFW: " << (int)(retLCFW) << "\n";
-            errs() << "retLCBW: " << (int)(retLCBW) << "\n";
-            errs() << "retIIFW: " << (int)(retIIFW) << "\n";
-            errs() << "retIIBW: " << (int)(retIIBW) << "\n";
-            errs() << "modrefIIFW: " << (modrefIIFW) << "\n";
-            errs() << "modrefIIBW: " << (modrefIIBW) << "\n";
-          });
+              Remedies remedies;
+              LoopAA::ModRefResult modrefIIFW = aa->modref(
+                  target_inst, LoopAA::Same, &I, target_loop, remedies);
+              auto modrefIIBW = aa->modref(&I, LoopAA::Same, target_inst,
+                  target_loop, remedies);
+              errs() << "Target inst: " << *target_inst << "\n";
+              errs() << "I: " << I << "\n";
+              // convert retLCFW to int and print
+              errs() << "retLCFW: " << (int)(retLCFW) << "\n";
+              errs() << "retLCBW: " << (int)(retLCBW) << "\n";
+              errs() << "retIIFW: " << (int)(retIIFW) << "\n";
+              errs() << "retIIBW: " << (int)(retIIBW) << "\n";
+              errs() << "modrefIIFW: " << (modrefIIFW) << "\n";
+              errs() << "modrefIIBW: " << (modrefIIBW) << "\n";
+              });
 
           // RAW disproved for all deps
           if ((retLCFW & 0b001) && (retLCBW & 0b001) && (retIIFW & 0b001) && (retIIBW & 0b001)) {
@@ -409,7 +432,7 @@ bool SLAMP::runOnModule(Module &m) {
   std::sort(elidedLoopInstsId.begin(), elidedLoopInstsId.end());
   errs() << "Elided Hash: " << elidedHash(elidedLoopInstsId) << "\n";
 
-  // replace external function calls to wrapper function calls
+  //// replace external function calls to wrapper function calls
   replaceExternalFunctionCalls(m);
 
 
@@ -451,13 +474,18 @@ bool SLAMP::runOnModule(Module &m) {
     instrumentGlobalVars(m, ctor);
   }
 
-  if (UsePointsToModule){
+  //// FIXME: temporarily instrument alloca and base pointer for all cases 
+  // if (UsePointsToModule){
     instrumentAllocas(m);
-  }
+    // instrument all base pointer creation
+    instrumentBasePointer(m, this->target_loop);
+  // }
 
+  instrumentFunctionStartStop(m);
   instrumentMainFunction(m);
 
   instrumentLoopStartStop(m, this->target_loop);
+  instrumentLoopStartStopForAll(m);
 
   instrumentInstructions(m, this->target_loop);
 
@@ -517,7 +545,7 @@ bool SLAMP::mayCallSetjmpLongjmp(Loop *loop) {
   getCallableFunctions(loop, callables);
 
   return (find_if(callables.begin(), callables.end(), is_setjmp_or_longjmp) !=
-          callables.end());
+      callables.end());
 }
 
 void SLAMP::getCallableFunctions(Loop *loop, set<Function *> &callables) {
@@ -558,7 +586,7 @@ void SLAMP::getCallableFunctions(CallInst *ci, set<Function *> &callables) {
 
 void SLAMP::getCallableFunctions(Function *f, set<Function *> &callables) {
   for (inst_iterator ii = inst_begin(f); ii != inst_end(f); ii++) {
-      // FIXME: not only callinst are callable
+    // FIXME: not only callinst are callable
     auto *ci = dyn_cast<CallInst>(&*ii);
     if (!ci)
       continue;
@@ -587,7 +615,7 @@ void SLAMP::getFunctionsWithSign(CallInst *ci, set<Function *> matched) {
       Function::arg_iterator fai;
       CallSite::arg_iterator cai;
       for (fai = func->arg_begin(), cai = cs.arg_begin();
-           fai != func->arg_end(); fai++, cai++) {
+          fai != func->arg_end(); fai++, cai++) {
         Value *af = &*fai;
         Value *ac = *cai;
         if (af->getType() != ac->getType()) {
@@ -602,6 +630,31 @@ void SLAMP::getFunctionsWithSign(CallInst *ci, set<Function *> matched) {
   }
 }
 
+std::string getInstructionName(Instruction *inst) {
+  auto fcn = inst->getParent()->getParent();
+  auto bb = inst->getParent();
+
+  std::stringstream sout;
+  sout << fcn->getName().str() << ' ' << bb->getName().str() << ' ';
+
+  if( inst->hasName() )
+    sout << inst->getName().str();
+  else {
+    // find the offset within the block
+    sout << '$' << instOffsetMap[inst];
+  }
+  
+  return sout.str();
+}
+
+std::string getArgName(Argument *arg) {
+  Function *fcn = arg->getParent();
+
+  std::ostringstream name;
+  name << "argument " << fcn->getName().str() << " %" << arg->getArgNo();
+  return name.str();
+}
+
 // Replace external functions with SLAMP prefixed ones (SLAMP_xxx)
 // The list of SLAMP functions are given in `externs.h`
 void SLAMP::replaceExternalFunctionCalls(Module &m) {
@@ -609,18 +662,18 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
   auto *push = cast<Function>(
       m.getOrInsertFunction("SLAMP_ext_push", Void, I32).getCallee());
   auto *pop =
-      cast<Function>(m.getOrInsertFunction("SLAMP_ext_pop", Void).getCallee());
+    cast<Function>(m.getOrInsertFunction("SLAMP_ext_pop", Void).getCallee());
 
   set<string> externs;
   for (unsigned i = 0, e = sizeof(externs_str) / sizeof(externs_str[0]); i < e;
-       i++)
+      i++)
     externs.insert(externs_str[i]);
 
   // initialize a set of external functions not to be implemented
   set<string> ignores;
   for (unsigned i = 0,
-                e = sizeof(ignore_externs_str) / sizeof(ignore_externs_str[0]);
-       i < e; i++)
+      e = sizeof(ignore_externs_str) / sizeof(ignore_externs_str[0]);
+      i < e; i++)
     ignores.insert(ignore_externs_str[i]);
 
   vector<Function *> funcs;
@@ -640,7 +693,7 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
     if (func->isIntrinsic()) {
       // just confirm that all uses is an intrinsic instruction
       for (Value::user_iterator ui = func->user_begin(); ui != func->user_end();
-           ui++)
+          ui++)
         assert(isa<IntrinsicInst>(*ui));
       continue;
     }
@@ -650,75 +703,92 @@ void SLAMP::replaceExternalFunctionCalls(Module &m) {
 
   bool hasUnrecognizedFunction = false;
   for (auto func : funcs) {
-     string name = func->getName();
+    string name = func->getName();
 
-    if (externs.find(name) == externs.end()) {
-      // check if the function argument is `readnone`, then it's pure
-      if (func->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
+    // start with SLAMP_, ignore it
+    if (name.find("SLAMP_") == 0) {
+      continue;
+    }
+
+    // find all usage of the function
+    // add a slamp_push and slamp_pop around it
+    for (auto user : func->users()) {
+      // get instruction
+      auto *inst = dyn_cast<Instruction>(user);
+      if (inst == nullptr)
+        continue;
+
+      // make sure it's a call to the function
+      if (!isa<CallBase>(inst))
+        continue;
+      auto *cb = dyn_cast<CallBase>(inst);
+      if (cb->getCalledFunction() != func)
+        continue;
+
+
+
+      // FIXME: duplicated code as instrumentLoopInst
+      auto id = Namer:: getInstrId(inst);
+      if (id == -1) {
         continue;
       }
-      // start with SLAMP_, ignore it
-      if (name.find("SLAMP_") == 0) {
-        continue;
-      }
+      vector<Value *> args;
+      args.push_back(ConstantInt::get(I32, id));
+      InstInsertPt pt = InstInsertPt::Before(inst);
+      pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
+      
+      errs() << "Malloc ID " << id << " : "
+        << getInstructionName(inst) << "\n";
 
-      errs() << "WARNING: Wrapper for external function " << name
-                        << " not implemented.\n";
-      hasUnrecognizedFunction = true;
 
-      // find all usage of the function
-      // add a slamp_push and slamp_pop around it
-      for (auto user : func->users()) {
-        // get instruction
-        auto *inst = dyn_cast<Instruction>(user);
-        if (inst == nullptr)
-          continue;
+      if (isa<CallInst>(inst)) {
+        pt = InstInsertPt::After(inst);
+        pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
+      } else if (auto *invokeI = dyn_cast<InvokeInst>(inst)) {
+        // for invoke, need to find the two paths and add pop
+        auto insertPop = [&pop, &m](BasicBlock* entry){
+          InstInsertPt pt;
+          if (isa<LandingPadInst>(entry->getFirstNonPHI()))
+            pt = InstInsertPt::After(entry->getFirstNonPHI());
+          else
+            pt = InstInsertPt::Before(entry->getFirstNonPHI());
 
-        // FIXME: duplicated code as instrumentLoopInst
-        auto id = Namer:: getInstrId(inst);
-        if (id == -1) {
-          continue;
-        }
-        vector<Value *> args;
-        args.push_back(ConstantInt::get(I32, id));
-        InstInsertPt pt = InstInsertPt::Before(inst);
-        pt << updateDebugInfo(CallInst::Create(push, args), pt.getPosition(), m);
-
-        if (isa<CallInst>(inst)) {
-          pt = InstInsertPt::After(inst);
           pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
-        } else if (auto *invokeI = dyn_cast<InvokeInst>(inst)) {
-          // for invoke, need to find the two paths and add pop
-          auto insertPop = [&pop, &m](BasicBlock* entry){
-            InstInsertPt pt;
-            if (isa<LandingPadInst>(entry->getFirstNonPHI()))
-              pt = InstInsertPt::After(entry->getFirstNonPHI());
-            else
-              pt = InstInsertPt::Before(entry->getFirstNonPHI());
+        };
 
-            pt << updateDebugInfo(CallInst::Create(pop), pt.getPosition(), m);
-          };
+        insertPop(invokeI->getNormalDest());
+        // FIXME: will generate mulitiple `slamp_pop` after the landing pad
+        //        Fine for now because `slamp_pop` only set the context to 0
+        insertPop(invokeI->getUnwindDest());
 
-          insertPop(invokeI->getNormalDest());
-          // FIXME: will generate mulitiple `slamp_pop` after the landing pad
-          //        Fine for now because `slamp_pop` only set the context to 0
-          insertPop(invokeI->getUnwindDest());
-
-        } else {
-          assert(false && "Call but not CallInst nor InvokeInst");
-        }
+      } else {
+        assert(false && "Call but not CallInst nor InvokeInst");
       }
+    }
 
-    } else {
-      string wrapper_name = "SLAMP_" + name;
+    //// FIXME: temporarily turn off the replacement
+    // if (externs.find(name) == externs.end()) {
+    //   // check if the function argument is `readnone`, then it's pure
+    //   if (func->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
+    //     continue;
+    //   }
+
+    //   errs() << "WARNING: Wrapper for external function " << name
+    //     << " not implemented.\n";
+    //   hasUnrecognizedFunction = true;
+
+    // } else {
+    //   string wrapper_name = "SLAMP_" + name;
       /* Function* wrapper = cast<Function>( m.getOrInsertFunction(wrapper_name,
        * func->getFunctionType() ) ); */
-      FunctionCallee wrapper =
-          m.getOrInsertFunction(wrapper_name, func->getFunctionType());
+    //   FunctionCallee wrapper =
+    //     m.getOrInsertFunction(wrapper_name, func->getFunctionType());
 
-      // replace 'func' to 'wrapper' in uses
-      func->replaceAllUsesWith(wrapper.getCallee());
-    }
+    //   // replace 'func' to 'wrapper' in uses
+    //   func->replaceAllUsesWith(wrapper.getCallee());
+    // }
+
+
   }
 
   if (hasUnrecognizedFunction) {
@@ -891,9 +961,133 @@ void SLAMP::reportEndOfAllocaLifetime(AllocaInst *inst, Instruction *end, bool e
   else {
     //TODO:search for terminator block 
     auto *F = inst->getFunction();
+
+    // find all return instructions
     //IRBuilder<> Builder();
   }
   return;
+}
+
+/// For each pointer use in the targeted loop
+/// 1. find the base pointer
+/// 2. Go to the creation time of the pointer
+/// 3. Insert a call to SLAMP_report_base_pointer(instruction, address)
+void SLAMP::instrumentBasePointer(Module &m, Loop* l) {
+
+  const DataLayout &DL = m.getDataLayout();
+
+  auto *find_underlying_arg = cast<Function>(
+      m.getOrInsertFunction("SLAMP_report_base_pointer_arg", Void, I32, I32, I8Ptr)
+      .getCallee());
+  auto *find_underlying_inst = cast<Function>(
+      m.getOrInsertFunction("SLAMP_report_base_pointer_inst", Void, I32, I8Ptr)
+      .getCallee());
+
+  // collect all pointer use by load, store, function argument in the targeted loop
+  std::set<const Value*> indeterminate_pointers, indeterminate_objects, already;
+
+  for (auto &F : m) {
+    for (auto &BB : F) {
+      Indeterminate::findIndeterminateObjects(BB, indeterminate_pointers, indeterminate_objects);
+    }
+  }
+
+  // for(auto *bb: l->getBlocks())
+  // {
+    // Indeterminate::findIndeterminateObjects(*bb, indeterminate_pointers, indeterminate_objects);
+  // }
+
+  for (auto &object : indeterminate_objects) {
+    if (const auto *const_arg = dyn_cast<Argument>(object)) {
+      if (already.count(const_arg))
+        continue;
+      already.insert(const_arg);
+
+      LLVM_DEBUG(
+          errs()
+          << "Instrumenting indeterminate base object in function argument "
+          << *const_arg << "\n");
+
+      auto *arg = const_cast<Argument *>(const_arg);
+      Function *fcn = arg->getParent();
+
+      Instruction *cast = new BitCastInst(arg, I8Ptr);
+      auto fcnId = Namer::getFuncId(fcn);
+      auto argId = arg->getArgNo();
+
+      auto pt = InstInsertPt::Beginning(fcn);
+      Value *args[] = {ConstantInt::get(I32, fcnId),
+                       ConstantInt::get(I32, argId), cast};
+      pt << cast
+         << updateDebugInfo(CallInst::Create(find_underlying_arg, args),
+                            pt.getPosition(), m);
+
+      // errs() << "UO Arg (" << fcnId << "," << argId <<  ") : "  
+      errs() << "UO Arg " << (fcnId << 5 | ((0x1f & (argId << 4)) | 0x1)) << " : "
+        << getArgName(arg) << "\n";
+    }
+    else if (const auto *const_inst = dyn_cast<Instruction>(object)) {
+      if (already.count(const_inst))
+        continue;
+      already.insert(const_inst);
+
+      if (isa<AllocaInst>(const_inst))
+        continue;
+
+      LLVM_DEBUG(errs() << "Instrumenting indeterminate base object: "
+                        << *const_inst << '\n');
+      auto *inst = const_cast<Instruction *>(const_inst);
+
+      Instruction *cast = new BitCastInst(inst, I8Ptr);
+
+      InstInsertPt where;
+      if (auto *invoke = dyn_cast<InvokeInst>(inst)) {
+        auto entry = invoke->getNormalDest();
+        if (isa<LandingPadInst>(entry->getFirstNonPHI())) {
+          where = InstInsertPt::After(entry->getFirstNonPHI());
+        }
+        else {
+          // iterate all the phi node in the entry block
+          // if inst is one of the incoming value of the phi node
+          // then convert the cast to the phi node
+          for (auto &phi : entry->phis()) {
+            bool found = false;
+            for (auto &incoming : phi.incoming_values()) {
+              if (incoming == inst) {
+                // replace the cast with the phi node
+                cast->deleteValue();
+                cast = new BitCastInst(&phi, I8Ptr);
+                found = true;
+                break;
+              }
+            }
+            if (found)
+              break;
+          }
+          where = InstInsertPt::Before(entry->getFirstNonPHI());
+        }
+      } else if (auto *phi = dyn_cast<PHINode>(inst)) {
+        // Don't accidentally insert instrumentation before
+        // later PHIs or landing pad instructions.
+        where = InstInsertPt::Beginning(phi->getParent());
+      } else
+        where = InstInsertPt::After(inst);
+
+      auto instId = Namer::getInstrId(inst);
+      Value *args[] = {
+        ConstantInt::get(I32, instId),
+        cast
+      };
+      where << cast 
+        << updateDebugInfo(CallInst::Create(find_underlying_inst, args), where.getPosition(), m);
+
+      errs() << "UO Inst " << (instId << 1 | 0x0) << " : " << getInstructionName(inst) << "\n";
+    }
+    else {
+      errs() << "What is: " << *object << '\n';
+      assert(false && "Unknown object type?!?!");
+    }
+  }
 }
 
 // For each alloca, find the lifetime starts and ends
@@ -1052,6 +1246,155 @@ void SLAMP::instrumentMainFunction(Module &m) {
 
     
     pt << updateDebugInfo(CallInst::Create(f_main_entry, main_args, ""), pt.getPosition(), m);
+  }
+}
+
+/// Pass in the loop and instrument enter/exit hooks
+void SLAMP::instrumentLoopStartStopForAll(Module &m) {
+
+  // for all functions
+  for (auto &f : m) {
+    if (f.isDeclaration())
+      continue;
+    // get all loops
+    LoopInfo &li = getAnalysis<LoopInfoWrapperPass>(f).getLoopInfo();
+    for (auto &loop : li.getLoopsInPreorder()) {
+
+      // TODO: check setjmp/longjmp
+      BasicBlock *header = loop->getHeader();
+      auto loopId = Namer::getBlkId(header);
+      if (loopId == -1) {
+        assert(false && "Loop header has no id");
+      }
+      BasicBlock *latch = loop->getLoopLatch();
+      vector<Value *> args;
+      args.push_back(ConstantInt::get(I32, loopId));
+
+      errs() << "Loop ID " << loopId << " : " << f.getName() << " " << header->getName() << " " << li.getLoopDepth(header) << "\n";
+
+      // check if loop-simplify pass executed
+      assert(loop->getNumBackEdges() == 1 &&
+          "Should be only 1 back edge, loop-simplify?");
+      assert(latch && "Loop latch needs to exist, loop-simplify?");
+
+      // add instrumentation on loop header:
+      // if new invocation, call SLAMP_loop_invocation, else, call
+      // SLAMP_loop_iteration
+      auto *f_loop_invoke = cast<Function>(
+          m.getOrInsertFunction("SLAMP_enter_loop", Void, I32).getCallee());
+      auto *f_loop_iter= cast<Function>(
+          m.getOrInsertFunction("SLAMP_loop_iter_ctx", Void, I32).getCallee());
+      auto *f_loop_exit = cast<Function>(
+          m.getOrInsertFunction("SLAMP_exit_loop", Void, I32).getCallee());
+
+      PHINode *funcphi = PHINode::Create(f_loop_invoke->getType(), 2, "funcphi_loop_context");
+      InstInsertPt pt;
+
+      if (isa<LandingPadInst>(header->getFirstNonPHI()))
+        pt = InstInsertPt::After(header->getFirstNonPHI());
+      else
+        pt = InstInsertPt::Before(header->getFirstNonPHI());
+
+      pt << funcphi;
+
+      // choose which function to execute (iter or invoke)
+      for (auto pred : predecessors(header)) {
+        if (pred == latch)
+          funcphi->addIncoming(f_loop_iter, pred);
+        else
+          funcphi->addIncoming(f_loop_invoke, pred);
+      }
+
+      updateDebugInfo(CallInst::Create(funcphi, args, "", header->getFirstNonPHI()), header->getFirstNonPHI(), m);
+
+      // Add `SLAMP_loop_exit` to all loop exits
+      SmallVector<BasicBlock *, 8> exits;
+      loop->getExitBlocks(exits);
+
+      // one instrumentation per block
+      set<BasicBlock *> s;
+
+      for (unsigned i = 0; i < exits.size(); i++) {
+        if (s.count(exits[i]))
+          continue;
+
+        CallInst *ci = CallInst::Create(f_loop_exit, args);
+
+        InstInsertPt pt2;
+        if (isa<LandingPadInst>(exits[i]->getFirstNonPHI()))
+          pt2 = InstInsertPt::After(exits[i]->getFirstNonPHI());
+        else
+          pt2 = InstInsertPt::Before(exits[i]->getFirstNonPHI());
+
+        pt2 << updateDebugInfo(ci, pt2.getPosition(), m);
+
+        s.insert(exits[i]);
+      }
+    }
+  }
+
+}
+
+
+/// Instrumnent each function entry and exit with SLAMP function entry and exit calls
+void SLAMP::instrumentFunctionStartStop(Module &m) {
+  // for each function body
+  for (auto &fi : m) {
+    Function *func = &fi;
+    if (func->isDeclaration())
+      continue;
+
+    // ignore all SLAMP calls
+    if (func->getName().startswith("SLAMP_"))
+      continue;
+
+
+    // find function ID
+    auto fcnID = Namer::getFuncId(func);
+    if (fcnID == -1) {
+      errs() << "Cannot find function ID for " << func->getName() << "\n";
+      continue;
+    }
+
+    errs() << "Function ID " << fcnID << " : " << func->getName() << "\n";
+
+    // set parameters
+    vector<Value *> args;
+    args.push_back(ConstantInt::get(I32, fcnID));
+
+    // find the function entry
+    auto *f_function_entry = cast<Function>(
+      m.getOrInsertFunction("SLAMP_enter_fcn", Void, I32).getCallee());
+    auto *f_function_exit = cast<Function>(
+      m.getOrInsertFunction("SLAMP_exit_fcn", Void, I32).getCallee());
+
+    // insert SLAMP_enter_fcn at the beginning of the function
+    BasicBlock *entry = &(func->getEntryBlock());
+    InstInsertPt pt = InstInsertPt::Before(entry->getFirstNonPHI());
+    pt << updateDebugInfo(CallInst::Create(f_function_entry, args), pt.getPosition(), m);
+
+    // find all exits of the function
+    vector<Instruction *> exits;
+    for (auto &bi : *func) {
+      BasicBlock *bb = &bi;
+      if (isa<ReturnInst>(bb->getTerminator()))
+        exits.push_back(bb->getTerminator());
+      // else if (isa<ResumeInst>(bb->getTerminator()))
+        // exits.push_back(bb->getTerminator());
+        // // FIXME: should be at the beginning of the block
+      // else if (isa<UnreachableInst>(bb->getTerminator()))
+        // exits.push_back(bb->getTerminator());
+      //// FIXME: invoke the exception end
+      // else if (isa<InvokeInst>(bb->getTerminator()))
+        // exits.push_back(bb->getTerminator());
+    }
+
+    // insert SLAMP_exit_fcn at the end of the function
+    for (auto &exit : exits) {
+      InstInsertPt pt = InstInsertPt::Before(exit);
+      pt << updateDebugInfo(CallInst::Create(f_function_exit, args), pt.getPosition(), m);
+    }
+
   }
 }
 
