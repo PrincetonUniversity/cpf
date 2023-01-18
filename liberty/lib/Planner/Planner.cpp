@@ -271,7 +271,6 @@ namespace liberty {
     Function *fA = hA->getParent();
     errs() << "Parallelizing loop: " << fA->getName() << ":" << hA->getName() << '\n';
 
-    auto loopStructures = noelle.getLoopStructures(fA);
     LoopStructure loopStructure(loop);
     auto ldi = noelle.getLoop(&loopStructure);
 
@@ -284,7 +283,7 @@ namespace liberty {
     if(SlampCheck) {
       uint32_t edgeCount = 0;
       uint32_t diffCount = 0;
-      auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
+      auto remed_slamp = &getAnalysis<SLAMPLoadProfile>();
       auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
       auto remed_lamp = &getAnalysis<LAMPLoadProfile>(); 
       auto remed_lamp_aa = std::make_unique<LampOracle>(remed_lamp); 
@@ -300,7 +299,7 @@ namespace liberty {
         edgeCount++;
 
         // LAMP is unable to reason about function calls,
-        // and SLAMP only considers RAW deps. 
+        // and SLAMP only considers RAW deps.
         if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst))
           continue;
         if(!edge->isRAWDependence())
@@ -308,7 +307,7 @@ namespace liberty {
 
         if(edge->isLoopCarriedDependence())
           loopCarried = true;
-        
+
         auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
         auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
 
@@ -528,6 +527,11 @@ namespace liberty {
     Strategies strategies;
 
     auto& noelle = getAnalysis<Noelle>();
+    auto &lpl = getAnalysis<LoopProfLoad>();
+    liberty::slamp::SLAMPLoadProfile *slamp = nullptr;
+    if (EnableSlamp) {
+      slamp = &getAnalysis<SLAMPLoadProfile>();
+    }
 
     // per hot loop
     for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
@@ -543,6 +547,40 @@ namespace liberty {
       // calculate the weight for the loop
     }
 
+    if (vertices.size() == 0) {
+      errs() << "\n\n"
+             << "*********************************************************************\n"
+             << "No parallelizing transformation applicable to /any/ of the "
+                "hot loops.\n"
+             << "*********************************************************************\n";
+    } else {
+      errs() << "\n\n*********************************************************************\n"
+             << "Parallelizable loops:\n";
+    }
+    for (int v = 0; v < vertices.size(); ++v) {
+      auto *loop = vertices[v];
+      auto *strat = strategies[v];
+
+      auto header = loop->getHeader();
+      auto fcn = loop->getHeader()->getParent();
+      auto frac = lpl.getLoopFraction(loop);
+      auto time = lpl.getLoopTime(loop);
+      auto speedup = time / (time - strat->savings / (double)FixedPoint);
+
+      string slampStr = " (NO SLAMP)";
+      if (EnableSlamp) {
+        if (slamp->isTargetLoop(loop))
+          slampStr = " (SLAMP)";
+      }
+      REPORT_DUMP(errs() << " - " << format("%.2f", ((double)(100 * frac)))
+                         << "% "
+                         // << "depth " << loop->getLoopDepth() << "    "
+                         << fcn->getName() << " :: " << header->getName() << " "
+                         << strat->pipelineStrategy
+                         << " (Loop speedup: " << format("%.2f", speedup)
+                         << "x savings/loop time: " << strat->savings  << "/" << time << ")" << slampStr <<"\n";);
+    }
+
     // see if the loops are compatibile with each other
     auto fm = noelle.getFunctionsManager();
     auto &callGraph = *fm->getProgramCallGraph();
@@ -551,9 +589,9 @@ namespace liberty {
     VertexSet maxClique;
     const int wt = ebk(edges, scaledweights, maxClique);
 
-    auto &lpl = getAnalysis<LoopProfLoad>();
     auto tt = lpl.getTotTime();
     auto speedup = tt / (tt - wt / (double)FixedPoint);
+
 
     REPORT_DUMP(errs() << "  Total expected speedup: "
                        << format("%.2f", speedup) << "x using " << ThreadBudget
@@ -571,10 +609,10 @@ namespace liberty {
       REPORT_DUMP(errs() << " - " << format("%.2f", ((double)(100 * frac)))
                          << "% "
                          // << "depth " << loop->getLoopDepth() << "    "
-                         << fcn->getName() << ":" << header->getName() << " "
-                         << strat->pipelineStrategy 
-                         << "(Loop speedup:" << format("%.2f", speedup) 
-                         << " savings/loop time: " << strat->savings  << "/" << time << ")\n";);
+                         << fcn->getName() << " :: " << header->getName() << " "
+                         << strat->pipelineStrategy
+                         << " (Loop speedup: " << format("%.2f", speedup)
+                         << "x savings/loop time: " << strat->savings  << "/" << time << ")\n";);
     }
 
     return false;
