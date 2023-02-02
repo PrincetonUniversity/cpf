@@ -286,14 +286,15 @@ namespace liberty {
       auto remed_slamp = &getAnalysis<SLAMPLoadProfile>();
       auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
       auto remed_lamp = &getAnalysis<LAMPLoadProfile>(); 
-      auto remed_lamp_aa = std::make_unique<LampOracle>(remed_lamp); 
+      auto remed_lamp_aa = std::make_unique<LampOracle>(remed_lamp);
 
-      for(auto &edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
-        if(!pdg->isInternal(edge->getIncomingT()) || !pdg->isInternal(edge->getOutgoingT()))
+      for (auto &edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
+        if (!pdg->isInternal(edge->getIncomingT()) ||
+            !pdg->isInternal(edge->getOutgoingT()))
           continue;
 
-        Instruction* src = dyn_cast<Instruction>(edge->getOutgoingT());
-        Instruction* dst = dyn_cast<Instruction>(edge->getIncomingT());
+        auto* src = dyn_cast<Instruction>(edge->getOutgoingT());
+        auto* dst = dyn_cast<Instruction>(edge->getIncomingT());
         assert(src && dst && "src/dst not instructions in PDG?");
         bool loopCarried = false;
         edgeCount++;
@@ -323,14 +324,14 @@ namespace liberty {
     // Since SLAMP only checks for RAW memory deps,
     // make sure such an edge does not exist according to anlysis.
     // If it exists according to SLAMP, there is a bug
-    if(ValidityCheck) {
-      auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
+    if (ValidityCheck) {
+      auto remed_slamp = &getAnalysis<SLAMPLoadProfile>();
       auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
 
       for(auto nodeI : pdg->getNodes()) {
         for(auto nodeJ : pdg->getNodes()) {
-           Instruction* src = dyn_cast<Instruction>(nodeI->getT());
-           Instruction* dst = dyn_cast<Instruction>(nodeJ->getT());
+           auto* src = dyn_cast<Instruction>(nodeI->getT());
+           auto* dst = dyn_cast<Instruction>(nodeJ->getT());
 
            auto deps = pdg->getDependences(src, dst);
            bool relevantIntraDepExists = false;
@@ -364,7 +365,7 @@ namespace liberty {
 
     // Set up additional remediators (controlspec, redux, memver)
     std::vector<Remediator_ptr> remediators =
-      getAvailableRemediators(loop, pdg);
+        getAvailableRemediators(loop, pdg);
 
     // get all possible criticisms
 
@@ -377,7 +378,7 @@ namespace liberty {
       Remedies remedies = remediator->satisfy(*pdg, loop, allCriticisms);
       // for each remedy
       for (Remedy_ptr r : remedies) {
-        long tcost = 0;
+        unsigned long tcost = 0;
         Remedies_ptr remedSet = std::make_shared<Remedies>();
 
         // expand remedy if there's subremedies
@@ -578,7 +579,7 @@ namespace liberty {
                          << fcn->getName() << " :: " << header->getName() << " "
                          << strat->pipelineStrategy
                          << " (Loop speedup: " << format("%.2f", speedup)
-                         << "x savings/loop time: " << strat->savings  << "/" << time << ")" << slampStr <<"\n";);
+                         << "x savings/loop time: " << strat->savings/FixedPoint  << "/" << time << ")" << slampStr <<"\n";);
     }
 
     // see if the loops are compatibile with each other
@@ -589,9 +590,20 @@ namespace liberty {
     VertexSet maxClique;
     const int wt = ebk(edges, scaledweights, maxClique);
 
-    auto tt = lpl.getTotTime();
-    auto speedup = tt / (tt - wt / (double)FixedPoint);
+    auto totalTime = lpl.getTotTime();
+    auto speedup = totalTime / (totalTime - wt / (double)FixedPoint);
 
+    // do a check if the max clique adds up to more than total time
+
+    unsigned long totalTimeClique = 0;
+    for (unsigned int v : maxClique) {
+      totalTimeClique += lpl.getLoopTime(vertices[v]);
+    }
+
+    if (totalTimeClique > totalTime) {
+      errs() << "WARNING: The max clique is larger than the total time. This "
+                "should not happen.\n";
+    }
 
     REPORT_DUMP(errs() << "  Total expected speedup: "
                        << format("%.2f", speedup) << "x using " << ThreadBudget
@@ -612,7 +624,7 @@ namespace liberty {
                          << fcn->getName() << " :: " << header->getName() << " "
                          << strat->pipelineStrategy
                          << " (Loop speedup: " << format("%.2f", speedup)
-                         << "x savings/loop time: " << strat->savings  << "/" << time << ")\n";);
+                         << "x savings/loop time: " << strat->savings / FixedPoint << "/" << time << ")\n";);
     }
 
     return false;
