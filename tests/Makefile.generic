@@ -128,7 +128,7 @@ $(CANON).out : $(CANON).exe
 
 $(CANON).exe : $(CANON).bc
 	date
-	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-canon.time $(LLVM_CXX) -lm -lstdc++ $(LIBS) $(LDFLAGS) $^ -o $@ 
+	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-canon.time $(LLVM_CXX) -lm -lstdc++ $(LIBS) $(LDFLAGS) $^ -o $@
 	date
 
 plain: $(PLAIN).o3.out
@@ -162,7 +162,7 @@ $(PLAIN).o3.out : $(PLAIN).o3.exe
 $(PLAIN).o3.exe : $(PLAIN).o3.bc
 	date
 	regressions-watchdog $(TRANSFORM_TIMEOUT) strip.time $(LLVM_OPT) -strip $^ -o $(PLAIN).o3.striped.bc
-	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-plain.time $(LLVM_CXX) -O3 $(CXXOPTIMIZE) $(COPTIMIZE) -lm $(LIBS) $(PLAIN).o3.striped.bc -o $@ 
+	regressions-watchdog $(TRANSFORM_TIMEOUT) lower-plain.time $(LLVM_CXX) -O3 $(CXXOPTIMIZE) $(COPTIMIZE) -lm $(LIBS) $(PLAIN).o3.striped.bc -o $@
 	date
 
 #
@@ -316,7 +316,7 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 #
 
 %.result.slamp.profile: export LINKING_OPTS = $(LINKING_POSTOPTIONS)
-%.result.slamp.profile: %.loopProf.out
+%.result.slamp.profile: $(CANON).bc %.loopProf.out
 	date
 	$(SETUP)
 	$(PROFILESETUP)
@@ -325,6 +325,10 @@ $(CANON).lamp_OG.exe : $(CANON).pgo.bc $(LAMPLIBS)
 	# DISTANCE_MODULE=1 CONSTANT_VALUE_MODULE=1 CONSTANT_ADDRESS_MODULE=1 LINEAR_VALUE_MODULE=1 LINEAR_ADDRESS_MODULE=1
 	DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" SETUP="$(SETUP) $(PROFILESETUP)" \
 	regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
+	#SLAMP_INSTALL_DIR=/u/NAS_SCRATCH/ziyangx/prompt-workspace/PROMPT/install/ \
+	#DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" SETUP="$(SETUP) $(PROFILESETUP)" \
+	#regressions-watchdog $(PROFILE_TIMEOUT) slamp.time /u/NAS_SCRATCH/ziyangx/prompt-workspace/PROMPT/scripts/slamp-driver $*.bc > rabbit6 2>&1
+	#$(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	# LOCALWRITE_THREADS=16 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
 	#NO_DEPENDENCE_MODULE=1 TRACE_MODULE=1 regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6-no-module 2>&1
 	#DEFAULT_LDFLAGS="$(DEFAULT_LDFLAGS)" DEFAULT_LIBS="$(DEFAULT_LIBS)" PROFILEARGS="$(ARGS) $(PROFILEARGS)" regressions-watchdog $(PROFILE_TIMEOUT) slamp.time slamp-driver $*.bc $(TARGET_FCN) $(TARGET_LOOP) > rabbit6 2>&1
@@ -360,7 +364,7 @@ $(CANON).specpriv-profile.exe : $(CANON).bc $(SPECPRIVPROFLIBS)
 
 $(CANON).specpriv-pipeline.bc $(CANON).specpriv-pipeline-nopeep.bc : $(CANON).bc $(CANON).lamp.out $(CANON).edgeProf.out $(CANON).specpriv-profile.out $(CANON).loopProf.out $(LIBSPECPRIV) $(LIBERTY_SRC_DIR)/scripts/specpriv-pipeline
 	date
-	rm -f $(CANON).specpriv-pipeline.bc 
+	rm -f $(CANON).specpriv-pipeline.bc
 	cp $(CANON).edgeProf.out llvmprof.out
 	cp $(CANON).lamp.out result.lamp.profile
 	cp $(CANON).specpriv-profile.out result.specpriv.profile.txt
@@ -373,7 +377,7 @@ $(CANON).specpriv-pipeline.bc $(CANON).specpriv-pipeline-nopeep.bc : $(CANON).bc
 # parallelization experiments
 #
 
-llvmprof.out: $(CANON).edgeProf.out 
+llvmprof.out: $(CANON).edgeProf.out
 	cp $< $@
 
 loopProf.out: $(CANON).loopProf.out
@@ -390,12 +394,12 @@ result.specpriv.profile.txt: $(CANON).specpriv-profile.out
 
 setup_codegen: llvmprof.out loopProf.out result.lamp.profile
 
-no-spec.dump: loopProf.out 
+no-spec.dump: loopProf.out
 	regressions-watchdog $(RUN_TIMEOUT) no-spec-dump.time genDumps $@
 
 cheap-spec.dump: loopProf.out
 	regressions-watchdog $(RUN_TIMEOUT) cheap-spec-dump.time genDumps $@ -enable-specpriv -enable-edgeprof
-	
+
 all-spec.dump: loopProf.out result.lamp.profile result.specpriv.profile.txt
 	regressions-watchdog $(RUN_TIMEOUT) all-spec-dump.time genDumps $@ -enable-specpriv -enable-edgeprof -lamp-map-loop -enable-lamp
 
@@ -467,7 +471,7 @@ $(CANON).compare.out : seq.out parallel.out
 
 %.opt.bc :%.bc
 	date
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $< -o $@  
+	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $< -o $@
 	date
 
 %.internalized.bc : %.bc
@@ -544,19 +548,19 @@ $(PLAIN).bc : $(OBJFILES_BC)
 
 %.bc : %.c
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.compile.time $(LLVM_CC) $(LLVM_CFLAGS) $< -o $@
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@  
+	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@
 
 %.bc : %.C
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.compile.time $(LLVM_CC) $(LLVM_CFLAGS) $< -o $@
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@  
+	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@
 
 %.bc : %.cpp
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.compile.time $(LLVM_CXX) $(LLVM_CFLAGS) $< -o $@
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@  
+	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@
 
 %.bc : %.cc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.compile.time $(LLVM_CXX) $(LLVM_CFLAGS) $< -o $@
-	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@  
+	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.opt.time $(LLVM_OPT) $(TRANSFORMATIONS_BEFORE_PARALLELIZATION) $@ -o $@
 
 %.exe : %.bc
 	regressions-watchdog $(TRANSFORM_TIMEOUT) $<.link.time $(LLVM_CXX) -O3 $< -lm -lstdc++ $(LDFLAGS) $(QUEUES) $(LAMP) $(EDGEPROF) $(SPPROF) $(SPEX) -lrt -o $@
