@@ -288,6 +288,8 @@ namespace liberty {
     if(SlampCheck) {
       uint32_t edgeCount = 0;
       uint32_t diffCount = 0;
+      uint32_t diff_ii = 0;
+      uint32_t diff_lc = 0;
       auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
       auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
       auto remed_lamp = &getAnalysis<LAMPLoadProfile>(); 
@@ -319,6 +321,8 @@ namespace liberty {
 
         if(slamp_remedy.depRes != lamp_remedy.depRes) {
           diffCount++;
+          if(loopCarried) diff_lc++;
+          else diff_ii++;
           errs() << "ERROR: SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes;
           if(loopCarried)
             errs() << ", loop-carried\n";
@@ -334,7 +338,9 @@ namespace liberty {
           errs() << ")\n";
         }
       }
-      errs() << "Total number of edges: " << edgeCount << ", number of diff edges: " << diffCount << "\n";
+      errs() << "Total number of edges: " << edgeCount << "\nNumber of diff edges: " << diffCount << "\n";
+      errs() << "Number of diff edges that are loop-carried: " << diff_lc << "\n";
+      errs() << "Number of diff edges that are intra-iteration: " << diff_ii << "\n";
     }
 
     // Make sure SLAMP is not more conservative than analysis
@@ -342,6 +348,8 @@ namespace liberty {
     // make sure such an edge does not exist according to anlysis.
     // If it exists according to SLAMP, there is a bug
     if(ValidityCheck) {
+      uint32_t error_lc = 0;
+      uint32_t error_ii = 0;
       auto remed_slamp = &getAnalysis<SLAMPLoadProfile>(); 
       auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
 
@@ -374,6 +382,7 @@ namespace liberty {
               errs() << ") to " << *(dst) << "( (" << Namer::getInstrId(dst) << ") ";
               liberty::printInstDebugInfo(dst);
               errs() << ")\n";
+              error_lc++;
              }
            }
            if(!relevantIntraDepExists) {
@@ -387,10 +396,13 @@ namespace liberty {
              errs() << ") to " << *(dst) << "( (" << Namer::getInstrId(dst) << ") ";
              liberty::printInstDebugInfo(dst);
              errs() << ")\n";
+             error_ii++;
              }
            }
         }
       }
+      errs() << "Number of loop-carried errors: " << error_lc << "\n";
+      errs() << "Number of intra-iteration errors: " << error_ii << "\n";
     }
 
     // Set up additional remediators (controlspec, redux, memver)
@@ -453,9 +465,9 @@ namespace liberty {
             else
               errs() << "intra-iteration ";
             errs() << "dep from " 
-              << *(c->getOutgoingT()) << "(";
+              << *(c->getOutgoingT()) << "( (" << Namer::getInstrId(src) << ")";
             liberty::printInstDebugInfo(src);
-            errs() << ") to " << *(c->getIncomingT()) << "(";
+            errs() << ") to " << *(c->getIncomingT()) << "( (" << Namer::getInstrId(dst) << ")";
             liberty::printInstDebugInfo(dst);
             errs() << ")\n";
           }
