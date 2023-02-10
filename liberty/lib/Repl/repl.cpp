@@ -1,3 +1,8 @@
+#include "llvm/Pass.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/Function.h"
+
 #include "liberty/LoopProf/Targets.h"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "liberty/Orchestration/PSDSWPCritic.h"
@@ -5,9 +10,19 @@
 #include "scaf/Utilities/ModuleLoops.h"
 #include "scaf/Utilities/ReportDump.h"
 #include "scaf/Utilities/Metadata.h"
-#include "llvm/Pass.h"
-#include "llvm/Support/Casting.h"
-#include "llvm/Support/raw_ostream.h"
+
+
+#include "noelle/core/DGBase.hpp"
+#include "noelle/core/PDG.hpp"
+#include "noelle/core/PDGPrinter.hpp"
+#include "noelle/core/SCCDAG.hpp"
+#include "noelle/core/LoopDependenceInfo.hpp"
+#include "scaf/SpeculationModules/GlobalConfig.h"
+#include "scaf/SpeculationModules/SLAMPLoad.h"
+#include "scaf/SpeculationModules/SlampOracleAA.h"
+#include "ReplParse.hpp"
+
+#include "noelle/tools/Repl.hpp"
 
 #include <algorithm>
 #include <bits/stdint-uintn.h>
@@ -18,14 +33,6 @@
 #include <readline/readline.h>
 #include <string>
 
-#include "noelle/core/DGBase.hpp"
-#include "noelle/core/PDG.hpp"
-#include "noelle/core/PDGPrinter.hpp"
-#include "noelle/core/SCCDAG.hpp"
-#include "noelle/core/LoopDependenceInfo.hpp"
-#include "ReplParse.hpp"
-
-#include "noelle/tools/Repl.hpp"
 
 using namespace llvm;
 using namespace std;
@@ -48,11 +55,25 @@ static RegisterPass<CpfRepl> rp("cpf-repl", "CPF Repl");
 
 void CpfRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired<Noelle>();
-  au.addRequired<ModuleLoops>();
-  au.addRequired<Targets>();
   au.addRequired< LoopProfLoad >();
   au.addRequired< ProfilePerformanceEstimator >();
   au.addRequired< LoopInfoWrapperPass >();
+  au.addRequired<TargetLibraryInfoWrapperPass>();
+
+  if (EnableSlamp) {
+    au.addRequired<slamp::SLAMPLoadProfile>();
+    au.addRequired<SlampOracleAA>();
+  }
+  au.addRequired<ModuleLoops>();
+  au.addRequired<Targets>();
+
+  if (EnableEdgeProf) {
+    au.addRequired<ProfileGuidedControlSpeculator>();
+    // au.addRequired<KillFlow_CtrlSpecAware>();
+    // au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
+  }
+
+
   au.setPreservesAll();
 }
 
@@ -71,8 +92,52 @@ class CpfReplDriver: public Repl::ReplDriver {
       return loop;
     }
 
+    vector<LoopAA *> initializeSpecModules(Module &M) {
+
+      vector<LoopAA *> specAAs;
+
+      if (EnableSlamp) {
+        auto slamp = &pass.getAnalysis<SLAMPLoadProfile>();
+        auto slampaa = new SlampOracleAA(slamp);
+       // slampaa->InitializeLoopAA(&pass, *DL);
+        specAAs.push_back(slampaa);
+      }
+
+      // PerformanceEstimator *perf = &pass.getAnalysis<ProfilePerformanceEstimator>();
+      if (EnableEdgeProf) {
+        // auto ctrlspec =
+        //   pass.getAnalysis<ProfileGuidedControlSpeculator>().getControlSpecPtr();
+        // auto edgeaa = new EdgeCountOracle(ctrlspec); // Control Spec
+        // edgeaa->InitializeLoopAA(&pass, *DL);
+        // specAAs.push_back(edgeaa);
+
+        // // auto killflow_aware = &getAnalysis<KillFlow_CtrlSpecAware>(); // KillFlow
+        // // auto callsite_aware = &getAnalysis<CallsiteDepthCombinator_CtrlSpecAware>();
+        // // // CallsiteDepth
+
+        // // Setup
+        // ctrlspec->setLoopOfInterest(loop->getHeader());
+        // // killflow_aware->setLoopOfInterest(ctrlspec, loop);
+        // // callsite_aware->setLoopOfInterest(ctrlspec, loop);
+      }
+
+      return specAAs;
+    }
+
   public:
     CpfReplDriver(Noelle &noelle, Module &m, LoopAA* loopAA, const Targets &targets, ModuleLoops &mloops, Pass &pass) : ReplDriver(noelle, m), loopAA(loopAA), targets(targets), mloops(mloops), pass(pass) {
+
+      auto DL = &m.getDataLayout();
+      TargetLibraryInfoWrapperPass *tliWrap = &pass.getAnalysis<TargetLibraryInfoWrapperPass>();
+      TargetLibraryInfo *ti = &tliWrap->getTLI();
+
+      // FIXME: handle other loopAAs
+      vector<LoopAA *> aas = initializeSpecModules(m);
+
+      for (auto *aa : aas) {
+        aa->InitializeLoopAA(DL, ti, loopAA);
+      }
+
       // initialize loop aa
       auto aa = loopAA;
       while (aa) {
@@ -98,7 +163,7 @@ class CpfReplDriver: public Repl::ReplDriver {
     void createLoopMap() override {
 
       outs() << "CPF create loop map\n";
-      
+
       // prepare hot loops from the targets
       unsigned loopId = 0;
       for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
@@ -127,7 +192,7 @@ class CpfReplDriver: public Repl::ReplDriver {
           outs() << " (" << loopNamerId << ")";
 
 
-        outs() << ": " << header->getName()
+        outs() << ": " << header->getParent()->getName()
           << "::" << header->getName();
         Instruction *term = header->getTerminator();
         if (term)
