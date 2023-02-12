@@ -211,6 +211,10 @@ class CpfReplDriver: public Repl::ReplDriver {
 
       auto printDebug = parser.isVerbose();
       int queryInstId = parser.getActionId();
+      if (selectedLoopId == -1) {
+        errs() << "No loop selected\n";
+        return;
+      }
 
       // print the selected instruction
       if (queryInstId != -1) {
@@ -234,6 +238,16 @@ class CpfReplDriver: public Repl::ReplDriver {
                  << " not found\n";
         }
       } else { // print all instructions
+        // if instructions are load, store, or call, print it with colors
+        // store: red; load: green; call: blue
+
+        // map the color to terminal color strings
+        map<unsigned int, string> instColorMap = {
+          {Instruction::Store, "\033[1;31m"},
+          {Instruction::Load, "\033[1;32m"},
+          {Instruction::Call, "\033[1;34m"},
+          {Instruction::Invoke, "\033[1;34m"},
+        };
         for (auto &[instId, node] : *instIdMap) {
           auto *inst = dyn_cast<Instruction>(node->getT());
           // not an instruction
@@ -242,12 +256,28 @@ class CpfReplDriver: public Repl::ReplDriver {
             continue;
           }
 
+          // set color if it is a load, store, or call
+          auto op = inst->getOpcode();
+          if (instColorMap.find(op) != instColorMap.end()) {
+            auto color = instColorMap[op];
+            // FIXME: ignore if it is a call to "llvm.dbg.value"
+            if (op == Instruction::Call) {
+              auto *call = dyn_cast<CallInst>(inst);
+              auto *callee = call->getCalledFunction();
+              if (callee && callee->getName().startswith("llvm.dbg.value")) {
+                color = "";
+              }
+            }
+            outs() << color;
+          }
+
           auto instNamerId = Namer::getInstrId(inst);
           outs() << instId << " (" << instNamerId << ")\t" << *node->getT();
 
           if (printDebug) {
             liberty::printInstDebugInfo(inst);
           }
+          outs() << "\033[0m";
 
           outs() << "\n";
         }
