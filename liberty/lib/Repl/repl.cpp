@@ -20,8 +20,6 @@
 #include "scaf/SpeculationModules/GlobalConfig.h"
 #include "scaf/SpeculationModules/SLAMPLoad.h"
 #include "scaf/SpeculationModules/SlampOracleAA.h"
-#include "ReplParse.hpp"
-
 #include "noelle/tools/Repl.hpp"
 
 #include <algorithm>
@@ -173,6 +171,61 @@ class CpfReplDriver: public Repl::ReplDriver {
         auto ldi = noelle.getLoop(&loopStructure);
         loopIdMap[loopId++] = ldi;
         continue;
+      }
+    }
+
+    void dumpFn() override {
+      Repl::ReplDriver::dumpFn();
+
+      // if verbose
+      if (parser.isVerbose()) {
+        // Create internal SCCDAG
+        std::vector<Value *> loopInternals;
+        for (auto internalNode : selectedPDG->internalNodePairs()) {
+          loopInternals.push_back(internalNode.first);
+        }
+
+        auto internalPDG = selectedPDG->createSubgraphFromValues(loopInternals, false);
+        auto internalSCCDAG = new SCCDAG(internalPDG);
+        llvm::noelle::DGPrinter::writeGraph<llvm::noelle::SCCDAG, SCC>("sccdag.dot", internalSCCDAG);
+        // FIXME: should the SCCDAG or PDG be deleted?
+
+        // Check if "graph-easy" is a command line command
+        if (system("which graph-easy > /dev/null") == 0) {
+          // fix the file for graph-easy
+          // Go over the file and replace "...:s[digits] " with "..."
+          ifstream in("sccdag.dot");
+          ofstream out("sccdag.for-graph-easy.dot");
+          string line;
+          while (getline(in, line)) {
+            size_t pos, pos2;
+            pos = line.find(":s");
+            // find the first space after pos
+            if (pos != string::npos) {
+              pos2 = line.find(" ", pos);
+              if (pos2 != string::npos) {
+                line.erase(pos, pos2 - pos);
+              }
+            }
+            // trim all attributes
+            pos = line.find("[");
+            if (pos != string::npos) {
+              //  find the last "]"
+              pos2 = line.rfind("]");
+              if (pos2 != string::npos) {
+                line.erase(pos, pos2 - pos + 1);
+              }
+            }
+            out << line << endl;
+          }
+
+          // call "graph-easy" command to visualize the SCCDAG
+          system("graph-easy --as boxart --input sccdag.for-graph-easy.dot");
+        }
+        else {
+          outs() << "Cannot visualize the SCCDAG because 'graph-easy' is not installed.\n";
+        }
+
       }
     }
 
@@ -466,7 +519,7 @@ char* completion_generator(const char* text, int state) {
 
     // Collect a vector of matches: vocabulary words that begin with text.
     std::string textstr = std::string(text);
-    for (auto word : ReplVocab) {
+    for (auto word : Repl::ReplVocab) {
       if (word.size() >= textstr.size() &&
           word.compare(0, textstr.size(), textstr) == 0) {
         matches.push_back(word);
