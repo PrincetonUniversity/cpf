@@ -1,5 +1,6 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
+#include "liberty/Utilities/json.hpp"
 #include "liberty/Orchestration/Orchestrator.h"
 #include "scaf/SpeculationModules/Remediator.h"
 
@@ -15,7 +16,7 @@ namespace liberty {
       return "Planner";
     }
 
-    Orchestrator::Strategy *parallelizeLoop(Module &M, Loop *loop, Noelle &noelle);
+    Orchestrator::Strategy *parallelizeLoop(Module &M, Loop *loop, Noelle &noelle, nlohmann::json &loop_stats);
 
     using Remediator_ptr = std::unique_ptr<Remediator>;
 

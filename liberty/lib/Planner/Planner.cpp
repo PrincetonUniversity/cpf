@@ -21,6 +21,7 @@
 #include "liberty/Planner/Planner.h"
 #include "liberty/Utilities/WriteGraph.h"
 #include "noelle/core/Noelle.hpp"
+#include "noelle/core/PDG.hpp"
 #include "scaf/MemoryAnalysisModules/KillFlow.h"
 #include "scaf/MemoryAnalysisModules/NoEscapeFieldsAA.h"
 #include "scaf/MemoryAnalysisModules/PureFunAA.h"
@@ -29,6 +30,8 @@
 #include "scaf/SpeculationModules/SLAMPLoad.h"
 #include "scaf/SpeculationModules/SlampOracleAA.h"
 #include "scaf/Utilities/ReportDump.h"
+
+#include "liberty/Utilities/json.hpp"
 
 #define ThreadBudget 22
 #define FixedPoint 1000
@@ -50,6 +53,9 @@ namespace liberty {
                                      cl::desc("Check if SLAMP output matches LAMP"));
   static cl::opt<bool> AnalysisCheck("analysis-check", cl::init(false),
                                     cl::desc("Check for any deps that SLAMP removes but analysis does not"));
+
+  static cl::opt<bool> DumpLoopStatistics("dump-loop-stats", cl::init(false),
+                                          cl::desc("Dump loop statistics"));
 
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
@@ -157,6 +163,7 @@ namespace liberty {
     return remeds;
   }
 
+  // FIXME: this will be disabled
   vector<LoopAA *> Planner::addAndSetupSpecModulesToLoopAA(Module &M,
                                                            Loop *loop) {
     auto DL = &M.getDataLayout();
@@ -264,7 +271,93 @@ namespace liberty {
     return critics;
   }
 
-  Orchestrator::Strategy *Planner::parallelizeLoop(Module &M, Loop *loop, Noelle &noelle) {
+  nlohmann::json reportLoopParallelizationStatistics(Loop *loop, Orchestrator::Strategy &strategy, PDG *pdg) {
+    BasicBlock *hA = loop->getHeader();
+    Function *fA = hA->getParent();
+    std::string functionName = fA->getName().str();
+    std::string loopName = hA->getName().str();
+
+    vector<DGEdge<Value> *> blockingLoopCarriedDependences;
+    // get all the blocking loop-carried dependences
+    for (auto &edge : pdg->getSortedDependences()) {
+      if (!pdg->isInternal(edge->getIncomingT()) ||
+          !pdg->isInternal(edge->getOutgoingT())) {
+        continue;
+      }
+
+      if (edge->isRemovableDependence()) {
+        continue;
+      }
+
+      if (!edge->isLoopCarriedDependence()) {
+        continue;
+      }
+
+      // It's a blocking loop-carried dependence
+      blockingLoopCarriedDependences.push_back(edge);
+    }
+
+
+    auto printValueToString = [](Value *value) {
+      std::string valueString;
+      raw_string_ostream valueStream(valueString);
+      value->print(valueStream);
+      return valueStream.str();
+    };
+
+    auto convertStrategyToJson = [&](Orchestrator::Strategy &strategy) {
+      nlohmann::json strategyJson;
+      // dump the strategy
+      std::string strategyString;
+      raw_string_ostream fout(strategyString);
+      fout << strategy.pipelineStrategy;
+      strategyJson["pipeline"] = fout.str();
+      return strategyJson;
+    };
+
+    auto convertDepToJson = [&](DGEdge<Value> *edge) {
+      nlohmann::json dep;
+      dep["src"] = printValueToString(edge->getIncomingT());
+      dep["dst"] = printValueToString(edge->getOutgoingT());
+      std::string depType;
+      if (edge->isMemoryDependence()) {
+        depType = "Memory";
+        if (edge->isRAWDependence()) {
+          depType += " RAW";
+        } else if (edge->isWARDependence()) {
+          depType += " WAR";
+        } else if (edge->isWAWDependence()) {
+          depType += " WAW";
+        }
+
+      } else if (edge->isControlDependence()) {
+        depType = "Control";
+      } else if (edge->isDataDependence()) {
+        depType = "Data";
+      }
+      if (edge->isLoopCarriedDependence()) {
+        depType += " loop-carried";
+      } else {
+        depType += " loop-independent";
+      }
+
+      dep["type"] = depType;
+      return dep;
+    };
+
+    nlohmann::json json;
+    json["function"] = functionName;
+    json["loop"] = loopName;
+    json["strategy"] = convertStrategyToJson(strategy);
+    json["blocking-dependences"] = nlohmann::json::array();
+    for (auto &edge : blockingLoopCarriedDependences) {
+      json["blocking-dependences"].push_back(convertDepToJson(edge));
+    }
+
+    return json;
+  }
+
+  Orchestrator::Strategy *Planner::parallelizeLoop(Module &M, Loop *loop, Noelle &noelle, nlohmann::json &loop_stats) {
     // Get NOELLE's PDG
     // It can be conservative or optimistic based on the loopaa passed to NOELLE
     BasicBlock *hA = loop->getHeader();
@@ -280,12 +373,13 @@ namespace liberty {
     assert(pdg != nullptr && "PDG is null?");
     writeGraph<PDG>(pdgName, pdg);
 
-    if(SlampCheck) {
+    // Check SLAMP against LAMP's results
+    if (SlampCheck) {
       uint32_t edgeCount = 0;
       uint32_t diffCount = 0;
       auto remed_slamp = &getAnalysis<SLAMPLoadProfile>();
-      auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
-      auto remed_lamp = &getAnalysis<LAMPLoadProfile>(); 
+      auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp);
+      auto remed_lamp = &getAnalysis<LAMPLoadProfile>();
       auto remed_lamp_aa = std::make_unique<LampOracle>(remed_lamp);
 
       for (auto &edge : make_range(pdg->begin_edges(), pdg->end_edges())) {
@@ -293,31 +387,35 @@ namespace liberty {
             !pdg->isInternal(edge->getOutgoingT()))
           continue;
 
-        auto* src = dyn_cast<Instruction>(edge->getOutgoingT());
-        auto* dst = dyn_cast<Instruction>(edge->getIncomingT());
+        auto *src = dyn_cast<Instruction>(edge->getOutgoingT());
+        auto *dst = dyn_cast<Instruction>(edge->getIncomingT());
         assert(src && dst && "src/dst not instructions in PDG?");
         bool loopCarried = false;
         edgeCount++;
 
         // LAMP is unable to reason about function calls,
         // and SLAMP only considers RAW deps.
-        if(dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst))
+        if (dyn_cast<CallBase>(src) || dyn_cast<CallBase>(dst))
           continue;
-        if(!edge->isRAWDependence())
+        if (!edge->isRAWDependence())
           continue;
 
-        if(edge->isLoopCarriedDependence())
+        if (edge->isLoopCarriedDependence())
           loopCarried = true;
 
-        auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
-        auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried, DataDepType::RAW, loop);
+        auto slamp_remedy = remed_slamp_aa->memdep(src, dst, loopCarried,
+                                                   DataDepType::RAW, loop);
+        auto lamp_remedy = remed_lamp_aa->memdep(src, dst, loopCarried,
+                                                 DataDepType::RAW, loop);
 
-        if(slamp_remedy.depRes != lamp_remedy.depRes) {
+        if (slamp_remedy.depRes != lamp_remedy.depRes) {
           diffCount++;
-          errs() << "SLAMP: " << slamp_remedy.depRes << ", LAMP: " << lamp_remedy.depRes << "\n";
+          errs() << "SLAMP: " << slamp_remedy.depRes
+                 << ", LAMP: " << lamp_remedy.depRes << "\n";
         }
       }
-      errs() << "Total number of edges: " << edgeCount << ", number of diff edges: " << diffCount << "\n";
+      errs() << "Total number of edges: " << edgeCount
+             << ", number of diff edges: " << diffCount << "\n";
     }
 
     // Make sure SLAMP is not more conservative than analysis
@@ -326,7 +424,7 @@ namespace liberty {
     // If it exists according to SLAMP, there is a bug
     if (ValidityCheck) {
       auto remed_slamp = &getAnalysis<SLAMPLoadProfile>();
-      auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp); 
+      auto remed_slamp_aa = std::make_unique<SlampOracleAA>(remed_slamp);
 
       for(auto nodeI : pdg->getNodes()) {
         for(auto nodeJ : pdg->getNodes()) {
@@ -427,6 +525,10 @@ namespace liberty {
 
     auto strategy = orch->findBestStrategy(loop, *pdg, critics);
 
+    if (DumpLoopStatistics) {
+      // print it out to a file
+      loop_stats = reportLoopParallelizationStatistics(loop, *strategy, pdg);
+    }
     return strategy;
   }
 
@@ -534,10 +636,23 @@ namespace liberty {
       slamp = &getAnalysis<SLAMPLoadProfile>();
     }
 
+    nlohmann::json loop_stats;
+    unsigned loop_idx = 0;
     // per hot loop
     for (Targets::iterator i = targets.begin(mloops), e = targets.end(mloops);
          i != e; ++i) {
-      auto strategy = parallelizeLoop(m, *i, noelle);
+      auto strategy = parallelizeLoop(m, *i, noelle, loop_stats[loop_idx]);
+
+      if (DumpLoopStatistics) {
+        // get loop time
+        auto loop = *i;
+        auto coverage = lpl.getLoopFraction(loop);
+        auto time = lpl.getLoopTime(loop);
+        auto speedup = time / (time - strategy->savings / (double)FixedPoint);
+        loop_stats[loop_idx]["coverage"] = coverage;
+        loop_stats[loop_idx]["time"] = time;
+        loop_stats[loop_idx]["speedup"] = speedup;
+      }
 
       // if there's a strategy
       if (strategy != nullptr) {
@@ -545,7 +660,7 @@ namespace liberty {
         scaledweights.push_back(strategy->savings);
         strategies.push_back(strategy);
       }
-      // calculate the weight for the loop
+      loop_idx++;
     }
 
     if (vertices.size() == 0) {
@@ -625,6 +740,14 @@ namespace liberty {
                          << strat->pipelineStrategy
                          << " (Loop speedup: " << format("%.2f", speedup)
                          << "x savings/loop time: " << strat->savings / FixedPoint << "/" << time << ")\n";);
+    }
+
+    if (DumpLoopStatistics) {
+      // dump the loop stats to a file
+      std::string filename = "loop_stats.json";
+      std::ofstream file(filename);
+      file << loop_stats.dump(2);
+      file.close();
     }
 
     return false;
