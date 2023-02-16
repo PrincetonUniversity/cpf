@@ -271,7 +271,7 @@ namespace liberty {
     return critics;
   }
 
-  nlohmann::json reportLoopParallelizationStatistics(Loop *loop, Orchestrator::Strategy &strategy, PDG *pdg) {
+  nlohmann::json reportLoopParallelizationStatistics(Loop *loop, PDG *pdg) {
     BasicBlock *hA = loop->getHeader();
     Function *fA = hA->getParent();
     std::string functionName = fA->getName().str();
@@ -303,16 +303,6 @@ namespace liberty {
       raw_string_ostream valueStream(valueString);
       value->print(valueStream);
       return valueStream.str();
-    };
-
-    auto convertStrategyToJson = [&](Orchestrator::Strategy &strategy) {
-      nlohmann::json strategyJson;
-      // dump the strategy
-      std::string strategyString;
-      raw_string_ostream fout(strategyString);
-      fout << strategy.pipelineStrategy;
-      strategyJson["pipeline"] = fout.str();
-      return strategyJson;
     };
 
     auto convertDepToJson = [&](DGEdge<Value> *edge) {
@@ -348,7 +338,6 @@ namespace liberty {
     nlohmann::json json;
     json["function"] = functionName;
     json["loop"] = loopName;
-    json["strategy"] = convertStrategyToJson(strategy);
     json["blocking-dependences"] = nlohmann::json::array();
     for (auto &edge : blockingLoopCarriedDependences) {
       json["blocking-dependences"].push_back(convertDepToJson(edge));
@@ -527,7 +516,7 @@ namespace liberty {
 
     if (DumpLoopStatistics) {
       // print it out to a file
-      loop_stats = reportLoopParallelizationStatistics(loop, *strategy, pdg);
+      loop_stats = reportLoopParallelizationStatistics(loop, pdg);
     }
     return strategy;
   }
@@ -648,10 +637,16 @@ namespace liberty {
         auto loop = *i;
         auto coverage = lpl.getLoopFraction(loop);
         auto time = lpl.getLoopTime(loop);
-        auto speedup = time / (time - strategy->savings / (double)FixedPoint);
+        if (strategy != nullptr) {
+          auto speedup = time / (time - strategy->savings / (double)FixedPoint);
+          std::string strategyString;
+          raw_string_ostream fout(strategyString);
+          fout << strategy->pipelineStrategy;
+          loop_stats[loop_idx]["speedup"] = speedup;
+          loop_stats[loop_idx]["pipeline"] = fout.str();
+        }
         loop_stats[loop_idx]["coverage"] = coverage;
         loop_stats[loop_idx]["time"] = time;
-        loop_stats[loop_idx]["speedup"] = speedup;
       }
 
       // if there's a strategy
