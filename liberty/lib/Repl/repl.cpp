@@ -555,7 +555,19 @@ bool CpfRepl::runOnModule(Module &M) {
   const Targets &targets = getAnalysis<Targets>();
 
   // have a vector of all the loop aas
-  LoopAA* loopAA = (LoopAA*)getSCAFLoopAA();
+  LoopAA* loopAA = nullptr;
+  auto aaEngines = noelle.getAliasAnalysisEngines();
+  for (auto &aa : aaEngines) {
+    if (aa->getName() == "SCAF") {
+      loopAA = reinterpret_cast<LoopAA *>(aa->getRawPointer());
+      break;
+    }
+  }
+  if (!loopAA) {
+    errs() << "No SCAF analysis engine found. Exiting.\n";
+    return false;
+  }
+
 
   CpfReplDriver driver(noelle, M, loopAA, targets, mloops, *this);
   driver.createLoopMap();
