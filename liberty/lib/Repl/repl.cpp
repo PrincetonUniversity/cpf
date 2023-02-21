@@ -58,19 +58,24 @@ void CpfRepl::getAnalysisUsage(AnalysisUsage &au) const {
   au.addRequired< LoopInfoWrapperPass >();
   au.addRequired<TargetLibraryInfoWrapperPass>();
 
-  if (EnableSlamp) {
-    au.addRequired<slamp::SLAMPLoadProfile>();
-    au.addRequired<SlampOracleAA>();
-  }
-  au.addRequired<ModuleLoops>();
-  au.addRequired<Targets>();
-
   if (EnableEdgeProf) {
     au.addRequired<ProfileGuidedControlSpeculator>();
     // au.addRequired<KillFlow_CtrlSpecAware>();
     // au.addRequired<CallsiteDepthCombinator_CtrlSpecAware>();
   }
 
+  if (EnableLamp) {
+    au.addRequired<LAMPLoadProfile>();
+    au.addRequired<SmtxSpeculationManager>();
+  }
+
+  if (EnableSlamp) {
+    au.addRequired<slamp::SLAMPLoadProfile>();
+    au.addRequired<SlampOracleAA>();
+  }
+
+  au.addRequired<ModuleLoops>();
+  au.addRequired<Targets>();
 
   au.setPreservesAll();
 }
@@ -337,7 +342,98 @@ class CpfReplDriver: public Repl::ReplDriver {
       }
     }
 
+    // FIXME: duplicated code with Planner
+    // intialize additional remedieators
+    // these remediators should not be on the SCAF AA stack
+    std::vector<Remediator_ptr> getAvailableRemediators(Loop *A) {
+      std::vector<Remediator_ptr> remeds;
+
+      if (EnableSlamp) {
+        auto slamp = &pass.getAnalysis<SLAMPLoadProfile>();
+        auto slampaa = std::make_unique<SlampOracleAA>(slamp);
+        remeds.push_back(std::move(slampaa));
+      }
+
+      if (EnableLamp) {
+        auto lamp = &pass.getAnalysis<LAMPLoadProfile>();
+        auto lampaa = std::make_unique<LampOracle>(lamp);
+        remeds.push_back(std::move(lampaa));
+      }
+
+      /* produce remedies for control deps */
+      if (EnableEdgeProf) {
+        auto ctrlspec = pass.getAnalysis<ProfileGuidedControlSpeculator>()
+                            .getControlSpecPtr();
+        ctrlspec->setLoopOfInterest(A->getHeader());
+        auto ctrlSpecRemed = std::make_unique<ControlSpecRemediator>(ctrlspec);
+        ctrlSpecRemed->processLoopOfInterest(A);
+        remeds.push_back(std::move(ctrlSpecRemed));
+      }
+
+      /* produce remedies for register deps */
+      // reduction remediator
+      auto mloops = &pass.getAnalysis<ModuleLoops>();
+
+      auto reduxRemed =
+          std::make_unique<ReduxRemediator>(mloops, loopAA, selectedPDG.get());
+      reduxRemed->setLoopOfInterest(A);
+      remeds.push_back(std::move(reduxRemed));
+
+      remeds.push_back(std::make_unique<MemVerRemediator>());
+      remeds.push_back(std::make_unique<TXIOAA>());
+      // remeds.push_back(std::make_unique<CommutativeLibsAA>());
+
+      return remeds;
+    }
+
+    // optimize the selected loop with speculation
+    void speculativelyOptimizeFn() {
+      // get the list of remediators
+      Loop* loop = getSelectedLLVMLoop();
+      auto remediators = getAvailableRemediators(loop);
+
+      // optimize the PDG by marking removeable    // modify the PDG by annotating the remedies
+      Criticisms allCriticisms = Critic::getAllCriticisms(*selectedPDG);
+      for (auto &remediator : remediators) {
+        Remedies remedies = remediator->satisfy(*selectedPDG, loop, allCriticisms);
+        // for each remedy
+        for (Remedy_ptr r : remedies) {
+          unsigned long tcost = 0;
+          Remedies_ptr remedSet = std::make_shared<Remedies>();
+
+          // expand remedy if there's subremedies
+          // TODO: is this even necessary? MemSpecAARemed uses subRemedies, but if
+          // no other ones are using it, shound we remove this concept to reduce
+          // the complexity
+          std::function<void(Remedy_ptr)> expandSubRemedies =
+            [remedSet, &tcost, &expandSubRemedies](Remedy_ptr r) {
+              if (r->hasSubRemedies()) {
+                for (Remedy_ptr subR : *r->getSubRemedies()) {
+                  remedSet->insert(subR);
+                  tcost += subR->cost;
+                  expandSubRemedies(subR);
+                }
+              } else {
+                remedSet->insert(r);
+                tcost += r->cost;
+              }
+            };
+
+          expandSubRemedies(r);
+
+          // for each criticism that is satisfied by the remedy
+          // might be multiple ones because one remedy can solve multiple criticisms
+          for (Criticism *c : r->resolvedC) {
+            // remedies are added to the edges.
+            c->setRemovable(true);
+            c->addRemedies(remedSet);
+          }
+        }
+      }
+    }
+
     void parallelizeFn() override {
+      speculativelyOptimizeFn();
 
       int threadBudget = parser.getActionId();
       if (threadBudget == -1) {
@@ -366,8 +462,8 @@ class CpfReplDriver: public Repl::ReplDriver {
 
       auto loop = getSelectedLLVMLoop();
 
-      check(doall, "DOALL", *selectedPDG.get(), loop);
-      check(psdswp, "PSDSWPCritic", *selectedPDG.get(), loop);
+      check(doall, "DOALL", *selectedPDG, loop);
+      check(psdswp, "PSDSWPCritic", *selectedPDG, loop);
     }
 
 
