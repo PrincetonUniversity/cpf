@@ -30,6 +30,7 @@
 #include "scaf/SpeculationModules/SLAMPLoad.h"
 #include "scaf/SpeculationModules/SlampOracleAA.h"
 #include "scaf/Utilities/ReportDump.h"
+#include "scaf/Utilities/Metadata.h"
 
 #include "liberty/Utilities/json.hpp"
 
@@ -63,7 +64,6 @@ namespace liberty {
     au.addRequired<LoopProfLoad>();
     au.addRequired<TargetLibraryInfoWrapperPass>();
     au.addRequired<LoopInfoWrapperPass>();
-    au.addRequired< LoopAA >();
     au.addRequired<PostDominatorTreeWrapperPass>();
     // au.addRequired<LLVMAAResults>();
 
@@ -307,8 +307,23 @@ namespace liberty {
 
     auto convertDepToJson = [&](DGEdge<Value> *edge) {
       nlohmann::json dep;
-      dep["src"] = printValueToString(edge->getIncomingT());
-      dep["dst"] = printValueToString(edge->getOutgoingT());
+      dep["src"] = printValueToString(edge->getOutgoingT());
+      dep["dst"] = printValueToString(edge->getIncomingT());
+
+      auto *srcInst = dyn_cast<Instruction>(edge->getOutgoingT());
+      if (srcInst) {
+        dep["srcId"] = Namer::getInstrId(srcInst);
+      } else {
+        dep["srcId"] = -1;
+      }
+
+      auto *dstInst = dyn_cast<Instruction>(edge->getIncomingT());
+      if (dstInst) {
+        dep["dstId"] = Namer::getInstrId(dstInst);
+      } else {
+        dep["dstId"] = -1;
+      }
+
       std::string depType;
       if (edge->isMemoryDependence()) {
         depType = "Memory";
