@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <bits/stdint-uintn.h>
 #include <cctype>
+#include <iomanip>
 #include <iostream>
 // GNU Readline
 #include <readline/history.h>
@@ -432,16 +433,113 @@ class CpfReplDriver: public Repl::ReplDriver {
       }
     }
 
+    static double getWeight(SCC *scc, PerformanceEstimator *perf) {
+      double sumWeight = 0.0;
+
+      for (auto instPair : scc->internalNodePairs()) {
+        Instruction *inst = dyn_cast<Instruction>(instPair.first);
+        assert(inst);
+
+        sumWeight += perf->estimate_weight(inst);
+      }
+
+      return sumWeight;
+    }
+
+    static bool isParallel(const SCC &scc) {
+      for (auto edge : make_range(scc.begin_edges(), scc.end_edges())) {
+        if (!scc.isInternal(edge->getIncomingT()) ||
+            !scc.isInternal(edge->getOutgoingT()))
+          continue;
+
+        if (edge->isLoopCarriedDependence()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    struct CoverageStats {
+      double TotalWeight;
+      double LargestSeqWeight;
+      double ParallelWeight;
+      double SequentialWeight;
+
+      std::string dumpPercentage() {
+        if (TotalWeight == 0) {
+          return "Coverage incomplete: loop weight is 0\n";
+        }
+
+        double ParallelPercentage = 100 * ParallelWeight / TotalWeight;
+        double SequentialPercentage = 100 * SequentialWeight / TotalWeight;
+        double CriticalPathPercentage = 100 * LargestSeqWeight / TotalWeight;
+        double ParallelismCoverage = 100 - CriticalPathPercentage;
+
+        std::stringstream ss;
+        ss << "Largest Seq SCC (%): " << std::fixed << std::setw(2)
+          << CriticalPathPercentage << "\n"
+          << "Parallel SCC (%): " << ParallelPercentage << "\n"
+          << "Sequential SCC (%): " << SequentialPercentage << "\n"
+          << "Paralleism (%): " << ParallelismCoverage << "\n";
+
+        return ss.str();
+      }
+    };
+
+    CoverageStats getCoverageStats(ProfilePerformanceEstimator *perf) {
+      std::vector<Value *> loopInternals;
+      for (auto internalNode : selectedPDG->internalNodePairs()) {
+        loopInternals.push_back(internalNode.first);
+      }
+
+      std::unordered_set<DGEdge<Value> *> edgesToIgnore;
+
+      // go through the PDG and add all removable edges to this set
+      for (auto edge : selectedPDG->getEdges()) {
+        if (edge->isRemovableDependence()) {
+          edgesToIgnore.insert(edge);
+        }
+      }
+
+      auto optimisticPDG =
+        selectedPDG->createSubgraphFromValues(loopInternals, false, edgesToIgnore);
+
+      auto optimisticSCCDAG = new SCCDAG(optimisticPDG);
+
+      double TotalWeight = 0;
+      double LargestSeqWeight = 0;
+      double ParallelWeight = 0;
+      double SequentialWeight = 0;
+
+      // get total weight
+      for (auto *scc : optimisticSCCDAG->getSCCs()) {
+        auto curWeight = getWeight(scc, perf);
+        TotalWeight += curWeight;
+        if (isParallel(*scc)) {
+          ParallelWeight += curWeight;
+        } else {
+          SequentialWeight += curWeight;
+          LargestSeqWeight = std::max(LargestSeqWeight, curWeight);
+        }
+      }
+
+      CoverageStats stats = {TotalWeight, LargestSeqWeight, ParallelWeight,
+                             SequentialWeight};
+      return stats;
+    }
+
     void parallelizeFn() override {
       speculativelyOptimizeFn();
+      LoopProfLoad *lpl = &pass.getAnalysis<LoopProfLoad>();
+      auto perf = &pass.getAnalysis<ProfilePerformanceEstimator>();
+
+      auto stats = getCoverageStats(perf);
+      outs() << stats.dumpPercentage();
 
       int threadBudget = parser.getActionId();
       if (threadBudget == -1) {
         threadBudget = 28;
       }
-
-      LoopProfLoad *lpl = &pass.getAnalysis<LoopProfLoad>();
-      auto perf = &pass.getAnalysis<ProfilePerformanceEstimator>();
 
       // initialize performance estimator
       auto psdswp = std::make_shared<PSDSWPCritic>(perf, threadBudget, lpl);
