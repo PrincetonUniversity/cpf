@@ -31,8 +31,10 @@
 #include "scaf/SpeculationModules/SlampOracleAA.h"
 #include "scaf/Utilities/ReportDump.h"
 #include "scaf/Utilities/Metadata.h"
+#include "scaf/Utilities/PDGQueries.h"
 
 #include "liberty/Utilities/json.hpp"
+#include "llvm/Support/Path.h"
 
 #define ThreadBudget 22
 #define FixedPoint 1000
@@ -52,18 +54,27 @@ namespace liberty {
   static cl::opt<bool> SlampCheck("slamp-check", cl::init(false),
                                      cl::NotHidden,
                                      cl::desc("Check if SLAMP output matches LAMP"));
+
   static cl::opt<bool> AnalysisCheck("analysis-check", cl::init(false),
                                     cl::desc("Check for any deps that SLAMP removes but analysis does not"));
 
   static cl::opt<bool> DumpLoopStatistics("dump-loop-stats", cl::init(false),
                                           cl::desc("Dump loop statistics"));
 
+  static cl::opt<bool> DependenceStatistics("dependence-stats", cl::init(false),
+                                       cl::desc("Dump dependence statistics"));
+
+  static cl::opt<bool> OMPStatistics("omp-stats", cl::init(false),
+                                       cl::desc("Dump OMPAA statistics"));
+
+  static cl::opt<bool> Verbose("verbose", cl::init(false), cl::desc("Print extra information for dependence statistics"));
 
   void Planner::getAnalysisUsage(AnalysisUsage &au) const {
     au.addRequired<Noelle>(); // NOELLE is needed to drive the analysis
     au.addRequired<LoopProfLoad>();
     au.addRequired<TargetLibraryInfoWrapperPass>();
     au.addRequired<LoopInfoWrapperPass>();
+    au.addRequired<LoopAA>();
     au.addRequired<PostDominatorTreeWrapperPass>();
     // au.addRequired<LLVMAAResults>();
 
@@ -333,14 +344,14 @@ namespace liberty {
           depType += " WAR";
         } else if (edge->isWAWDependence()) {
           depType += " WAW";
-        }
-
-      } else if (edge->isControlDependence()) {
-        depType = "Control";
-      } else if (edge->isDataDependence()) {
-        depType = "Data";
-      }
-      if (edge->isLoopCarriedDependence()) {
+        }//
+         //
+      } e//lse if (edge->isControlDependence()) {
+        d//epType = "Control";
+      } e//lse if (edge->isDataDependence()) {
+        d//epType = "Data";
+      }  //
+      if //(edge->isLoopCarriedDependence()) {
         depType += " loop-carried";
       } else {
         depType += " loop-independent";
@@ -371,13 +382,92 @@ namespace liberty {
     LoopStructure loopStructure(loop);
     auto ldi = noelle.getLoop(&loopStructure);
 
+    if(DependenceStatistics) {
+      LoopAA* loopAA = nullptr;
+      auto aaEngines = noelle.getAliasAnalysisEngines();
+      for (auto &aa: aaEngines) {
+        if (aa->getName() == "SCAF") {
+          loopAA = reinterpret_cast<LoopAA*>(aa->getRawPointer());
+          break;
+        }
+      }
+      if(!loopAA) { 
+        errs() << "No loopAA found\n";
+        exit(1);
+      }
+      loopAA->dump();
+      //errs() << "Start DepStats for " << Namer::getBlkId(hA) << "\n";
+      errs() << "Start DepStats for " << loop->getName() << "\n";
+      //iterate over all instructions in loop
+      nlohmann::json depstats;
+      dependence_t ii = { 0, 0, 0 };
+      dependence_t lc = { 0, 0, 0 };
+      dependence_t ii_disproved = { 0, 0, 0 };
+      dependence_t lc_disproved = { 0, 0, 0 };
+      unsigned dependences_ii = 0;
+      unsigned dependences_lc = 0;
+      for (auto *BB1: loop->blocks()) {
+        for (Instruction &I1: *BB1) {
+          //if(!I1.mayReadOrWriteMemory()) continue;
+          //get instruction pairs
+          for (auto *BB2: loop->blocks()) {
+            for (Instruction &I2: *BB2) {
+              //if(!I2.mayReadOrWriteMemory()) continue;
+              uint8_t intra_iter_dep = 
+                disproveIntraIterationMemoryDep(&I1, &I2, 7, loop, loopAA);
+              if(&I1 == &I2) intra_iter_dep = 8;
+              if(intra_iter_dep != 8) {
+                ii.RAW = intra_iter_dep & 0x1;
+                ii.WAW = (intra_iter_dep >> 1) & 0x1;
+                ii.WAR = (intra_iter_dep >> 2) & 0x1;
+                ii_disproved.RAW += ii.RAW;
+                ii_disproved.WAW += ii.WAW;
+                ii_disproved.WAR += ii.WAR;
+                dependences_ii++;
+              }
+              uint8_t loop_carried_dep = 
+                disproveLoopCarriedMemoryDep(&I1, &I2, 7, loop, loopAA);
+              if(loop_carried_dep != 8) {
+                lc.RAW = loop_carried_dep & 0x1;
+                lc.WAW = (loop_carried_dep >> 1) & 0x1;
+                lc.WAR = (loop_carried_dep >> 2) & 0x1;
+                lc_disproved.RAW += lc.RAW;
+                lc_disproved.WAW += lc.WAW;
+                lc_disproved.WAR += lc.WAR;
+                dependences_lc++;
+              }
+              if(Verbose) {
+                if(intra_iter_dep != 8 || loop_carried_dep != 8) {
+                  errs() << I1 << " (" << Namer::getInstrId(&I1) << ")\n";
+                  errs() << I2 << " (" << Namer::getInstrId(&I2) << ")\n";
+                  if(intra_iter_dep != 8)
+                    errs() << "ii: " << unsigned(ii.RAW) << " "
+                      << unsigned(ii.WAW) << " " << unsigned(ii.WAR) << "\n";
+                  if(loop_carried_dep != 8)
+                    errs() << "lc: " << unsigned(lc.RAW) << " " 
+                      << unsigned(lc.WAW) << " " << unsigned(lc.WAR) << "\n";
+                }
+              }
+            }
+          }
+
+        }
+      }
+      errs() << "Disproved loop-carried deps for Loop " << loop->getName() << ": " << unsigned(lc_disproved.RAW) <<
+                " " << unsigned(lc_disproved.WAW) << " " << unsigned(lc_disproved.WAR) <<  " out of " << dependences_lc << "\n";
+      //errs() << "Disproved intra-iteration deps for Loop " << loop->getName() << ": " << unsigned(ii_disproved.RAW) <<
+      //          " " << unsigned(ii_disproved.WAW) << " " << unsigned(ii_disproved.WAR) <<  " out of " << dependences_ii <<  "\n";
+      errs() << "End DepStats\n";
+    }
+
     auto pdg = ldi->getLoopDG();
-    std::string pdgName = fA->getName().str() + "." + hA->getName().str() + ".dot";
-
     assert(pdg != nullptr && "PDG is null?");
-    writeGraph<PDG>(pdgName, pdg);
+    if(DumpLoopStatistics) {
+      std::string pdgName = fA->getName().str() + "." + hA->getName().str() + ".dot";
+      writeGraph<PDG>(pdgName, pdg);
+    }
 
-    // Check SLAMP against LAMP's results
+     //Check SLAMP against LAMP's results
     if (SlampCheck) {
       uint32_t edgeCount = 0;
       uint32_t diffCount = 0;
@@ -434,6 +524,10 @@ namespace liberty {
         for(auto nodeJ : pdg->getNodes()) {
            auto* src = dyn_cast<Instruction>(nodeI->getT());
            auto* dst = dyn_cast<Instruction>(nodeJ->getT());
+           if(!src || !dst) continue;
+           if(!src->mayReadOrWriteMemory() || !dst->mayReadOrWriteMemory()) continue;
+           if(!src->mayWriteToMemory() && !dst->mayWriteToMemory()) continue;
+             
 
            auto deps = pdg->getDependences(src, dst);
            bool relevantIntraDepExists = false;
@@ -450,15 +544,17 @@ namespace liberty {
            if(!relevantInterDepExists) {
              auto slamp_dep_inter = remed_slamp_aa->memdep(src, dst, true, DataDepType::RAW, loop);
              if(slamp_dep_inter.depRes == Dep) {
-              errs() << "SLAMP is more conservative than analysis!\n";
-              errs() << src << " " << dst << "\n";
+              errs() << "ERROR: SLAMP is more conservative than analysis for loop carried!\n";
+              errs() << *src << " (" << Namer::getInstrId(src) << ")\n";
+              errs() << *dst << " (" << Namer::getInstrId(dst) << ")\n";
              }
            }
            if(!relevantIntraDepExists) {
              auto slamp_dep_intra = remed_slamp_aa->memdep(src, dst, false, DataDepType::RAW, loop);
              if(slamp_dep_intra.depRes == Dep) {
-             errs() << "SLAMP is more conservative than analysis!\n";
-             errs() << src << " " << dst << "\n";
+             errs() << "ERROR: SLAMP is more conservative than analysis for intra iter!\n";
+             errs() << *src << " (" << Namer::getInstrId(src) << ")\n";
+             errs() << *dst << " (" << Namer::getInstrId(dst) << ")\n";
              }
            }
         }
