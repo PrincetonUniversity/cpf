@@ -23,6 +23,12 @@ namespace liberty {
     std::vector<Remediator_ptr> getAvailableRemediators(Loop *A, PDG *pdg) ;
     vector<LoopAA *> addAndSetupSpecModulesToLoopAA(Module &M, Loop *loop);
 
+    struct dependence_t { 
+      unsigned RAW;
+      unsigned WAW;
+      unsigned WAR;
+    };
+
   };
 
 } // namespace liberty
